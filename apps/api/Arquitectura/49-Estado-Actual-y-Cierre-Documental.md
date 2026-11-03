@@ -1,5 +1,31 @@
 # 49 - Estado actual y cierre documental de CRM TINK
 
+## Corte vigente — 2026-11-02
+
+La revisión transversal actual es[72](72-Reconciliacion-Documental-20261102.md):
+35 commits alcanzables hasta `fcbf0c2`, cambios locales separados, inventario
+completo de áreas/documentos y resultados nuevos. Este corte prevalece sobre
+los resúmenes del29 y anteriores conservados más abajo.
+
+Se corrigieron las descripciones de notas relacionadas, calendario ampliado,
+fichas y capítulos NetSuite de Formalización, Mercadeo global, logging/receptor
+local, migraciones y herramientas. Los mapas[22](22-Mapa-de-Implementacion-API.md)
+y[30 frontend](../../frontend/Arquitectura/30-Estado-Frontend-Verificado.md)
+contienen la cobertura por controladores/rutas/consumidores, no solo un resumen.
+
+No confundir el receptor local `persisted:false` con sincronización duradera
+implementada: esta continúa en plan70. Los siete flags057 están en el árbol
+local, con evidencia DDL histórica en39; no se reconsultó ni modificó MySQL hoy.
+La [publicación Habita del29](../../../deploy/habita/DEPLOYMENT-20261029.md)
+es evidencia fechada y no confirma el release activo ni publicación de HEAD.
+
+QA nuevo: el comando raíz falla por formato SuiteScript; la suite API separada
+registra6961 aprobadas/1 fallida/161 omitidas, y la frontend1270/1fallida. Frontend
+lint tiene4 fallos. Tipos y builds se verifican aparte y se registran en72; no
+se editó código para ocultar errores ni se promocionó QA antiguo como actual.
+No hubo DB writes, imports, credenciales, despliegue ni pruebas reales de ERP,
+Graph, Redis multinodo o cuentas de empleados durante esta revisión documental.
+
 ## Corte vigente de notas y QA - 2026-10-29
 
 La implementación de notas comprende API/UI personal, compartir con usuarios de

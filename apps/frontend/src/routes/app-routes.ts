@@ -22,6 +22,8 @@ import type { IdentityProfile, IdentityUser } from "../services/auth/identity-co
 import type { CatalogCode } from "../services/catalogs/catalog-service";
 import { createLazyRoute } from "./LazyRoute";
 
+const LeadProfilePage = createLazyRoute<object>(() => import("../modules/leads/LeadProfilePage").then((module) => ({ default: module.LeadProfilePage })));
+
 const BrokersPage = createLazyRoute<ComponentProps<typeof BrokersPageComponent>>(() => import("../modules/administration/brokers/BrokersPage").then((module) => ({ default: module.BrokersPage })));
 const CampaignsPage = createLazyRoute<ComponentProps<typeof CampaignsPageComponent>>(() => import("../modules/administration/campaigns/CampaignsPage").then((module) => ({ default: module.CampaignsPage })));
 const CatalogItemsPage = createLazyRoute<ComponentProps<typeof CatalogItemsPageComponent>>(() => import("../modules/administration/catalogs/CatalogItemsPage").then((module) => ({ default: module.CatalogItemsPage })));
@@ -57,6 +59,7 @@ export const DEFAULT_HOME_PATH = ADMINISTRATION_HOME_PATH;
 export interface AppRoute {
     /** Ítem de `GlobalHomeShell` que se marca activo. */
     readonly menuItemCode: string;
+    readonly permissionCode?: string;
     /** Perfil operativo que debe ser visible con los permisos efectivos para abrir la ruta. */
     readonly workspaceCode: string;
     /** Título de la sección; se usa como placeholder mientras la ruta no tenga `Page` propia. */
@@ -96,6 +99,7 @@ const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
 );
 
 const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
+    ["/perfil", { menuItemCode: "lead-profile", permissionCode: "lead.profile.read", Page: LeadProfilePage, title: "Perfil completo del lead", workspaceCode: "all" }],
     ["/home/sales", { menuItemCode: "sales-home", title: "Ventas", workspaceCode: "sales" }],
     ["/home/marketing", { menuItemCode: "marketing-home", Page: MarketingHomePage, title: "Mercadeo", workspaceCode: "marketing" }],
     ["/home/marketing/leads", { menuItemCode: "marketing-leads", Page: MarketingLeadCapturePage, title: "Captación de leads", workspaceCode: "marketing" }],
@@ -132,7 +136,7 @@ export const getAppRoute = (path: string): AppRoute | undefined => {
     const exact = APP_ROUTES.get(path);
     if (exact) return exact;
     const calendar = APP_ROUTES.get(path.split(/[?#]/u)[0] ?? "");
-    return calendar?.menuItemCode.endsWith("-calendar") ? calendar : undefined;
+    return calendar?.menuItemCode.endsWith("-calendar") || calendar?.permissionCode === "lead.profile.read" ? calendar : undefined;
 };
 
 /** Login y rutas privadas registradas. Cualquier otra URL se trata como "no encontrada". */

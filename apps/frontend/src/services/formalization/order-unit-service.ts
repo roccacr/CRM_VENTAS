@@ -2,7 +2,7 @@ import { getDatabaseOrder } from "./database-order-service";
 import type { NetsuiteOrderIdentity } from "./netsuite-order-service";
 
 export interface OrderUnitDetail {
-    readonly groups: readonly { readonly title: string; readonly fields: readonly { readonly label: string; readonly value: string }[] }[];
+    readonly groups: readonly { readonly title: string; readonly fields: readonly { readonly label: string; readonly value: string; readonly kind?: "expediente" }[] }[];
     readonly warnings: readonly string[];
 }
 type Mapping = readonly [label: string, native: string, legacy: string];
@@ -87,7 +87,7 @@ export async function getOrderUnitDetail(identity: NetsuiteOrderIdentity): Promi
                 .map((field) => {
                     let value = text(fields[field[origin]]);
                     if (field[0] === "Código" && value === "Sin dato") value = text(data.unitFile?.code);
-                    return { label: field[0], value };
+                    return { label: field[0], value, ...(field[1] === "unit_plans_unit_file" ? { kind: "expediente" as const } : {}) };
                 }),
         })),
     };

@@ -1,5 +1,21 @@
 # Calendario: participantes y vínculos — 2026-10-29
 
+## Contraste del código - 2026-11-02
+
+`CalendarController` registra `GET /calendar/lookup` y `CalendarLookupService`
+revalida relaciones en la transacción de guardado. Los tipos de evento se filtran
+por el catálogo JSON y la configuración activa; un tipo retirado no habilita
+PATCH directo. Las selecciones persistidas se hidratan solo cuando el lector
+conserva capacidad de editar el evento y acceso a sus recursos. Invitar no
+autoriza etiquetas de notas/leads/órdenes privadas; no se inventan matches por nombre.
+
+`participants` y `links` admiten hasta100 entradas cada uno en el contrato; las
+fuentes/IDs se validan y notas solo admite origen nativo. El lookup de lead/orden
+sin dos caracteres devuelve una lista vacía, no una lectura global comercial.
+La evidencia de aplicación/lectura y las pruebas del29 de abajo mantienen su
+fecha. Esta revisión no prueba altas reales, Outlook, Teams o notificaciones
+de eventos, ni cambia el contenido de las BD.
+
 ## Alcance autorizado
 
 El propietario aprobó completar crear/editar eventos con tipo obligatorio sin selección inicial, nombre, fechas, ubicación, descripción, participantes internos/correos externos y preferencia de Teams. Se agregan vínculos opcionales a notas pendientes propias o asignadas, leads por nombre/correo y órdenes por número de transacción. Outlook, correo y creación de enlaces Teams quedan fuera de este corte.

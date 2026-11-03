@@ -1,4 +1,12 @@
-# 68 - Plan: notas vinculadas a clientes/leads y órdenes
+# 68 - Notas vinculadas a clientes/leads y órdenes: contrato y plan histórico
+
+Revisión de código 2026-11-02: están registrados los tres endpoints de selección,
+lectura y reemplazo, el campo opcional de creación y la presentación de resúmenes
+en las lecturas existentes. La UI utiliza Select con búsqueda. El texto por etapas
+conserva el plan aprobado y se interpreta junto al contrato implementado inferior,
+no como una afirmación de que todavía falte desarrollar todo el vínculo.
+Los pendientes de conectividad/SQL y aceptación real del29 no se cierran sin una
+prueba nueva; esta revisión documental no la ejecuta ni importa registros.
 
 Fecha: 2026-10-29. Estado: implementado y verificado localmente, con aceptación
 comercial y SQL adicional pendientes por conectividad. El plan aprobado se

@@ -1,5 +1,20 @@
 # Ordenes de venta: esquema y trayectoria - 20/10/2026
 
+## Alcance contrastado - 2026-11-02
+
+Los contratos de lectura por banner, ficha independiente y gestión para ambos
+roles están en63/64/65 de Formalización; sustituyen las colas vacías del corte22.
+El código local añade siete indicadores operativos057 y sus tipos, documentados
+en [39](39-Diccionario-Ordenes-Venta.md). Son hechos independientes con estado
+desconocido explícito, no etapas ni evidencia de firma/entrega inferida.
+
+El receptor local de eventos NetSuite responde `persisted:false`: la presencia
+de esos campos no habilita el escritor de sincronización del
+[plan70](70-Plan-Sincronizacion-Ordenes-NetSuite.md). Tampoco implementa edición
+general de orden/cliente/unidad, asignación de cartera, firma documental ni
+validación conjunta de saldo/traspaso/llaves. Los antecedentes siguientes conservan
+evidencia fechada y no son una consulta actual de BD o permisos.
+
 Actualizacion 2026-10-26: ContractTransitionModule ya esta registrado, junto a
 la consulta paginada de tiempos. La autorizacion local posterior de escrituras
 legacy y sus gates se documenta en52; no extrapolar los flags del corte historico. Ver [52](52-Etapas-Responsables-y-Tiempos.md). El listado de

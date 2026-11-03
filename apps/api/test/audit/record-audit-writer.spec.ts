@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
+import { captureIntegrationAuditActor } from "../../src/modules/crm/audit/audit-actor.js";
 import { RecordAuditService } from "../../src/modules/crm/audit/record-audit.service.js";
 
 const input = {
@@ -231,4 +232,18 @@ describe("central transactional record writer", () => {
             await db.destroy();
         }
     });
+});
+
+it("records an explicitly captured integration service without impersonating a user", async () => {
+    const f = setup();
+    try {
+        const actor = captureIntegrationAuditActor({ publicId: "integration:netsuite:sandbox", name: "NetSuite Sandbox" });
+        await f.db.transaction().execute((tx) => f.service.append(tx, { ...input, actor }));
+        const insert = f.queries.find((query) => /^insert into `audit_record_event`/i.test(query.sql));
+        expect(insert?.parameters).toContain("integration");
+        expect(insert?.parameters).toContain("service");
+        await expect(f.db.transaction().execute((tx) => f.service.append(tx, { ...input, actor: { ...actor } }))).rejects.toThrow("captured");
+    } finally {
+        await f.db.destroy();
+    }
 });

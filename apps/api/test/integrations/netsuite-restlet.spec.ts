@@ -345,7 +345,7 @@ it("logs safe execution metadata without request or response data", () => {
     const logger = { debug: vi.fn(), error: vi.fn() };
     load(undefined, undefined, recordMock(), { logger }).get?.({ module: "salesOrders", id: "214", secret: "PRIVATE_TEST_DETAIL" });
     expect(logger.debug).toHaveBeenCalledTimes(1);
-    expect(logger.debug).toHaveBeenLastCalledWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.10.30.4", module: "salesOrders", action: "get", netsuiteId: "214", status: 200, durationMs: expect.any(Number) as unknown } });
+    expect(logger.debug).toHaveBeenLastCalledWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.11.02.1", module: "salesOrders", action: "get", netsuiteId: "214", status: 200, durationMs: expect.any(Number) as unknown } });
     expect(logger.error).not.toHaveBeenCalled();
     expect(JSON.stringify(logger.debug.mock.calls)).not.toMatch(/PRIVATE_TEST_DETAIL|Etiqueta|123456789/);
 });
@@ -356,7 +356,7 @@ it("logs a sanitized failure code without the provider message", () => {
     });
     const logger = { debug: vi.fn(), error: vi.fn() };
     load(undefined, undefined, record, { logger }).get?.({ module: "salesOrders", id: "214" });
-    expect(logger.error).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.10.30.4", module: "salesOrders", action: "get", netsuiteId: "214", status: 502, code: "SALES_ORDER_READ_ERROR", durationMs: expect.any(Number) as unknown } });
+    expect(logger.error).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.11.02.1", module: "salesOrders", action: "get", netsuiteId: "214", status: 502, code: "SALES_ORDER_READ_ERROR", durationMs: expect.any(Number) as unknown } });
     expect(logger.debug).not.toHaveBeenCalled();
     expect(JSON.stringify(logger.error.mock.calls)).not.toContain("PRIVATE_TEST_DETAIL");
 });
@@ -376,10 +376,10 @@ it("includes only validated order IDs in the single final log", () => {
     const logger = { debug: vi.fn(), error: vi.fn() };
     const handlers = load(undefined, undefined, recordMock(), { logger });
     handlers.get?.({ module: "salesOrders", id: "214" });
-    expect(logger.debug).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.10.30.4", module: "salesOrders", action: "get", netsuiteId: "214", status: 200, durationMs: expect.any(Number) as unknown } });
+    expect(logger.debug).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.11.02.1", module: "salesOrders", action: "get", netsuiteId: "214", status: 200, durationMs: expect.any(Number) as unknown } });
     logger.debug.mockClear();
     handlers.get?.({ module: "salesOrders", id: "invalid" });
-    expect(logger.debug).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.10.30.4", module: "salesOrders", action: "get", status: 400, code: "INVALID_ID", durationMs: expect.any(Number) as unknown } });
+    expect(logger.debug).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.11.02.1", module: "salesOrders", action: "get", status: 400, code: "INVALID_ID", durationMs: expect.any(Number) as unknown } });
 });
 
 // Intercalado determinista de dos peticiones: no equivale a una prueba de carga en NetSuite.

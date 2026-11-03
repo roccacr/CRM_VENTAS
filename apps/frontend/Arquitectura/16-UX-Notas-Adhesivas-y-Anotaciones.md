@@ -1,5 +1,25 @@
 # 16 - UX Notas Adhesivas y Anotaciones
 
+## Corte contrastado - 2026-11-02
+
+El runtime incluye las capacidades descritas abajo y los vínculos adicionales
+de [68 API](../../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+Cliente/lead y Orden de venta se eligen en Select con búsqueda/paginación remota,
+sin listas permanentes de candidatos ni selector de BD. Enter selecciona con el
+desplegable abierto y no envía accidentalmente la nota. La relación secundaria
+se administra aparte del contexto original, con versión e identificador estable.
+Tarjeta, hoja y conversación reciben el mismo resumen reautorizado.
+
+Los vínculos restringidos se conservan sin exponer nombres, fuente, IDs o URLs.
+El autor gestiona relaciones con su capacidad vigente y nota pendiente; un
+participante no obtiene edición por recibir una invitación. La sugerencia del
+cliente de una orden requiere confirmación explícita. La ficha futura de lead
+no se crea por el hecho de poder relacionarlo a una nota.
+
+El QA registrado en67/68 conserva su fecha. Redis multinodo, benchmark, copia
+legacy, adjuntos y aceptación con dos cuentas reales no se certifican mediante
+esta revisión documental ni se activan para completar un texto.
+
 ## Implementación vigente - 2026-10-29
 
 Este corte sustituye las recomendaciones del blueprint conservado más abajo.

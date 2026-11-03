@@ -1,5 +1,34 @@
 # 27 - Entrega de Administracion y QA
 
+## Conciliación de alcance y evidencia - 2026-11-02
+
+Las entregas siguientes son bitácora fechada; el inventario actual de rutas,
+servicios y capacidades está en [30](30-Estado-Frontend-Verificado.md). Se amplió
+después con notas colaborativas/realtime/workflow/vínculos, calendario global
+con participantes/relaciones y consulta de fichas/capítulos NetSuite de
+Formalización. No describir el sistema actual como solo Identidad o dos banners,
+ni recuperar la maqueta de Captación como fallback cuando falle su API.
+
+Formalización conserva permisos independientes por banner, lectura de orden,
+etapa y aprobación; consultas de cliente/unidad/bitácora no entregan edición
+general ni importan filas legacy. El borrador Outlook no equivale a correo
+enviado. Calendario guarda datos CRM de invitados y Teams sin Graph ni envíos.
+Notas invitan con ACL separada de permiso comercial; los Select de cliente/orden
+no exponen opciones de BD. Contratos: [Calendario global](Calendario-Global-Frontend.md),
+[16 notas](16-UX-Notas-Adhesivas-y-Anotaciones.md) y [68 API notas](../../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+
+La ejecución nueva `pnpm check` del 2/11 pasa formato pero falla lint en cuatro
+puntos de código. No se corrige código como parte de esta revisión documental.
+Tipos/pruebas/build separados y los resultados del comando raíz deben leerse
+en el cierre actual, sin reemplazar las cifras históricas conservadas abajo.
+La suite frontend separada del 2/11 terminó con 1.270 aprobadas y una fallida en
+movimiento encolado (`personal-notes.spec.tsx`, posición60 frente a70 esperada).
+No se modificó implementación ni aserción para ocultarla. Una nueva ejecución
+fallida no queda sustituida por la aceptación histórica registrada en68.
+No hay aceptación actual de BD, infraestructura o integraciones solo por revisar
+los commits. En particular los cambios locales057 y plan70 no activan una UI
+de indicadores ni sincronización duradera NetSuite.
+
 ## Estado contrastado - 2026-10-27
 
 [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.

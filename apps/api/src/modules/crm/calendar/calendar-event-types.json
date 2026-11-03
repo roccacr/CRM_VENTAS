@@ -15,12 +15,24 @@
         "codigo": "cita",
         "tipo": "Cita",
         "color": "#0F766E",
-        "modulos": ["formalizacion", "mercadeo", "ventas", "contabilidad"]
+        "modulos": ["mercadeo", "ventas", "contabilidad"]
     },
     {
         "codigo": "seguimiento",
         "tipo": "Seguimiento",
         "color": "#B45309",
         "modulos": ["formalizacion", "mercadeo", "ventas", "contabilidad"]
+    },
+    {
+        "codigo": "formalizacion_bancaria",
+        "tipo": "Formalización bancaria",
+        "color": "#0369A1",
+        "modulos": ["formalizacion"]
+    },
+    {
+        "codigo": "adendum",
+        "tipo": "Adéndum",
+        "color": "#7C3AED",
+        "modulos": ["formalizacion"]
     }
 ]

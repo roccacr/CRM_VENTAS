@@ -1,5 +1,20 @@
 # 18 - Notas Adhesivas y Anotaciones
 
+## Contrato vigente revisado - 2026-11-02
+
+Además del workflow66, está implementada la relación opcional con Cliente/lead
+y Orden mediante [68](68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md). Búsqueda y
+presentación reautorizan cada recurso; native-first solo une aliases demostrados.
+El autor puede gestionar secundarios de una nota pendiente sin sustituir su
+principal. El mismo registro se identifica independientemente de URL/módulo.
+Se reutilizan tabla, auditoría y recibos; no hay nueva migración para este vínculo.
+
+La UI usa Select con búsqueda y no un selector de base de datos. La nota y su
+conversación siguen disponibles a invitados autorizados aunque su registro esté
+restringido, sin exponer nombre/ID/enlace comercial. Los pendientes SQL, de
+conectividad y aceptación real del corte29 no se declaran resueltos por esta
+revisión estática; tampoco se activa copia legacy, adjuntos ni correo.
+
 ## Implementación vigente - 2026-10-29
 
 El diseño de librerías, DDL y permisos propuestos más abajo es un blueprint

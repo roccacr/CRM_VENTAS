@@ -1,5 +1,21 @@
 # 15 - UX Calendarios por Area y Supervision
 
+## Implementación y alcance actual - 2026-11-02
+
+El calendario global ya está conectado a API en Formalización, Mercadeo, Ventas
+y Contabilidad. `SharedCalendarPage` usa FullCalendar, overlays autorizados,
+creación/edición nativa, tipos de servidor y reintentos con versión/operationId.
+El formulario permite invitados internos/correos externos, preferencia Teams y
+relaciones con notas/leads/órdenes; son datos CRM, sin enviar invitaciones o crear
+reuniones externas. La fuente legacy permanece de consulta. El panel diario usa
+los eventos ya cargados; no es una integración de disponibilidad Outlook.
+
+Contrato actual: [Calendario global](Calendario-Global-Frontend.md) y
+[API64](../../api/Arquitectura/64-Calendario-Global-API-y-Contexto.md).
+Los apartados siguientes son blueprints de sincronización, supervisión y
+operaciones no acreditadas por esta entrega. La simulación antigua no describe
+el editor actual y no debe recuperarse para reemplazar sus consumidores.
+
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
 Blueprint futuro de calendarios operativos y sincronizacion. El Calendario de Formalizacion existente es una simulacion React con eventos DEMO; no prueba persistencia, invitados, recordatorios, Outlook ni estas capacidades por area. Ver [28](28-Formalizacion-Recorrido-Visual.md).

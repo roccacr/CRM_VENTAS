@@ -12,7 +12,33 @@ interface Identity {
     legacyId: string | null;
 }
 const cursorSchema = z.object({ order: z.string(), date: z.string().max(40), key: z.string().max(100) }).strict();
-const safeFields = new Set([...ORDER_RECORD_FIELDS, "businessId", "state", "version", "type", "status", "contractSigned", "commercialClosureSigned", "cancelled", "salePrice", "netSalePrice", "currency", "transactionDate"]);
+const safeFields = new Set([
+    ...ORDER_RECORD_FIELDS,
+    "approval_sales_management",
+    "approval_developer",
+    "approval_formalization",
+    "transaction_number_sales_order_external_reference",
+    "broker_commission_calculated_sales_order",
+    "cancellation_marked_on_sales_order",
+    "unit_delivered_sales_order",
+    "unit_transferred_sales_order",
+    "keys_delivered_sales_order",
+    "trust_down_payment_validated_sales_order",
+    "commission_approved_sales_order",
+    "installments_fully_paid_sales_order",
+    "businessId",
+    "state",
+    "version",
+    "type",
+    "status",
+    "contractSigned",
+    "commercialClosureSigned",
+    "cancelled",
+    "salePrice",
+    "netSalePrice",
+    "currency",
+    "transactionDate",
+]);
 const labels: Record<string, string> = { create: "Orden creada", update: "Orden editada", state_change: "Cambio de etapa", approval_change: "Cambio de aprobación", revert: "Cambio revertido", annotation: "Nota registrada", import_snapshot: "Estado observado", created: "Etapa registrada", transition: "Cambio de etapa" };
 function text(value: unknown): string | null {
     return typeof value === "string" && value.trim() ? value.trim() : null;

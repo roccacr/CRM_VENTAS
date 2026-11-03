@@ -15,6 +15,7 @@ import Select from "antd/es/select";
 import Tooltip from "antd/es/tooltip";
 import { useEffect, useRef, useState } from "react";
 
+import { ExpedienteLink } from "../../../components/ExpedienteLink";
 import type { CatalogContextModuleCode } from "../../../services/catalogs/catalog-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS, ADMINISTRATION_MODAL_Z_INDEX } from "../administration-theme";
 import { buildUnitFileCards } from "../catalogs/catalog-summary";
@@ -455,15 +456,7 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
                                     {group.fields.map((key) => (
                                         <div key={key}>
                                             <dt>{FIELD_LABELS[key] ?? key}</dt>
-                                            <dd>
-                                                {key === "unitPlans" && /^https?:\/\//i.test(detail.values[key] ?? "") && URL.canParse(detail.values[key] ?? "") ? (
-                                                    <a href={detail.values[key] ?? ""} target="_blank" rel="noopener noreferrer">
-                                                        {detail.values[key]}
-                                                    </a>
-                                                ) : (
-                                                    show(detail.values[key])
-                                                )}
-                                            </dd>
+                                            <dd>{key === "unitPlans" ? <ExpedienteLink value={detail.values[key]} /> : show(detail.values[key])}</dd>
                                         </div>
                                     ))}
                                 </dl>

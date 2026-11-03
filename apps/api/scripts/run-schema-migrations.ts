@@ -58,6 +58,11 @@ import { notesWorkflowMigration } from "../migrations/schema-only/202610280053_n
 import { calendarEventTypesMigration } from "../migrations/schema-only/202610290054_calendar_event_types.js";
 import { calendarRelationsMigration } from "../migrations/schema-only/202610290055_calendar_relations.js";
 import { marketingGlobalReadMigration } from "../migrations/schema-only/202610290056_marketing_global_read.js";
+import { salesOrderOperationalFlagsMigration } from "../migrations/schema-only/202610300057_sales_order_operational_flags.js";
+import { netsuiteOrderEventsMigration } from "../migrations/schema-only/202611020058_netsuite_order_events.js";
+import { salesOrderCancellationDateMigration } from "../migrations/schema-only/202611020059_sales_order_cancellation_date.js";
+import { leadProfilePermissionMigration } from "../migrations/schema-only/202611020060_lead_profile_permission.js";
+import { formalizationCalendarTypesMigration } from "../migrations/schema-only/202611020061_formalization_calendar_types.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -145,6 +150,11 @@ export const schemaMigrations: Migration[] = [
     calendarEventTypesMigration,
     calendarRelationsMigration,
     marketingGlobalReadMigration,
+    salesOrderOperationalFlagsMigration,
+    netsuiteOrderEventsMigration,
+    salesOrderCancellationDateMigration,
+    leadProfilePermissionMigration,
+    formalizationCalendarTypesMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */

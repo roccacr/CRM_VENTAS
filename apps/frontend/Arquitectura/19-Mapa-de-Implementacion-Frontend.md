@@ -1,6 +1,20 @@
 # 19 - Mapa de Implementacion Frontend
 
-## Estado contrastado - 2026-10-27
+## Estado contrastado - 2026-11-02
+
+El árbol real contiene `modules/auth`, `administration`, `home`, `marketing`,
+`calendar` y `notes`. No existen todavía las carpetas comerciales propuestas
+para cada fase de Sales ni una capa Zustand/TanStack. El inventario completo de
+rutas, servicios y documentos está en [30](30-Estado-Frontend-Verificado.md).
+El componente común de calendario se reutiliza en cuatro módulos; el de notas
+vive en el shell, no se duplica por rol o URL.
+
+Formalización tiene ficha y capítulos NetSuite confirmados, cliente, unidad,
+bitácora, seguimiento, etapa y aprobación. Los modelos preview y rutas sin Page
+no acreditan otras operaciones. Resumen está retirado; nunca reconstruir su ruta
+para hacer coincidir el snapshot histórico de cuatro vistas más abajo.
+
+## Antecedente contrastado - 2026-10-27
 
 [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
 
@@ -70,14 +84,21 @@ El frontend:
 
 ## Mapa de carpetas vigentes y direccion futura
 
-`app-routes.ts` registra `/home/marketing` y las cuatro vistas propias de Formalizacion (Inicio, Gestion, Calendario y Resumen). Ventas, Contabilidad, Expedientes y Contratos de Formalizacion, integraciones y la portada de catalogos tienen rutas con placeholder; registrar una ruta no entrega su flujo operativo. `/home/global` pertenece al corte inicial historico y ya no esta registrado. El destino inicial se resuelve por perfil efectivo; `DEFAULT_HOME_PATH` es `/home/administration`, sin conceder acceso a esa ruta.
+`app-routes.ts` registra Inicio y Captación de Mercadeo; Inicio, Gestión y
+Calendario de Formalización; calendarios de Ventas/Mercadeo/Contabilidad;
+Administración, Usuarios, Roles, Auditoría y las siete páginas de catálogo en
+cinco contextos. Resumen de Formalización no está registrado. Las portadas de
+Ventas/Contabilidad, Expedientes/Contratos de Formalización, integraciones y la
+portada de catálogos conservan placeholder. `/home/global` no está registrado.
+El destino depende del perfil efectivo; `DEFAULT_HOME_PATH` es
+`/home/administration`, sin conceder acceso a esa ruta.
 
 Los catalogos reutilizan las mismas paginas en Administracion, Ventas, Mercadeo, Formalizacion y Contabilidad mediante contexto modular; no son copias de registros por area. Las carpetas comerciales de la tabla siguiente son futuras salvo `auth`, `home`, servicios y componentes realmente existentes. No crear ni trasladar carpetas para igualar este blueprint.
 
 | Carpeta | Que va aqui | Que no va aqui | Leer antes |
 | --- | --- | --- | --- |
 | `src/modules/auth` | Compuerta visual de identidad, sesion, usuario actual y permisos visibles. | Reglas finales de autorizacion del backend. | `21`, `22`. |
-| `src/modules/home` | Shell autenticado, menu por perfil efectivo, Home de Formalizacion/Mercadeo conectados a resumen; calendario/Resumen de Formalizacion simulados. | Decidir autorizacion final, importar datos o activar acciones contractuales. | `00`, `14`, `24`, `27`. |
+| `src/modules/home` | Shell, menús, Home de Formalización/Mercadeo, seguimiento/ficha y lecturas de orden; conserva previews históricos separados. | Decidir autorización final, importar datos o convertir una simulación en comando. | `00`, `14`, `24`, `27`, `30`. |
 | `src/modules/sales/dashboard` | Dashboard de ventas, tarjetas, filtros y drill-down. | Reglas de conteo calculadas en UI. | `03`, `17`, `18`. |
 | `src/modules/sales/leads` | Lista, detalle, formularios y acciones de leads. | Oportunidades, estimaciones u ordenes completas. | `10`, `11`, `12`, `17`, `18`, `23`. |
 | `src/modules/sales/opportunities` | Pipeline y vistas de oportunidad. | Formularios de lead puro. | `13`. |
@@ -88,8 +109,8 @@ Los catalogos reutilizan las mismas paginas en Administracion, Ventas, Mercadeo,
 | `src/modules/collections` | Home y flujos financieros/cobros cuando se aprueben. | Cobros directos contra ERP o NetSuite desde React. | `14`, `23`. |
 | `src/modules/management` | Home de jefatura, supervision y acceso consolidado por permisos. | Duplicar pantallas operativas de cada area. | `14`, `21`, `24`. |
 | `src/modules/support` | Home de TI/soporte y herramientas aprobadas. | Acceso total por nombre de rol o secretos de infraestructura. | `14`, `21`, `24`. |
-| `src/modules/calendar` | Calendarios por dominio, eventos, citas y estados de sync. | Llamadas directas a Microsoft Graph para reglas CRM. | `15`. |
-| `src/modules/notes` | Notas adhesivas, paneles, editor y canvas. | Envio directo por proveedores externos. | `16`. |
+| `src/modules/calendar` | Calendario API compartido, overlays, formularios, participantes/relaciones CRM, panel diario y agenda. | Graph, envío de invitaciones, escritura legacy o certificación de sincronización. | `15`, `Calendario-Global-Frontend`. |
+| `src/modules/notes` | Canvas/Drawer, bandejas, conversación, avisos, workflow, realtime y Select de vínculos comerciales. | Conceder acceso comercial al invitar, adjuntos no activados o envío por proveedores. | `16`. |
 | `src/modules/permissions` | Componentes para mostrar/ocultar acciones segun permisos efectivos. | Reglas finales de autorizacion. | `09`. |
 | `src/components/ui` | Botones, inputs, badges, dialogs, tooltips genericos. | Logica de negocio. | `03`. |
 | `src/components/data-table` | Tabla generica server-side. | Consultas directas a API especificas de un modulo. | `03`, `04`. |

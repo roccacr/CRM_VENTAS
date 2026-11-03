@@ -21,3 +21,19 @@ it("does not accept malformed snapshots", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ ...data, source: "unknown" });
     await expect(getDatabaseOrder({ source: "legacy", id: "208" })).rejects.toThrow();
 });
+
+const detail = { sections: [{ title: "Montos", fields: [{ code: "total", label: "Total", value: "9007199254740993.25", kind: "money" }] }], currency: null, client: { name: null, identification: null, phone: null, email: null, advisor: null, identity: null }, warnings: [] };
+it("parses canonical order detail without dropping values or precision", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, detail });
+    expect((await getDatabaseOrder({ source: "legacy", id: "208" })).detail).toEqual(detail);
+});
+it.each([
+    { ...detail, sections: [{ title: "X", fields: [{ code: "x", label: "X", value: 4, kind: "money" }] }] },
+    { ...detail, sections: [{ title: "X", fields: [{ code: "x", label: "X", value: "1", kind: "html" }] }] },
+    { ...detail, client: { ...detail.client, identity: { source: "unknown", id: "1" } } },
+    { ...detail, currency: 1 },
+    { ...detail, warnings: [4] },
+])("rejects malformed detail DTO", async (detail) => {
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, detail });
+    await expect(getDatabaseOrder({ source: "legacy", id: "208" })).rejects.toThrow();
+});

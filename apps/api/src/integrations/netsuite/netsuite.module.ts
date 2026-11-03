@@ -5,12 +5,15 @@ import { SESSION_COOKIE_NAME } from "../../common/security/http-security.constan
 import { LocalServiceTokenGuard } from "../../common/security/local-service-token.guard.js";
 import { RequirePermission } from "../../common/security/require-permission.decorator.js";
 import { RouteSecurity } from "../../common/security/route-security.decorator.js";
+import { AuditModule } from "../../modules/crm/audit/audit.module.js";
 import { IdentityModule } from "../../modules/crm/identity/identity.module.js";
 import { FORMALIZATION_APPROVAL_ERP } from "../../modules/crm/sales/sales-orders/formalization-approval.port.js";
 import { HomeSummaryRepository } from "../../modules/crm/sales/sales-orders/home-summary.repository.js";
 import { OrderTimingRepository } from "../../modules/crm/sales/sales-orders/order-timing.repository.js";
 import { NetsuiteLocalEventsController } from "./netsuite-local-events.controller.js";
 import { NetsuiteOrderRepository } from "./netsuite-order.repository.js";
+import { NetsuiteOrderEventRepository } from "./netsuite-order-event.repository.js";
+import { NetsuiteOrderEventService } from "./netsuite-order-event.service.js";
 import { NetsuiteRestletClient } from "./netsuite-restlet.client.js";
 import { NetsuiteSalesOrderService } from "./netsuite-sales-order.service.js";
 
@@ -54,5 +57,5 @@ export class NetsuiteSalesOrderController {
  *
  */
 @Global()
-@Module({ exports: [FORMALIZATION_APPROVAL_ERP], imports: [IdentityModule], controllers: [NetsuiteSalesOrderController, NetsuiteLocalEventsController], providers: [LocalServiceTokenGuard, NetsuiteOrderRepository, NetsuiteRestletClient, { provide: FORMALIZATION_APPROVAL_ERP, useExisting: NetsuiteRestletClient }, NetsuiteSalesOrderService, OrderTimingRepository, HomeSummaryRepository] })
+@Module({ exports: [FORMALIZATION_APPROVAL_ERP], imports: [IdentityModule, AuditModule], controllers: [NetsuiteSalesOrderController, NetsuiteLocalEventsController], providers: [NetsuiteOrderEventService, NetsuiteOrderEventRepository, LocalServiceTokenGuard, NetsuiteOrderRepository, NetsuiteRestletClient, { provide: FORMALIZATION_APPROVAL_ERP, useExisting: NetsuiteRestletClient }, NetsuiteSalesOrderService, OrderTimingRepository, HomeSummaryRepository] })
 export class NetsuiteModule {}

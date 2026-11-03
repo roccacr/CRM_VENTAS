@@ -1,5 +1,29 @@
 # 05 - Seguridad, Auditoria y Observabilidad
 
+## Controles contrastados - 2026-11-02
+
+La ampliación de lectura global `mercadeo.reports.read_all` ([69](69-Mercadeo-Lectura-Global.md))
+se evalúa además del permiso de cada reporte. Su ausencia/deny conserva el
+alcance ordinario; no concede CRUD de Leads, acceso a órdenes ni edición de
+eventos/notas. La definición056 no asigna el permiso automáticamente.
+
+Los lookups de calendario y notas revalidan permiso del recurso antes de
+ofrecerlo/guardar/mostrar etiquetas. La ACL de la nota y su invitación no permiten
+ver datos de un registro restringido. `relatedRecords` se elimina del JSON público
+del historial para no filtrar IDs que solo necesita la auditoría interna.
+
+El receptor `POST /integrations/netsuite/local/order-events` tiene clasificación
+`public` para no exigir una cookie de usuario, pero **no es anónimo**:
+`LocalServiceTokenGuard` exige `NODE_ENV=development`,
+`NETSUITE_LOCAL_EVENTS_ENABLED=true` y prueba Bearer contra un secreto configurado
+de 64 caracteres hexadecimales. La comparación es de tiempo constante sobre
+hashes; la excepción CSRF solo aplica al handler marcado y vuelve a validar esa
+prueba de máquina. El cuerpo fija cuenta Sandbox/entorno/tipo, limita campos,
+líneas/tamaño y coteja ID del snapshot; desconocidos se rechazan. Recibir no
+persiste ni autoriza una escritura: devuelve `persisted:false`. No copiar secretos
+en Markdown, logs ni ejemplos, ni confundir este receptor DEV con un webhook
+productivo de sincronización. Contrato pendiente durable en [70](70-Plan-Sincronizacion-Ordenes-NetSuite.md).
+
 ## Consola local - 2026-10-30
 
 Con `NODE_ENV=development`, Pino imprime JSON indentado y resume cada solicitud

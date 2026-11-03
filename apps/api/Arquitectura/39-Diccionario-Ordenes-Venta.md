@@ -1,7 +1,54 @@
 # Diccionario fisico de ordenes de venta
 
-Fuente: migracion 202610200021 y ajuste UTC 202610200022.
+Revisión documental del 2026-11-02: 057, su registro/CLI y los tipos de tabla
+son cambios locales aún sin commit respecto a `fcbf0c2`. La aplicación del30
+descrita debajo es evidencia histórica, no una nueva comprobación live ni prueba
+de que una release incluya estos archivos. El mapeo de lectura y el escritor de
+sincronización general siguen pendientes en [70](70-Plan-Sincronizacion-Ordenes-NetSuite.md).
+
+Fuente: migración021, ajuste UTC022, relación con lead035, trayectoria036 y
+ampliación aditiva057. Los nombres completos están en el runner y sus archivos.
 Detalles y limites: [Documento 38](38-Ordenes-Venta-Estados-Auditoria.md).
+
+## Casillas operativas adicionales - 2026-10-30
+
+057 agrega exclusivamente siete columnas a cada tabla existente. No elimina,
+renombra ni modifica columnas previas; no importa ni actualiza filas, permisos,
+triggers o estados del proceso. El receptor local de NetSuite sigue sin persistir.
+
+| Casilla | CRM_THINK_V2.crm_sales_order | crmdatabase-api.ordenventa |
+| --- | --- | --- |
+| Unidad entregada | unit_delivered_sales_order | unidad_entregada_ov |
+| Unidad traspasada | unit_transferred_sales_order | unidad_traspasada_ov |
+| Entrega de llaves | keys_delivered_sales_order | entrega_llaves_ov |
+| Validacion fideicomiso/prima | trust_down_payment_validated_sales_order | validacion_fideicomiso_prima_ov |
+| Comision aprobada | commission_approved_sales_order | comision_aprobada_ov |
+| Calculo comision corredor | broker_commission_calculated_sales_order | calculo_comision_corredor_ov |
+| Cuotas pagadas por completo | installments_fully_paid_sales_order | cuotas_pagadas_completo_ov |
+
+Nueva: `ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown'`. Antigua:
+`TINYINT UNSIGNED NULL DEFAULT NULL`; 1/0 representaran si/no, y NULL indica
+desconocido. No inferir cuotas pagadas a partir de `pagadas_ov` ni de comisiones.
+Las columnas existentes de firma, caida, comision pagada y las tres aprobaciones
+conservan su significado y almacenamiento. Las casillas no equivalen a etapas CRM.
+
+Aplicacion nativa: `pnpm exec tsx scripts/run-schema-migrations.ts --only=202610300057_sales_order_operational_flags`.
+Aplicacion antigua: `pnpm exec tsx scripts/migrate-legacy-sales-order-flags.ts --apply=crmdatabase-api`;
+`--plan` solo inspecciona. Ambos comandos reutilizan la validacion TLS y requieren
+`MIGRATION_CONFIRM_SCHEMA_ONLY=CRM_THINK_V2`. El runner antiguo confirma ademas su
+destino fijo y usa un candado. El runner nativo registra 057 en su ledger.
+
+DDL con `ALGORITHM=INSTANT`, sin reconstruccion silenciosa: falla si el servidor
+no lo soporta. MySQL confirma DDL automaticamente; una repeticion verifica tipos,
+nulabilidad/defaults y agrega solo columnas pendientes. Ante rollback de aplicacion,
+conservar las columnas; no se proporciona un DROP destructivo.
+
+Verificacion real del 30/10/2026: MySQL8.4.8, tablas InnoDB. Nueva: 26 a 33 columnas,
+0 ordenes antes/despues. Antigua: 33 a 40 columnas, 465 ordenes antes/despues.
+Coincidieron los hashes de todos los valores de columnas originales, las
+definiciones previas y los siguientes AUTO_INCREMENT. Las siete columnas antiguas
+quedaron NULL en las 465 filas. El preflight posterior devuelve cero ALTER pendientes
+en ambas BD. No se ejecutaron fixtures ni modificaciones comerciales.
 
 Lectura documental 2026-10-23: los valores `legacy_import`, `import_snapshot`
 y el payload de origen describen capacidad fisica, no un importador activo ni
@@ -40,6 +87,7 @@ La bitacora comercial generica posterior, migracion `202610220023_record_audit`,
 | native_code_sales_order | VARCHAR(140) NOT NULL | Codigo propio de la orden en CRM |
 | id_old_produccion_sales_order | INT NULL | id_ov original; permite reconciliar sin usarlo como PK nueva |
 | unit_file_id_sales_order | BIGINT UNSIGNED NULL | Expediente propio de unidad cuando este conciliado |
+| lead_id_sales_order | BIGINT UNSIGNED NULL | Lead nativo relacionado por FK, añadido en035; no recibe directamente un ID legacy/ERP |
 | subsidiary_id_sales_order | BIGINT UNSIGNED NULL | Subsidiaria propia conciliada |
 | owner_user_id_sales_order | BIGINT UNSIGNED NULL | Responsable CRM; nunca un id externo |
 | status_sales_order | ENUM('active','inactive','unknown') NOT NULL DEFAULT 'unknown' | Actividad confirmada; unknown no habilita operaciones |
@@ -54,6 +102,13 @@ La bitacora comercial generica posterior, migracion `202610220023_record_audit`,
 | commercial_closure_signed_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | Marca cierre_firmado_ov; no se infiere entrega ni traspaso |
 | advisor_commission_calculated_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | Marca de calculo de comision observada |
 | advisor_commission_paid_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | Marca comision_cancelada_ov segun el mapper recibido |
+| unit_delivered_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: unidad entregada, independiente de firma o etapa |
+| unit_transferred_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: unidad traspasada |
+| keys_delivered_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: entrega de llaves |
+| trust_down_payment_validated_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: validación de fideicomiso/prima |
+| commission_approved_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: aprobación de comisión, no prueba de pago |
+| broker_commission_calculated_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: cálculo de comisión del corredor |
+| installments_fully_paid_sales_order | ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown' | 057: cuotas completas; no reinterpretar pagadas_ov |
 | source_created_at_sales_order | DATETIME(3) NULL | creado_ov observado; puede no ser la creacion real en el ERP |
 | created_at_sales_order | DATETIME(3) NOT NULL DEFAULT (UTC_TIMESTAMP(3)) | Instante de creacion del registro en CRM nuevo; UTC |
 | created_by_user_id_sales_order | BIGINT UNSIGNED NULL | Usuario CRM creador si es conocido |

@@ -1,5 +1,31 @@
 # 00 - Indice de Arquitectura Frontend
 
+
+Perfil completo: [contrato y verificación](../../api/Arquitectura/77-Perfil-Completo-Lead.md). Ruta `/perfil`, botón condicionado por `lead.profile.read`.
+## Entrada vigente - 2026-11-02
+
+[30 - Inventario contrastado](30-Estado-Frontend-Verificado.md) reúne las rutas,
+seis áreas de módulos, siete grupos de servicios y clasificación de los 34
+documentos de Arquitectura. Leer con [ley frontend](00-Producto-CRM-TINK-y-P0-Frontend.md)
+y la ley API. El HEAD revisado es `fcbf0c2`; los commits y cambios locales se
+distinguen de pruebas nuevas y despliegue.
+
+Formalización ya lee capítulos confirmados de NetSuite, cliente, expediente e
+historial; Calendario ya tiene formulario/relaciones/invitados CRM; Notas ya
+ofrece Select de cliente/lead y orden. No son, respectivamente, solo consola DEV,
+maqueta o propuesta de vinculación. Resumen de Formalización continúa retirado.
+Entradas especializadas: [04 - Cliente](04-API-Client-y-Estado.md),
+[05 - Pruebas](05-Testing-Frontend.md), [16 - Notas](16-UX-Notas-Adhesivas-y-Anotaciones.md),
+[Calendario global](Calendario-Global-Frontend.md), [19 - Mapa](19-Mapa-de-Implementacion-Frontend.md)
+y [27 - Evidencia](27-Entrega-Administracion-y-QA.md).
+
+Los cortes fechados inferiores se conservan como historia. Una frase de maqueta,
+pausa inicial o calendario solo esquema no prevalece sobre el inventario actual.
+Los blueprints de CRUD de Leads, SLA, oportunidades y financiero siguen futuros;
+documentarlos no crea esas pantallas ni certifica integraciones externas.
+
+## Antecedentes de navegación documental
+
 Implementación y verificación local: [68 API - Vincular notas a clientes/leads y órdenes](../../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
 Incluye selectores sin elegir BD y resumen en tarjetas, hojas y conversación.
 

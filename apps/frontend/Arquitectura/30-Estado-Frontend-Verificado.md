@@ -1,6 +1,61 @@
 # 30 - Estado frontend contrastado con el código - 2026-10-27
 
-## Corte vigente - 2026-10-29
+## Corte vigente - 2026-11-02
+
+Inventario contrastado con `app-routes.ts`, los seis directorios reales de
+`src/modules`, los siete grupos de `src/services`, `package.json`, configuración
+de Vite y pruebas por dominio. Se revisaron los 34 Markdown de Arquitectura por
+su vigencia y referencias. Es revisión documental de código, no aceptación de
+BD, NetSuite, sockets multinodo, navegador con dos cuentas ni producción.
+
+El HEAD inspeccionado es `fcbf0c2` (30/10). El nombre de un commit no limita su
+contenido: `bf8caa5` incorpora también notas, calendario, lecturas de orden y
+pruebas; `fd3cc1d` modifica logging API/SuiteScript y `fcbf0c2` documentación y
+SuiteScript. Estos dos últimos no cambian por sí mismos la interfaz React.
+Los cambios locales de indicadores de órdenes y plan de sincronización70 no
+aportan un escritor ni una pantalla frontend nueva por estar presentes en disco.
+
+### Estado operativo y límites actuales
+
+- Identidad local/Microsoft, sesión y permisos efectivos; Administración con
+  usuarios, roles/excepciones, auditoría y siete catálogos reutilizados.
+- Inicio/Captación de Mercadeo consultan agregados del API, con vendedores y
+  proyectos múltiples, fotos por publicId, medidas de cohortes y error explícito.
+- Formalización tiene seguimiento, lectura directa de ficha, cambio de etapa,
+  aprobación independiente y actividad reciente. Cliente, unidad e historial
+  usan lecturas autorizadas; los capítulos confirmados de la ficha muestran
+  datos NetSuite mediante el API. No se rellenan desde `RECORD_EXAMPLE`.
+- Calendario global tiene API, overlays, altas/ediciones nativas, invitados y
+  relaciones CRM. Los datos externos/Teams no envían invitaciones ni crean
+  reuniones. Las fuentes legacy se presentan en consulta.
+- Notas incluyen colaboración, campana, realtime, recordatorios, responsable y
+  vencimiento, ubicaciones, filtros e historial. Cliente/lead y orden se eligen
+  mediante Select con búsqueda; sus resúmenes autorizados aparecen en tarjeta,
+  hoja y conversación. Invitar no concede acceso al registro de negocio.
+- No se publican CRUD comercial de leads/oportunidades/estimaciones, cartera de
+  responsables ni edición general de orden/cliente/unidad. Las portadas de
+  Ventas/Contabilidad y páginas sin componente continúan como placeholders.
+  Resumen de Formalización está retirado del menú y de las rutas.
+
+Los resultados del 29/10 conservan fecha: [QA67](../../api/Arquitectura/67-Plan-QA-Regresiones-20261029.md)
+y [vínculos68](../../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md)
+registran cortes diferentes y suites solapadas. No se suman sus cifras ni se
+presentan como pruebas ejecutadas nuevamente el 2/11. La validación raíz de esta
+revisión se registra por separado en el cierre documental vigente del API.
+
+### Verificación nueva del 2/11
+
+`pnpm check` frontend pasó formato y se detuvo en cuatro errores lint: imports
+de CalendarEventDrawer, CalendarGuestFields y PersonalNotes, y complejidad de
+NotesInbox. La suite de pruebas ejecutada por separado terminó con 1.270
+aprobadas y una fallida (92 archivos aprobados/uno fallido): el movimiento
+encolado de `personal-notes.spec.tsx` recibió `left:60px` cuando esperaba70.
+La revisión documental no altera ese comportamiento ni sus aserciones. No se
+repite la conclusión histórica de 1.271 aprobadas como resultado vigente.
+Tipos y build tienen evidencia independiente en el cierre raíz; el fallo de un
+check encadenado impide atribuirle pasos que no llegó a ejecutar.
+
+## Antecedente de QA y alcance - 2026-10-29
 
 La revisión documental actual contrasta código y evidencia registrada; no
 certifica despliegue ni vuelve a ejecutar pruebas o acciones comerciales.
@@ -30,7 +85,8 @@ aceptación visual con dos cuentas reales siguen sin verificarse.
 El [calendario global](Calendario-Global-Frontend.md) ya usa API, calendarios
 superpuestos y formularios nativos en Formalización, Mercadeo, Ventas y
 Contabilidad. Sustituye los cortes inferiores de calendario vacío/maqueta.
-Outlook, invitados y notificaciones de eventos no quedan conectados por ello.
+Outlook y notificaciones externas de eventos no quedan conectados por ello;
+los invitados CRM y relaciones se ampliaron después, según el corte vigente.
 Las secciones fechadas del 27/28 conservan su historia y no son restricciones
 para retirar las funcionalidades actuales.
 
@@ -150,7 +206,11 @@ auditoría; Owner usa el perfil efectivo del API sin bypass local.
 | `GET /formalization/home/summary` | `home-summary-service.ts`, `useHomeSummary` | Seis banners, refresh explícito/foco; no tiempo real |
 | `GET /formalization/home/follow-up` | `follow-up-service.ts`, `FormalizationFollowUpPreview` | Tabla canónica, búsqueda con debounce 300ms, proyecto, bandeja, paginación de 25; respuestas antiguas no se muestran |
 | `POST /formalization/orders/stage` | `order-stage-service.ts`, `FormalizationStageEditor` | Permiso independiente `formalizacion.orders.stage.update`, confirmación, expectedSequence y operationId; retroceso con motivo; error/conflicto conserva edición y requiere releer cuando corresponde |
-| `GET /formalization/orders/:source/:id/netsuite` | `netsuite-order-service.ts`, `useNetsuiteOrderConsole` | Inspección temporal solo DEV al abrir identidad autorizada; no alimenta los campos de Información primaria |
+| `GET /formalization/orders/:source/:id/netsuite` | `netsuite-order-service.ts`, `useNetsuiteOrderConsole`, `netsuite-primary.ts` | Lectura autorizada de capítulos confirmados; solo los logs se limitan a DEV |
+| `GET /formalization/orders/:source/:id/record` | `follow-up-service.ts`, `useRestoredFormalizationOrder` | Restaura/revalida una identidad exacta sin exigir cargar una bandeja |
+| `GET /formalization/orders/:source/:id/database` | `database-order-service.ts`, `order-client-service.ts`, `order-unit-service.ts` | Cliente y expediente relacionados a esa orden; lectura nativa/legacy resuelta por API, sin búsqueda por nombre |
+| `GET /formalization/orders/:source/:id/history` | `order-history-service.ts`, `FormalizationOrderHistoryDrawer` | Bitácora paginada con cobertura y avisos explícitos; no importa historia legacy |
+| `POST /formalization/orders/approve` | `order-approval-service.ts`, `FormalizationApprovalAction` | Comando independiente, versión/operación estable y confirmación; exige reconciliación si NetSuite confirma sin cierre CRM |
 
 Bandejas reconocidas: all, approvals, contracts, send, signature, bank, balance,
 transfer, signed y closed. Todas aparece primero; otras opciones y proyectos se
@@ -159,18 +219,27 @@ revocado. Permisos y búsqueda participan en la clave de la respuesta; la
 revocación desmonta el consumidor. Abrir una fila canónica usa la identidad
 `source:id`, nunca la convierte en una orden de los fixtures de simulación.
 
-El panel y el registro completo muestran datos canónicos de identidad/avance.
-**Información primaria** conserva un bloque explícito Datos de ejemplo desde
-`FormalizationRecordSummary.tsx`: no es respuesta NetSuite, no es fallback del
-listado y no acredita Estado de cuenta. El cambio de etapa real es independiente
-de las acciones locales de contrato/banco/traspaso de las previews. No inferir
-que enviar/revertir contratos o notificar clientes quedó conectado por existir
-el editor de etapas.
+El panel y el registro completo muestran identidad y avance canónicos.
+`useNetsuiteOrderConsole` consulta NetSuite y la proyección CRM para la identidad
+autorizada; exige respuestas vigentes antes de publicar los capítulos mapeados.
+`netsuite-primary.ts` transforma únicamente campos confirmados de Información
+primaria, venta, autorización, artículos, reserva, pago y checks/resumen.
+Un campo sin ID confirmado queda sin dato; no se deducen fechas o aprobaciones
+desde otros campos. `RECORD_EXAMPLE` conserva la estructura de presentación y
+previews históricas, pero sus valores no son fallback de esos capítulos reales.
+OneDrive y otras secciones no mapeadas no constituyen integración documental.
 
-El hook DEV consulta NetSuite con identidad source/id, escribe solo sus claves
-orderSource/orderId/netsuiteId en URL con replaceState y registra el resultado en
-consola. No persiste el payload. Esto no es una pantalla productiva de integración
-ni autorización para compartir logs que puedan contener datos de una orden.
+Los vínculos Cliente y Proyecto/Unidad abren drawers de consulta; la bitácora
+de orden y la historia de cliente distinguen fuente, cobertura y paginación.
+No permiten edición general. El botón de Outlook prepara un borrador; no envía
+correo ni registra por ello el envío de contrato. Las simulaciones locales de
+`FormalizationOrderActions` siguen separadas de etapa/aprobación reales.
+
+El hook escribe solo orderSource/orderId/netsuiteId con replaceState, preserva
+los demás parámetros y descarta resultados de otra identidad/refresh. Los logs
+de payload se limitan a DEV; la consulta y los campos no son exclusivos de DEV.
+No hay persistencia de ese payload en el navegador ni sincronización duradera
+NetSuite→CRM por el hecho de mostrarlo. El plan70 no es un escritor implementado.
 
 ## Infraestructura y seguridad frontend
 
@@ -185,6 +254,66 @@ ni autorización para compartir logs que puedan contener datos de una orden.
   la causa de un fallo observado antes.
 - Los permisos visibles no reemplazan validaciones del servidor. Una opción o
   placeholder tampoco demuestra disponibilidad de operación backend.
+
+## Cobertura por área y grupo de servicios - 2026-11-02
+
+Los seis directorios de módulos existentes se contrastaron contra sus servicios
+y registro de rutas. Los recuentos son inventario de archivos de este checkout,
+no cobertura de líneas, funciones terminadas ni aceptación de producción.
+
+| Área real | Archivos | Lectura/escritura y límites contrastados |
+| --- | ---: | --- |
+| `modules/auth` | 2 | Login local y Microsoft vía BFF; continuidad/errores de sesión, sin tokens persistidos en React |
+| `modules/administration` | 65 | Usuarios, detalle/creación/edición, estado, roles, overrides y auditoría; siete catálogos con proyección/detalle/comparación y capacidades del API |
+| `modules/home` | 58 | Shell, menús, Home de Mercadeo, Formalización y sus fichas; mezcla explícita de consumidores reales y modelos históricos de preview |
+| `modules/marketing` | 12 | Captación, KPIs, cohortes, gráfico por vendedor, tablas, selección y exportación; no CRUD de leads ni ventas |
+| `modules/calendar` | 13 | Calendario compartido, formulario, invitados/relaciones, panel diario y agenda; sin Graph/Teams operativo |
+| `modules/notes` | 23 | Canvas/Drawer, bandejas, conversación, invitaciones, realtime, workflow y Select de recursos; no adjuntos ni copia legacy |
+
+Servicios: `api` (1), `auth` (4), `catalogs` (1), `marketing` (2),
+`formalization` (13), `calendar` (1) y `notes` (6). El servicio de catálogos es
+común; Expedientes además conserva su cliente especializado bajo el módulo de
+Administración. Los servicios de notas separan contenido/layout, colaboración,
+avisos, workflow, relaciones y transporte realtime. Los números no implican
+clientes ERP en el navegador.
+
+### Notas y calendario: contratos actuales adicionales
+
+`NoteRelatedRecords.tsx` usa Select con búsqueda remota de Cliente/lead y Orden,
+paginas autorizadas y paginación dentro del desplegable. Las referencias tienen
+tipo/origen/ID; el usuario no elige una BD. Los vínculos originales no se quitan
+con el editor secundario y las relaciones restringidas no exponen identidad,
+nombre ni URL. El API evita duplicar el mismo principal a través de un alias.
+La sugerencia de cliente de la orden exige selección explícita. Tarjeta, hoja
+y conversación comparten resúmenes. La ficha futura de lead no se inventa como
+ruta navegable por existir el vínculo. Contrato: [68 notas](../../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+
+Calendario usa `/calendar/calendars`, `/calendar/events` y `/calendar/lookup`.
+El formulario conserva etiquetas recibidas en `selectionOptions`, participantes
+internos/externos, preferencia Teams y relaciones de nota/lead/orden. Esos datos
+son CRM: no envían mensajes ni agregan permiso a recursos relacionados.
+`linksEditable=false` omite `links` del PATCH y conserva relaciones restringidas.
+`CalendarDayPanel` muestra el día 07:00–22:00 usando eventos ya cargados y la
+posición del borrador; no comprueba disponibilidad de Outlook ni escribe eventos.
+Contrato: [Calendario global](Calendario-Global-Frontend.md).
+
+### Matriz de los 34 documentos de Arquitectura
+
+| Documentos (prefijos y nombres completos en el índice) | Uso vigente y qué no deben acreditar |
+| --- | --- |
+| 00 índice, 00 producto, 01 resumen, 19 mapa, 30 estado | Entradas actuales; prevalecen los cortes recientes y la ley API sobre snapshots anteriores |
+| 02 arquitectura, 03 UX, 06 ADR | Estructura y convenciones; TanStack/Zustand/Tailwind siguen dirección futura, no instalaciones requeridas |
+| 04 cliente/estado, 21 seguridad, 23 IDs | BFF/CSRF, recuperación, permisos efectivos y referencias tipadas; no secretos/proveedores en React |
+| 05 testing, 27 entrega/QA | Estrategia y evidencia fechada; resultados anteriores no son una ejecución nueva ni prueba de servicios externos |
+| 07 skills | Guía y registro histórico; instalación no equivale a ejecución ni reinstalación autorizada |
+| 08 revisión blueprint, 18 construcción pausada, 22 identidad, 24 contrato visual | Compuertas y contratos iniciales, leídos con ampliaciones posteriores; no retiran módulos ya autorizados |
+| 09 decisiones, 10 contrato, 11 timeline, 12 diccionario, 13 flujo, 17 SLA, 20 vertical Leads | Visión comercial/contratos conceptuales; reporte de Mercadeo y consulta de cliente no entregan CRUD ni timeline completo de Leads |
+| 14 módulos y roles | Separación funcional y direcciones futuras; el árbol real es el inventariado arriba |
+| 15 calendario y `Calendario-Global-Frontend.md` | Blueprint de sincronización frente a API/editor actual; no confundir invitados CRM con invitaciones Outlook |
+| 16 notas | Contratos reales de colaboración, layout, workflow y vínculos; blueprints del editor enriquecido/adjuntos/copia siguen históricos o pendientes |
+| 25 continuidad | Bitácora de entregas con fechas, sin actualizar retrospectivamente sus conteos |
+| 26 Projects Design System | Contrato visual vigente para Proyectos; no obliga a migrar todo el CRM ni acredita WCAG global |
+| 28 recorrido, 29 reunión, 29 navegación | Requisitos, previews e historia de Formalización; el inventario operativo actual es esta ficha y los contratos API enlazados |
 
 ## Cobertura de la revisión y pendientes
 

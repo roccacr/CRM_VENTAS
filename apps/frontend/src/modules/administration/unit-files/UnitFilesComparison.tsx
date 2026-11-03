@@ -7,6 +7,7 @@ import Select from "antd/es/select";
 import Switch from "antd/es/switch";
 import { useState } from "react";
 
+import { ExpedienteLink } from "../../../components/ExpedienteLink";
 import type { UnitDetail } from "./unit-files.api";
 
 const KEY_FIELDS = ["advertisedSalePrice", "totalArea", "lotArea", "approximateParkingArea"];
@@ -95,7 +96,7 @@ export function UnitFilesComparison({ items, labels, groups }: { readonly items:
                                                     return (
                                                         <td key={item.id} data-rank={rank}>
                                                             <div className="unit-comparison-value">
-                                                                <span className={!item.values[key] ? "unit-comparison-missing" : undefined}>{item.values[key] || "Sin asignar"}</span>
+                                                                <span className={!item.values[key] ? "unit-comparison-missing" : undefined}>{key === "unitPlans" ? <ExpedienteLink value={item.values[key]} /> : item.values[key] || "Sin asignar"}</span>
                                                                 {rank && (
                                                                     <span className="unit-comparison-rank">
                                                                         <span role="img" aria-label={direction === "higher" ? "Valor mayor" : direction === "lower" ? "Valor menor" : "Valor intermedio"}>

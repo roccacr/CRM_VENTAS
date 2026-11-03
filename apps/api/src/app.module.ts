@@ -21,6 +21,7 @@ import { CatalogsModule } from "./modules/crm/catalogs/catalogs.module.js";
 import { ClassesModule } from "./modules/crm/classes/classes.module.js";
 import { IdentityModule } from "./modules/crm/identity/identity.module.js";
 import { identityRequestContextMiddleware } from "./modules/crm/identity/identity-request-context.js";
+import { LeadProfileModule } from "./modules/crm/leads/lead-profile.module.js";
 import { LocationsModule } from "./modules/crm/locations/locations.module.js";
 import { MarketingHomeModule } from "./modules/crm/marketing/marketing-home.module.js";
 import { NotesModule } from "./modules/crm/notes/notes.module.js";
@@ -81,6 +82,7 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
         HomeSummaryModule,
         ContractTransitionModule,
         MarketingHomeModule,
+        LeadProfileModule,
     ],
     providers: [
         AuthenticatedReadRateLimit,

@@ -37,11 +37,21 @@ export function getUserModuleScope(roleCodes: readonly string[], roles: readonly
 }
 
 /** Restrict each role's contribution before union, so another role cannot lend it a ceiling. */
-export function canRoleGrantModule(roleCode: string, roles: readonly RoleModuleScope[], moduleCode: string, selectedModules: readonly string[] = [moduleCode]): boolean {
+function canRoleGrantScopedModule(roleCode: string, roles: readonly RoleModuleScope[], moduleCode: string, selectedModules: readonly string[] = [moduleCode]): boolean {
     const scope = getUserModuleScope([roleCode], roles, selectedModules);
     if (scope === null) return true;
     const role = roles.find((item) => item.code === roleCode);
     if (role?.permissionInheritance === "selected_modules") return scope.has(normalizeAccessModuleCode(moduleCode));
     const selected = new Set(selectedModules.map(normalizeAccessModuleCode));
     return scope.has(normalizeAccessModuleCode(moduleCode)) && (role?.moduleCodes ?? []).every((code) => selected.has(normalizeAccessModuleCode(code)));
+}
+
+/** El permiso global no exige membresía Lead; sí conserva la efectividad del rol que lo concede. */
+export function canRoleGrantModule(roleCode: string, roles: readonly RoleModuleScope[], moduleCode: string, selectedModules: readonly string[] = [moduleCode]): boolean {
+    if (moduleCode !== "lead") return canRoleGrantScopedModule(roleCode, roles, moduleCode, selectedModules);
+    const role = roles.find((entry) => entry.code === roleCode);
+    const scope = getUserModuleScope([roleCode], roles, selectedModules);
+    if (scope === null || role?.permissionInheritance === "selected_modules") return true;
+    const selected = new Set(selectedModules.map(normalizeAccessModuleCode));
+    return (role?.moduleCodes ?? []).every((code) => selected.has(normalizeAccessModuleCode(code)));
 }

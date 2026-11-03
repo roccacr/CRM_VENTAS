@@ -9,6 +9,7 @@ import { ASSIGNED_WORKSPACES, getVisibleNavigationWorkspaces } from "../modules/
 import { ApiClientError, refreshAuthenticatedSession } from "../services/api/api-client";
 import { getIdentityProfile, getIdentitySession } from "../services/auth/auth-service";
 import { type IdentityProfile, type IdentityUser, isAuthenticatedSession, type SessionResponse } from "../services/auth/identity-contracts";
+import { canReadLeadProfile } from "../services/leads/lead-profile-service";
 import { AUTH_LOGIN_PATH, getAppRoute, getWorkspaceHomePath, isKnownPath } from "./app-routes";
 
 /**
@@ -34,6 +35,12 @@ const toProfileState = (profile: IdentityProfile, canEnter: boolean): AuthState 
  * Login no pertenece a ningún perfil, así que no se bloquea aquí.
  */
 const hasAccessToRoute = (profile: IdentityProfile, path: string): boolean => {
+    const route = getAppRoute(path);
+    if (route?.permissionCode === "lead.profile.read") return canReadLeadProfile(profile.permissions);
+    return hasWorkspaceRouteAccess(profile, path);
+};
+
+const hasWorkspaceRouteAccess = (profile: IdentityProfile, path: string): boolean => {
     const route = getAppRoute(path);
     const workspaceCode = route?.workspaceCode;
 

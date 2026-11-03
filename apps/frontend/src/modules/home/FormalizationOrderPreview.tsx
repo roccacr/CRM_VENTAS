@@ -14,6 +14,7 @@ import { FORMALIZATION_EXAMPLES } from "./formalization-preview.model";
 import { useFormalizationPreview } from "./formalization-preview-session";
 import { applyScenarioAction, createScenario, type FormalizationScenario, getScenarioFlow, SCENARIO_ACTION_LABELS, type ScenarioAction, type ScenarioValues } from "./formalization-scenario.model";
 import { FormalizationOrderActions } from "./FormalizationOrderActions";
+import { FormalizationOrderDetails } from "./FormalizationOrderDetails";
 import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
 import { FormalizationRecordLoading } from "./FormalizationRecordLoading";
 import { FormalizationRecordProgress } from "./FormalizationRecordProgress";
@@ -432,8 +433,9 @@ export function FormalizationOrderRecord({
                     setConfirmedPrimary({ primary, order: orderIdentity });
                 }}
             />
+            <FormalizationOrderDetails item={item} permissions={stagePermissions} />
             {netsuiteStatus === "success" ? (
-                <FormalizationRecordSummary item={item} primary={displayedPrimary} />
+                <FormalizationRecordSummary item={item} primary={displayedPrimary} effectivePermissions={stagePermissions} />
             ) : (
                 <section className="formalization-card formalization-record-loading" role="status">
                     {recordLoadMessage(netsuiteStatus, netsuiteErrorMessage)}

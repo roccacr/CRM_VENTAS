@@ -1,5 +1,36 @@
 # 05 - Testing Frontend
 
+## Inventario y evidencia - 2026-11-02
+
+El proyecto usa Vitest/jsdom y Testing Library. `vite.config.ts` limita a dos
+workers. Existen suites en administración, app, auth, calendario, catálogos,
+configuración, home, notas y expedientes; `test/support` contiene apoyo de test,
+no una funcionalidad CRM de soporte. Los mocks HTTP no acreditan BD, NetSuite,
+correo real, concurrencia Redis ni aceptación con dos identidades reales.
+
+Comando del proyecto: `pnpm check` encadena formato, lint, tipos, pruebas y build.
+`pnpm build` ejecuta también `tsc --noEmit`. Cobertura se solicita con
+`pnpm test:coverage`; no se reutiliza el porcentaje histórico de líneas como
+medición actual. La entrada oficial del repositorio es `check-all.cmd` desde raíz.
+
+La revisión del 2/11 detectó que `pnpm check` pasa formato y se detiene en lint:
+orden de imports en CalendarEventDrawer, CalendarGuestFields y PersonalNotes, y
+complejidad de NotesInbox. Documentar el fallo no autoriza modificar código para
+simular una comprobación aprobada. Las verificaciones separadas que ejecute el
+cierre raíz conservan su comando y resultado; no se atribuyen a este check fallido.
+
+La ejecución completa separada de pruebas del 2/11 terminó con 1.270 aprobadas y
+una fallida: `personal-notes.spec.tsx` esperaba `left:70px` después de movimientos
+encolados y recibió `60px`. Son 92 archivos aprobados y uno fallido; no se marca
+como corregida ni como aceptación global satisfactoria. El resultado del 29/10
+con 1.271 aprobadas no oculta esta nueva reproducción. La suite no toca BD real.
+
+Resultados anteriores: [67 API](../../api/Arquitectura/67-Plan-QA-Regresiones-20261029.md)
+y [68 notas](../../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+Son cortes solapados y fechados. El fallo intermitente previo de movimiento y la
+repetición posterior se conservan en68; fixtures de viewport y mockReset aíslan
+las pruebas sin convertir una ejecución posterior en éxito retroactivo.
+
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
 Estrategia y checklist de aceptacion; las listas siguientes no son resultados ejecutados ni autorizan el alcance comercial. Ultima evidencia previa a `f2dc4f1`: 428 pruebas frontend y 84.77% de lineas; no reejecutadas en esta auditoria documental. Fuente y limites: [reauditoria](../../api/Arquitectura/Reauditoria-54-Plan-y-Resultados.md). Playwright, Lighthouse y pruebas de dispositivos aqui propuestos requieren su propia evidencia.

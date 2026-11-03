@@ -37,7 +37,7 @@ export class NetsuiteOrderRepository {
     async readDatabase(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string) {
         return this.resolveSafely(async (tx) => {
             const { source, order } = await this.authoritative(tx, target, checkAccess);
-            const data = await readOrderRecord(tx, source, order.id, order.publicId);
+            const data = await readOrderRecord(tx, source, order.id, order.publicId, { legacyEnabled: this.legacy.enabled() });
             const client = await readOrderClientContext(tx, data, { legacyEnabled: this.legacy.enabled(), ...(cursor ? { cursor } : {}) });
             return { ...data, lead: data.lead ? { ...data.lead, status: client.status, followUpReason: client.followUpReason } : null, clientHistory: client.history };
         });

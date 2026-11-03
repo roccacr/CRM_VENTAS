@@ -147,11 +147,11 @@ it("rejects a stored active type that is not enabled by the global configuration
     }
 });
 it("returns only globally available types in JSON order, with global labels and colors", async () => {
-    const catalogRows = ["seguimiento", "general", "reunion", "tarea", "cita"].map((code) => ({ id: code, moduleCode: "formalizacion", code, label: "Old label", color: "#000000", formKey: "formalizacion.general.v1" }));
+    const catalogRows = ["seguimiento", "general", "reunion", "tarea", "cita", "adendum", "formalizacion_bancaria"].map((code) => ({ id: code, moduleCode: "formalizacion", code, label: "Old label", color: "#000000", formKey: "formalizacion.general.v1" }));
     const f = setup({ catalogRows });
     try {
         const result = await f.repo.read((tx) => f.repo.types(tx, ["formalizacion"]));
-        expect(result.map((type) => type.code)).toEqual(["tarea", "reunion", "cita", "seguimiento"]);
+        expect(result.map((type) => type.code)).toEqual(["tarea", "reunion", "seguimiento", "formalizacion_bancaria", "adendum"]);
         expect(result[1]).toMatchObject({ id: "reunion", label: "Reunión", color: "#4F46E5" });
     } finally {
         await f.db.destroy();

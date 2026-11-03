@@ -1,5 +1,16 @@
 # 53 - Captacion de leads: reporte federado de solo lectura
 
+## Alcance de vendedores vigente - revisión 2026-11-02
+
+El contrato API y las cohortes no cambian. La capacidad opcional
+`mercadeo.reports.read_all` permite consultar todos los vendedores, siempre junto
+con `mercadeo.leads.read`. Su deny no anula una lectura ya autorizada: conserva
+el filtro ordinario; un deny de `mercadeo.leads.read` sí bloquea el reporte.
+Se evalúa antes de consultar fuentes y no concede lectura individual de leads
+o acceso a órdenes/notas. Definición056 y asignaciones históricas independientes
+en [69](69-Mercadeo-Lectura-Global.md). No se importan registros ni se concede
+el permiso a todo un rol al actualizar este documento.
+
 ## Estado actual y precedencia - 2026-10-27
 
 El contrato API sigue siendo `period=day|week|month|all`. La UI actual ofrece

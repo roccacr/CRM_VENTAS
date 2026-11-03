@@ -1,5 +1,92 @@
 # 22 - Mapa de Implementacion API
 
+## Inventario vigente - 2026-11-02
+
+La lectura de `AppModule`, módulos/controladores y contratos confirma los
+dominios registrados de la tabla inferior. Se incluyen aquí las ampliaciones
+faltantes en el corte29. Los comandos/checks de esta revisión se reportan en el
+informe consolidado; no se convierten logs históricos en pruebas actuales.
+
+| Ruta adicional | Registro y contrato | Autorización/límite |
+| --- | --- | --- |
+| `GET /calendar/lookup` | `CalendarController`, `CalendarLookupService` | `calendar.read` efectivo del módulo y permiso individual de note/lead/order; `kind=notes\|users\|leads\|orders`, búsquedas comerciales de al menos dos caracteres |
+| `GET /notes/related-record-options` | `NoteRelatedRecordsController` y resolvedor federado | sesión, lectura y crear/editar propias; recursos reautorizados, páginas de25 y `partial` explícito |
+| `GET /note-collaboration/notes/:id/related-records` | mismo controlador/servicio | ACL de conversación independiente del recurso; etiquetas/IDs restringidos se ocultan |
+| `PUT /note-collaboration/notes/:id/related-records` | mismo controlador/servicio | autor con permiso y nota pendiente, CSRF/operationId/versión; principal inmutable, auditoría e invalidación realtime |
+| `POST /integrations/netsuite/local/order-events` | `NetsuiteLocalEventsController` en `NetsuiteModule` | prueba de máquina DEV, cuenta Sandbox fija, esquema estricto; `received:true,persisted:false`, ninguna escritura comercial |
+
+Calendario tiene **cinco rutas** registradas, no las cuatro del inventario28/29:
+lookup complementa calendarios/listado/crear/editar. Participantes internos,
+correos externos, preferencia Teams y vínculos source-qualified se documentan
+en [68 calendario](68-Calendario-Participantes-y-Vinculos.md); no implican Graph,
+envíos ni RSVP. Notas mantiene sus contratos antiguos y agrega `relatedRecords`
+opcional al crear y resúmenes autorizados a lecturas ([68 notas](68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md)).
+
+Mercadeo conserva exactamente los periodos API del inventario inferior; la
+capacidad opcional `mercadeo.reports.read_all` sustituye solo el filtro ordinario
+de vendedores, además del permiso de cada vista ([69](69-Mercadeo-Lectura-Global.md)).
+No concede acceso individual a un lead por consultar agregados.
+
+### Inventario completo de controladores HTTP
+
+Conteo estático del checkout: **31 controladores y 119 declaraciones HTTP**. No incluye Swagger opcional, handshake Socket.IO ni middleware como si fueran handlers Nest. Un prefijo `/` significa que el método ya contiene su ruta completa. Las rutas relativas se concatenan al prefijo; DTO, `RouteSecurity`, `RequirePermission` y servicio conservan su autoridad, no esta tabla. Las constantes de Identidad se resolvieron contra `identity-route.constants.ts`.
+
+| Controlador/fuente | Prefijo | N.º | Métodos relativos |
+| --- | --- | --- | --- |
+| [HealthController](../src/common/health/health.controller.ts) | `/health` | 2 | `GET /live`; `GET /ready` |
+| [NetsuiteLocalEventsController](../src/integrations/netsuite/netsuite-local-events.controller.ts) | `/integrations/netsuite/local` | 1 | `POST /order-events` |
+| [NetsuiteSalesOrderController](../src/integrations/netsuite/netsuite.module.ts) | `/formalization/orders` | 3 | `GET /:source/:id/database`; `GET /:source/:id/history`; `GET /:source/:id/netsuite` |
+| [AuditReadController](../src/modules/crm/audit/audit-read.controller.ts) | `/audit` | 4 | `GET /options`; `GET /records/:recordId/timeline`; `GET /:publicId`; `GET /` |
+| [BrokersController](../src/modules/crm/brokers/brokers.controller.ts) | `/catalogs/brokers` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
+| [CalendarController](../src/modules/crm/calendar/calendar.module.ts) | `/calendar` | 5 | `GET /calendars`; `GET /events`; `GET /lookup`; `POST /events`; `PATCH /events/:id` |
+| [CampaignsController](../src/modules/crm/campaigns/campaigns.controller.ts) | `/catalogs/campaigns` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
+| [CatalogsController](../src/modules/crm/catalogs/catalogs.controller.ts) | `/catalogs` | 4 | `GET /:catalogCode/items`; `POST /:catalogCode/items`; `PATCH /:catalogCode/items/:itemPublicId`; `PATCH /:catalogCode/items/:itemPublicId/status` |
+| [ClassesController](../src/modules/crm/classes/classes.controller.ts) | `/catalogs/classes` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
+| [IdentityAccessManagementController](../src/modules/crm/identity/identity-access-management.controller.ts) | `/identity` | 7 | `GET /roles/security-catalog`; `PATCH /roles/:roleCode`; `GET /roles/:roleCode/permissions`; `PUT /roles/:roleCode/permissions`; `GET /users/:userPublicId/access`; `PUT /users/:userPublicId/access`; `DELETE /roles/:roleCode` |
+| [IdentityController](../src/modules/crm/identity/identity.controller.ts) | `/identity` | 17 | `GET /session`; `GET /me`; `GET /users`; `POST /users`; `PATCH /users/:userPublicId`; `PATCH /users/:userPublicId/status`; `GET /users/:userPublicId`; `GET /me/photo`; `GET /sessions`; `POST /sessions/:sessionPublicId/revoke`; `POST /logout`; `POST /refresh`; `POST /microsoft/start`; `GET /microsoft/callback`; `POST /local/login`; `POST /local/request-reset`; `POST /local/complete-reset` |
+| [LocationsController](../src/modules/crm/locations/locations.controller.ts) | `/catalogs/locations` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
+| [MarketingHomeController](../src/modules/crm/marketing/marketing-home.module.ts) | `/marketing/home` | 1 | `GET /summary` |
+| [MarketingLeadsReportController](../src/modules/crm/marketing/marketing-leads-report.controller.ts) | `/marketing/leads` | 1 | `GET /report` |
+| [NoteCollaborationController](../src/modules/crm/notes/note-collaboration.controller.ts) | `/note-collaboration` | 14 | `GET /inbox`; `GET /inbox/authors`; `GET /notes/:id/activity`; `GET /notes/:id/locations`; `PUT /notes/:id/locations`; `GET /eligible-users`; `GET /notes/:id`; `GET /notes/:id/eligible-users`; `PUT /notes/:id/participants`; `PUT /notes/:id/mentions`; `POST /notes/:id/replies`; `PATCH /notes/:id/replies/:replyId`; `POST /notes/:id/replies/:replyId/withdraw`; `PUT /notes/:id/my-following` |
+| [NoteNotificationsController](../src/modules/crm/notes/note-notifications.controller.ts) | `/notifications` | 4 | `GET /`; `GET /unread-count`; `PUT /read-all`; `PUT /:id/read` |
+| [NoteRelatedRecordsController](../src/modules/crm/notes/note-related-records.controller.ts) | `/` | 3 | `GET /notes/related-record-options`; `GET /note-collaboration/notes/:id/related-records`; `PUT /note-collaboration/notes/:id/related-records` |
+| [NoteWorkflowController](../src/modules/crm/notes/note-workflow.controller.ts) | `/note-workflow` | 4 | `GET /notes/:id`; `PUT /notes/:id/task`; `PUT /notes/:id/reminder`; `GET /overview` |
+| [NotesController](../src/modules/crm/notes/notes.controller.ts) | `/notes` | 9 | `GET /`; `GET /:id/history`; `GET /:id`; `POST /`; `PATCH /:id`; `POST /:id/complete`; `POST /:id/reopen`; `POST /:id/archive`; `PUT /:id/my-placement` |
+| [ProjectsController](../src/modules/crm/projects/projects.controller.ts) | `/catalogs/projects` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
+| [ApprovalSummaryController](../src/modules/crm/sales/sales-orders/approval-summary.module.ts) | `/formalization/approvals` | 1 | `GET /summary` |
+| [ContractSummaryController](../src/modules/crm/sales/sales-orders/contract-summary.module.ts) | `/formalization/contracts` | 1 | `GET /summary` |
+| [ContractTransitionController](../src/modules/crm/sales/sales-orders/contract-transition.controller.ts) | `/formalization/contracts` | 2 | `POST /send`; `POST /revert` |
+| [FormalizationStageController](../src/modules/crm/sales/sales-orders/contract-transition.controller.ts) | `/formalization/orders` | 1 | `POST /stage` |
+| [FormalizationApprovalController](../src/modules/crm/sales/sales-orders/formalization-approval.ts) | `/formalization/orders` | 1 | `POST /approve` |
+| [HomeSummaryController](../src/modules/crm/sales/sales-orders/home-summary.module.ts) | `/formalization/home` | 2 | `GET /recent-activity`; `GET /summary` |
+| [FollowUpController](../src/modules/crm/sales/sales-orders/home-summary.module.ts) | `/formalization/home` | 1 | `GET /follow-up` |
+| [FormalizationOrderRecordController](../src/modules/crm/sales/sales-orders/home-summary.module.ts) | `/formalization/orders` | 1 | `GET /:source/:id/record` |
+| [OrderTimingController](../src/modules/crm/sales/sales-orders/order-timing.controller.ts) | `/formalization/orders` | 1 | `GET /:source/:id/timing` |
+| [SubsidiariesController](../src/modules/crm/subsidiaries/subsidiaries.controller.ts) | `/catalogs/subsidiaries` | 4 | `GET /items`; `POST /items`; `PATCH /items/:itemPublicId`; `PATCH /items/:itemPublicId/status` |
+| [UnitFilesController](../src/modules/crm/unit-files/unit-files.controller.ts) | `/unit-files` | 5 | `GET /projects`; `GET /options`; `GET /facets`; `GET /`; `GET /:id` |
+
+### Cobertura de dominios y herramientas
+
+| Dominio/carpeta real | Estado registrado y documentación de referencia |
+| --- | --- |
+| `common/health`, `common/security`, `config`, `database` | liveness/readiness, sesión/CSRF, clasificación de rutas y permisos, logging redactado y pools;05/24/CI-MySQL |
+| `crm/identity`, `crm/permissions` | BFF/login local/Microsoft, usuarios/roles/permisos, herencia/deny y jefaturas;27–34/41/42 |
+| `crm/catalogs`, `projects`, `campaigns`, `classes`, `locations`, `subsidiaries`, `brokers` | configuración genérica y seis CRUD dedicados, con identidad de proveedor separada;35 |
+| `crm/unit-files` | séptimo catálogo, consulta/paginación y preparación de solo lectura;35/56 expediente |
+| `crm/audit`, `crm/leads` | auditoría central, timeline nativo y tablas/historia internas; sin CRUD HTTP general de leads;37/43/44 |
+| `crm/marketing` | Inicio y Captación agregados, native-first/legacy opcional, citas atribuidas al lead;46/48/53/69 |
+| `crm/sales/sales-orders` | resúmenes, seguimiento/ficha, tiempos, envío/reversión, etapas y aprobación protegidos;38/39/40/52/63–65 |
+| `crm/calendar` | eventos, superposición, lookup y participantes/vínculos nativos;17/47/64/68 calendario |
+| `crm/notes` | personales, colaboración, workflow, avisos y sockets;18/57/60/62/66/68 notas |
+| `integrations/legacy-crm` | lecturas y escritores acotados autorizados, no importador comercial general;03/04/44/52 |
+| `integrations/microsoft365` | identidad corporativa/perfil; no calendario Outlook/Teams operativo;24/33 |
+| `integrations/netsuite` | inspección, aprobación limitada y receptor DEV no durable;04/63 y plan70 pendiente |
+| `scripts`, `migrations/schema-only` | 55 migraciones registradas y herramientas clasificadas de esquema, datos, QA y empaquetado; inventario completo en03 |
+
+La ampliación057, el CLI de indicadores y los tipos de tabla de órdenes son
+cambios locales sin commit en esta revisión. No se modifica ningún grafo de
+runtime ni esquema al documentarlos; el plan70 no registra un nuevo writer.
+
 ## Inventario registrado y contratos - revisión 2026-10-29
 
 Fuentes: `src/app.module.ts`, metadatos de controladores/modulos y contratos
@@ -48,7 +135,7 @@ en su endpoint dedicado; no modifica el contrato comercial.
 
 Identidad, auditoría, catálogos genéricos y seis catálogos dedicados conservan
 sus controladores existentes. Expedientes registra consulta, no CRUD. Calendario
-sí dispone de las cuatro rutas registradas arriba; no existe CRUD HTTP comercial
+sí dispone de las cinco rutas del inventario vigente; no existe CRUD HTTP comercial
 general de Leads, oportunidades o estimaciones.
 `GET /formalization/contracts/orders` tampoco esta registrado. El detalle actual
 se construye desde el seguimiento, sin inventar un endpoint `GET orders/:id`.

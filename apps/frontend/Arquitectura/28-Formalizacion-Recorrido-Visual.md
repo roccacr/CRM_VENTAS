@@ -1,5 +1,20 @@
 # Formalizacion: recorrido visual y trazabilidad
 
+## Alcance operativo contrastado - 2026-11-02
+
+Este documento conserva el recorrido de las previews, no el inventario actual.
+El [corte30](30-Estado-Frontend-Verificado.md) identifica los consumidores reales:
+seguimiento, detalle exacto, etapa/aprobación, actividad reciente, cliente/unidad,
+bitácora y capítulos confirmados NetSuite. Información primaria ya no se rellena
+con valores del ejemplo; se muestran datos autorizados del API o estado de
+carga/error/sin dato. Las previews de contrato/banco/traspaso no se convierten
+por ello en edición general, registro de firma o gestión documental operativa.
+
+Calendario global está conectado en cuatro módulos; Resumen de Formalización
+fue retirado de rutas/menú. Sus componentes antiguos conservados en código no
+son páginas disponibles. Las afirmaciones históricas de tabla vacía y DEMO
+siguientes no autorizan retirar el seguimiento ni el calendario actuales.
+
 ## Estado contrastado - 2026-10-27
 
 [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.

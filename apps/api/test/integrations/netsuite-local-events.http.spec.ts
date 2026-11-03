@@ -10,6 +10,7 @@ import { afterEach, expect, it } from "vitest";
 import { CsrfGuard } from "../../src/common/security/csrf.guard.js";
 import { LocalServiceTokenGuard } from "../../src/common/security/local-service-token.guard.js";
 import { NetsuiteLocalEventsController } from "../../src/integrations/netsuite/netsuite-local-events.controller.js";
+import { NetsuiteOrderEventService } from "../../src/integrations/netsuite/netsuite-order-event.service.js";
 
 const secret = "a".repeat(64);
 const payload = { schemaVersion: 1, source: { system: "netsuite", accountId: "4552704_SB1", environment: "sandbox" }, event: { recordType: "salesorder", netsuiteId: "123", eventType: "xedit", observedAt: "2026-10-30T20:00:00.000Z" }, snapshot: { status: 200, data: { type: "salesorder", id: "123", fields: { tranid: "OV-123", custbody90: true }, sublists: { item: [{ item: "Unit", quantity: 1 }] } } } };
@@ -26,7 +27,22 @@ afterEach(async () => {
 });
 async function fixture(overrides: Record<string, unknown> = {}) {
     const config = new ConfigService({ NODE_ENV: "development", NETSUITE_LOCAL_EVENTS_ENABLED: true, NETSUITE_LOCAL_EVENTS_SECRET: secret, COOKIE_SECRET: "b".repeat(64), ...overrides });
-    const module = await Test.createTestingModule({ controllers: [NetsuiteLocalEventsController, BrowserController], providers: [LocalServiceTokenGuard, CsrfGuard, { provide: ConfigService, useValue: config }] }).compile();
+    const module = await Test.createTestingModule({
+        controllers: [NetsuiteLocalEventsController, BrowserController],
+        providers: [
+            {
+                provide: NetsuiteOrderEventService,
+                useValue: {
+                    receive: () => {
+                        throw new Error("v1 must not persist");
+                    },
+                },
+            },
+            LocalServiceTokenGuard,
+            CsrfGuard,
+            { provide: ConfigService, useValue: config },
+        ],
+    }).compile();
     app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     await app.register(cookie);
     app.useGlobalGuards(module.get(CsrfGuard));

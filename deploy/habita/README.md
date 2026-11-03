@@ -1,6 +1,32 @@
 # Habita: despliegue en Ubuntu / Apache
 
-Destino autorizado: ubuntu@3.12.74.187. Fuente: rama
+## Vigencia y límites — revisión 2026-11-02
+
+Este es el runbook del despliegue registrado en
+[DEPLOYMENT-20261029.md](DEPLOYMENT-20261029.md), no una autorización permanente
+para publicar. La revisión actual inspeccionó las plantillas/scripts locales;
+no abrió SSH, consultó dominios, reinició procesos ni validó la infraestructura.
+El release histórico del29 no demuestra que `fcbf0c2` ni los cambios locales057
+estén publicados. Cada nueva publicación necesita su autorización y evidencia.
+Cobertura global: [informe72](../../apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
+
+| Artefacto | Responsabilidad y efecto al ejecutarlo |
+| --- | --- |
+| `publish.ps1` | Copia fija del código, builds, manifiesto/hash y transferencia/activación remota; tiene efectos, no es un diagnóstico read-only |
+| `activate-release.sh` | Prepara release, instala runtime, valida, cambia symlink/reinicia exclusivamente API y revierte ante fallo |
+| `verify-release.py` | Verifica paths y hashes del overlay; **también elimina archivos del clon** ausentes del manifiesto dentro del release validado; no consulta BD |
+| `apache-http.conf`, `apache-https.conf` | Plantillas de sitios/proxy SPA, API y WebSocket; no se aplican al compilar ni publicar un Markdown |
+| `ecosystem.config.cjs`, `habita-pm2.service` | Configuración del proceso y supervisor PM2 aislado; requiere instalación operativa |
+| `habita-api.service` | Alternativa histórica de servicio directo; no ejecutar a la vez que PM2 |
+| `renewal-hook.sh` | Hook de renovación del certificado; puede recargar Apache |
+
+El publicador excluye `.env` privados y llaves por nombre, pero esa exclusión no
+detecta credenciales incrustadas dentro de JS. La excepción temporal del emisor
+NetSuite documentada en el [README SuiteScript](../../apps/api/src/integrations/netsuite/suitescript/README.md)
+debe resolverse antes de tratar ese paquete como una entrega productiva segura.
+Esta revisión no cambia ni invalida credenciales compartidas.
+
+Destino de referencia del despliegue histórico: ubuntu@3.12.74.187. Fuente: rama
 `temp/crm-tink-api-frontend-inicial` más los cambios locales aprobados.
 No se requiere commit/push para aplicar un overlay verificado sobre el clon.
 

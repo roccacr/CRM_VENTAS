@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const SOURCE = fileURLToPath(new URL("../src/integrations/netsuite/suitescript/", import.meta.url));
-const NATIVE = new Set(["N/runtime", "N/record", "N/search", "N/log", "N/https"]);
+const NATIVE = new Set(["N/runtime", "N/record", "N/search", "N/log", "N/https", "N/crypto/random", "N/format"]);
 const CABINET_ROOT = "/SuiteScripts/CRM TINK/";
 
 /** Valida sintaxis y grafo AMD real sin ejecutar acciones ni conectar con NetSuite. */

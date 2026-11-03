@@ -1,5 +1,17 @@
 # 02 - Arquitectura Frontend
 
+## Arquitectura ejecutable contrastada - 2026-11-02
+
+El árbol efectivo se inventaría en [30](30-Estado-Frontend-Verificado.md): auth,
+administration, home, marketing, calendar y notes, con servicios tipados por
+dominio. El calendario usa FullCalendar/temporal-polyfill; notas usan Socket.IO
+y hooks/estado existentes. No se añadieron Zustand/TanStack/Tailwind para hacer
+coincidir la implementación con el árbol conceptual conservado a continuación.
+Las rutas son un registro History API con carga diferida, Suspense y boundary de
+error; una ruta sin Page permanece placeholder y la API decide acceso final.
+Los capítulos NetSuite confirmados son una proyección de lectura aprobada y
+acotada vía BFF; no un SDK ERP ni un escritor en React.
+
 Estado implementado 2026-10-27: [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md). Los ejemplos de fases futuras siguientes no sustituyen los reportes conectados ni los comandos acotados ya presentes.
 
 ## Vigencia documental - 2026-10-22, corte f2dc4f1

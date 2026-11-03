@@ -269,3 +269,7 @@ it.each([{ NODE_ENV: "production", NETSUITE_LOCAL_EVENTS_SECRET: "a".repeat(64) 
 it("accepts an exclusive local secret in development", () => {
     expect(validateEnv({ ...createValidEnv(), NODE_ENV: "development", NETSUITE_LOCAL_EVENTS_ENABLED: "true", NETSUITE_LOCAL_EVENTS_SECRET: "a".repeat(64) }).NETSUITE_LOCAL_EVENTS_ENABLED).toBe(true);
 });
+
+it("rejects persistence without explicitly enabling the Sandbox receiver", () => {
+    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_LOCAL_EVENTS_PERSIST: "true" })).toThrow("Persistencia requiere");
+});

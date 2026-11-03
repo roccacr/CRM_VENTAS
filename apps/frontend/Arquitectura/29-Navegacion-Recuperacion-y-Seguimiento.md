@@ -1,5 +1,23 @@
 # Navegacion, recuperacion y seguimiento - 2026-10-22
 
+## Navegación vigente contrastada - 2026-11-02
+
+`app-routes.ts` registra los consumidores resumidos en [30](30-Estado-Frontend-Verificado.md).
+Calendario global se reutiliza en cuatro módulos; Resumen de Formalización está
+retirado y una URL anterior se considera desconocida. Las páginas sin Page
+siguen placeholders, no se les atribuye un flujo comercial.
+
+Sesión y permisos se comprueban antes de montar la página; History API, Suspense
+y RouteErrorBoundary conservan recuperación explícita. La ficha de Formalización
+revalida identidad exacta y permisos propios, sin exigir banners. Inicio limpia
+query/hash de orden incluso si el pathname coincide. Calendario transporta fecha
+y evento en query a su ruta registrada sin saltarse permisos de lectura/edición.
+Las notas identifican su recurso por tipo/origen/ID y no por URL: un invitado
+conserva conversación sin acceso a la ficha, sin exponer datos comerciales.
+
+Los apartados siguientes conservan la navegación y limitaciones de sus fechas;
+no describen seguimiento/calendario actuales como consumidores vacíos.
+
 ## Estado contrastado - 2026-10-27
 
 [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.

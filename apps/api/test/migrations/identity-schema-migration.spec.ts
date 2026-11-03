@@ -150,6 +150,11 @@ describe("identity schema migration parser", () => {
             "202610290054_calendar_event_types",
             "202610290055_calendar_relations",
             "202610290056_marketing_global_read",
+            "202610300057_sales_order_operational_flags",
+            "202611020058_netsuite_order_events",
+            "202611020059_sales_order_cancellation_date",
+            "202611020060_lead_profile_permission",
+            "202611020061_formalization_calendar_types",
         ]);
     });
 

@@ -1,5 +1,30 @@
 # 47 - Calendario compartido: esquema nativo
 
+## Diccionario de extensiones contrastado - 2026-11-02
+
+El esquema034 base que sigue permanece histórico. Las ampliaciones físicas
+posteriores se leen junto a051/054/055 y los contratos64/68; ya existe runtime
+de lectura/creación/edición nativa, sin Graph o escritura de eventos legacy.
+
+| Tabla/columna | Tipo vigente tras las extensiones | Significado |
+| --- | --- | --- |
+| `crm_calendar_event.details_calendar_event` | JSON NULL (051) | Detalles del formulario por módulo; texto de referencia y preferencia Teams no crean una relación ni reunión por sí solos |
+| `crm_calendar_event.legacy_calendar_id_calendar_event` | INT NULL, unique (051) | Alias legacy confirmado opcional; no copia el evento ni infiere módulo |
+| `conf_calendar_event_type.form_key_calendar_event_type` | VARCHAR(100) NOT NULL (051) | Clave persistida del formulario del módulo, distinta del código/nombre del tipo |
+| `crm_calendar_event_link.source_calendar_event_link` | ENUM('native','legacy') NOT NULL DEFAULT 'native' (055) | Califica la identidad del vínculo; las filas anteriores conservan su interpretación nativa |
+| `crm_calendar_event_link.entity_public_id_calendar_event_link` | VARCHAR(160), ascii_bin, NOT NULL (055) | PublicId nativo o ID de origen legacy validado; no un ID de proveedor intercambiable |
+
+055 reemplaza la unicidad del destino por evento + tipo de entidad + fuente +
+identidad, y verifica el CHECK de identidad con su reescritura MySQL exacta. La
+API restringe los vínculos a nota/lead/orden y exige origen nativo para notas;
+las validaciones de recurso/ACL no las reemplaza una FK o regexp SQL. La migración
+es recuperable ante DDL parcial solo si metadata, índice y CHECK coinciden.
+054 registra/actualiza los pares del catálogo JSON manteniendo IDs y estados
+inactivos, no importa eventos. Los participantes continúan en su tabla034.
+
+No se ejecutaron migraciones, SELECT ni pruebas de restricciones con datos en
+esta revisión. Los conteos y aplicación del28/29 inferiores conservan su fecha.
+
 Actualización29/10: migración055 aplicada y verificada, añade fuente native/legacy al vínculo sin reemplazar sus filas. Participantes y relaciones se gestionan desde el formulario común y se auditan con el evento. Identidades, permisos y límites: [68](68-Calendario-Participantes-y-Vinculos.md).
 
 ## Actualización vigente — 28/10/2026

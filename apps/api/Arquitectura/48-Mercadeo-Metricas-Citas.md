@@ -1,5 +1,17 @@
 # 48 - Marketing appointment metrics (authorized 2026-10-23)
 
+## Current boundary reviewed - 2026-11-02
+
+The appointment aggregation rules below remain report-only and attribute seller
+and project through the linked lead. A separate calendar API now implements
+native events, participants and links; the October23 statement that no calendar
+command exists is historical, not a current runtime inventory. See
+[64](64-Calendario-Global-API-y-Contexto.md) and
+[68](68-Calendario-Participantes-y-Vinculos.md). A recorded Cita, completion and
+verified attendance remain different facts; event invitations do not prove a visit.
+The optional global Marketing read capability changes seller scope only
+([69](69-Mercadeo-Lectura-Global.md)), without modifying metric definitions or data.
+
 ## Current scope clarification - 2026-10-27
 
 This document specifies Marketing Home, not the independent Capture report.

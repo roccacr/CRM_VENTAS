@@ -6,6 +6,7 @@ export interface ClientField {
     readonly value: string;
 }
 export interface OrderClientDetail {
+    readonly leadIdentity?: { readonly source: "native" | "legacy"; readonly id: string } | null;
     readonly history?: ClientHistoryPage | null;
     readonly name: string;
     readonly groups: readonly { readonly title: string; readonly fields: readonly ClientField[] }[];
@@ -59,7 +60,8 @@ export async function getOrderClientDetail(identity: NetsuiteOrderIdentity, hist
         ...leadGroups.map((group) => ({ title: group.title, fields: group.fields.filter((field) => field[origin] !== "").map((field) => ({ label: field[0], value: text(lead[field[origin]]) })) })),
     ];
     addLeadContext(groups, data.lead);
-    return { name, groups, history: data.clientHistory ?? null, warnings: data.warnings.filter((warning) => /^(lead|contact):/.test(warning)) };
+
+    return { leadIdentity: clientLeadIdentity(data.lead, data.source), name, groups, history: data.clientHistory ?? null, warnings: data.warnings.filter((warning) => /^(lead|contact):/.test(warning)) };
 }
 
 function addLeadContext(groups: { title: string; fields: ClientField[] }[], lead: Record<string, unknown> | null) {
@@ -67,4 +69,10 @@ function addLeadContext(groups: { title: string; fields: ClientField[] }[], lead
     commercial?.fields.push({ label: "Estado del lead", value: text(fields(lead?.status).label) });
     const capture = groups.find((group) => group.title === "Captación y seguimiento");
     capture?.fields.push({ label: "Clasificación de seguimiento", value: text(fields(lead?.followUpReason).name) });
+}
+
+/** La ficha entrega la identidad del lead real; no se reutiliza el ID de la orden. */
+function clientLeadIdentity(lead: Record<string, unknown> | null, source: "native" | "legacy"): Exclude<OrderClientDetail["leadIdentity"], undefined> {
+    if (typeof lead?.id !== "string") return null;
+    return { source, id: lead.id.replace(/^legacy:/u, "") };
 }

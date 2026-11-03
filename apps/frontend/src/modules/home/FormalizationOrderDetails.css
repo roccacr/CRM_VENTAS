@@ -1,0 +1,70 @@
+/* Keep the original drawer width and vertical section order. Only fields form columns. */
+.formalization-order-details,
+.formalization-order-details__grid,
+.formalization-order-details__grid > .ant-card {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.formalization-order-details__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+}
+
+.formalization-order-details__grid > .ant-card {
+    container: order-section / inline-size;
+}
+
+.formalization-order-details .ant-card-head-title {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.formalization-order-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 20px;
+    margin: 0;
+}
+
+.formalization-order-fields > div {
+    min-width: 0;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ent-divider, #e4e9f2);
+}
+
+.formalization-order-fields dt {
+    color: var(--ent-ink-2, #496180);
+    font-size: 12.5px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.formalization-order-fields dd {
+    min-width: 0;
+    margin: 4px 0 0;
+    color: var(--ent-ink, #0f172a);
+    font-size: 13px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.formalization-order-details__grid .ant-btn {
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
+}
+
+/* Two compact label/value groups fit the standard 560px drawer. */
+@container order-section (min-width: 420px) {
+    .formalization-order-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@container order-section (min-width: 900px) {
+    .formalization-order-fields {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}

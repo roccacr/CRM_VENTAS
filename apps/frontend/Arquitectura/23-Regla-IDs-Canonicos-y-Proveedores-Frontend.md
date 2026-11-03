@@ -1,5 +1,19 @@
 # 23 - Regla de IDs Canonicos y Proveedores Frontend
 
+## Identidades compuestas vigentes - 2026-11-02
+
+Las referencias de registros relacionados en notas/calendario contienen
+tipo + `native|legacy` + ID. Un publicId nativo y la PK legacy no se intercambian
+por coincidir en texto ni se unen por nombre. El API confirma aliases y conserva
+el contexto principal; el selector muestra nombres/folios autorizados, sin pedir
+la BD al usuario. `netsuiteId` es referencia del proveedor, no ID de la nota,
+cliente, evento u orden CRM. La misma orden puede aparecer en otro contexto sin
+duplicar la conversación si el lector conserva ACL y permiso comercial.
+
+`netsuite-primary.ts` transforma solo capítulos confirmados de una lectura BFF
+ya autorizada; no hace al proveedor la identidad general de UI ni autoriza un
+SDK, secretos, consulta directa o escritor. Detalle: [30](30-Estado-Frontend-Verificado.md).
+
 Estado implementado 2026-10-27: [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md). Los ejemplos de fases futuras siguientes no sustituyen los reportes conectados ni los comandos acotados ya presentes.
 
 ## Vigencia documental - 2026-10-22, corte f2dc4f1

@@ -7,7 +7,20 @@ export interface ClientHistoryPage {
     readonly hasMore: boolean;
     readonly nextCursor: string | null;
 }
+export interface DatabaseOrderDetailField {
+    readonly code: string;
+    readonly label: string;
+    readonly value: string | null;
+    readonly kind: "text" | "date" | "money" | "boolean" | "link";
+}
+export interface DatabaseOrderDetail {
+    readonly sections: readonly { readonly title: string; readonly fields: readonly DatabaseOrderDetailField[] }[];
+    readonly currency: string | null;
+    readonly client: { readonly name: string | null; readonly identification: string | null; readonly phone: string | null; readonly email: string | null; readonly advisor: string | null; readonly identity: { readonly source: "native" | "legacy"; readonly id: string } | null };
+    readonly warnings: readonly string[];
+}
 export interface DatabaseOrderResult {
+    readonly detail?: DatabaseOrderDetail;
     readonly clientHistory?: ClientHistoryPage;
     readonly schemaVersion: 1;
     readonly observedAt: string;
@@ -29,7 +42,45 @@ function parseDatabaseResult(value: unknown): DatabaseOrderResult {
     if (!checks.every(Boolean)) throw new Error("Datos de orden invalidos");
     const warnings = data.warnings as unknown[];
     if (!warnings.every((entry) => typeof entry === "string")) throw new Error("Datos de orden invalidos");
-    return { ...(data.clientHistory === undefined ? {} : { clientHistory: parseHistory(data.clientHistory) }), schemaVersion: 1, observedAt: String(data.observedAt), source: data.source as "native" | "legacy", order: object(data.order), lead: data.lead === null ? null : object(data.lead), contact: data.contact === null ? null : object(data.contact), unitFile: data.unitFile === null ? null : object(data.unitFile), references: (data.references as unknown[]).map(object), warnings: warnings };
+    return {
+        ...(data.detail === undefined ? {} : { detail: parseDetail(data.detail) }),
+        ...(data.clientHistory === undefined ? {} : { clientHistory: parseHistory(data.clientHistory) }),
+        schemaVersion: 1,
+        observedAt: String(data.observedAt),
+        source: data.source as "native" | "legacy",
+        order: object(data.order),
+        lead: data.lead === null ? null : object(data.lead),
+        contact: data.contact === null ? null : object(data.contact),
+        unitFile: data.unitFile === null ? null : object(data.unitFile),
+        references: (data.references as unknown[]).map(object),
+        warnings: warnings,
+    };
+}
+function nullableText(value: unknown): string | null {
+    if (value === null || typeof value === "string") return value;
+    throw new Error("Detalle de orden inválido");
+}
+function parseDetailField(value: unknown): DatabaseOrderDetailField {
+    const field = object(value);
+    if (typeof field.code !== "string" || typeof field.label !== "string" || !["text", "date", "money", "boolean", "link"].includes(String(field.kind))) throw new Error("Detalle de orden inválido");
+    return { code: field.code, label: field.label, value: nullableText(field.value), kind: field.kind as DatabaseOrderDetailField["kind"] };
+}
+function parseDetailClient(value: unknown): DatabaseOrderDetail["client"] {
+    const client = object(value);
+    const rawIdentity = client.identity === null ? null : object(client.identity);
+    if (rawIdentity && (!["native", "legacy"].includes(String(rawIdentity.source)) || typeof rawIdentity.id !== "string" || !rawIdentity.id)) throw new Error("Detalle de orden inválido");
+    const identity = rawIdentity ? { source: rawIdentity.source as "native" | "legacy", id: String(rawIdentity.id) } : null;
+    return { name: nullableText(client.name), identification: nullableText(client.identification), phone: nullableText(client.phone), email: nullableText(client.email), advisor: nullableText(client.advisor), identity };
+}
+function parseDetail(value: unknown): DatabaseOrderDetail {
+    const data = object(value);
+    if (!Array.isArray(data.sections) || !Array.isArray(data.warnings) || !data.warnings.every((warning: unknown) => typeof warning === "string")) throw new Error("Detalle de orden inválido");
+    const sections = data.sections.map((value: unknown) => {
+        const section = object(value);
+        if (typeof section.title !== "string" || !Array.isArray(section.fields)) throw new Error("Detalle de orden inválido");
+        return { title: section.title, fields: section.fields.map(parseDetailField) };
+    });
+    return { sections, currency: nullableText(data.currency), client: parseDetailClient(data.client), warnings: data.warnings };
 }
 function validateReason(value: unknown) {
     if (value === null) return;

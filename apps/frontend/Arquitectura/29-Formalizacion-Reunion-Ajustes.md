@@ -1,5 +1,21 @@
 # Formalizacion: registro de ajustes surgidos en reunion
 
+## Conciliación de requisitos con código - 2026-11-02
+
+Este registro conserva necesidades y decisiones con su fecha, sin convertir
+todo requisito en una función entregada. Estado vigente en [30](30-Estado-Frontend-Verificado.md).
+Sí existen seguimiento por permisos de banner, ficha exacta con permiso propio,
+etapa, aprobación y actividad; consultas de cliente/unidad/bitácora y capítulos
+NetSuite confirmados. Ambos roles gestionan el alcance permitido por acción,
+con denies, versiones e idempotencia. La ficha no depende de cargar su bandeja.
+
+No se entregaron edición general de orden/cliente/unidad, cartera de responsables,
+registro operativo completo de firma/documentos ni comprobación conjunta de saldo,
+traspaso y llaves por el simple cambio de etapa. Calendario global sí tiene editor
+CRM y relaciones/invitados, pero no Outlook operativo. El Resumen de jefatura fue
+retirado de rutas/menú; el componente anterior no acredita un reporte publicado.
+Esas diferencias deben conservarse al planificar los requisitos pendientes.
+
 ## Correcciones de roles y recuperación - 2026-10-28
 
 El propietario confirmó que ambos roles gestionan todas las órdenes con los

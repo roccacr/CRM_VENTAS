@@ -1,5 +1,19 @@
 # 66 - Notas colaborativas y seguimiento operativo
 
+## Extensión de vínculos vigente - 2026-11-02
+
+El alcance descrito aquí sigue implementado y se complementa con
+[68](68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md): `relatedRecords` opcional al
+crear, búsqueda paginada de lead/orden, lectura/gestión de relaciones y resúmenes
+autorizados en tarjetas/hojas/hilos. La identidad incluye tipo/fuente/ID y conserva
+el contexto principal. Crear/reemplazar evita repetir ese principal por un alias
+confirmado sin alterar el payload original del recibo idempotente.
+
+No se amplían permisos de negocio por invitar ni asignar una nota. Los lookups
+y el guardado verifican acceso comercial por separado. La verificación/QA del29
+que sigue es histórica; el inventario actual no acredita nuevas pruebas SQL,
+latencia, Redis multinodo, navegación con dos cuentas o sincronización legacy.
+
 Revision QA posterior: [67 - Plan y resultados del 29 de octubre](67-Plan-QA-Regresiones-20261029.md).
 Los fallos globales citados en los cortes del 28 son evidencia historica; el
 documento 67 registra reproduccion, correccion de pruebas y resultados actuales.

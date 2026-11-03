@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 
 import { DatabaseService } from "../../../database/database.service.js";
 import { CATALOG_CONTEXT_MODULES } from "../catalogs/catalogs.constants.js";
+import { LEAD_PROFILE_PERMISSION } from "../leads/lead-profile.contract.js";
 import { NOTE_ACTIONS } from "../notes/notes.permissions.js";
 import { DEFAULT_DIRECT_OVERRIDE_SCOPE, EffectivePermissionService } from "../permissions/effective-permission.service.js";
 import type { PermissionEffect, PermissionInput, PermissionOverrideInput } from "../permissions/permission.types.js";
@@ -359,13 +360,14 @@ export class IdentityProfileRepository {
     }
 
     /** A grant cannot borrow another role's ceiling or survive its own role revocation. */
-    private restrictGrantingRoles<T extends { roleCode?: string; moduleCode?: string }>(inputs: readonly T[], access: ModuleRoleAccess): T[] {
+    private restrictGrantingRoles<T extends { code: string; roleCode?: string; moduleCode?: string }>(inputs: readonly T[], access: ModuleRoleAccess): T[] {
         if (access.moduleCodes === null) return [...inputs];
         const roles = new Set(access.roles.map((role) => role.code));
         return inputs.filter((input) => {
             if (input.roleCode === undefined || input.moduleCode === undefined || !roles.has(input.roleCode)) return false;
             const ceiling = access.roleModuleCodes?.get(input.roleCode) ?? access.moduleCodes ?? [];
-            return ceiling.includes(normalizePermissionModule(input.moduleCode));
+            // El perfil del lead es una capacidad global; sigue exigiendo rol efectivo y deny vigente.
+            return input.code === LEAD_PROFILE_PERMISSION || ceiling.includes(normalizePermissionModule(input.moduleCode));
         });
     }
 
@@ -373,7 +375,7 @@ export class IdentityProfileRepository {
     private restrictToModules<T extends { code: string; scope: string; moduleCode?: string }>(inputs: readonly T[], modules: readonly string[] | null, orgUnits: readonly IdentityOrgUnit[]): T[] {
         if (modules === null) return [...inputs];
         return inputs
-            .filter((input) => input.moduleCode !== undefined && modules.includes(normalizePermissionModule(input.moduleCode)))
+            .filter((input) => input.code === LEAD_PROFILE_PERMISSION || (input.moduleCode !== undefined && modules.includes(normalizePermissionModule(input.moduleCode))))
             .map((input) => {
                 const membership = orgUnits.find((unit) => unit.code === normalizePermissionModule(input.moduleCode ?? ""));
                 // A direct allow retains its narrow scope; it never widens the role grant.

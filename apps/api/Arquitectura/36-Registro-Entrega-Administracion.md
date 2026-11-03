@@ -1,5 +1,19 @@
 # 36 - Registro de entrega de Administracion
 
+## Continuidad vigente del inventario - 2026-11-02
+
+La entrega ha ampliado Identidad/Administración con Notas, Calendario compartido,
+comandos acotados de Formalización y reportes de Mercadeo. Contratos actuales y
+cobertura por dominio: [22](22-Mapa-de-Implementacion-API.md). Los vínculos de
+notas y eventos se mantienen independientes de la invitación y del acceso al
+registro; permisos por banner/ficha/acción no se sustituyen entre sí.
+
+056 incorpora capacidad adicional de lectura global de vendedores y057 agrega
+indicadores operativos de orden en cambios locales, sin un escritor durable
+NetSuite. La revisión actual no aplica migraciones, ejecuta backfills ni repite
+el QA histórico de este registro. Logs antiguos no certifican estado productivo
+actual; el runbook Habita y el plan70 distinguen entrega histórica de pendientes.
+
 ## Continuidad vigente - 2026-10-27
 
 Las ampliaciones del 2026-10-26 sustituyen los limites de solo Home de los cortes

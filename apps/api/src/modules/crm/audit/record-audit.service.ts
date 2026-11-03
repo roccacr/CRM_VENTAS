@@ -24,7 +24,7 @@ const physicalName = z
     .max(64)
     .regex(/^[a-z][a-z0-9_]*$/);
 const effectiveSourceSchema = z.object({ schema: sourceSchema, table: physicalName, id: identifier(191) }).strict();
-const actorSchema = z.object({ publicId: identifier(191), name: z.string().min(1).max(250), roles: z.array(z.object({ code: identifier(100), name: z.string().min(1).max(250) }).strict()).max(100) }).strict();
+const actorSchema = z.object({ kind: z.literal("service").optional(), publicId: identifier(191), name: z.string().min(1).max(250), roles: z.array(z.object({ code: identifier(100), name: z.string().min(1).max(250) }).strict()).max(100) }).strict();
 const inputSchema = z
     .object({
         source: effectiveSourceSchema.extend({ entity: physicalName }),
@@ -106,6 +106,9 @@ function decodeSnapshot(value: unknown): Record<string, unknown> | null {
     return decoded as Record<string, unknown>;
 }
 
+/** Atribucion tecnicamente confiable: los servicios no se presentan como usuarios humanos. */
+const actorValues = (actor: AuditActorSnapshot) => ({ origin_record_event: actor.kind === "service" ? "integration" : "crm", actor_kind_record_event: actor.kind ?? "user" });
+
 /** Shared append-only writer; callers authorize resources and pass their OWN business transaction. */
 @Injectable()
 export class RecordAuditService implements OnModuleInit {
@@ -176,11 +179,10 @@ export class RecordAuditService implements OnModuleInit {
                 sequence_record_event: sequence,
                 action_record_event: data.action,
                 module_record_event: data.module,
-                origin_record_event: "crm",
+                ...actorValues(actor),
                 source_schema_record_event: effective.schema,
                 source_table_record_event: effective.table,
                 source_id_record_event: effective.id,
-                actor_kind_record_event: "user",
                 actor_reference_record_event: actor.publicId,
                 actor_snapshot_record_event: JSON.stringify(actor),
                 occurred_at_record_event: sql<Date>`UTC_TIMESTAMP(3)`,

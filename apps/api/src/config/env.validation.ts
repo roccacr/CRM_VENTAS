@@ -319,7 +319,8 @@ const addNetsuiteSandboxIssues = (config: { NETSUITE_ENVIRONMENT: string; NETSUI
     }
 };
 /** Local webhook configuration must be explicit, development-only and isolated from BFF secrets. */
-const addNetsuiteLocalEventsIssues = (config: { NETSUITE_LOCAL_EVENTS_ENABLED: boolean; NODE_ENV: string; NETSUITE_LOCAL_EVENTS_SECRET?: string | undefined; COOKIE_SECRET: string; AUTH_TOKEN_HASH_SECRET: string; AUDIT_HASH_SECRET: string }, context: z.RefinementCtx): void => {
+const addNetsuiteLocalEventsIssues = (config: { NETSUITE_LOCAL_EVENTS_PERSIST: boolean; NETSUITE_LOCAL_EVENTS_ENABLED: boolean; NODE_ENV: string; NETSUITE_LOCAL_EVENTS_SECRET?: string | undefined; COOKIE_SECRET: string; AUTH_TOKEN_HASH_SECRET: string; AUDIT_HASH_SECRET: string }, context: z.RefinementCtx): void => {
+    if (config.NETSUITE_LOCAL_EVENTS_PERSIST && !config.NETSUITE_LOCAL_EVENTS_ENABLED) context.addIssue({ code: "custom", path: ["NETSUITE_LOCAL_EVENTS_PERSIST"], message: "Persistencia requiere el receptor Sandbox habilitado." });
     if (config.NETSUITE_LOCAL_EVENTS_ENABLED && (config.NODE_ENV !== "development" || !config.NETSUITE_LOCAL_EVENTS_SECRET)) context.addIssue({ code: "custom", path: ["NETSUITE_LOCAL_EVENTS_ENABLED"], message: "El receptor local requiere development y un secreto exclusivo de 64 caracteres hexadecimales." });
     if (config.NETSUITE_LOCAL_EVENTS_SECRET && [config.COOKIE_SECRET, config.AUTH_TOKEN_HASH_SECRET, config.AUDIT_HASH_SECRET].includes(config.NETSUITE_LOCAL_EVENTS_SECRET)) context.addIssue({ code: "custom", path: ["NETSUITE_LOCAL_EVENTS_SECRET"], message: "El secreto local debe ser exclusivo de la integracion." });
 };
@@ -381,6 +382,8 @@ const envSchema = z
         DB_SSL: booleanEnvSchema("false"),
         DB_SSL_CA: z.string().min(1).optional(),
         // Optional adapter settings stay server-side; the GET client rejects incomplete credentials.
+        NETSUITE_ORDER_CANCELLATION_EFFECTS_ENABLED: booleanEnvSchema("false"),
+        NETSUITE_LOCAL_EVENTS_PERSIST: booleanEnvSchema("false"),
         NETSUITE_LOCAL_EVENTS_ENABLED: booleanEnvSchema("false"),
         NETSUITE_LOCAL_EVENTS_SECRET: z
             .string()

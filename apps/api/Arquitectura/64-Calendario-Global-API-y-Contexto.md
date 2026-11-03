@@ -1,12 +1,33 @@
 # Calendario global: API y contexto por módulo
 
+## Revisión del contrato actual - 2026-11-02
+
+Se conserva el contrato ampliado del29: catálogo JSON054, participantes y
+vínculos055, lookup protegido y eventos nativos auditados. El controlador registra
+cinco rutas: calendarios, eventos, lookup, crear y editar. `GET /calendar/lookup`
+requiere `moduleCode`, `kind` y búsqueda comercial mínima; el permiso del calendario
+no sustituye el del registro. Campos `participants`, `links` y
+`details.teamsRequested` se rigen por [68](68-Calendario-Participantes-y-Vinculos.md).
+El texto libre `details.reference` sigue siendo texto, no reemplaza esos links.
+
+Las limitaciones «sin invitados» del contrato base28 inferior no describen los
+participantes CRM actuales; sí siguen pendientes envío de correo/Outlook, RSVP
+y creación de reuniones Teams. Los datos de aplicación, conteos y navegador son
+evidencias fechadas del28/29; esta revisión no volvió a consultar ni guardar eventos.
+
 ## Ampliación vigente — 29/10/2026
 
 Crear/editar incorpora tipo obligatorio, participantes internos/correos externos, preferencia Teams y vínculos a notas pendientes, leads y órdenes nativas/legacy. Contrato y controles: [68 - Participantes y vínculos](68-Calendario-Participantes-y-Vinculos.md). La migración055 se aplicó y verificó únicamente en CRM_THINK_V2. El registro del evento es nativo; vincular un recurso legacy no lo copia ni lo modifica. Invitaciones internas dan lectura del evento sin acceso global al módulo; un deny de origen prevalece. No hay envío externo, Graph, reunión Teams ni RSVP operativo.
 
 Los apartados del28 conservan su evidencia histórica. El trigger legacy allí indicado dejó de ser requisito por decisión posterior expresa del propietario; no se instaló ni se ampliaron privilegios RDS.
 
-## Catálogo global conectado — 29/10/2026
+## Ajuste de Formalización — 02/11/2026
+
+Por solicitud del propietario, Formalización ofrece únicamente Tarea (`tarea`), Reunión (`reunion`), Seguimiento (`seguimiento`), Formalización bancaria (`formalizacion_bancaria`) y Adéndum (`adendum`). Se retira `cita` del JSON para ese módulo. Mercadeo, Ventas y Contabilidad conservan sus cuatro tipos originales.
+
+La migración061 agrega los dos tipos exclusivos y desactiva únicamente Cita de Formalización, con auditoría transaccional. Conserva IDs, eventos históricos y el registro `general` de consulta; no cambia permisos ni otros módulos. Los cinco tipos reutilizan `formalizacion.general.v1`, sin generación automática por procesos bancarios o contratos. Aplicación verificada en `CRM_THINK_V2`: ledger061 presente, un registro de auditoría, cinco tipos vigentes en Formalización y cuatro originales en cada otro módulo; cero eventos nativos. Esta verificación no acredita despliegue del API.
+
+## Catálogo global conectado — 29/10/2026 (histórico)
 
 `src/modules/crm/calendar/calendar-event-types.json` define Tarea, Reunión, Cita y Seguimiento. Cada entrada contiene `codigo` estable, `tipo` visible, `color` hexadecimal de seis dígitos y `modulos` con códigos canónicos. Inicialmente los cuatro tipos se habilitan en Formalización, Mercadeo, Ventas y Contabilidad; se restringe uno enumerando únicamente los módulos correspondientes. El color pertenece al tipo y será el mismo en todos sus módulos.
 
@@ -18,7 +39,10 @@ Agregar un tipo requiere añadir una entrada con código único y registrar sus 
 
 Verificación live del 29/10:16 pares nuevos (cuatro por módulo), nombre/color coincidentes con JSON, cuatro IDs `general` originales conservados, cero eventos antes/después y un evento de auditoría de configuración. No se guardaron fixtures en las BD compartidas.
 
-Fecha: 28/10/2026. Complementa el modelo de tablas de `47-Calendario-Compartido-Esquema.md`.
+## Contrato base histórico - 28/10/2026
+
+Complementa el modelo de tablas de `47-Calendario-Compartido-Esquema.md`.
+Los párrafos de este contrato base se leen con las ampliaciones vigentes anteriores.
 
 ## Comportamiento
 

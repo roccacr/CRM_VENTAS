@@ -1,5 +1,24 @@
 # 00 - Indice de Arquitectura API
 
+
+Ampliación solicitada el 2026-11-02: [perfil completo del lead](77-Perfil-Completo-Lead.md), lectura federada y permiso global; migración060 preparada, sin aplicación ni despliegue.
+## Entrada vigente — 2026-11-02
+
+[72 — Reconciliación completa por commits y código](72-Reconciliacion-Documental-20261102.md)
+inventaría los35 commits de HEAD, cambios locales,130 documentos iniciales,
+17 dominios API,55 migraciones registradas y herramientas/operación. Incluye
+resultados nuevos y fallos actuales; no sustituirlos por QA histórico.
+
+- [22 — Mapa registrado](22-Mapa-de-Implementacion-API.md):31 controladores y119 decoradores HTTP, módulos y límites reales.
+- [03 — BD/migraciones/herramientas](03-Base-Datos-y-Migracion.md):55 migraciones más helper, flags057 locales, sin nueva ejecución DDL.
+- [39 — Diccionario de órdenes](39-Diccionario-Ordenes-Venta.md): banderas, estado desconocido y evidencia fechada de ambas fuentes.
+- [69 — Lectura global de Mercadeo](69-Mercadeo-Lectura-Global.md): permiso adicional sin autorizar CRUD/imports.
+- [70 — Sincronización NetSuite](70-Plan-Sincronizacion-Ordenes-NetSuite.md): plan pendiente y traspaso para retomar del 2026-11-02; receptor local solo confirma recepción con persisted:false. Incluye autorización Sandbox → órdenes existentes en legacy y límites de evidencia.
+- [Operación](Operacion-Despliegue-Rollback.md) y [Habita](../../../deploy/habita/README.md): procedimientos separados de la evidencia de despliegue del29.
+
+Los cortes inferiores conservan su fecha. Un esquema, una prueba con dobles o
+una declaración de ruta no acredita operación real, despliegue o acceso externo.
+
 Mercadeo: [69 - Lectura global](69-Mercadeo-Lectura-Global.md) distingue el permiso
 de consulta global de los alcances personales y de los permisos de edición.
 

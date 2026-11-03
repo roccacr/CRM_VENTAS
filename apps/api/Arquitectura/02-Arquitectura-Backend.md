@@ -1,5 +1,23 @@
 # 02 - Arquitectura Backend
 
+## Composición contrastada - 2026-11-02
+
+El grafo real de `src/app.module.ts` incluye `NotesModule` y `CalendarModule`;
+los párrafos del27 que llaman a toda agenda o notas «futuras» se conservan como
+antecedente y no describen el runtime actual. Notas separa contenido/colaboración,
+workflow, avisos y entrega; reutiliza identidad, auditoría y transacciones nativas.
+Sus vínculos de negocio usan lectores/resolvedores autorizados sin importar
+registros ([68](68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md)). Calendario reutiliza
+la misma identidad comercial para lookup y guarda eventos nativos con sus
+participantes/vínculos ([68 calendario](68-Calendario-Participantes-y-Vinculos.md)).
+
+`NetsuiteModule` contiene lectura CRM/ERP, aprobación acotada y recepción local
+de snapshots. El receptor actual no persiste ni actúa como escritor durable;
+el plan70 sigue siendo diseño. Oportunidades, estimaciones y CRUD general de
+Leads continúan fuera del grafo operativo. Ver [22](22-Mapa-de-Implementacion-API.md)
+para todas las fronteras actuales; existencia de carpetas o tablas no acredita
+una operación, despliegue ni credenciales vigentes.
+
 ## Composicion vigente - 2026-10-27
 
 Ademas de identidad/catalogos/auditoria, `AppModule` registra los resumenes y

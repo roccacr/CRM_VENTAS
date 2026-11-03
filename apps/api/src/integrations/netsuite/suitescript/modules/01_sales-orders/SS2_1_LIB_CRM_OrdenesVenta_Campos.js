@@ -41,7 +41,7 @@ define(["../../lib/SS2_1_LIB_CRM_Campos"], (fields) => {
                 custbody_ix_salesorder_hito4 custbody_ix_salesorder_hito5 custbody_ix_salesorder_hito6
                 custbody_i_amount_hitos custbody211 custbody_total_hitos_amount subtotal taxtotal
                 giftcertapplied total custbody90 custbody51 custbody91 custbody105 custbody43 custbody103
-                custbody_ix_comision_pagada custbody_entrega_de_llaves custbody274 custbody_mezzanine_verifica
+                custbody_ix_comision_pagada custbody_entrega_de_llaves custbody274 custbody_cuotas_pagadas custbody_mezzanine_verifica
                 custbody_aprueba_jefe_ventas custbodyid_firma_rc custbodyid_firma_rocca custbody74 custbody73
                 custbody141 custbody157
             `),
@@ -57,6 +57,9 @@ define(["../../lib/SS2_1_LIB_CRM_Campos"], (fields) => {
             `),
             currencyname: "currency",
         },
+        // Solo eventos: IDs ERP para conciliar relaciones; nunca copiar a PK/FK propias sin resolverlas.
+        eventValues: fieldMap("entity custbody38 subsidiary opportunity"),
+        eventOwner: { sublist: "salesteam", field: "employee" },
 
         // Alias en la raiz de la respuesta que el CRM consume por nombre (listas -> texto visible).
         rootTexts: {

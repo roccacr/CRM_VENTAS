@@ -69,14 +69,14 @@ it("hides example values while the provider request is pending", () => {
 it("does not restore example fields on provider failure", () => {
     installBrowserApiDoubles();
     render(<FormalizationOrderRecord item={order} netsuiteStatus="error" onBack={() => {}} />);
-    expect(screen.getByRole("status").textContent).toContain("No fue posible cargar");
+    expect(screen.getByText(/No fue posible cargar/).getAttribute("role")).toBe("status");
     expect(screen.queryByText("Vista de muestra.")).toBeNull();
 });
 it("shows the confirmed provider absence message instead of a generic load failure", () => {
     installBrowserApiDoubles();
     const message = "La orden de venta no existe en NetSuite en el entorno configurado.";
     render(<FormalizationOrderRecord item={order} netsuiteStatus="error" netsuiteErrorMessage={message} onBack={() => {}} />);
-    expect(screen.getByRole("status").textContent).toBe(message);
+    expect(screen.getByText(message).getAttribute("role")).toBe("status");
     expect(screen.queryByText(/No fue posible cargar los datos/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Aprobar Formalización" })).toBeNull();
 });
@@ -162,7 +162,12 @@ it("bounds the confirmed approval flag to the same order and exact provider proj
     expect(flag()).toBe("false");
     view.rerender(<FormalizationOrderRecord item={approved} primary={{ ...primary }} stagePermissions={permissions} onBack={() => {}} />);
     expect(flag()).toBe("false");
-    expect(vi.mocked(apiRequest).mock.calls.map(([path, options]) => [path, options?.method ?? "GET"])).toEqual([
+    expect(
+        vi
+            .mocked(apiRequest)
+            .mock.calls.filter(([path]) => !path.endsWith("/database"))
+            .map(([path, options]) => [path, options?.method ?? "GET"]),
+    ).toEqual([
         ["/formalization/orders/approve", "POST"],
         ["/formalization/orders/legacy/208/record", "GET"],
     ]);

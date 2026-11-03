@@ -1,3 +1,7 @@
+## Implementación local posterior — 2026-11-02
+
+El contrato v2 ya implementa los diez checkbox, resolución nativa → legacy, transacción y bitácora central/nativa. v1 conserva persisted:false. 058 se aplicó con aprobación explícita y el túnel fue verificado; la activación y prueba real están pendientes; este bloque sustituye las descripciones de ausencia de escritor de los cortes históricos inferiores. Contrato, archivos, pruebas y límites: [73](../../../../Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md).
+
 # RESTlet CRM TINK - modulos internos
 
 ## Convencion de nombres y actualizacion del despliegue
@@ -30,6 +34,33 @@ Subir `SS2_1_RL_CRM_Integracion.js` corregido una vez al archivo vinculado al RE
 El directorio local mantiene la entrada junto a lib y modules para desarrollo y pruebas; en NetSuite se distribuye como indica el arbol. No subir otra copia de la entrada dentro de CRM TINK. El RESTlet y su despliegue conservan sus IDs.
 
 `lib/SS2_1_LIB_CRM_Registros.js` declara el identificador `salesorder` sin consultar `record.Type` durante `define`; las APIs de NetSuite solo se usan al ejecutar las acciones. Esto evita `SUITESCRIPT_API_UNAVAILABLE_IN_DEFINE` durante la validacion del archivo.
+
+## Vigencia del paquete — revisión 2026-11-02
+
+La versión declarada por `lib/SS2_1_LIB_CRM_Logs.js` es `2026.10.30.4`.
+La revisión estática del grafo AMD aprobó18 archivos sin ejecutar callbacks,
+crear ZIP, subir archivos ni contactar NetSuite. Los ejemplos de versiones
+anteriores y las pruebas de Sandbox fechadas más abajo conservan su fecha.
+
+El RESTlet ofrece lectura y la acción acotada de aprobación en Sandbox. El
+User Event de órdenes prepara una notificación hacia el receptor local; recibir
+su acuse no guarda ni actualiza una orden del CRM. El emisor actual exige
+`persisted:false`; una futura respuesta `persisted:true` necesita cambiar y
+versionar el contrato, no solo agregar un escritor al backend. Ver
+[plan70](../../../../Arquitectura/70-Plan-Sincronizacion-Ordenes-NetSuite.md).
+
+La excepción temporal de credencial directa en `SS2_1_LIB_CRM_EnviarEvento.js`
+está presente en el código versionado por `fcbf0c2`. La recomendación histórica
+«no publicarlo con credencial» no prueba que el archivo actual carezca de ella.
+No copiar ese valor a documentación, ejemplos, capturas, paquetes compartidos ni
+logs. Sigue pendiente sustituir la excepción por API Secrets y revisar su
+tratamiento con el responsable; esta revisión no cambia o invalida credenciales.
+Los filtros de empaquetado/despliegue para `.env` no detectan secretos dentro de JS.
+
+La URL ngrok de ejemplo es una configuración de desarrollo fechada, no un túnel
+activo comprobado hoy. No se amplió su allowlist ni se probó recepción externa.
+Inventario/evidencia actuales en
+[72](../../../../Arquitectura/72-Reconciliacion-Documental-20261102.md).
 
 ## Contrato basico
 

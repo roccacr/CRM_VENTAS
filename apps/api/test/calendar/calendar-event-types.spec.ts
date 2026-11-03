@@ -5,7 +5,17 @@ import { CALENDAR_EVENT_TYPES, calendarEventTypesSchema, findCalendarEventType }
 const definition = { codigo: "nuevo_tipo", tipo: "Nuevo tipo", color: "#123456", modulos: ["formalizacion"] };
 describe("global event type configuration", () => {
     it("contains the requested stable codes and order", () => {
-        expect(CALENDAR_EVENT_TYPES.map((type) => type.codigo)).toEqual(["tarea", "reunion", "cita", "seguimiento"]);
+        expect(CALENDAR_EVENT_TYPES.map((type) => type.codigo)).toEqual(["tarea", "reunion", "cita", "seguimiento", "formalizacion_bancaria", "adendum"]);
+    });
+    it("restricts the five Formalización types without changing other modules", () => {
+        expect(
+            CALENDAR_EVENT_TYPES.filter((type) => type.modulos.some((module) => module === "formalizacion"))
+                .map((type) => type.codigo)
+                .sort(),
+        ).toEqual(["adendum", "formalizacion_bancaria", "reunion", "seguimiento", "tarea"]);
+        for (const module of ["ventas", "mercadeo", "contabilidad"]) {
+            expect(CALENDAR_EVENT_TYPES.filter((type) => type.modulos.some((allowed) => allowed === module)).map((type) => type.codigo)).toEqual(["tarea", "reunion", "cita", "seguimiento"]);
+        }
     });
     it("uses a single color for each type in all its configured modules", () => {
         for (const type of CALENDAR_EVENT_TYPES) for (const module of type.modulos) expect(findCalendarEventType(type.codigo, module)?.color).toBe(type.color);

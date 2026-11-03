@@ -71,18 +71,42 @@ it("does not offer an opening action if the client is missing", () => {
     expect(screen.queryByRole("button", { name: /^Ver cliente/ })).not.toBeInTheDocument();
     expect(getOrderClientDetail).not.toHaveBeenCalled();
 });
-it("offers the profile button, disabled until the profile screen exists, and active once it is given", () => {
-    const open = vi.fn();
+it("oculta el perfil sin permiso y enlaza por la identidad del lead cuando está permitido", async () => {
+    vi.mocked(getOrderClientDetail).mockResolvedValue({ ...detail, leadIdentity: { source: "legacy", id: "12" } });
     const view = render(<FormalizationClientDrawer item={order} open onClose={() => {}} />);
-    expect(screen.getByRole("button", { name: /Ver perfil del cliente/ })).toBeDisabled();
-    view.rerender(<FormalizationClientDrawer item={order} open onClose={() => {}} onOpenProfile={open} />);
-    fireEvent.click(screen.getByRole("button", { name: /Ver perfil del cliente/ }));
-    expect(open).toHaveBeenCalledOnce();
+    await screen.findByText("cliente@example.com");
+    expect(screen.queryByRole("link", { name: "Ver perfil del cliente" })).not.toBeInTheDocument();
+    view.rerender(<FormalizationClientDrawer item={order} open onClose={() => {}} effectivePermissions={[{ code: "lead.profile.read", effect: "allow" }]} />);
+    expect(screen.getByRole("link", { name: "Ver perfil del cliente" })).toHaveAttribute("href", "/perfil?source=legacy&id=12");
+    view.rerender(
+        <FormalizationClientDrawer
+            item={order}
+            open
+            onClose={() => {}}
+            effectivePermissions={[
+                { code: "lead.profile.read", effect: "allow" },
+                { code: "lead.profile.read", effect: "deny" },
+            ]}
+        />,
+    );
+    expect(screen.queryByRole("link", { name: "Ver perfil del cliente" })).not.toBeInTheDocument();
 });
 
-it("shows the linked history below capture and loads the next page without duplicates", async () => {
+it.each([
+    { source: "legacy" as const, id: "12", permissionSource: "role" },
+    { source: "legacy" as const, id: "12", permissionSource: "override" },
+    { source: "native" as const, id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", permissionSource: "role" },
+    { source: "native" as const, id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", permissionSource: "override" },
+])("enlaza el lead $source con permiso efectivo $permissionSource", async ({ source, id, permissionSource }) => {
+    vi.mocked(getOrderClientDetail).mockResolvedValue({ ...detail, leadIdentity: { source, id } });
+    const permissions = [{ code: "lead.profile.read", effect: "allow", source: permissionSource }];
+    render(<FormalizationClientDrawer item={order} open onClose={() => {}} effectivePermissions={permissions} />);
+    expect(await screen.findByRole("link", { name: "Ver perfil del cliente" })).toHaveAttribute("href", `/perfil?source=${source}&id=${id}`);
+});
+
+it("reserva el historial y los datos comerciales para la página de perfil, fuera de la orden", async () => {
     const entry = { id: "legacy:1", source: "legacy", action: "Seguimiento", detail: "Nota histórica", reason: { code: "legacy:58", name: "Cierre Firmado" }, actorName: null, actorCoverage: "current_directory", occurredAt: null, sourceDate: "2026-10-01 10:00:00", recordedAt: null, evidence: "legacy_observation", fromStatus: null, toStatus: null };
-    const groups = [...detail.groups, { title: "Captación y seguimiento", fields: [] }];
+    const groups = [...detail.groups, { title: "Información comercial", fields: [{ label: "Proyecto", value: "Proyecto exclusivo del perfil" }] }, { title: "Captación y seguimiento", fields: [{ label: "Campaña", value: "Campaña exclusiva del perfil" }] }];
     vi.mocked(getOrderClientDetail)
         .mockResolvedValueOnce({ ...detail, groups, history: { items: [entry], hasMore: true, nextCursor: "cursor" } })
         .mockResolvedValueOnce({ ...detail, groups, history: { items: [entry, { ...entry, id: "native:2", source: "native", detail: "Cambio nuevo", actorName: "Ana", actorCoverage: "at_event" }], hasMore: false, nextCursor: null } });

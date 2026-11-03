@@ -98,4 +98,16 @@ describe("Unit Files visual comparison", () => {
         const { container } = render(<UnitFilesComparison items={[makeUnit("AM-1", "100", "0"), makeUnit("AM-2", "100.0", "0")]} labels={labels} groups={groups} />);
         expect(container.querySelector("[data-rank]")).toBeNull();
     });
+    it.each(["  https://rocca.box.com/s/example  ", "invalid", null])("renders expediente links in comparison: %s", (value) => {
+        const unit = makeUnit("A", "10", "20");
+        render(<UnitFilesComparison items={[{ ...unit, values: { unitPlans: value } }]} labels={{ unitPlans: "Planos" }} groups={[{ title: "Documentación", fields: ["unitPlans"] }]} />);
+        if (value?.trim().startsWith("https://")) {
+            const link = screen.getByRole("link", { name: "Ver expediente" });
+            expect(link).toHaveAttribute("href", value.trim());
+            expect(link).toHaveAttribute("title", value.trim());
+        } else {
+            expect(screen.getByText(value ?? "—")).toBeInTheDocument();
+            expect(screen.queryByRole("link")).toBeNull();
+        }
+    });
 });

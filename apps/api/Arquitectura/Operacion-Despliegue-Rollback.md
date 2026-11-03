@@ -1,5 +1,22 @@
 # Operacion, despliegue y rollback
 
+## Artefactos actuales y límite de aceptación - 2026-11-02
+
+El repositorio sí contiene configuración de despliegue: el runbook de
+[Habita](../../../deploy/habita/README.md) reúne Apache, PM2/systemd, activación,
+verificación y rollback. Por ello no se interpreta como estado actual la ausencia
+de supervisor descrita en el corte27 inferior. El registro del29 identifica una
+release histórica; ni ese registro ni el último commit prueban qué está ejecutando
+hoy el servidor. Esta revisión no abre SSH, reinicia procesos ni publica archivos.
+
+Notas incluye gateway y workers durables; un proxy debe conservar WebSocket y la
+configuración single/Redis elegida. Redis multinodo y aceptación con dos cuentas
+no se dan por probados por tener plantillas. La configuración del receptor local
+NetSuite está limitada a desarrollo y responde `persisted:false`; no activarla
+en producción ni cambiar Sandbox por inferencia. Los secretos temporales dentro
+del emisor requieren el tratamiento documentado en el README SuiteScript antes
+de considerar seguro un paquete productivo; no se rotan credenciales compartidas aquí.
+
 ## Revision de operacion - 2026-10-27
 
 Codigo registrado: seguimiento/timing y send/revert/set-stage de Formalizacion,
@@ -34,7 +51,7 @@ esquemas y Mercadeo; no se ha ensayado despliegue/restore de este checkout.
 
 - Node.js 22 compatible con `engines` y pnpm 10.28.2 (version fijada en `packageManager` y CI). API y frontend tienen instalaciones y lockfiles independientes; no hay workspace Node raiz.
 - Desde `apps/api`, `pnpm install --frozen-lockfile` instala la version congelada; `pnpm build` compila TypeScript a `dist/`. El artefacto inspeccionado contiene `dist/main.js`; verificar esa salida en el build limpio del release.
-- `pnpm dev` ejecuta `tsx watch src/main.ts` para desarrollo. No hay script `start` ni configuracion PM2/systemd/supervisor en el inventario inspeccionado. Para produccion, el responsable debe configurar el supervisor para ejecutar Node sobre `dist/main.js`, con directorio de trabajo `apps/api`, entorno explicito y dependencias de runtime disponibles. Estos son requisitos de entrega, no un supervisor instalado.
+- `pnpm dev` ejecuta `tsx watch src/main.ts` para desarrollo. No hay script `start`; existen plantillas PM2/systemd en `deploy/habita`. Para producción se sigue el runbook de esa entrega, con `node dist/main.js`, directorio `apps/api`, entorno explícito y dependencias disponibles. La existencia de la plantilla no demuestra que un supervisor esté instalado ni autoriza ejecutarlo.
 - Definir servicio/cuenta de privilegios minimos, reinicio con backoff, captura/rotacion de stdout/stderr, cierre por SIGTERM/SIGINT y tiempo de gracia. `main.ts` habilita shutdown hooks y `DatabaseService.onModuleDestroy` cierra Kysely/pool. El supervisor, proxy, certificados HTTPS y tiempos de gracia aun requieren validacion operacional.
 - `API_BIND_HOST` predeterminado `127.0.0.1`, `PORT` 3000. Publicar solo mediante la infraestructura aprobada; `TRUSTED_PROXY_IPS` debe contener exclusivamente proxies reales, nunca confianza global.
 

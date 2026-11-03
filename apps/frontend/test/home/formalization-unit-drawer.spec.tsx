@@ -90,3 +90,14 @@ it("ignores a stale rejection after changing the selected order", async () => {
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 });
+
+it.each(["https://rocca.box.com/s/example", "invalid", "Sin dato"])("renders the expediente safely: %s", async (value) => {
+    vi.mocked(getOrderUnitDetail).mockResolvedValue({ groups: [{ title: "Planos", fields: [{ label: "Planos de la unidad (referencia de origen)", value, kind: "expediente" }] }], warnings: [] });
+    render(<FormalizationUnitDrawer item={order} open onClose={() => {}} />);
+    if (value.startsWith("https://")) {
+        expect(await screen.findByRole("link", { name: "Ver expediente" })).toHaveAttribute("href", value);
+    } else {
+        expect(await screen.findByText(value === "Sin dato" ? "—" : value)).toBeInTheDocument();
+        expect(screen.queryByRole("link")).toBeNull();
+    }
+});

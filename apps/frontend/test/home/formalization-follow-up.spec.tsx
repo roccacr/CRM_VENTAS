@@ -348,7 +348,8 @@ it("revalidates only the committed CRM order and preserves provider details afte
     const data = payload("RDR673");
     vi.mocked(apiRequest).mockImplementation((path) => {
         if (path.endsWith("/netsuite")) return Promise.resolve({ schemaVersion: 1, order: { source: "legacy", id: "legacy:208", netsuiteId: "11998725" }, data: { status: 200, data: { id: "11998725", type: "salesorder", fields: { initialtranid: "RDR673", currencyname: "US Dollar" } } } });
-        if (path.endsWith("/database")) return Promise.resolve({ schemaVersion: 1, observedAt: "2026-10-27T22:00:00Z", source: "legacy", order: {}, lead: null, contact: null, unitFile: null, references: [], warnings: [] });
+        if (path.endsWith("/database"))
+            return Promise.resolve({ schemaVersion: 1, observedAt: "2026-10-27T22:00:00Z", source: "legacy", order: {}, lead: null, contact: null, unitFile: null, references: [], warnings: [], detail: { sections: [{ title: "Registro", fields: [{ code: "stage", label: "Etapa guardada", value: `BD guardada: ${String(committed)}`, kind: "text" }] }], currency: null, client: { name: null, identification: null, phone: null, email: null, advisor: null, identity: null }, warnings: [] } });
         if (path === "/formalization/orders/stage") {
             committed = true;
             return Promise.resolve({ source: "legacy", id: "208", state: "contract_pending_signature", sequence: 1, replayed: false });
@@ -358,14 +359,18 @@ it("revalidates only the committed CRM order and preserves provider details afte
     });
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[detail, allow, { code: "formalizacion.orders.stage.update", effect: "allow" }, { code: "formalizacion.orders.stage.contract_pending_signature", effect: "allow" }, { code: "formalizacion.orders.stage.bank_management", effect: "allow" }]} />);
     const advance = await screen.findByRole("button", { name: "Marcar como enviado" });
-    const providerReads = () => vi.mocked(apiRequest).mock.calls.filter(([path]) => path.endsWith("/netsuite") || path.endsWith("/database")).length;
+    const providerReads = () => vi.mocked(apiRequest).mock.calls.filter(([path]) => path.endsWith("/netsuite")).length;
+    const databaseReads = () => vi.mocked(apiRequest).mock.calls.filter(([path]) => path.endsWith("/database")).length;
     const recordReads = () => vi.mocked(apiRequest).mock.calls.filter(([path]) => path === "/formalization/orders/legacy/208/record").length;
+    const beforeDatabase = databaseReads();
     const before = providerReads();
     const beforeRecord = recordReads();
     fireEvent.click(advance);
     fireEvent.click(await screen.findByRole("button", { name: "Confirmar cambio" }));
     await screen.findByText("Estado guardado y verificado correctamente.");
+    await screen.findByText("BD guardada: true");
     expect(providerReads()).toBe(before);
+    expect(databaseReads()).toBe(beforeDatabase + 1);
     expect(recordReads()).toBe(beforeRecord + 1);
     expect(reads().some(([path]) => path.includes("recordId="))).toBe(false);
     expect(screen.queryByText("Cargando datos de la orden…")).toBeNull();

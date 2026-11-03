@@ -1,6 +1,35 @@
 # AGENTS.md - CRM Enterprise Frontend
 
-## Estado vigente de notas y QA - 2026-10-29
+## Corte vigente contrastado - 2026-11-02
+
+Consultar primero [30 - Inventario frontend](Arquitectura/30-Estado-Frontend-Verificado.md)
+y la [ley frontend](Arquitectura/00-Producto-CRM-TINK-y-P0-Frontend.md), sujetos a
+la ley API. El mapa real incluye auth, administration, home, marketing, calendar
+y notes; sus servicios reutilizan el cliente BFF. Los árboles de carpetas y
+dependencias futuros conservados abajo no se deben instalar ni construir por
+inferencia documental.
+
+Formalización conecta seguimiento, ficha exacta, etapa, aprobación, actividad,
+cliente/unidad/bitácora y capítulos confirmados NetSuite de solo lectura. El
+payload NetSuite alimenta los campos mapeados; únicamente sus logs son DEV.
+No volver a describir esos campos como una muestra de `RECORD_EXAMPLE`.
+Los modelos históricos de acciones no entregan edición general, firma,
+documentación, validación de saldo/llaves ni cartera de responsables.
+
+Calendario global se monta en los cuatro módulos operativos con permisos,
+formulario nativo, invitados/relaciones CRM y panel diario; no es menú vacío ni
+maqueta. Teams/correos se registran como datos, sin llamadas Graph o envíos.
+Notas usan Select con búsqueda para vincular cliente/lead y orden; la identidad
+incluye tipo/origen/ID y no depende del módulo/URL. Consultar [68 notas](../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+Invitar a la nota no concede lectura del registro. No inventar rutas de ficha
+de Leads/Ventas/Contabilidad que no estén registradas.
+
+El HEAD revisado es `fcbf0c2`. Los cambios locales de indicadores y plan70 no
+implementan sincronización duradera ni una vista React por existir en disco.
+Los resultados de QA del 29 se conservan como evidencia histórica; esta revisión
+documental no los vuelve a ejecutar ni acredita producción/BD/Redis/Outlook.
+
+## Antecedente de notas y QA - 2026-10-29
 
 Las notas personales y colaborativas están conectadas: creación desde el shell,
 Drawer, invitaciones, conversación, menciones, campana interna y actualización
@@ -39,11 +68,11 @@ El corte siguiente es histórico y está sustituido por el estado vigente del 29
 En particular, compartir/campana ya no están pendientes y Calendario global tiene
 ruta y consumidores propios; los límites históricos no eliminan esas funciones.
 
-## Current implementation precedence - 2026-10-27
+## Historical implementation snapshot - 2026-10-27
 
 Read [30 - Verified frontend state](Arquitectura/30-Estado-Frontend-Verificado.md) before the older snapshots below. Marketing capture is a connected cohort report, with Hoy/Semana/Mes/Trimestre/Año, KPIs, stacked seller chart, project selection, modal breakdown and PNG/browser-print PDF export. Its loader is the local static CaptureLoading component. Eventos y citas and its permission have been retired; Calendario remains a menu-only Marketing item. Formalization Home/Gestion now read canonical follow-up and offer a separately permissioned stage command; calendar/summary previews and the explicitly labeled Primary information sample remain simulations. Existing claims below about empty queues or unavailable follow-up are historical and do not authorize removing the implemented consumers. No permission bypass by Owner, no legacy imports, no new integration scope.
 
-## Current implementation precedence - 2026-10-23
+## Historical implementation snapshot - 2026-10-23
 
 The installed runtime uses React/Vite/TypeScript, Ant Design, DataTables/SearchPanes, typed fetch services and project CSS. TanStack Query, Zustand, React Hook Form, Tailwind and Radix/shadcn guidance below is a future blueprint, not a requirement to add dependencies or replace working patterns. Reuse the installed services/hooks/forms unless a scoped decision authorizes migration.
 

@@ -1,5 +1,29 @@
 # 01 - Resumen API
 
+## Resumen vigente de código - 2026-11-02
+
+El monolito NestJS registra Identidad/BFF, permisos, auditoría, siete catálogos,
+resúmenes y comandos acotados de Formalización, dos reportes de Mercadeo,
+Calendario compartido y Notas colaborativas. El inventario de rutas/servicios
+está en [22](22-Mapa-de-Implementacion-API.md); los cortes inferiores conservan
+su fecha, sin retirar ampliaciones posteriores.
+
+Notas agrega vínculos autorizados a lead/orden sobre `crm_note_link` existente
+([68 notas](68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md)); Calendario incluye
+`GET /calendar/lookup`, participantes internos/correos y vínculos nativos/legacy
+([68 calendario](68-Calendario-Participantes-y-Vinculos.md)). Ninguno concede
+acceso al registro comercial por recibir una invitación. Mercadeo admite la
+capacidad adicional `mercadeo.reports.read_all`, sin sustituir el permiso de vista
+([69](69-Mercadeo-Lectura-Global.md)).
+
+La aprobación de Formalización tiene escritura ERP acotada según
+[63](63-Aprobacion-Formalizacion-NetSuite.md). Es diferente del receptor local
+de eventos NetSuite, que solo valida y responde `persisted:false`; el escritor
+de sincronización general del [plan70](70-Plan-Sincronizacion-Ordenes-NetSuite.md)
+sigue pendiente. Las columnas locales057 no activan ese flujo. No hay CRUD HTTP
+general de Leads/oportunidades/estimaciones, Outlook/Teams operativo ni copia de
+notas a legacy. Esta revisión es estática, no aceptación de servicios externos.
+
 ## Runtime inspeccionado - 2026-10-27
 
 `src/app.module.ts` registra tambien `ContractTransitionModule` y `NetsuiteModule`.

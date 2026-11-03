@@ -1,5 +1,24 @@
 # 14 - Diccionario de Datos y Modulos
 
+## Catálogo físico vigente - 2026-11-02
+
+El inventario físico se contrasta con las migraciones registradas y los tipos de
+`src/database/database.types.ts`, no con nombres plurales ilustrativos de los
+blueprints. Identidad y catálogos dedicados conservan sus diccionarios; Leads,
+motivos/historia están en [43](43-Leads-Esquema-Nativo.md)/[44](44-Bitacora-Legacy-y-Timeline.md),
+órdenes en [39](39-Diccionario-Ordenes-Venta.md) y etapas/tiempos en
+[52](52-Etapas-Responsables-y-Tiempos.md). El diccionario de notas
+[12](Diccionario-Datos/12-Notas-Colaborativas.md) incluye sus extensiones,
+workflow y uso de vínculos secundarios sin una tabla duplicada.
+
+Calendario base034 se complementa con051/054/055: detalles, tipos y vínculos
+calificados por fuente ([64](64-Calendario-Global-API-y-Contexto.md),
+[68 calendario](68-Calendario-Participantes-y-Vinculos.md)). La ampliación057 de
+siete indicadores operativos es local en este checkout y no crea un escritor de
+sincronización. Las secciones del20/22 siguientes describen el corte histórico
+de esquema/persistencia, no retiran comandos acotados de Formalización ni Notas
+o Calendario posteriores. No hubo inspección live de metadata en esta revisión.
+
 Revision documental 2026-10-22: diseno comercial futuro y evidencia historica; tablas, rutas y reglas propuestas no acreditan runtime operativo. Ver [36 - Estado vigente y registro](36-Registro-Entrega-Administracion.md) para implementacion y limites actuales. Identidad/Administracion, consulta de expedientes y contador de aprobaciones tienen contratos propios; no habilitan Leads ni mutaciones HTTP de ordenes.
 
 Ampliacion autorizada de ordenes de venta (20/10/2026):

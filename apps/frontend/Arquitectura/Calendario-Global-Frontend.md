@@ -1,5 +1,29 @@
 # Calendario global por módulo
 
+## Corte contrastado - 2026-11-02
+
+La implementación actual conserva el formulario ampliado y metadatos descritos
+en el corte29/10 siguiente. Rutas: `/home/{formalization,marketing,sales,accounting}/calendar`.
+`SharedCalendarPage` reutiliza el mismo dominio y sólo solicita módulos/rangos
+autorizados; `calendar-service.ts` valida descriptores, eventos y lookup.
+El tipo no se inventa en React y el servidor entrega capacidades efectivas.
+
+`CalendarDayPanel` presenta la jornada 07:00–22:00, eventos ya cargados y el horario
+del borrador, excluyendo la propia identidad al editar y eventos cancelados.
+No consulta disponibilidad externa, no reserva espacio ni cambia el evento al
+arrastrar. El resumen/agenda se deriva del intervalo autorizado recibido y no
+constituye un reporte histórico completo de toda la organización.
+
+El formulario captura invitados y relaciones CRM; `selectionOptions` aporta las
+etiquetas autorizadas de selecciones persistidas, sin añadirse al POST/PATCH.
+Las relaciones restringidas se preservan omitiendo `links`, no enviando `[]`.
+Las invitaciones de lectura pueden presentarse sin capacidad de modificar el
+calendario origen. Todo ello conserva la distinción entre invitación CRM y acceso
+al registro relacionado; no envía correo ni crea Teams/Outlook.
+
+No hay ejecución nueva de BD ni aceptación externa en esta conciliación. El
+resultado actual de checks está separado del QA histórico que figura abajo.
+
 ## Corte vigente — formulario ampliado 2026-10-29
 
 El tipo aparece primero, es obligatorio y empieza sin selección. Le siguen el

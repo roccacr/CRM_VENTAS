@@ -1,5 +1,30 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+
+Ampliación solicitada el 2026-11-02: [perfil completo del lead](77-Perfil-Completo-Lead.md), lectura federada y permiso global; migración060 preparada, sin aplicación ni despliegue.
+## Reconciliación de alcance — 2026-11-02
+
+El inventario de implementación y evidencia vigente está en
+[72](72-Reconciliacion-Documental-20261102.md) y el mapa[22](22-Mapa-de-Implementacion-API.md).
+Las ampliaciones expresamente solicitadas en los cortes anteriores se conservan:
+notas con relaciones comerciales y permisos independientes, calendario con
+participantes/vínculos, capítulos reales de ficha NetSuite/BD y lectura global
+de Mercadeo. No se restablecen pausas históricas sobre esas funciones registradas.
+
+La integración actual de eventos NetSuite es exclusivamente recepción local
+de Sandbox en development con prueba de máquina y `persisted:false`.
+[Plan70](70-Plan-Sincronizacion-Ordenes-NetSuite.md) no acredita un escritor
+durable ni autoriza por su lectura una mutación. Las columnas057 presentes en
+cambios locales tampoco implementan su ingestión, mapeo completo o cambio de etapa.
+Una orden tiene una fuente autoritativa; nunca importar leads/órdenes legacy
+ni escribir ambas bases por inferencia de una actualización documental.
+
+Las funciones operativas todavía abiertas permanecen en
+[Pendiente Roberto](../../../Pendiente%20Roberto.md). El recibo Habita del29
+conserva su fecha; no acredita despliegue del HEAD o de los cambios locales de
+este corte. Esta revisión no amplía permisos, modifica datos/configuración,
+envía avisos externos, ejecuta DDL ni certifica aceptación productiva.
+
 ## Corte documental vigente - 2026-10-29
 
 Las ampliaciones de notas solicitadas por el propietario estan implementadas en

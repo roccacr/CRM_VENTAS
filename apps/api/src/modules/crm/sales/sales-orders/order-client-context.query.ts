@@ -7,6 +7,7 @@ import { displayHistoryEntry } from "../../leads/lead-history-reader.js";
 
 type Row = Record<string, unknown>;
 type Snapshot = { source: "native" | "legacy"; lead: { sourceFields: Row } | null };
+type LinkedLegacyLead = { id: string; reference: string | null };
 const cursorSchema = z.object({ lead: z.string(), before: z.string().max(40), key: z.string().max(100) }).strict();
 export interface ClientHistoryItem {
     id: string;
@@ -42,6 +43,25 @@ function readCursor(value: string | undefined, lead: string) {
     } catch {
         throw new BadRequestException("Cursor de historial invalido para el cliente.");
     }
+}
+interface ClientContextOptions {
+    legacyEnabled: boolean;
+    cursor?: string;
+    linkedLegacyLead?: LinkedLegacyLead;
+    resolvedIdentity?: boolean;
+}
+async function resolvedScope(tx: Transaction<CrmDatabase>, data: Snapshot, linkedLegacyLead?: LinkedLegacyLead) {
+    const nativeId = data.source === "native" ? String(data.lead?.sourceFields.id_lead) : "";
+    const legacyId = data.source === "legacy" ? String(data.lead?.sourceFields.id_lead) : (linkedLegacyLead?.id ?? "");
+    // El perfil completo ya resolvió la identidad; no expandir vínculos obsoletos o transitivos.
+    return (await sql<{ id: string; source: string; sourceId: string }>`SELECT r.id_record AS id,r.source_schema_record AS source,r.source_id_record AS sourceId FROM audit_record r WHERE r.entity_type_record='lead' AND ((r.source_schema_record='CRM_THINK_V2' AND r.source_table_record='crm_lead' AND r.source_id_record=${nativeId}) OR (r.source_schema_record='crmdatabase-api' AND r.source_table_record='leads' AND r.source_id_record=${legacyId})) LIMIT 3`.execute(tx)).rows;
+}
+async function contextScope(tx: Transaction<CrmDatabase>, data: Snapshot, options: ClientContextOptions) {
+    return options.resolvedIdentity ? resolvedScope(tx, data, options.linkedLegacyLead) : scope(tx, data);
+}
+async function contextReference(tx: Transaction<CrmDatabase>, data: Snapshot, records: Awaited<ReturnType<typeof scope>>, options: ClientContextOptions) {
+    if (!options.resolvedIdentity) return legacyReference(tx, data, records, options.legacyEnabled);
+    return options.linkedLegacyLead?.reference ?? (data.source === "legacy" ? data.lead?.sourceFields.idinterno_lead : null);
 }
 async function scope(tx: Transaction<CrmDatabase>, data: Snapshot) {
     const nativeId = data.source === "native" ? String(data.lead?.sourceFields.id_lead) : "";
@@ -126,13 +146,14 @@ function historyPage(rows: Row[], identity: string) {
     return { items: page.map(displayClientHistory), hasMore: rows.length > 50, nextCursor: rows.length > 50 && last ? Buffer.from(JSON.stringify({ lead: identity, before: String(last.sortAt), key: String(last.eventKey) })).toString("base64url") : null };
 }
 /** One bounded cross-source page. Scope is derived only from the authorized order's lead and explicit historical links. */
-export async function readOrderClientContext(tx: Transaction<CrmDatabase>, data: Snapshot, options: { legacyEnabled: boolean; cursor?: string }) {
+export async function readOrderClientContext(tx: Transaction<CrmDatabase>, data: Snapshot, options: ClientContextOptions) {
     const lead = data.lead?.sourceFields;
     const identity = data.source + ":" + String(lead?.id_lead);
     const cursor = readCursor(options.cursor, identity);
     if (!lead?.id_lead) return { status: normalizeLeadStatus(data.source, null), followUpReason: null, history: { items: [], hasMore: false, nextCursor: null } };
-    const records = await scope(tx, data);
-    const reference = await legacyReference(tx, data, records, options.legacyEnabled);
+    const records = await contextScope(tx, data, options);
+    // El perfil completo ya verificó ambos extremos; no volver a inferir la relación por el historial.
+    const reference = await contextReference(tx, data, records, options);
     const parts = [nativeQuery(records.map((record) => record.id))];
     if (reference !== null)
         parts.push(

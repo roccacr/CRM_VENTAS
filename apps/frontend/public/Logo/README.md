@@ -1,5 +1,13 @@
 # Logo ROCCA
 
+## Referencias revisadas — 2026-11-02
+
+Se confirmó en el código actual que `index.html` referencia los favicons PNG/SVG
+y LoginPage, GlobalHomeShell y AuthStateScreens usan `/Logo/rocca-concept.png`.
+No se regeneraron imágenes ni se midieron peso, transparencia, accesibilidad
+visual o nitidez en esta revisión; la procedencia inferior conserva su fecha.
+Inventario y límites: [72](../../../api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
+
 ## Referencias verificadas - 2026-10-22, corte f2dc4f1
 
 `index.html` declara los favicons PNG y SVG locales. LoginPage, GlobalHomeShell y AuthStateScreens referencian `/Logo/rocca-concept.png`; el SVG oficial esta conservado como alternativa. Se verificaron archivos y referencias, no calidad visual, nitidez, transparencia real ni optimizacion de peso mediante una medicion nueva. La procedencia y fecha de generacion siguientes conservan su registro historico; no son una certificacion de marca ni una aprobacion nueva.

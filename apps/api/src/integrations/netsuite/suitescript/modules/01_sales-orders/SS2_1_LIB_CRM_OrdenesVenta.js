@@ -51,7 +51,7 @@ define([
      * @returns {object} 200 con campos y lineas, o 422 si supera el limite de lineas.
      * @throws {SuiteScriptError} Errores del proveedor (p. ej. RCRD_DSNT_EXIST); readById los traduce.
      */
-    function getSalesOrderById(id) {
+    function getSalesOrderById(id, eventProjection = false) {
         const order = loadRecord(RECORD_TYPES.SALES_ORDER, id);
 
         // Si excede el limite de lineas se corta antes de construir el resto de la respuesta.
@@ -62,12 +62,39 @@ define([
         // Los lectores se crean una sola vez y se reutilizan en cada mapa.
         const readValue = bodyValue(order);
         const readText = bodyText(order);
+        let projection = {};
+        if (eventProjection) {
+            // DATE representa calendario del record, no un instante UTC ni texto dependiente de preferencias.
+            const date = readValue("trandate");
+            if (!date || typeof date.getTime !== "function" || !Number.isFinite(date.getTime()))
+                throw new Error("transaction_date_unavailable");
+            // El legado usa el primer integrante de salesteam; salesrep no es su fuente de id_ov_admin.
+            const team = SCHEMA.eventOwner;
+            const owner =
+                order.getSublists().includes(team.sublist) && order.getLineCount({ sublistId: team.sublist }) > 0
+                    ? order.getSublistValue({ sublistId: team.sublist, fieldId: team.field, line: 0 })
+                    : null;
+            projection = {
+                ...mapFields(SCHEMA.eventValues, readValue),
+                crm_owner_employee: owner === null ? null : String(owner),
+                crm_sync_projection: 1,
+                crm_transaction_date: [
+                    date.getFullYear(),
+                    String(date.getMonth() + 1).padStart(2, "0"),
+                    String(date.getDate()).padStart(2, "0"),
+                ].join("-"),
+            };
+        }
 
         return {
             ...ok({
                 type: RECORD_TYPES.SALES_ORDER,
                 id,
-                fields: { ...mapFields(SCHEMA.bodyValues, readValue), ...mapFields(SCHEMA.bodyTexts, readText) },
+                fields: {
+                    ...mapFields(SCHEMA.bodyValues, readValue),
+                    ...mapFields(SCHEMA.bodyTexts, readText),
+                    ...projection,
+                },
                 sublists: { item: items },
             }),
             MOTIVO_COMPRA: null, // Fuente aun no confirmada por el propietario del proceso.
@@ -138,5 +165,6 @@ define([
         put: (request) => runAction(request, { approveFormalization }),
         // Lo consume NotificarCambio para construir el snapshot del evento.
         getSalesOrderById,
+        getSalesOrderEventById: (id) => getSalesOrderById(id, true),
     });
 });

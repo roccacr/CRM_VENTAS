@@ -1,5 +1,29 @@
 # 04 - API Client y Estado
 
+## Contrato implementado contrastado - 2026-11-02
+
+`api-client.ts` conserva BFF, cookie/CSRF y generación de sesión. Solo una lectura
+GET con 503 puede repetirse una vez tras 500ms; no repite escrituras inciertas.
+401 o el 409 específico de sesión con permisos obsoletos coordinan un refresh
+compartido. Un cambio de contexto autenticado impide recuperar/repetir una
+operación de la generación anterior. Los conflictos de negocio no se confunden
+con renovación de sesión. `retryOnUnauthorized:false` protege comandos cuyo
+reintento controlan sus formularios mediante operationId y versión.
+
+Los grupos actuales de servicios son identidad, catálogos, Mercadeo,
+Formalización, calendario y notas, además del transporte común. Formalización
+consulta proyección CRM y NetSuite para capítulos confirmados, cliente/unidad
+e historia; no persiste ese payload ni utiliza valores del fixture de diseño.
+Notas revalida resúmenes de recursos y administra links versionados; sus avisos
+se invalidan mediante socket y se reconcilian por REST. Calendario envía las
+identidades de invitados/links, no sus etiquetas de presentación ni privilegios.
+Inventario de rutas/contratos: [30](30-Estado-Frontend-Verificado.md).
+
+Las reglas de ocultar estructuras proveedor se mantienen para la UI general;
+la proyección explícita `netsuite-primary.ts` es el adaptador de lectura acotado
+ya aprobado, con campos confirmados y acceso únicamente a través del API.
+No autoriza consultas directas a ERP/BD, sincronización duradera o edición general.
+
 Estado implementado 2026-10-27: [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md). Los ejemplos de fases futuras siguientes no sustituyen los reportes conectados ni los comandos acotados ya presentes.
 
 ## Vigencia documental - 2026-10-22, corte f2dc4f1

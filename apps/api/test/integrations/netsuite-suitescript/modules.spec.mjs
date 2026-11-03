@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { loadAmd, logMock, nsError, READY, recordMock, runtimeMock, searchMock } from "./amd-harness.mjs";
+import { EVENT_PROVIDERS, EVENT_TEST_ID, loadAmd, logMock, nsError, READY, recordMock, runtimeMock, searchMock } from "./amd-harness.mjs";
 
 const SALES_ORDERS = "modules/01_sales-orders/SS2_1_LIB_CRM_OrdenesVenta.js";
 const throwing = (error) => () => {
@@ -174,9 +174,9 @@ describe("salesOrders PUT approveFormalization", () => {
 });
 
 describe("module surface", () => {
-    it("exports exactly get, put and the snapshot reader, frozen", () => {
+    it("exports get, put and the separate GET/event snapshot readers, frozen", () => {
         const { orders } = ordersFixture();
-        expect(Object.keys(orders).sort()).toEqual(["get", "getSalesOrderById", "put"]);
+        expect(Object.keys(orders).sort()).toEqual(["get", "getSalesOrderById", "getSalesOrderEventById", "put"]);
         expect(Object.isFrozen(orders)).toBe(true);
     });
     it.each([["modules/02_leads/SS2_1_LIB_CRM_Leads.js"], ["modules/03_estimates/SS2_1_LIB_CRM_Estimaciones.js"]])("%s stays reserved (501) and spends nothing", (path) => {
@@ -281,11 +281,20 @@ describe("RESTlet entry point (integrated)", () => {
 });
 
 describe("Sales order event snapshot", () => {
+    it("rejects a mixed snapshot when money changes in the same source minute", () => {
+        const first = recordMock({ fields: { custbody13: 100 } });
+        const second = recordMock({ fields: { custbody13: 200 } });
+        first.load.mockReturnValueOnce(first.rec).mockReturnValueOnce(second.rec);
+        const https = { createSecureString: () => "opaque", post: vi.fn(() => ({ code: 200, body: JSON.stringify({ schemaVersion: 2, received: true, persisted: true, eventId: EVENT_TEST_ID, netsuiteId: "7" }) })) };
+        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": first, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
+        entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 7 } });
+        expect(https.post.mock.calls.length).toBe(0);
+    });
     it("sends item lines as an ordered array while the GET keeps the line-keyed object", () => {
         const record = recordMock({ lineCount: 3 });
         const sent = [];
-        const https = { createSecureString: (a) => a.input, post: vi.fn((o) => (sent.push(JSON.parse(o.body)), { code: 200, body: JSON.stringify({ schemaVersion: 1, received: true, persisted: false, netsuiteId: "7" }) })) };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
+        const https = { createSecureString: (a) => a.input, post: vi.fn((o) => (sent.push(JSON.parse(o.body)), { code: 200, body: JSON.stringify({ schemaVersion: 2, received: true, persisted: true, eventId: EVENT_TEST_ID, netsuiteId: "7" }) })) };
+        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
         entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 7 } });
         const item = sent[0].snapshot.data.sublists.item;
         expect(Array.isArray(item)).toBe(true);
@@ -297,34 +306,38 @@ describe("Sales order event snapshot", () => {
     it("passes a failed snapshot through unchanged", () => {
         const record = recordMock({ lineCount: 1001 });
         const https = { createSecureString: (a) => a.input, post: vi.fn() };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
+        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
         entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 7 } });
-        expect(https.post).not.toHaveBeenCalled();
+        expect(https.post.mock.calls.length).toBe(0);
     });
 });
 
 describe("User Event entry point (integrated)", () => {
-    const RECEIPT = JSON.stringify({ schemaVersion: 1, received: true, persisted: false, netsuiteId: "214" });
-    function userEvent({ runtime = runtimeMock(), record = recordMock(), post = () => ({ code: 200, body: RECEIPT }), log = logMock() } = {}) {
+    const RECEIPT = JSON.stringify({ schemaVersion: 2, received: true, persisted: true, eventId: EVENT_TEST_ID, netsuiteId: "214" });
+    function userEvent({ runtime = runtimeMock(), record = recordMock(), post = () => ({ code: 200, body: RECEIPT }), log = logMock(), search = searchMock() } = {}) {
         const https = { createSecureString: vi.fn((arg) => arg.input), post: vi.fn(post) };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", {
-            "N/runtime": runtime,
-            "N/record": { load: record.load, submitFields: record.submitFields },
-            "N/search": searchMock(),
-            "N/log": log,
-            "N/https": https,
-        });
+        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": search, "N/log": log, "N/https": https });
         return { entry, https, record, log };
     }
     const save = (type = "salesorder", id = 214, eventType = "edit") => ({ type: eventType, newRecord: { type, id } });
 
-    it("delivers a saved sales order: one load, one POST, one debug log, no writes", () => {
+    it("does not emit a mixed snapshot if NetSuite changes during record.load", () => {
+        let n = 0;
+        const search = { lookupFields: () => ({ ...Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((field) => [field, false])), lastmodifieddate: n++ === 0 ? "2026-11-02T20:00:00.000Z" : "2026-11-02T20:00:01.000Z" }) };
+        const f = userEvent({ search });
+        f.entry.afterSubmit(save());
+        expect(f.https.post).not.toHaveBeenCalled();
+        expect(f.log.error.mock.calls[0][0].details.status).toBe("snapshot_changed");
+    });
+    it("delivers a saved sales order: two consistent order loads, one POST, no writes", () => {
         const { entry, https, record, log } = userEvent();
         entry.afterSubmit(save());
-        expect(record.load).toHaveBeenCalledOnce();
+        expect(record.load).toHaveBeenCalledTimes(2);
+        expect(record.load).toHaveBeenNthCalledWith(1, { type: "salesorder", id: "214", isDynamic: false });
         expect(record.submitFields).not.toHaveBeenCalled();
         expect(https.post).toHaveBeenCalledOnce();
         expect(JSON.parse(https.post.mock.calls[0][0].body).snapshot.data.id).toBe("214");
+        expect(JSON.parse(https.post.mock.calls[0][0].body).snapshot.data.fields.crm_owner_employee).toBe("70");
         expect(https.post.mock.calls[0][0].url.endsWith("/integrations/netsuite/local/order-events")).toBe(true);
         expect(log.debug).toHaveBeenCalledOnce();
         expect(log.debug.mock.calls[0][0].details).toMatchObject({ module: "salesOrders", status: "received_local", delivered: true });
@@ -337,14 +350,14 @@ describe("User Event entry point (integrated)", () => {
     it("does not read the order or post when the record cannot be loaded", () => {
         const { entry, https, log } = userEvent({ record: recordMock({ loadError: nsError("RCRD_DSNT_EXIST") }) });
         expect(() => entry.afterSubmit(save())).not.toThrow();
-        expect(https.post).not.toHaveBeenCalled();
+        expect(https.post.mock.calls.length).toBe(0);
         expect(log.error.mock.calls[0][0].details).toMatchObject({ delivered: false });
     });
     it.each(["lead", "estimate", "partner"])("reports %s as pending without spending units", (type) => {
         const { entry, https, record, log } = userEvent();
         entry.afterSubmit(save(type, 5, "create"));
         expect(record.load).not.toHaveBeenCalled();
-        expect(https.post).not.toHaveBeenCalled();
+        expect(https.post.mock.calls.length).toBe(0);
         expect(log.debug.mock.calls[0][0].details.status).toBe("module_pending");
     });
     it("ignores deletes, unknown types and non-sandbox accounts with zero calls", () => {

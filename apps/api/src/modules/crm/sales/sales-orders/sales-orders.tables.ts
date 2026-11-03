@@ -24,6 +24,7 @@ export interface CrmSalesOrderTable {
     subsidiary_id_sales_order: number | null;
     owner_user_id_sales_order: number | null;
     status_sales_order: Generated<"active" | "inactive" | "unknown">;
+    cancellation_marked_on_sales_order: Generated<string | null>;
     cancelled_sales_order: Generated<"yes" | "no" | "unknown">;
     currency_code_sales_order: string | null;
     transaction_date_sales_order: string | null;
@@ -35,6 +36,13 @@ export interface CrmSalesOrderTable {
     commercial_closure_signed_sales_order: Generated<"yes" | "no" | "unknown">;
     advisor_commission_calculated_sales_order: Generated<"yes" | "no" | "unknown">;
     advisor_commission_paid_sales_order: Generated<"yes" | "no" | "unknown">;
+    unit_delivered_sales_order: Generated<"yes" | "no" | "unknown">;
+    unit_transferred_sales_order: Generated<"yes" | "no" | "unknown">;
+    keys_delivered_sales_order: Generated<"yes" | "no" | "unknown">;
+    trust_down_payment_validated_sales_order: Generated<"yes" | "no" | "unknown">;
+    commission_approved_sales_order: Generated<"yes" | "no" | "unknown">;
+    broker_commission_calculated_sales_order: Generated<"yes" | "no" | "unknown">;
+    installments_fully_paid_sales_order: Generated<"yes" | "no" | "unknown">;
     source_created_at_sales_order: DateTime | null;
     created_at_sales_order: GeneratedDateTime;
     created_by_user_id_sales_order: number | null;

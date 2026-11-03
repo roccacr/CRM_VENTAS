@@ -72,3 +72,10 @@ it("intersects General's enabled template modules with employee selection", () =
     expect(canRoleGrantModule(restricted.code, [restricted], "formalizacion", ["formalizacion"])).toBe(false);
     expect(getUserModuleScope([restricted.code], [{ ...restricted, moduleCodes: [] }], ["mercadeo"])).toEqual(new Set());
 });
+
+it("el perfil global no exige módulo Lead, pero conserva la efectividad del rol", () => {
+    const role = { code: "formalizacion", moduleCodes: ["formalizacion"], moduleScoped: true, permissionInheritance: "assigned" as const };
+    expect(canRoleGrantModule(role.code, [role], "lead", ["formalizacion"])).toBe(true);
+    expect(canRoleGrantModule(role.code, [role], "lead", [])).toBe(false);
+    expect(canRoleGrantModule(general.code, [general], "lead", [])).toBe(true);
+});

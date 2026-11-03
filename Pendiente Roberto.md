@@ -3,7 +3,7 @@
 Checklist central de avances y pendientes del CRM.
 
 **Responsable del seguimiento:** Roberto.
-**Última actualización:** 30 de octubre de 2026, Costa Rica.
+**Última actualización documental:** 2 de noviembre de 2026, Costa Rica.
 **Origen:** pendientes anteriores del proyecto, avances registrados en esta conversación y reunión del 29 de octubre de 2026.
 
 ## Cómo mantener este documento
@@ -174,11 +174,13 @@ Checklist central de avances y pendientes del CRM.
 
 - [x] Base de notas personales y colaborativas.
 - [x] Vínculos de notas con registros.
+- [x] Seleccionar Cliente/lead y Orden mediante Select con búsqueda, sin escoger BD; mostrar resúmenes autorizados en tarjetas, hoja y conversación. Contrato68.
 - [x] Responsables, vencimientos, recordatorios e historial implementados.
 - [x] Notificaciones internas y transporte en tiempo real implementados.
 - [ ] **Validar:** recorrido colaborativo con dos usuarios reales.
 - [ ] **Validar:** funcionamiento distribuido con Redis y dos instancias.
-- [ ] Resolver la proyección compatible de notas hacia el sistema anterior, si se mantiene ese requisito.
+- [ ] Resolver la proyección compatible de notas hacia el sistema anterior; el requisito documentado no está implementado por el receptor de eventos NetSuite.
+- [ ] **Validar:** casos SQL y recorrido real de selección/guardado de vínculos que no se certificaron por el timeout documentado el29; no se volvieron a ejecutar contra BD en esta revisión.
 - [ ] Definir y desarrollar el flujo de tickets desde el cliente.
 - [ ] Asignar solicitudes a personas o áreas y mantener respuestas visibles.
 - [ ] Definir estados, responsables, cierre y plazos de los tickets.
@@ -236,15 +238,18 @@ Se mantienen retirados el menú Resumen, la sección «Pendientes por proyecto»
 - [Participantes y vínculos del calendario](apps/api/Arquitectura/68-Calendario-Participantes-y-Vinculos.md).
 - [Notas colaborativas y seguimiento](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md).
 - [QA y límites de aceptación](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md).
+- [Reconciliación completa por commits y comprobaciones nuevas](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
+- [Plan y traspaso de sincronización NetSuite, todavía sin escritor durable](apps/api/Arquitectura/70-Plan-Sincronizacion-Ordenes-NetSuite.md#traspaso-para-retomar-2026-11-02). Cierre de chat del 2026-11-02: recepción sin escrituras, autorización Sandbox a órdenes existentes en legacy, prioridad nativa, bitácora atómica pendiente y secuencia de continuación.
+- [Publicación Habita: evidencia del29, no del HEAD actual](deploy/habita/DEPLOYMENT-20261029.md).
 - [Lectura global de Mercadeo](apps/api/Arquitectura/69-Mercadeo-Lectura-Global.md).
 
 ## Nuevos pendientes sin clasificar
 
 ### NetSuite → CRM: cambios posteriores al guardado (30/10/2026)
 
-- [x] Crear y probar localmente la entrada global User Event `afterSubmit`, con validación compartida en `lib/` y acción de órdenes en su módulo. Solo diagnóstico en Sandbox; no envía al API.
+- [x] Crear y probar localmente la entrada global User Event `afterSubmit`, con validación compartida en `lib/` y acción de órdenes en su módulo. El corte inicial solo diagnosticaba; el corte posterior del30 envía al receptor local, sin persistencia CRM.
 - [ ] Registrar el nuevo script en NetSuite y verificar sus dependencias en el Archivador.
-- [ ] Implementar receptor autenticado, entrega duradera, reintentos y reconciliación; impedir duplicados, eventos atrasados y bucles.
+- [ ] Completar entrega duradera, reintentos y reconciliación; impedir duplicados, eventos atrasados y bucles. El receptor autenticado de recepción local ya está implementado; no confundirlo con el escritor pendiente.
 - [ ] Confirmar el ID de «Cuotas pagadas por completo» y el mapeo de condiciones de cobro, traspaso y entrega.
 - [ ] Actualizar campos autorizados de la orden en su BD autoritativa y guardar auditoría, sin sobrescribir etapas propias del CRM.
 - [ ] Incorporar acciones de leads, estimaciones y corredores con tipos de registro y campos confirmados.
@@ -259,3 +264,15 @@ Al recibir otro pendiente, agregarlo en su sección o registrarlo aquí hasta pr
 - [ ] Configurar API Secret `custsecret_crm_local_events` en Sandbox con la clave exclusiva del `.env` local y subir el paquete actualizado.
 - [ ] Validar recepción de una edición real de Sandbox y su log `received_local`. Las pruebas con dobles no acreditan ese recorrido.
 - [ ] Implementar entrega duradera/reintentos/idempotencia y actualización auditada de la fuente autoritativa antes de llamarlo sincronización productiva.
+
+### Revisión documental y calidad (02/11/2026)
+
+- [x] Inventariar los35 commits de este checkout, los módulos, rutas, documentos, migraciones y herramientas. Ver informe72 para cobertura y límites.
+- [x] Incorporar la recepción local NetSuite, logging, vínculos de notas, calendario y la publicación fechada en los documentos de entrada.
+- [x] Documentar las siete banderas057 de órdenes con semántica independiente de etapas; cambio local e implementación histórica de DDL diferenciados.
+- [ ] Corregir formato de `SS2_1_LIB_CRM_EjecutarAccion.js`, que detiene el check raíz del02/11.
+- [ ] Revisar la expectativa de migraciones en `identity-schema-migration.spec.ts`: el registro local incluye057, la expectativa termina en056.
+- [ ] Corregir el orden de imports de `CalendarEventDrawer.tsx`, `CalendarGuestFields.tsx` y `PersonalNotes.tsx`, y la complejidad de `NotesInbox`, detectados por lint del02/11.
+- [ ] Investigar el fallo de movimiento rápido en `personal-notes.spec.tsx:161` del02/11: se esperaba70px y se observó60px. La suite dio1270 aprobadas/1 fallida; el QA aprobado del29 no cierra esa incidencia nueva.
+- [ ] Sustituir la credencial temporal directa del emisor Sandbox por API Secrets con el responsable, sin divulgar el valor ni invalidar credenciales compartidas por esta revisión.
+- [ ] Repetir checks completos después de las correcciones técnicas; no sustituir sus fallos por cifras aprobadas de octubre.

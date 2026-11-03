@@ -1,5 +1,22 @@
 # 12 - Notas colaborativas: esquema nativo, etapa1
 
+## Uso actual de vínculos - revisión 2026-11-02
+
+La ampliación [68](../68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md) reutiliza
+`crm_note_link` sin añadir otra tabla o migración. `is_primary_note_link=1`
+identifica el contexto original único; los enlaces secundarios soportados son
+`lead` y `sales_order`. Destinos nativos usan sus FK y publicId resuelto; legacy
+usa sistema `legacy_crm` + tipo + PK original, nunca un número ERP sin calificar.
+La PK antigua de lead es `id_lead`, no `idinterno_lead`.
+
+La clave secundaria hash se deriva de tipo/fuente/ID sin módulo; el hash antiguo
+del principal sigue siendo válido. Las búsquedas de notas de una orden admiten
+secundarios y aliases confirmados sin duplicar notas. Se validan FK, destino y
+clave; no se elimina la validación del único principal para aceptar cualquier fila.
+El historial público redacta identidades de relaciones, conservando la auditoría
+interna. La presencia de una referencia no concede acceso al recurso ni copia
+su contenido. No se reejecutó DDL ni metadata MySQL en esta revisión.
+
 ## Extensiones vigentes - 2026-10-29
 
 Este diccionario conserva el corte de039 y añade040/044/046/052/053. El esquema

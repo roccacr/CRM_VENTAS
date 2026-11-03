@@ -1,4 +1,28 @@
+## Actualización autorizada posterior — 2026-11-02
+
+La implementación local v2 de sincronización de los diez indicadores está descrita en [73](Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md). Existe escritor con auditoría central y de recepción; v1 sigue sin persistir. 058 fue aplicada al servidor compartido con aprobación explícita el2026-11-02; ledger y tablas verificados. Persistencia deshabilitada por defecto. Los bloques inferiores conservan el estado anterior a esta implementación. No ejecutar migraciones de producción ni publicar por leer estas notas.
+
 # AGENTS.md - CRM Enterprise API
+
+## Precedencia del inventario - 2026-11-02
+
+Revisión del checkout, incluidos los cambios locales aún sin commit. El runtime
+actual incluye Notas con vínculos de negocio ([68](Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md)),
+Calendario con lookup/participantes/vínculos ([68 calendario](Arquitectura/68-Calendario-Participantes-y-Vinculos.md))
+y lectura global opcional de Mercadeo ([69](Arquitectura/69-Mercadeo-Lectura-Global.md)).
+La autorización por recurso, sesión/CSRF, autoría y deny siguen siendo independientes.
+
+El runner local registra 55 migraciones: 001, 003–025 y 027–057. La 057 y su
+CLI legacy son cambios locales, no prueba de publicación; sus siete indicadores
+operativos no mueven etapas ni activan una sincronización. El receptor de eventos
+NetSuite sigue acusando `persisted:false`; el escritor durable del
+[plan70](Arquitectura/70-Plan-Sincronizacion-Ordenes-NetSuite.md) no existe todavía.
+No ejecutar el plan, las migraciones ni scripts de limpieza por revisar documentos.
+
+Los alcances y conteos de los cortes inferiores son históricos cuando los
+contradicen [22](Arquitectura/22-Mapa-de-Implementacion-API.md) y los contratos
+vigentes. Esta revisión no consulta BD, no importa datos, no habilita credenciales
+ni certifica despliegue, pruebas SQL o Redis multinodo.
 
 ## Corte vigente de notas y QA - 2026-10-29
 

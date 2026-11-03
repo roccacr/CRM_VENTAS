@@ -1,8 +1,13 @@
 # 01 - Resumen Frontend
 
-## Estado contrastado - 2026-10-27
+## Estado contrastado - 2026-11-02
 
-[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
+[30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría los
+seis módulos reales, las rutas, servicios y los 34 documentos de Arquitectura.
+La interfaz incluye identidad/Administración, reportes de Mercadeo, Formalización
+con lecturas/etapa/aprobación, calendario compartido y notas colaborativas.
+Las cifras históricas de QA se conservan con su fecha; no son una ejecución
+nueva. El cierre documental del 2/11 registra verificaciones nuevas y sus fallos.
 
 
 ## Veredicto
@@ -17,9 +22,21 @@ Estado de fase:
 vision completa del frontend != alcance autorizado actual
 ```
 
-En el antecedente documental 2026-10-23 existían identidad, Administracion/catalogos, Formalizacion parcial y Home de Mercadeo conectado. Aprobaciones exige `formalizacion.home.approvals.read`; seis banners de etapas comparten `GET /formalization/home/summary`, rol efectivo activo `formalizacion` y `formalizacion.home.stages.read` permitido sin deny. Owner puede heredar ese rol por politica backend; no necesita asignacion directa ni elude denies. Carga muestra preload; cero de error marcado Sin verificar no es ausencia confirmada de ordenes. Ese corte tenía bandejas vacías. El estado 2026-10-27 conecta seguimiento canónico y cambio de etapa con permiso independiente; envío/reversión de contratos y Calendario/Resumen/previews siguen fuera de esa conexión.
+Formalización separa permisos de banners/listas, ficha, etapa y aprobación.
+Ambos roles operativos gestionan todas las órdenes con permiso de la acción;
+Owner consume el perfil efectivo sin eludir denies. Se conectaron seguimiento,
+restauración de ficha, actividad, consulta de cliente/unidad/bitácora y capítulos
+NetSuite confirmados. Los formularios generales de firma/banco/cartera no están
+entregados por esas lecturas. El botón Outlook prepara un borrador, sin enviar
+correo ni registrar envío de contrato; Resumen está retirado de la navegación.
 
-Mercadeo lee agregados canonicos de leads y evidencia de citas disponible con `mercadeo.home.read`: periodos dia/semana/mes/anio, vendedor/proyecto multiseleccion y sin muestra ficticia de respaldo. El API resuelve origen nativo/legacy, deduplicacion y alcance. Programada no equivale a realizada o asistida; no hay editor de calendario persistido ni Outlook/campana conectados. Cobertura y limites: [49 - Estado actual](../../api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md).
+Mercadeo lee agregados de leads/citas con `mercadeo.home.read` y Captación con
+`mercadeo.leads.read`; vendedor/proyecto admiten selección múltiple, sin demo de
+respaldo. El API resuelve las fuentes, alcance e identidad; programada no equivale
+a realizada/asistida. El calendario nativo compartido sí está conectado en los
+cuatro módulos operativos, sin activar Outlook ni correo externo. Notas/campana
+internas son funciones separadas de los eventos, con ACL y actualización realtime.
+Cobertura y límites: [30](30-Estado-Frontend-Verificado.md).
 
 ## Stack frontend
 

@@ -51,6 +51,21 @@ function fixture() {
 }
 
 describe("Jefe General selected-module profile", () => {
+    it("conserva el permiso global del lead y su deny sin exigir un módulo Lead", async () => {
+        const f = fixture();
+        try {
+            f.state.roles = [role("formalizacion")];
+            f.state.rolePermissions = [{ code: "lead.profile.read", moduleCode: "lead", roleCode: "formalizacion" }];
+            f.state.overrides = [];
+            expect((await f.repository.findBySessionTokenHash("hash"))?.permissions).toContainEqual(expect.objectContaining({ code: "lead.profile.read", effect: "allow" }));
+            f.state.overrides = [{ code: "lead.profile.read", moduleCode: "lead", effect: "deny", expiresAt: null }];
+            expect((await f.repository.findBySessionTokenHash("hash"))?.permissions).toContainEqual(expect.objectContaining({ code: "lead.profile.read", effect: "deny" }));
+            f.state.mappings = f.state.mappings.map((entry) => (entry.code === "formalizacion" ? { ...entry, mappingStatus: "inactive" } : entry));
+            expect((await f.repository.findBySessionTokenHash("hash"))?.permissions.some((entry) => entry.code === "lead.profile.read" && entry.effect === "allow")).toBe(false);
+        } finally {
+            await f.db.destroy();
+        }
+    });
     it("retains a legitimate independent grant from another directly assigned role inside the template ceiling", async () => {
         const f = fixture();
         try {

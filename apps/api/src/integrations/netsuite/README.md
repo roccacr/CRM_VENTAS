@@ -1,3 +1,41 @@
+## Implementación local posterior — 2026-11-02
+
+El contrato v2 ya implementa los diez checkbox, resolución nativa → legacy, transacción y bitácora central/nativa. v1 conserva persisted:false. 058 se aplicó con aprobación explícita y el túnel fue verificado; la activación y prueba real están pendientes; este bloque sustituye las descripciones de ausencia de escritor de los cortes históricos inferiores. Contrato, archivos, pruebas y límites: [73](../../../Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md).
+
+## Estado revisado — 2026-11-02
+
+La integración tiene tres flujos distintos; ninguno debe confundirse con los
+otros. Los apartados fechados inferiores conservan su evidencia histórica.
+
+| Flujo | Implementación y límite actual |
+| --- | --- |
+| Lectura de ficha | `GET /formalization/orders/:source/:id/netsuite`, autorización de orden y resolución nativa primero; producción conserva contrato GET anterior y Sandbox el RESTlet modular |
+| Aprobación de Formalización | Cliente PUT acotado a Sandbox, confirmación estricta y resultado desconocido ante fallos inciertos; no es una sincronización general |
+| Evento entrante de orden | `POST /integrations/netsuite/local/order-events`, solo development y cuenta Sandbox, token de servicio; devuelve `received:true,persisted:false`, sin escribir ninguna BD |
+
+La ficha React mapea capítulos comerciales de la respuesta mediante
+`netsuite-primary.ts`; los diagnósticos de consola DEV son adicionales y no
+describen todo el consumidor visual. Los snapshots de BD conservan otra ruta
+y no requieren credenciales ERP.
+
+El [plan70](../../../Arquitectura/70-Plan-Sincronizacion-Ordenes-NetSuite.md)
+describe el futuro escritor durable, deduplicación, autoridad única y auditoría;
+esos componentes no están implementados por haber recibido un HTTP200.
+Los flags057 locales no están todavía expuestos por todos los lectores/mappers.
+
+El código SuiteScript declara versión `2026.10.30.4`. Una inspección estática
+del grafo AMD validó18 archivos; no acredita su carga o ejecución en NetSuite.
+La prueba GET del28 y el despliegue Habita del29 son evidencias fechadas, no
+verificación actual de esta revisión ni aprobación PUT real.
+
+Hay una excepción temporal de credencial directa de Sandbox en el emisor,
+documentada en el [README SuiteScript](suitescript/README.md). No reproducir su
+valor ni tratar el empaquetado como sanitización de secretos incrustados.
+Migrar ese transporte a API Secrets permanece pendiente; no se rotaron claves
+ni se modificó configuración compartida en esta revisión documental.
+
+Inventario general y resultados nuevos: [72](../../../Arquitectura/72-Reconciliacion-Documental-20261102.md).
+
 ## Lectura Sandbox con CRM_v2 (2026-10-28)
 
 Ausencia confirmada: el GET del RESTlet con `status:404` y `error.code:SALES_ORDER_NOT_FOUND` se traduce a HTTP404 y codigo publico `NETSUITE_SALES_ORDER_NOT_FOUND`. La ficha muestra «La orden de venta no existe en NetSuite en el entorno configurado». El mensaje original del proveedor no se expone. Un fallo de transporte, HTTP404 sin confirmacion de registro o error de lectura no prueba ausencia: conserva el error generico de carga. La orden puede existir en el CRM y no existir en el Sandbox; no se eliminan ni modifican registros por este resultado.

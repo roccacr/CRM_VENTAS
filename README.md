@@ -3,6 +3,40 @@
 Checklist central de seguimiento: [Pendiente Roberto](<Pendiente Roberto.md>).
 Aquí se mantienen los avances, las validaciones abiertas y los nuevos pendientes del sistema.
 
+## Estado documental vigente — 2026-11-02
+
+La revisión integral está en [72 — Reconciliación por commits y código](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
+Contrasta los 35 commits alcanzables de este checkout, hasta `fcbf0c2`, con el
+código y los cambios locales presentes. Los títulos de commits no bastan como
+inventario: `bf8caa5`, aunque se titula `docs`, incorpora también API, interfaz,
+pruebas, scripts y despliegue. Las ramas del CRM antiguo no son este runtime.
+
+- Identidad, usuarios/roles, siete catálogos, auditoría, Formalización, Mercadeo,
+  calendario compartido y notas tienen implementación; los mapas API/frontend
+  distinguen cada consulta, comando, permiso y consumidor pendiente.
+- Notas permiten relacionar clientes/leads y órdenes de ambas fuentes mediante
+  Select, conservar el contexto principal y mostrar resúmenes autorizados.
+  Vincular no comparte la nota ni concede acceso al registro. [Contrato68](apps/api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+- Calendario incorpora participantes y vínculos autorizados, sin equivaler a
+  sincronización Outlook. [Contrato68 de calendario](apps/api/Arquitectura/68-Calendario-Participantes-y-Vinculos.md).
+- La ficha de Formalización combina información de BD con capítulos mapeados
+  de NetSuite; no es correcto describir toda Información primaria como demo.
+  El acceso y cada acción conservan permisos independientes.
+- Mercadeo dispone de lectura global adicional expresamente autorizada, sin
+  conceder edición ni importación de leads. [Contrato69](apps/api/Arquitectura/69-Mercadeo-Lectura-Global.md).
+- El receptor local de eventos NetSuite confirma **recepción**, con
+  `persisted:false`; no sincroniza órdenes. La sincronización duradera continúa
+  como [plan70](apps/api/Arquitectura/70-Plan-Sincronizacion-Ordenes-NetSuite.md).
+  Los indicadores operativos de órdenes057 están en cambios locales y no deben
+  confundirse con un escritor de eventos implementado.
+- Existe [evidencia fechada de publicación Habita del29](deploy/habita/DEPLOYMENT-20261029.md).
+  No prueba que HEAD ni los cambios locales actuales estén publicados. Esta
+  revisión no despliega, migra, importa datos ni modifica integraciones.
+
+El informe72 registra las comprobaciones nuevas, el fallo del comando raíz y
+los resultados separados de cada app. Los conteos del29 conservados debajo son
+históricos; no se presentan como resultados nuevos ni se suman suites solapadas.
+
 ## Estado vigente - 2026-10-29
 
 Este corte sustituye las descripciones de estado de los snapshots inferiores;

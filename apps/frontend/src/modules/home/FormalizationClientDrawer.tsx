@@ -14,11 +14,12 @@ import { Fragment, useEffect, useState } from "react";
 
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { getOrderClientDetail, type OrderClientDetail } from "../../services/formalization/order-client-service";
+import { canReadLeadProfile, leadProfilePath } from "../../services/leads/lead-profile-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
 import { FormalizationClientHistory } from "./FormalizationClientHistory";
 import { FormalizationDrawerLoading } from "./FormalizationDrawerLoading";
 
-function ClientContent({ item, onRetry }: { readonly item: FollowUpItem; readonly onRetry: () => void }) {
+function ClientContent({ item, onRetry, effectivePermissions }: { readonly item: FollowUpItem; readonly onRetry: () => void; readonly effectivePermissions: readonly { readonly code: string; readonly effect: string }[] }) {
     const [data, setData] = useState<OrderClientDetail | null>(null);
     const [failed, setFailed] = useState(false);
     useEffect(() => {
@@ -46,6 +47,11 @@ function ClientContent({ item, onRetry }: { readonly item: FollowUpItem; readonl
     if (data.warnings.length > 0) return <p role="status">La relación con el cliente no está disponible o es ambigua. No se seleccionó otro cliente.</p>;
     return (
         <div className="user-detail-drawer__sections">
+            {canReadLeadProfile(effectivePermissions) && data.leadIdentity && (
+                <Button href={leadProfilePath(data.leadIdentity)} icon={<UserOutlined aria-hidden="true" />}>
+                    Ver perfil del cliente
+                </Button>
+            )}
             {data.groups.map((group) => (
                 <Fragment key={group.title}>
                     <Card size="small" title={group.title}>
@@ -66,19 +72,8 @@ const initialsOf = (name: string): string =>
         .map((part) => part.charAt(0).toUpperCase())
         .join("");
 
-/** Opens the client's full profile. Until that screen exists the button says so instead of leading nowhere. */
-function ProfileButton({ onOpen }: { readonly onOpen?: (() => void) | undefined }) {
-    return (
-        <span className="client-detail__profile" title={onOpen ? undefined : "El perfil completo del cliente aún no está disponible"}>
-            <Button size="small" icon={<UserOutlined aria-hidden="true" />} disabled={!onOpen} onClick={onOpen}>
-                Ver perfil del cliente
-            </Button>
-        </span>
-    );
-}
-
 /** Who the drawer is about, in the same identity block the user detail uses. */
-function ClientIdentity({ item, onOpenProfile }: { readonly item: FollowUpItem; readonly onOpenProfile?: (() => void) | undefined }) {
+function ClientIdentity({ item }: { readonly item: FollowUpItem }) {
     const name = item.client ?? "Cliente";
     return (
         <div className="user-detail-drawer__identity">
@@ -88,20 +83,19 @@ function ClientIdentity({ item, onOpenProfile }: { readonly item: FollowUpItem; 
             <div className="user-detail-drawer__identity-copy">
                 <Typography.Title level={4}>{name}</Typography.Title>
                 <Typography.Text type="secondary">Cliente de la orden {item.number}</Typography.Text>
-                <ProfileButton onOpen={onOpenProfile} />
             </div>
         </div>
     );
 }
 
 /** Shared right-hand drawer appearance, with a fresh authorized read on every opening. */
-export function FormalizationClientDrawer({ item, open, onClose, onOpenProfile }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void; readonly onOpenProfile?: (() => void) | undefined }) {
+export function FormalizationClientDrawer({ item, open, onClose, effectivePermissions = [] }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void; readonly effectivePermissions?: readonly { readonly code: string; readonly effect: string }[] }) {
     const [attempt, setAttempt] = useState(0);
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
             rootClassName="user-detail-drawer client-detail-drawer catalog-item-detail-drawer catalog-item-detail-drawer--projects"
-            title={<ClientIdentity item={item} onOpenProfile={onOpenProfile} />}
+            title={<ClientIdentity item={item} />}
             aria-label="Detalle del cliente"
             open={open}
             onClose={onClose}
@@ -112,6 +106,7 @@ export function FormalizationClientDrawer({ item, open, onClose, onOpenProfile }
             <ClientContent
                 key={item.source + ":" + item.id + ":" + String(attempt)}
                 item={item}
+                effectivePermissions={effectivePermissions}
                 onRetry={() => {
                     setAttempt((value) => value + 1);
                 }}

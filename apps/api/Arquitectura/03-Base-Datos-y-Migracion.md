@@ -1,5 +1,60 @@
 # 03 - Base de Datos y Migracion
 
+## Inventario del checkout - 2026-11-02
+
+`scripts/run-schema-migrations.ts` contiene **55 migraciones registradas**:
+001, 003–025 y 027–057. No existen entradas002/026 en ese runner; el SQL026 de
+índice legacy es un artefacto separado. Los conteos36/37 de los cortes inferiores
+son históricos. Registro en código, aplicación en un servidor y publicación de
+una release son evidencias distintas. Esta revisión no consulta ni altera BD.
+
+| Tramo | Cobertura del runner actual |
+| --- | --- |
+| 001, 003–006 | Identidad, login local/Microsoft, directorio y modelo de roles |
+| 007–016 | Catálogos, reparación de configuración y tablas dedicadas de siete dominios |
+| 017–020 | Formalización, contraseña inicial, jefatura y banner |
+| 021–025 | Orden de venta, UTC, auditoría central y permisos contractuales |
+| 027–030 | Herencia Owner, roles Mercadeo y plantilla/módulos de Jefe General |
+| 031–034 | Leads/contactos/referencias, historia, motivos y calendario base |
+| 035–038 | Lead de la orden, etapas/tiempos, permiso de etapa y retiro de Eventos y citas |
+| 039–044 | Notas, recibos, origen legacy, permisos de destino/salto y colaboración |
+| 045–050 | Aprobación, realtime de notas, banners/ficha, roles y catálogos de Formalización |
+| 051–053 | Calendario global, ubicaciones de notas y workflow/recordatorios |
+| 054–056 | Tipos globales de calendario, participantes/vínculos y lectura global de Mercadeo |
+| 057 | Siete indicadores operativos de orden; archivo y registro locales aún sin commit en este corte |
+
+La migración057 nativa no accede a legacy. El CLI separado agrega las columnas
+legacy únicamente con confirmación explícita; no copia valores ni importa órdenes.
+DDL, tipos, comentarios y comandos en [39](39-Diccionario-Ordenes-Venta.md).
+La evidencia de aplicación del30 se conserva fechada y no fue revalidada aquí.
+
+### Scripts operativos existentes
+
+Estos archivos no se ejecutan por actualizar documentación ni al arrancar el API.
+
+| Archivo en `scripts/` | Función y límite |
+| --- | --- |
+| `ensure-pnpm.mjs` | Comprueba gestor/versiones antes de comandos locales; no migra |
+| `run-schema-migrations.ts` | Runner nativo con ledger, lock y opción `--only`; no usar para completar numeración ni importar legacy |
+| `restore-owner-from-backup.ts` | Recuperación Owner explícita desde artefacto aprobado; no seed general ni arranque automático |
+| `import-legacy-users.ts` | Excepción acotada de perfiles por correo de [45](45-Usuarios-Por-Correo.md), sin importar Leads ni credenciales |
+| `clear-native-business-data.ts` | Limpieza destructiva explícita de [51](51-Limpieza-Datos-Nativos.md); su existencia no autoriza repetirla |
+| `prepare-unit-files.ts` | Reporte de solo lectura de expedientes/proyectos; `--apply-project-identities` se rechaza, no importa identidades |
+| `migrate-legacy-sales-order-stage-tracking.ts` | DDL aditivo legacy de trayectoria; revisar plan y confirmación exacta, sin importar historia |
+| `migrate-legacy-calendar-context.ts` | DDL de contexto legacy; el trigger privilegiado dejó de ser obligatorio según decisión del29 |
+| `verify-calendar-relations.ts` | Inspección de estructura/conteos de calendario; no crea fixtures ni modifica relaciones |
+| `migrate-legacy-sales-order-flags.ts` | Exige exactamente `--plan` o `--apply=crmdatabase-api`; CLI separado para siete columnas057 |
+| `run-mysql-ci.ts` | Suite MySQL con prerrequisitos de aislamiento; nunca activar fixtures en BD compartida |
+| `package-netsuite.mjs` | Empaqueta SuiteScript desde archivos locales; no despliega ni prueba OAuth contra ERP |
+| `performance/home-summary-benchmark.ts` | Benchmark sintético Fastify inject con dobles SQL/pool y oráculo; sin BD ni autenticación de producción |
+| `performance/home-summary-double.ts` | Helper del benchmark con `DummyDriver`, identidad y resultados sustituidos; no abre sockets |
+| `performance/home-summary-synthetic.ts` | Generador/oráculo reproducible de órdenes sintéticas; no genera INSERT comerciales |
+| `sql/legacy-calendar-context-trigger.sql` | DDL privilegiado histórico revisado; su conservación no autoriza ejecutarlo y ya no es requisito del calendario |
+
+`migrations/schema-only/sales-order-stage-duration.sql.ts` es un helper de SQL,
+no una migración adicional del ledger. Las migraciones, SQL ilustrativos,
+scripts de datos y herramientas de empaquetado no son intercambiables.
+
 Ampliacion posterior del27:039 de notas aplicada y conciliada; el runner contiene
 ahora37 migraciones. Siete tablas nuevas vacias; sin triggers privilegiados,
 imports, grants, runtime o cambios legacy. Ver [diccionario de notas](Diccionario-Datos/12-Notas-Colaborativas.md).

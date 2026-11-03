@@ -1,5 +1,11 @@
 # Publicación verificada — 29/10/2026
 
+Revisión documental 2026-11-02: este recibo conserva la evidencia del29 sin
+revalidarla remotamente. No identifica el release activo actual ni certifica
+los commits `bf8caa5`, `fd3cc1d`, `fcbf0c2` o los cambios locales posteriores.
+Procedimiento y riesgos actuales en [README](README.md); inventario transversal
+en [72](../../apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
+
 Registro posterior a la publicación; no modifica el artefacto desplegado.
 
 - Release activo: `20261029153635-ce19e12-local`.

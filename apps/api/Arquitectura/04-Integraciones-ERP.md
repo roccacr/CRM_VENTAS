@@ -1,5 +1,27 @@
 # 04 - Integraciones Externas
 
+## Fronteras vigentes - 2026-11-02
+
+La inspección GET, la aprobación de Formalización y el receptor de eventos son
+tres operaciones distintas. [63](63-Aprobacion-Formalizacion-NetSuite.md) describe
+la única escritura ERP acotada ya implementada; no convertir en regla actual el
+«sin escritura» de la inspección GET del corte27 inferior.
+
+`POST /integrations/netsuite/local/order-events` valida snapshots Sandbox y
+acusa `{schemaVersion:1,received:true,persisted:false,netsuiteId}`. No actualiza
+CRM_THINK_V2, `ordenventa`, auditoría comercial ni un inbox durable. Usa prueba
+de máquina independiente del navegador, exclusivamente en desarrollo; ver
+[05](05-Seguridad-Auditoria-Observabilidad.md). Los commits `fd3cc1d` y `fcbf0c2`
+ajustan SuiteScript/logging y la documentación de credenciales temporales Sandbox;
+no acreditan sincronización persistida ni autorización para repetir llamadas.
+
+El [plan70](70-Plan-Sincronizacion-Ordenes-NetSuite.md) todavía requiere escritor,
+deduplicación, revisión de fuente, autoridad única y actor de integración. La
+057 local agrega indicadores, no su mapeo de lectura ni el escritor. No se
+transcriben secretos de los ejemplos ni se cambian credenciales por documentar.
+Odoo sigue siendo frontera/referencias; no hay un adaptador operativo de órdenes
+Odoo certificado por estos commits.
+
 ## Excepciones implementadas y limites - 2026-10-27
 
 La regla de contratos canonicos permanece para el dominio comercial. Existe una

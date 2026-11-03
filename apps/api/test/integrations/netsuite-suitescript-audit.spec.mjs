@@ -4,16 +4,16 @@ import { BadRequestException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
 import { NetsuiteLocalEventsController } from "../../src/integrations/netsuite/netsuite-local-events.controller.js";
-import { loadAmd, logMock, READY, recordMock, runtimeMock, searchMock } from "./netsuite-suitescript/amd-harness.mjs";
+import { EVENT_PROVIDERS, loadAmd, logMock, READY, recordMock, runtimeMock, searchMock } from "./netsuite-suitescript/amd-harness.mjs";
 
 // Diagnostic audit: expected failures remain visible without modifying runtime.
 // IDs and long memo values are synthetic contract probes, not observed account data.
 // This does not establish Oracle's field limits or that this account permits a 16001-character memo.
 // Concurrent invalidation probes expose documented non-atomicity, not a promised version/CAS contract.
 
-/** Only native NetSuite APIs are simulated; payload mapping, receiver validation and receipt handling are real. */
+/** NetSuite APIs and persistence are simulated here; mapping, DTO validation and receipt handling are real. */
 function dispatch({ id = "214", memo = "audit", lineCount = 0, itemText } = {}) {
-    const controller = new NetsuiteLocalEventsController();
+    const controller = new NetsuiteLocalEventsController({ receive: (payload) => ({ schemaVersion: 2, received: true, persisted: true, netsuiteId: payload.event.netsuiteId, eventId: payload.event.eventId }) });
     const rejected = [];
     const record = recordMock({ fields: { memo }, lineCount });
     if (itemText !== undefined) record.rec.getSublistText.mockImplementation(({ fieldId }) => (fieldId === "item" ? itemText : null));
@@ -30,13 +30,7 @@ function dispatch({ id = "214", memo = "audit", lineCount = 0, itemText } = {}) 
             }
         }),
     };
-    const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", {
-        "N/runtime": runtimeMock(),
-        "N/record": record,
-        "N/search": searchMock(),
-        "N/log": log,
-        "N/https": https,
-    });
+    const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": record, "N/search": searchMock(), "N/log": log, "N/https": https });
     entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id } });
     expect(record.submitFields).not.toHaveBeenCalled();
     return { https, rejected, log };
@@ -99,7 +93,7 @@ describe("SuiteScript adversarial producer/consumer contract audit (offline)", (
         });
         const https = { createSecureString: vi.fn(), post: vi.fn() };
         const readSnapshot = vi.fn();
-        const { sendRecordEvent } = loadAmd("lib/SS2_1_LIB_CRM_EnviarEvento.js", { "N/runtime": runtime, "N/https": https });
+        const { sendRecordEvent } = loadAmd("lib/SS2_1_LIB_CRM_EnviarEvento.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/https": https });
         expect(() => sendRecordEvent({ recordType: "salesorder", netsuiteId: "214", eventType: "edit" }, readSnapshot, "order-events")).not.toThrow();
         expect(readSnapshot).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();
@@ -115,7 +109,7 @@ describe("SuiteScript adversarial producer/consumer contract audit (offline)", (
         });
         const record = recordMock();
         const https = { createSecureString: vi.fn(), post: vi.fn() };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { "N/runtime": runtime, "N/record": record, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
+        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/record": record, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
         expect(() => entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: "214" } })).not.toThrow();
         expect(record.load).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();

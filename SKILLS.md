@@ -1,5 +1,15 @@
 # Project Skill Registry
 
+## Revisión documental — 2026-11-02
+
+Se comprobó que los siete entrypoints locales de la tabla existen. No se
+reinstalaron paquetes ni se recalcularon los hashes de instalación; los pins,
+recibos y conteos inferiores conservan su fecha histórica. Para esta revisión
+se consultaron las skills globales de guardrails, documentación y verificación.
+`code-documenter` está disponible globalmente, no como octava instalación local.
+La disponibilidad no activa servicios externos, conversión Stitch ni despliegues.
+Inventario y límites del proyecto: [72](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
+
 Revision documental 2026-10-27: se comprobo la existencia de los siete entrypoints
 locales de la tabla en `.agents/skills/`. No se repitieron hashes, instalaciones,
 versiones de herramientas ni validaciones de servicios externos. Los pins y

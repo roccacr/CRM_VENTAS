@@ -9,7 +9,7 @@ define(["N/log"], (log) => {
     "use strict";
 
     // Version unica del conjunto de scripts. Actualizar al preparar cada entrega: la lee el empaquetador.
-    const SCRIPT_VERSION = "2026.10.30.4";
+    const SCRIPT_VERSION = "2026.11.02.1";
 
     /**
      * Un fallo del logger no debe interrumpir una consulta ni cambiar su respuesta.

@@ -3,6 +3,7 @@ import "../administration/components/UserDetailDrawer.css";
 import "../administration/catalogs/CatalogItemsPage.css";
 import "../administration/catalogs/ProjectsView.css";
 import "../administration/catalogs/EnterpriseSurface.css";
+import "./FormalizationOrderDrawer.css";
 
 import FileTextOutlined from "@ant-design/icons/FileTextOutlined";
 import LeftOutlined from "@ant-design/icons/LeftOutlined";
@@ -10,7 +11,6 @@ import MailOutlined from "@ant-design/icons/MailOutlined";
 import RightOutlined from "@ant-design/icons/RightOutlined";
 import Button from "antd/es/button";
 import Card from "antd/es/card";
-import Descriptions from "antd/es/descriptions";
 import Drawer from "antd/es/drawer";
 import Space from "antd/es/space";
 import Tooltip from "antd/es/tooltip";
@@ -18,24 +18,22 @@ import Typography from "antd/es/typography";
 
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
+import { FormalizationOrderDetails, OrderSectionFields } from "./FormalizationOrderDetails";
 import { FormalizationRecordProgress } from "./FormalizationRecordProgress";
 import { StageChip } from "./FormalizationStageChip";
 import { FormalizationStageEditor } from "./FormalizationStageEditor";
 
 /** Text when the API has no value. Shown quiet so it is never mistaken for a saved value. */
 const MISSING = "Sin dato";
-const ORIGIN_LABELS: Readonly<Record<FollowUpItem["source"], string>> = { native: "CRM", legacy: "Sistema anterior" };
 
 function Value({ children }: { readonly children: string | null | undefined }) {
     return children?.trim() ? <>{children.trim()}</> : <Typography.Text type="secondary">{MISSING}</Typography.Text>;
 }
 
-const rows = (items: readonly { readonly key: string; readonly label: string; readonly value: React.ReactNode }[]) => items.map(({ key, label, value }) => ({ key, label, children: value }));
-
 function Section({ title, items }: { readonly title: string; readonly items: readonly { readonly key: string; readonly label: string; readonly value: React.ReactNode }[] }) {
     return (
         <Card size="small" title={title}>
-            <Descriptions column={1} colon={false} size="small" layout="horizontal" items={rows(items)} />
+            <OrderSectionFields items={items} />
         </Card>
     );
 }
@@ -105,13 +103,12 @@ export function OutlookCompose({ item }: { readonly item: FollowUpItem }) {
     return (
         <Card size="small" title="Envío del contrato" className="formalization-contract-send">
             {item.clientEmail ? (
-                <Space orientation="vertical">
-                    <span className="formalization-contract-send__label">Correo del cliente</span>
-                    <Typography.Text className="formalization-contract-send__email">{item.clientEmail}</Typography.Text>
+                <div className="formalization-contract-send__content">
+                    <OrderSectionFields items={[{ key: "email", label: "Correo del cliente", value: item.clientEmail }]} />
                     <Button icon={<MailOutlined aria-hidden="true" />} href={`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(item.clientEmail)}`} target="_blank" rel="noopener noreferrer">
                         Abrir Outlook
                     </Button>
-                </Space>
+                </div>
             ) : (
                 <Typography.Text type="secondary">Correo del cliente no disponible</Typography.Text>
             )}
@@ -139,7 +136,7 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
     return (
         <Drawer
             {...ADMINISTRATION_DRAWER_PROPS}
-            rootClassName="user-detail-drawer catalog-item-detail-drawer catalog-item-detail-drawer--projects"
+            rootClassName="user-detail-drawer catalog-item-detail-drawer catalog-item-detail-drawer--projects formalization-order-drawer"
             closable={{ "aria-label": "Cerrar detalle de la orden", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
             destroyOnHidden
             open={item !== null}
@@ -170,14 +167,6 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                     />
                     <OutlookCompose item={item} />
                     <Section
-                        title="Cliente y unidad"
-                        items={[
-                            { key: "client", label: "Cliente", value: <Value>{item.client}</Value> },
-                            { key: "project", label: "Proyecto", value: <Value>{item.project?.name}</Value> },
-                            { key: "unit", label: "Unidad", value: <Value>{item.unit}</Value> },
-                        ]}
-                    />
-                    <Section
                         title="Seguimiento"
                         items={[
                             { key: "stage", label: "Etapa", value: <StageChip label={item.state.label} /> },
@@ -187,14 +176,7 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                             { key: "next", label: "Siguiente paso", value: <Value>{item.nextStep}</Value> },
                         ]}
                     />
-                    <Section
-                        title="Registro"
-                        items={[
-                            { key: "number", label: "Orden de venta", value: <Typography.Text code>{item.number}</Typography.Text> },
-                            { key: "origin", label: "Origen", value: ORIGIN_LABELS[item.source] },
-                            { key: "changedBy", label: "Último cambio por", value: <Value>{item.changedBy?.name}</Value> },
-                        ]}
-                    />
+                    <FormalizationOrderDetails item={item} permissions={stagePermissions} />
                 </div>
             )}
         </Drawer>

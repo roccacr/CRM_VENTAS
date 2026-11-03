@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { loadAmd, logMock, nsError, recordMock, runtimeMock, searchMock } from "./amd-harness.mjs";
+import { EVENT_PROVIDERS, EVENT_TEST_ID, loadAmd, logMock, nsError, recordMock, runtimeMock, searchMock } from "./amd-harness.mjs";
 
 const lib = (name, providers = {}) => loadAmd(`lib/SS2_1_LIB_CRM_${name}.js`, providers);
 const throwing = (error) => () => {
@@ -319,19 +319,31 @@ describe("Eventos.afterSubmit", () => {
 describe("EnviarEvento.sendRecordEvent", () => {
     const EVENT = { recordType: "salesorder", netsuiteId: "214", eventType: "edit" };
     const GOOD_URL = "https://abc-def.ngrok-free.dev/integrations/netsuite/local/order-events";
-    const receipt = (over = {}) => JSON.stringify({ schemaVersion: 1, received: true, persisted: false, netsuiteId: "214", ...over });
+    const receipt = (over = {}) => JSON.stringify({ schemaVersion: 2, received: true, persisted: true, eventId: EVENT_TEST_ID, netsuiteId: "214", ...over });
     const setup = ({ runtime = runtimeMock(), post } = {}) => {
         const https = {
             createSecureString: vi.fn(({ input }) => `SECURE(${input})`),
             post: vi.fn(post ?? (() => ({ code: 200, body: receipt() }))),
         };
-        const { sendRecordEvent } = lib("EnviarEvento", { "N/https": https, "N/runtime": runtime });
+        const { sendRecordEvent } = lib("EnviarEvento", { ...EVENT_PROVIDERS, "N/https": https, "N/runtime": runtime });
         // Por defecto se usa el endpoint de ordenes; los casos dinamicos pasan el suyo.
         return { https, send: (event, read, ...endpoint) => sendRecordEvent(event, read, ...(endpoint.length ? endpoint : ["order-events"])) };
     };
-    const snapshot = () => ({ status: 200, data: { id: "214" } });
+    const snapshot = () => ({ sourceModifiedAt: "2026-11-02T20:00:00.000Z", status: 200, data: { id: "214" } });
     const statusOf = (result) => result.status;
 
+    it("retries a transient transport failure once with exactly the same UUID and body", () => {
+        let attempts = 0;
+        const f = setup({
+            post: () => {
+                if (attempts++ === 0) throw new Error("NETWORK");
+                return { code: 200, body: receipt() };
+            },
+        });
+        expect(f.send(EVENT, snapshot).delivered).toBe(true);
+        expect(f.https.post).toHaveBeenCalledTimes(2);
+        expect(f.https.post.mock.calls[0][0].body).toBe(f.https.post.mock.calls[1][0].body);
+    });
     it("blocks outside the sandbox before reading the snapshot or touching the network", () => {
         const { send, https } = setup({ runtime: runtimeMock({ accountId: "X" }) });
         const read = vi.fn();
@@ -360,7 +372,7 @@ describe("EnviarEvento.sendRecordEvent", () => {
         expect(/^Bearer [a-f0-9]{64}$/.test(credential.input)).toBe(true);
         expect(first.https.post).toHaveBeenCalledOnce();
         expect(JSON.parse(body)).toMatchObject({
-            schemaVersion: 1,
+            schemaVersion: 2,
             source: { system: "netsuite", accountId: "4552704_SB1", environment: "sandbox" },
             event: EVENT,
             snapshot: { status: 200 },
@@ -425,9 +437,9 @@ describe("EnviarEvento.sendRecordEvent", () => {
         ["null body", "null"],
         ["number", "5"],
         ["array", "[]"],
-        ["wrong schema", receipt({ schemaVersion: 2 })],
+        ["wrong schema", receipt({ schemaVersion: 1 })],
         ["not received", receipt({ received: false })],
-        ["persisted", receipt({ persisted: true })],
+        ["not persisted", receipt({ persisted: false })],
         ["other id", receipt({ netsuiteId: "999" })],
         ["id as number", receipt({ netsuiteId: 214 })],
     ])("never treats %s as delivered", (_name, body) => {

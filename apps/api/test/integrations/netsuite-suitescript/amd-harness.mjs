@@ -8,6 +8,9 @@ import { vi } from "vitest";
 const ROOT = fileURLToPath(new URL("../../../src/integrations/netsuite/suitescript/", import.meta.url));
 const CABINET_ROOT = "/SuiteScripts/CRM TINK/";
 export const SANDBOX_ACCOUNT = "4552704_SB1";
+export const EVENT_TEST_ID = "11111111-1111-4111-8111-111111111111";
+export const EVENT_FIELDS = Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((field) => [field, false]));
+export const EVENT_PROVIDERS = { "N/crypto/random": { generateUUID: () => EVENT_TEST_ID }, "N/format": { Type: { DATETIME: "datetime" }, parse: ({ value }) => new Date(value) } };
 
 /** Ejecuta el AMD real de un archivo (ruta relativa a suitescript/) resolviendo sus dependencias con proveedores falsos. */
 export function loadAmd(relativePath, providers, cache = new Map()) {
@@ -53,15 +56,17 @@ export function logMock() {
 /** record.load devuelve un record falso con campos de cuerpo y `lineCount` lineas de item. */
 export function recordMock({ fields = {}, texts = {}, lineCount = 1, loadError } = {}) {
     const rec = {
-        getValue: vi.fn(({ fieldId }) => fields[fieldId] ?? null),
+        getValue: vi.fn(({ fieldId }) => fields[fieldId] ?? (fieldId === "currency" ? 1 : fieldId === "trandate" ? new Date(2026, 10, 2) : (EVENT_FIELDS[fieldId] ?? null))),
         getText: vi.fn(({ fieldId }) => texts[fieldId] ?? null),
-        getLineCount: vi.fn(() => lineCount),
+        getSublists: vi.fn(() => ["item", "salesteam"]),
+        getLineCount: vi.fn(({ sublistId }) => (sublistId === "salesteam" ? 1 : lineCount)),
         getSublistText: vi.fn(({ fieldId, line }) => `${fieldId}-t${line}`),
-        getSublistValue: vi.fn(({ fieldId, line }) => (fieldId === "quantity" ? line + 1 : `${fieldId}-v${line}`)),
+        getSublistValue: vi.fn(({ fieldId, line }) => (fieldId === "employee" ? "70" : fieldId === "quantity" ? line + 1 : `${fieldId}-v${line}`)),
     };
     return {
         rec,
-        load: vi.fn(() => {
+        load: vi.fn((options) => {
+            if (options?.type === "currency") return { getValue: () => "USD" };
             if (loadError) throw loadError;
             return rec;
         }),
@@ -75,6 +80,7 @@ export function searchMock(flags = {}, impl) {
     return {
         lookupFields: vi.fn((arg) => {
             calls += 1;
+            if (arg.columns.includes("lastmodifieddate")) return { lastmodifieddate: "2026-11-02T20:00:00.000Z", ...EVENT_FIELDS, ...flags };
             if (impl) return impl(arg, calls);
             return Object.fromEntries(arg.columns.map((column) => [column, flags[column]]));
         }),

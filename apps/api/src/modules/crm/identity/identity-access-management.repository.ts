@@ -6,13 +6,14 @@ import type { CrmDatabase } from "../../../database/database.types.js";
 import { buildAuditChangeSet } from "../audit/audit-change-set.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
 import { CATALOG_CONTEXT_MODULES, CATALOG_PERMISSION_ACTIONS, type CatalogPermissionAction, findCatalogDefinitionByModuleCode, getCatalogPermissionName } from "../catalogs/catalogs.constants.js";
+import { LEAD_PROFILE_PERMISSION } from "../leads/lead-profile.contract.js";
 import type { IdentityProfile } from "./identity.types.js";
 import { normalizePermissionModule, OPERATIONAL_MODULE_CODES, permissionModuleCodes } from "./identity-module-policy.js";
 import { ACTIVE_STATUS, type IdentityTransaction } from "./identity-repository.shared.js";
 import { IdentitySessionRepository } from "./identity-session.repository.js";
 
 const INACTIVE_STATUS = "inactive";
-const VISIBLE_SECURITY_MODULE_CODES = [...CATALOG_CONTEXT_MODULES, "role", "user"] as const;
+const VISIBLE_SECURITY_MODULE_CODES = [...CATALOG_CONTEXT_MODULES, "role", "user", "lead"] as const;
 
 /** Database handle or transaction, so the same queries run inside or outside a unit of work. */
 type AccessManagementExecutor = Pick<Kysely<CrmDatabase>, "insertInto" | "selectFrom" | "updateTable">;
@@ -947,16 +948,16 @@ export class IdentityAccessManagementRepository {
         if (input.permissionInheritance === "selected_modules" && role.code !== "jefe_general") throw new BadRequestException("La herencia dinamica corresponde a Jefe General.");
     }
 
-    private async assertRolePermissionReplacement(executor: AccessManagementExecutor, role: RoleRow, permissions: readonly { moduleCode: string }[]): Promise<void> {
+    private async assertRolePermissionReplacement(executor: AccessManagementExecutor, role: RoleRow, permissions: readonly { code: string; moduleCode: string }[]): Promise<void> {
         if (role.code === "owner") throw new ConflictException("La matriz base de este rol esta protegida.");
         this.assertOperationalTemplateModules(
             role,
-            permissions.map((permission) => normalizePermissionModule(permission.moduleCode)),
+            permissions.filter((permission) => permission.code !== LEAD_PROFILE_PERMISSION).map((permission) => normalizePermissionModule(permission.moduleCode)),
         );
         const policy = await this.rolePolicy(executor, role);
         if (!policy.moduleScoped && policy.permissionInheritance !== "selected_modules") return;
         const allowed = new Set(permissionModuleCodes(policy.moduleCodes));
-        if (permissions.some((permission) => !allowed.has(permission.moduleCode))) throw new BadRequestException("Permisos fuera de los modulos del rol.");
+        if (permissions.some((permission) => permission.code !== LEAD_PROFILE_PERMISSION && !allowed.has(permission.moduleCode))) throw new BadRequestException("Permisos fuera de los modulos del rol.");
     }
 
     private async roleBasePermissions(executor: AccessManagementExecutor, role: RoleRow, policy: { moduleCodes: string[]; moduleScoped: boolean; permissionInheritance: string }) {
@@ -965,7 +966,7 @@ export class IdentityAccessManagementRepository {
         const allowed = new Set(permissionModuleCodes(policy.moduleCodes));
         const scoped = policy.moduleScoped || policy.permissionInheritance === "selected_modules";
         const operational = new Set<string>(OPERATIONAL_MODULE_CODES);
-        return permissions.filter((permission) => (!scoped || allowed.has(permission.moduleCode)) && (policy.permissionInheritance !== "selected_modules" || operational.has(permission.moduleCode)));
+        return permissions.filter((permission) => permission.code === LEAD_PROFILE_PERMISSION || ((!scoped || allowed.has(permission.moduleCode)) && (policy.permissionInheritance !== "selected_modules" || operational.has(permission.moduleCode))));
     }
 
     private assertOperationalTemplateModules(role: RoleRow, codes: readonly string[]): void {
@@ -1051,7 +1052,7 @@ export class IdentityAccessManagementRepository {
             const base = await this.readRolePermissions(code, executor);
             const definitions = await this.findActivePermissionsByCode(executor, base.permissionCodes);
             if (definitions.length !== base.permissionCodes.length) throw new ForbiddenException("La autoridad del rol no esta disponible.");
-            const permissions = definitions.filter((permission) => (!base.role.moduleScoped && base.role.permissionInheritance !== "selected_modules") || selected.has(normalizePermissionModule(permission.moduleCode))).map((permission) => permission.code);
+            const permissions = definitions.filter((permission) => permission.code === LEAD_PROFILE_PERMISSION || (!base.role.moduleScoped && base.role.permissionInheritance !== "selected_modules") || selected.has(normalizePermissionModule(permission.moduleCode))).map((permission) => permission.code);
             if (permissions.some((permission) => !can(permission))) throw new ForbiddenException("El rol concede permisos fuera de tu autoridad efectiva.");
         }
     }
@@ -1066,7 +1067,7 @@ export class IdentityAccessManagementRepository {
             executor,
             allows.map((override) => override.code),
         );
-        if (permissions.length !== allows.length || permissions.some((permission) => !operational.has(normalizePermissionModule(permission.moduleCode)))) throw new ForbiddenException("Jefe General no admite permisos administrativos directos.");
+        if (permissions.length !== allows.length || permissions.some((permission) => permission.code !== LEAD_PROFILE_PERMISSION && !operational.has(normalizePermissionModule(permission.moduleCode)))) throw new ForbiddenException("Jefe General no admite permisos administrativos directos.");
     }
 
     /** Runs before snapshot reads; role policy/grant writers lock these same rows. */
@@ -1175,6 +1176,7 @@ export class IdentityAccessManagementRepository {
         }
 
         const names: Record<string, string> = {
+            lead: "Lead",
             administration: "Administracion",
             contabilidad: "Contabilidad",
             formalizacion: "Formalizacion",
@@ -1190,11 +1192,16 @@ export class IdentityAccessManagementRepository {
 
     /** Decides which view a permission belongs to, keeping existing permission codes unchanged. */
     private resolvePermissionViewCode(permissionCode: string, moduleCode: string): string {
+        if (permissionCode === LEAD_PROFILE_PERMISSION) return "profile";
         const parts = permissionCode.split(".");
         if (/^(?:[^.]+\.notes\.|formalizacion\.home\.|mercadeo\.(?:home|leads|calendar)\.read$)/u.test(permissionCode)) return parts[1] as string;
         // One order workspace, preserving the exact existing permission codes and grants.
         if (moduleCode === "formalizacion" && /^(contract\.|file\.|signature\.|formalizacion\.(?:contracts|orders)\.)/u.test(permissionCode)) return "sales_order";
 
+        return this.standardPermissionView(parts, permissionCode);
+    }
+
+    private standardPermissionView(parts: string[], permissionCode: string): string {
         return parts.length >= 3 && findCatalogDefinitionByModuleCode(parts[1] ?? "") ? (parts[1] as string) : (parts[0] ?? permissionCode);
     }
 
@@ -1294,6 +1301,7 @@ export class IdentityAccessManagementRepository {
 
         const names: Record<string, string> = {
             campaign: "Campanas",
+            profile: "Perfil del lead",
             notes: "Notas",
             leads: "Captación de leads",
             reports: "Informes",
@@ -1363,6 +1371,7 @@ export class IdentityAccessManagementRepository {
             "estimate.read": "Ver estimaciones",
             "file.read": "Ver expedientes",
             "invoice.read": "Ver facturas",
+            "lead.profile.read": "Ver perfil completo del lead",
             "lead.assign": "Asignar responsable",
             "lead.create": "Crear lead",
             "lead.read": "Ver lista de leads",

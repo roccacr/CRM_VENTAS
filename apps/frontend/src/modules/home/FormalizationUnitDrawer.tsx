@@ -11,6 +11,7 @@ import Drawer from "antd/es/drawer";
 import Typography from "antd/es/typography";
 import { useEffect, useState } from "react";
 
+import { ExpedienteLink } from "../../components/ExpedienteLink";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { getOrderUnitDetail, type OrderUnitDetail } from "../../services/formalization/order-unit-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
@@ -28,7 +29,7 @@ function tidy(group: OrderUnitDetail["groups"][number]) {
         notes.add(QUALIFIER_NOTES[match[2]] ?? "");
         return { ...field, label: match[1] };
     });
-    return { title: group.title, notes: [...notes].filter(Boolean), filled: fields.filter((field) => field.value !== "Sin dato"), empty: fields.filter((field) => field.value === "Sin dato") };
+    return { title: group.title, notes: [...notes].filter(Boolean), filled: fields.filter((field) => field.kind === "expediente" || field.value !== "Sin dato"), empty: fields.filter((field) => field.kind !== "expediente" && field.value === "Sin dato") };
 }
 
 function UnitGroup({ group }: { readonly group: OrderUnitDetail["groups"][number] }) {
@@ -40,7 +41,7 @@ function UnitGroup({ group }: { readonly group: OrderUnitDetail["groups"][number
                     {note}
                 </p>
             ))}
-            {filled.length > 0 && <Descriptions column={1} colon={false} size="small" items={filled.map((field) => ({ key: field.label, label: field.label, children: field.value }))} />}
+            {filled.length > 0 && <Descriptions column={1} colon={false} size="small" items={filled.map((field) => ({ key: field.label, label: field.label, children: field.kind === "expediente" ? <ExpedienteLink value={field.value === "Sin dato" ? null : field.value} /> : field.value }))} />}
             {empty.length > 0 && (
                 <details className="client-detail__empties" data-alone={filled.length === 0} open={filled.length === 0}>
                     <summary>{empty.length === 1 ? "1 campo sin dato" : `${String(empty.length)} campos sin dato`}</summary>

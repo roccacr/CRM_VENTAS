@@ -413,7 +413,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
     const [savedUserPermissionOverrides, setSavedUserPermissionOverrides] = useState<PermissionOverrideState>({});
     const scopedRoles = useMemo(() => catalog.roles.map((role) => (role.code === GENERAL_ROLE_CODE ? { ...role, moduleCodes: [...savedGeneralModules] } : role)), [catalog.roles, savedGeneralModules]);
     const userModuleScope = useMemo(() => getUserModuleScope([...userRoleCodes], scopedRoles, [...userOrgUnitCodes]), [scopedRoles, userRoleCodes, userOrgUnitCodes]);
-    const isUserModuleAssigned = (moduleCode: string): boolean => userModuleScope === null || userModuleScope.has(normalizeAccessModuleCode(moduleCode));
+    const isUserModuleAssigned = (moduleCode: string): boolean => moduleCode === "lead" || userModuleScope === null || userModuleScope.has(normalizeAccessModuleCode(moduleCode));
 
     const selectedUserPublicId = selectedUser?.publicId ?? "";
     const selectedRole = getRole(roles, selectedRoleCode);
@@ -421,7 +421,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
     const isOwnerContext = isUserMode ? userRoleCodes.has(OWNER_ROLE_CODE) : selectedRoleCode === OWNER_ROLE_CODE;
     const isGeneralTemplate = !isUserMode && selectedRoleCode === GENERAL_ROLE_CODE;
     const canEditGeneralTemplate = isGeneralTemplate && canManageGeneral;
-    const visibleModules = useMemo(() => getVisibleModulesForContext(modules, isOwnerContext).filter((module) => !isGeneralTemplate || isOperationalAccessModule(module.code)), [isOwnerContext, modules, isGeneralTemplate]);
+    const visibleModules = useMemo(() => getVisibleModulesForContext(modules, isOwnerContext).filter((module) => !isGeneralTemplate || module.code === "lead" || isOperationalAccessModule(module.code)), [isOwnerContext, modules, isGeneralTemplate]);
     const displayModules = useMemo(() => buildDisplayModules(visibleModules), [visibleModules]);
     const activeModule = findByKeyOrFirst(displayModules, selectedModuleKey);
     const activeSection = activeModule ? findByKeyOrFirst(activeModule.sections, selectedSectionKey) : undefined;
@@ -446,7 +446,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
             return buildUserSaveSummary({ modules: visibleModules, roles, selectedUser, userOrgUnitCodes, userPermissionOverrides, userRoleCodes });
         }
 
-        const summary = buildRoleSaveSummary({ modules: visibleModules.filter((module) => !isGeneralTemplate || generalModules.has(module.code)), permissionState, selectedRole, selectedRoleCode });
+        const summary = buildRoleSaveSummary({ modules: visibleModules.filter((module) => !isGeneralTemplate || module.code === "lead" || generalModules.has(module.code)), permissionState, selectedRole, selectedRoleCode });
         return isGeneralTemplate
             ? [
                   ...summary,
@@ -572,9 +572,11 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
         };
     }, [canListUsers, selectedUserPublicId]);
 
+    const isGeneralViewEnabled = (view: PermissionSectionView): boolean => !isGeneralTemplate || view.moduleCode === "lead" || generalModules.has(view.moduleCode);
+
     /** Catalog grants remain authoritative even when the role template is locked. */
     const getGrantedCodes = (view: PermissionSectionView): ReadonlySet<string> => {
-        if (isGeneralTemplate && !generalModules.has(view.moduleCode)) return new Set();
+        if (!isGeneralViewEnabled(view)) return new Set();
         if (isUserMode && !isUserModuleAssigned(view.moduleCode)) return new Set();
         return new Set(isUserMode ? getEffectiveUserPermissionCodes(getUserBaseCodes(view.moduleCode), userPermissionOverrides) : (permissionState[selectedRoleCode]?.[view.moduleCode] ?? []));
     };
@@ -586,7 +588,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
         if (isRoleEditBlocked) {
             return;
         }
-        if (isGeneralTemplate && !generalModules.has(view.moduleCode)) return;
+        if (!isGeneralViewEnabled(view)) return;
 
         if (isUserMode) {
             if (!isUserModuleAssigned(view.moduleCode)) return;
@@ -729,7 +731,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
             permissionCodes: getRolePermissionCodesForModules(
                 permissionState,
                 selectedRoleCode,
-                visibleModules.filter((module) => !isGeneralTemplate || generalModules.has(module.code)),
+                visibleModules.filter((module) => !isGeneralTemplate || module.code === "lead" || generalModules.has(module.code)),
             ),
             reason,
             ...(isGeneralTemplate ? { moduleCodes: [...generalModules].sort() } : {}),
@@ -958,33 +960,35 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
                                 getOrigin={isUserMode ? (code) => (isUserModuleAssigned(activeView.moduleCode) ? getUserPermissionOrigin(code, userPermissionOverrides, getUserBaseCodes(activeView.moduleCode)) : "Módulo no asignado") : undefined}
                                 isBusy={isAccessEditorBusy}
                                 isLocked={isSystemRole}
-                                isModuleAssigned={isGeneralTemplate ? generalModules.has(activeView.moduleCode) : !isUserMode || isUserModuleAssigned(activeView.moduleCode)}
+                                isModuleAssigned={isGeneralTemplate ? isGeneralViewEnabled(activeView) : !isUserMode || isUserModuleAssigned(activeView.moduleCode)}
                                 menuVisibility={
-                                    isUserMode
-                                        ? {
-                                              checked: userOrgUnitCodes.has(activeSection.moduleCode),
-                                              isAccessScope: userModuleScope !== null,
-                                              moduleName: sectionModuleName,
-                                              onToggle: () => {
-                                                  toggleUserModuleVisibility(activeSection.moduleCode);
-                                              },
-                                          }
-                                        : canEditGeneralTemplate
+                                    activeSection.moduleCode === "lead"
+                                        ? undefined
+                                        : isUserMode
                                           ? {
-                                                checked: generalModules.has(activeSection.moduleCode),
-                                                isRoleTemplate: true,
+                                                checked: userOrgUnitCodes.has(activeSection.moduleCode),
+                                                isAccessScope: userModuleScope !== null,
                                                 moduleName: sectionModuleName,
                                                 onToggle: () => {
-                                                    if (isAccessEditorBusy) return;
-                                                    setGeneralModules((current) => {
-                                                        const next = new Set(current);
-                                                        if (next.has(activeSection.moduleCode)) next.delete(activeSection.moduleCode);
-                                                        else next.add(activeSection.moduleCode);
-                                                        return next;
-                                                    });
+                                                    toggleUserModuleVisibility(activeSection.moduleCode);
                                                 },
                                             }
-                                          : undefined
+                                          : canEditGeneralTemplate
+                                            ? {
+                                                  checked: generalModules.has(activeSection.moduleCode),
+                                                  isRoleTemplate: true,
+                                                  moduleName: sectionModuleName,
+                                                  onToggle: () => {
+                                                      if (isAccessEditorBusy) return;
+                                                      setGeneralModules((current) => {
+                                                          const next = new Set(current);
+                                                          if (next.has(activeSection.moduleCode)) next.delete(activeSection.moduleCode);
+                                                          else next.add(activeSection.moduleCode);
+                                                          return next;
+                                                      });
+                                                  },
+                                              }
+                                            : undefined
                                 }
                                 moduleName={activeModule.name}
                                 section={activeSection}

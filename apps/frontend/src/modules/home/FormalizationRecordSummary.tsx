@@ -399,7 +399,7 @@ function OrderItems({ primary }: { readonly primary: Partial<NetsuitePrimary> | 
  * One reading of the sale file. Facts stay in the main column, in named groups; money and answers stay in the right margin.
  * Field values await explicit mapping; this scaffold contains no example values.
  */
-export function FormalizationRecordSummary({ item, primary = null }: { readonly item: FollowUpItem; readonly primary?: Partial<NetsuitePrimary> | null }) {
+export function FormalizationRecordSummary({ item, primary = null, effectivePermissions = [] }: { readonly item: FollowUpItem; readonly primary?: Partial<NetsuitePrimary> | null; readonly effectivePermissions?: readonly { readonly code: string; readonly effect: string }[] }) {
     const [panel, setPanel] = useState<"client" | "unit" | "history" | null>(null);
     const [selectedDetail, setSelectedDetail] = useState("articles");
     const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
@@ -454,6 +454,7 @@ export function FormalizationRecordSummary({ item, primary = null }: { readonly 
                 }}
             />
             <FormalizationClientDrawer
+                effectivePermissions={effectivePermissions}
                 item={item}
                 open={panel === "client"}
                 onClose={() => {

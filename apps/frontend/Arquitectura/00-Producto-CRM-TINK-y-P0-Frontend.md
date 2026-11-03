@@ -1,6 +1,36 @@
 # 00 - Ley de Producto CRM TINK y P0 Frontend
 
-## Corte documental vigente - 2026-10-29
+## Corte documental vigente - 2026-11-02
+
+Esta revisión refleja las ampliaciones ya presentes en código y conserva las
+decisiones anteriores con su fecha; no autoriza funciones nuevas por documento.
+El [inventario30](30-Estado-Frontend-Verificado.md) registra todos los módulos,
+rutas, servicios y límites contrastados con el HEAD `fcbf0c2` y el árbol actual.
+
+Formalización incluye lecturas de ficha, cliente, unidad e historial, seguimiento,
+etapa y aprobación con permisos independientes. Los capítulos NetSuite con mapeo
+confirmado se muestran por API, sin rellenar con valores del ejemplo visual.
+Campos no confirmados permanecen sin dato y las previews históricas no se vuelven
+comandos reales por mostrar un botón. Edición general, cartera, registro operativo
+de firma y validación conjunta de saldo/traspaso/llaves siguen sin acreditarse.
+
+Calendario compartido tiene lectura/altas/ediciones nativas, invitados y relaciones
+CRM, overlays y panel diario. Los correos y preferencia Teams no activan Graph,
+envíos o sincronización Outlook. El contrato de formulario está en
+[Calendario global](Calendario-Global-Frontend.md).
+
+Las notas permiten vincular Cliente/lead y Orden con Select buscables desde el
+formulario y gestionar relaciones secundarias desde la conversación del autor.
+Fuente e ID son identidad técnica, no un filtro BD para usuarios. Sus resúmenes
+se reautorizan; sin permiso comercial no se exponen nombres/IDs/enlaces del recurso
+al invitado de una nota. Contexto original e invitaciones son controles distintos.
+Contrato: [68 API](../../api/Arquitectura/68-Plan-Notas-Vinculos-Clientes-y-Ordenes.md).
+
+Ni mostrar una lectura NetSuite ni el plan70 implementan un escritor duradero.
+No importar registros legacy ni ejecutar comandos comerciales para actualizar
+documentación. QA histórico, aceptación real y validación nueva se distinguen.
+
+## Antecedente documental - 2026-10-29
 
 Mis notas y la campana interna incluyen colaboracion por invitacion, respuestas,
 menciones y actualizaciones por socket, junto con responsables, vencimientos,

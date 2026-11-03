@@ -45,6 +45,14 @@ it("preserves zero and decimal formatting, shows missing values and never borrow
     expect(fields).toContainEqual({ label: "Proyecto", value: "Sin dato" });
     expect(fields).toContainEqual({ label: "Código", value: "A-1" });
     expect(fields).toContainEqual({ label: "Precio de venta anunciado (moneda no informada)", value: "1.2300" });
-    expect(fields).toContainEqual({ label: "Planos de la unidad (referencia de origen)", value: "Sin dato" });
+    expect(fields).toContainEqual({ label: "Planos de la unidad (referencia de origen)", value: "Sin dato", kind: "expediente" });
     expect(JSON.stringify(result)).not.toContain("WRONG");
+});
+
+it.each(["native", "legacy"] as const)("marks the expediente field from %s without changing its value", async (source) => {
+    for (const value of ["  https://rocca.box.com/s/example  ", "invalid", null]) {
+        vi.mocked(getDatabaseOrder).mockResolvedValue(snapshot(source, { [source === "native" ? "unit_plans_unit_file" : "planosDeUnidad_exp"]: value }));
+        const result = await getOrderUnitDetail({ source, id: "order" });
+        expect(result.groups.flatMap((group) => group.fields)).toContainEqual({ label: "Planos de la unidad (referencia de origen)", value: value ?? "Sin dato", kind: "expediente" });
+    }
 });

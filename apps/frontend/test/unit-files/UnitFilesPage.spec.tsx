@@ -135,7 +135,7 @@ describe("Unit Files view", () => {
         }
         expect(listUnitFiles).toHaveBeenCalledTimes(1);
     });
-    it.each(["https://rocca.box.com/s/2zlwbc4sh6lw4jfwtm62oklh31oi6bkx", "javascript:alert(1)", "not a URL"])("renders plans safely: %s", async (unitPlans) => {
+    it.each(["https://rocca.box.com/s/2zlwbc4sh6lw4jfwtm62oklh31oi6bkx", "javascript:alert(1)", "not a URL", "", "   ", null])("renders plans safely: %s", async (unitPlans) => {
         vi.mocked(getUnitFile).mockResolvedValue({ ...item, values: { unitPlans }, sourceMetadata: { projectReference: "43" }, externalReferences: [] });
         render(<UnitFilesPage />);
         fireEvent.mouseDown(screen.getByRole("combobox", { name: "Proyectos" }));
@@ -143,8 +143,8 @@ describe("Unit Files view", () => {
         fireEvent.click(screen.getByRole("button", { name: "Buscar expedientes" }));
         fireEvent.click(await screen.findByRole("button", { name: "AM-101" }));
         const drawer = await screen.findByRole("dialog");
-        const text = await within(drawer).findByText(unitPlans);
-        if (unitPlans.startsWith("https://")) {
+        const text = await within(drawer).findByText(unitPlans?.startsWith("https://") ? "Ver expediente" : unitPlans?.trim() || "—");
+        if (unitPlans?.startsWith("https://")) {
             expect(text).toHaveAttribute("href", unitPlans);
             expect(text).toHaveAttribute("target", "_blank");
             expect(text).toHaveAttribute("rel", "noopener noreferrer");

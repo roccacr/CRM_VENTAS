@@ -1,3 +1,12 @@
+## Alcance de vendedores vigente - revisión 2026-11-02
+
+Inicio conserva `GET /marketing/home/summary`, periodo day/week/month/year y
+`mercadeo.home.read`. Con la capacidad adicional `mercadeo.reports.read_all`
+consulta todos los vendedores; sin ella o con deny de esa capacidad mantiene
+el alcance ordinario. Un deny de la vista continúa bloqueando el reporte. La
+capacidad no cambia permisos comerciales ni modifica leads. Definición056 y
+evidencia de asignaciones puntuales: [69](69-Mercadeo-Lectura-Global.md).
+
 > Actualizacion autorizada 2026-10-23: la ampliacion de citas descrita en
 
 ## Dos lecturas distintas de Mercadeo - 2026-10-27

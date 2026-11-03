@@ -1,5 +1,5 @@
 /**
- * Transporte generico de eventos a desarrollo local, para cualquier tipo de registro. Sin escrituras ni
+ * Transporte de eventos a desarrollo local; la API v2 confirma persistencia durable. Sin
  * reintentos automaticos. Nunca lanza: devuelve { status, delivered } para que quien llama solo registre metadatos.
  * No hace: no sabe como leer ni mapear una entidad (lo aporta cada modulo) ni persiste una cola de envio.
  * Limite conocido: https.post es sincrono y corre durante el guardado (10 unidades); Oracle recomienda mover
@@ -9,7 +9,12 @@
  * @NApiVersion 2.1
  * @NModuleScope SameAccount
  */
-define(["N/https", "N/runtime", "./SS2_1_LIB_CRM_Entorno"], (https, runtime, environment) => {
+define(["N/https", "N/runtime", "N/crypto/random", "./SS2_1_LIB_CRM_Entorno"], (
+    https,
+    runtime,
+    random,
+    environment,
+) => {
     "use strict";
 
     const { isAuthorizedSandbox } = environment;
@@ -25,7 +30,7 @@ define(["N/https", "N/runtime", "./SS2_1_LIB_CRM_Entorno"], (https, runtime, env
     const ENDPOINT_NAME = /^[a-z]+(?:-[a-z]+)*-events$/;
     // TEMPORAL Sandbox: clave directa; sustituir por API Secret al cerrar la prueba.
     const SECRET_ID = "eea21f021a387ac684ab2518529115e3005ef90aec870f55548038650bb9fd0f";
-    const SCHEMA_VERSION = 1;
+    const SCHEMA_VERSION = 2;
     const MAX_BODY_BYTES = 500000;
     // Largo maximo (UTF-16) de cada texto que acepta el receptor. No se trunca informacion de negocio: se bloquea.
     const MAX_VALUE_LENGTH = 16000;
@@ -45,16 +50,37 @@ define(["N/https", "N/runtime", "./SS2_1_LIB_CRM_Entorno"], (https, runtime, env
             if (url === null) return blocked("destination_blocked");
             // TEMPORAL: token local directo, solo Sandbox; sustituir por API Secret tras la prueba.
             const authorization = https.createSecureString({ input: "Bearer " + SECRET_ID });
-            const snapshot = readSnapshot(event.netsuiteId);
-            if (snapshot.status !== 200) return blocked("snapshot_failed");
-            if (hasOversizedValue(snapshot)) return blocked("value_too_long");
-            const body = buildBody(event, snapshot);
-            if (byteLength(body) > MAX_BODY_BYTES) return blocked("payload_too_large");
-            return deliver(url, body, authorization, event);
-        } catch {
+            return deliverObservation(url, authorization, event, readSnapshot);
+        } catch (error) {
             // El guardado ya ocurrio; no lanzar ni fingir que se reintentara automaticamente.
-            return blocked("delivery_failed");
+            const safe =
+                error &&
+                ["source_version_unavailable", "source_flags_unavailable", "snapshot_changed"].includes(error.message);
+            return blocked(safe ? error.message : "delivery_failed");
         }
+    }
+
+    /** Un conflicto exige una lectura nueva; nunca reenviar contenido viejo con una marca de tiempo nueva. */
+    function deliverObservation(url, authorization, event, readSnapshot) {
+        let result = blocked("snapshot_conflict");
+        for (let attempt = 0; attempt < 2; attempt++) {
+            result = sendSnapshot(url, authorization, event, readSnapshot);
+            if (result.status !== "snapshot_conflict") return result;
+        }
+        return result;
+    }
+
+    function sendSnapshot(url, authorization, event, readSnapshot) {
+        const versionedEvent = { ...event, eventId: random.generateUUID(), observedAt: new Date().toISOString() };
+        const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt, ...snapshot } = readSnapshot(
+            event.netsuiteId,
+        );
+        Object.assign(versionedEvent, { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt });
+        if (snapshot.status !== 200) return blocked("snapshot_failed");
+        if (hasOversizedValue(snapshot)) return blocked("value_too_long");
+        const body = buildBody(versionedEvent, snapshot);
+        if (byteLength(body) > MAX_BODY_BYTES) return blocked("payload_too_large");
+        return deliver(url, body, authorization, versionedEvent);
     }
 
     /** Resultado de un envio que no se completo. */
@@ -76,14 +102,14 @@ define(["N/https", "N/runtime", "./SS2_1_LIB_CRM_Entorno"], (https, runtime, env
             schemaVersion: SCHEMA_VERSION,
             source: { system: "netsuite", accountId: runtime.accountId, environment: "sandbox" },
             // UTC ISO a proposito: es un instante de maquina, no una fecha de negocio de la cuenta.
-            event: { ...event, observedAt: new Date().toISOString() },
+            event,
             snapshot,
         });
     }
 
-    /** Un solo POST; confirma recepcion solo si HTTP y recibo coinciden con el evento enviado. */
+    /** Confirma persistencia solo si HTTP y recibo coinciden con el evento enviado. */
     function deliver(url, body, authorization, event) {
-        const response = https.post({
+        const response = postWithRetry({
             url,
             body,
             headers: {
@@ -92,18 +118,33 @@ define(["N/https", "N/runtime", "./SS2_1_LIB_CRM_Entorno"], (https, runtime, env
                 "ngrok-skip-browser-warning": "true",
             },
         });
+        if (Number(response.code) === 409) return blocked("snapshot_conflict");
         if (Number(response.code) !== 200) return blocked("receiver_rejected");
         if (!isMatchingReceipt(JSON.parse(response.body), event)) return blocked("receipt_invalid");
         return { status: "received_local", delivered: true };
     }
 
-    /** El recibo acredita recepcion sin persistencia y con el mismo ID. */
+    /** Un solo reintento inmediato para red/5xx; conserva cuerpo y UUID para un COMMIT de resultado incierto. */
+    function postWithRetry(request) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const response = https.post(request);
+                if (Number(response.code) < 500 || attempt === 1) return response;
+            } catch (error) {
+                if (attempt === 1) throw error;
+            }
+        }
+        throw new Error("delivery_failed");
+    }
+
+    /** El recibo acredita COMMIT y los mismos IDs de orden y evento; una mera recepcion v1 no basta. */
     function isMatchingReceipt(receipt, event) {
         return (
             Boolean(receipt) &&
             receipt.schemaVersion === SCHEMA_VERSION &&
             receipt.received === true &&
-            receipt.persisted === false &&
+            receipt.persisted === true &&
+            receipt.eventId === event.eventId &&
             receipt.netsuiteId === event.netsuiteId
         );
     }

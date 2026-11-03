@@ -1,5 +1,16 @@
 # 14 - Modularizacion Frontend por Areas y Roles
 
+## Árbol y módulos efectivos - 2026-11-02
+
+La separación por rol sigue siendo una regla de contexto y permisos, no carpetas
+duplicadas. El árbol real y las rutas están en [30](30-Estado-Frontend-Verificado.md):
+auth, administration, home, marketing, calendar y notes. Ya existen seguimiento
+de Formalización, calendario API de cuatro módulos y notas colaborativas; no
+interpretar el snapshot del 23 sobre seguimiento vacío como estado actual.
+Ventas y Contabilidad todavía no entregan sus flujos comerciales generales por
+tener una portada, catálogo o calendario. El perfil efectivo del API y sus denies
+gobiernan la navegación; notas compartidas no conceden lectura de recursos.
+
 ## Vigencia documental - 2026-10-22, corte f2dc4f1
 
 Blueprint de dominios y hogares futuros; sus carpetas/componentes no son inventario instalado. Actualizacion 2026-10-23: el runtime usa `modules/administration`, `modules/home` y `modules/auth`; Home de Mercadeo y resumen de etapas de Formalizacion estan conectados. Formalizacion exige modulo activo del perfil efectivo; Owner recibe modulos virtuales backend. Etapas exige rol efectivo Formalizacion mas permiso sin deny; aprobaciones tiene permiso separado. Jefe General queda dentro de modulos seleccionados y techo de plantilla, sin Administracion por seleccion modular. Seguimiento no disponible; [27](27-Entrega-Administracion-y-QA.md) detalla el inventario. Las listas de banners siguientes son blueprint.

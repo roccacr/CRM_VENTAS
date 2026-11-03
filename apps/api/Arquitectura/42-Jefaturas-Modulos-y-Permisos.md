@@ -1,5 +1,16 @@
 # 42 - Jefaturas, modulos seleccionados y permisos
 
+## Capacidad adicional de reportes - revisión 2026-11-02
+
+`mercadeo.reports.read_all` amplía únicamente la población de vendedores de los
+reportes Inicio/Captación, además de sus permisos de lectura. No altera el techo
+modular de Jefe General ni habilita CRUD, acceso a una orden, o gestión de notas
+ajenas. Una denegación del permiso global conserva el alcance ordinario; una
+denegación de la vista la bloquea. La definición056 no otorga grants automáticos;
+las asignaciones individuales y su evidencia fechada están en
+[69](69-Mercadeo-Lectura-Global.md). No extrapolar dos asignaciones históricas a
+todos los roles/personas ni a una política global de administración.
+
 ## Correccion autorizada: plantilla General editable - 2026-10-23
 
 Owner debe poder administrar Jefe General desde Roles y seguridad, modo Por rol.

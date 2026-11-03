@@ -1,5 +1,20 @@
 # CI y gate MySQL
 
+## Inventario vigente - 2026-11-02
+
+La revisión de `test/**/*.mysql.spec.ts` encuentra **27 archivos**. El runner
+`scripts/run-mysql-ci.ts` conserva **cinco** en `NATIVE_MYSQL_FILES`; los otros
+**22** no quedan ejecutados por esa allowlist. Los conteos23/18 del corte27
+inferior son históricos. El runner mantiene la señal `partial`/salida1 mientras
+queden archivos fuera del grupo, aunque las cinco suites pasen. Omitido no es aprobado.
+
+Las extensiones de Notas/Calendario y los casos SQL condicionados requieren su
+infraestructura aislada y flags específicos. No se habilitaron flags, fixtures ni
+conexiones a BD compartida en esta revisión. Los resultados nuevos de lint,
+tipos/pruebas/build deben citar su comando y corte; el fallo de formato de un
+archivo SuiteScript en el check raíz no puede describirse como check-all verde
+porque otras comprobaciones separadas pasen.
+
 ## Inventario contrastado - 2026-10-27
 
 Revision estatica de `.github/workflows/quality.yml`, `scripts/run-mysql-ci.ts`

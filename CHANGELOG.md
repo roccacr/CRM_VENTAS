@@ -1,5 +1,21 @@
 # Changelog
 
+## Reconciliación documental integral — 2026-11-02
+
+- Contrastados los35 commits alcanzables hasta `fcbf0c2` y los cambios locales,
+  incluyendo el contenido de implementación de `bf8caa5` pese a su título `docs`.
+- Actualizados los mapas de módulos, rutas, permisos, migraciones, comandos,
+  notas relacionadas, calendario, Mercadeo y capítulos de Formalización.
+- Incorporados los contratos actuales de logging y recepción local NetSuite,
+  separados de la sincronización duradera todavía propuesta en70; indicadores057
+  identificados como cambios locales, sin ejecutar su DDL en esta revisión.
+- Reconciliados README, reglas, índices, guía de autenticación, operación y
+  publicación Habita con sus fechas y límites de evidencia.
+- Inventario, validaciones, resultados y pendientes en
+  [72](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
+  Este corte modifica documentación; no publica código, importa datos ni cambia
+  credenciales, configuración o información comercial.
+
 ## Notas, calendario y QA consolidado - 2026-10-29
 
 - Notas: responsables opcionales, vencimientos y recordatorios personales con

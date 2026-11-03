@@ -5,6 +5,7 @@ import type { CrmDatabase } from "../../../database/database.types.js";
 /** Trusted server-side identity captured before the business mutation, never credentials. */
 /** Name and roles are frozen at capture time so later renames or role changes do not rewrite history. */
 export interface AuditActorSnapshot {
+    kind?: "service";
     publicId: string;
     name: string;
     roles: { code: string; name: string }[];
@@ -18,7 +19,7 @@ const capturedActors = new WeakMap<object, AuditActorSnapshot>();
 export function getCapturedAuditActor(value: unknown): AuditActorSnapshot | undefined {
     if (value === null || typeof value !== "object") return undefined;
     const actor = capturedActors.get(value);
-    return actor ? { publicId: actor.publicId, name: actor.name, roles: actor.roles.map((role) => ({ ...role })) } : undefined;
+    return actor ? { ...actor, roles: actor.roles.map((role) => ({ ...role })) } : undefined;
 }
 
 /** Shared actor capture; activeOnly is used by new commercial mutations. */
@@ -30,5 +31,12 @@ export async function readAuditActor(executor: Pick<Kysely<CrmDatabase>, "select
     const roles = await executor.selectFrom("sec_user_role as assignment").innerJoin("sec_role as role", "role.id_role", "assignment.role_id_user_role").select(["role.code_role as code", "role.name_role as name"]).where("assignment.user_id_user_role", "=", actorUserId).where("assignment.status_user_role", "=", "active").where("assignment.revoked_at_user_role", "is", null).where("role.status_role", "=", "active").where("role.deleted_at_role", "is", null).orderBy("role.code_role").execute();
     const snapshot = { publicId: actor.publicId, name: actor.name, roles };
     if (actor.status === "active" && actor.deleted === null) capturedActors.set(snapshot, { publicId: actor.publicId, name: actor.name, roles: roles.map((role) => ({ ...role })) });
+    return snapshot;
+}
+
+/** Solo adaptadores internos capturan servicios; copias o JSON recibido nunca adquieren procedencia confiable. */
+export function captureIntegrationAuditActor(identity: { publicId: string; name: string }): AuditActorSnapshot {
+    const snapshot: AuditActorSnapshot = { ...identity, kind: "service", roles: [] };
+    capturedActors.set(snapshot, { ...snapshot, roles: [] });
     return snapshot;
 }

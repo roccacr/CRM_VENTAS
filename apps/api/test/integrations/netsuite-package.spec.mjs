@@ -21,7 +21,7 @@ function copyFixture(from, to) {
 
 it("maps all modules to their actual File Cabinet paths with hashes and version", () => {
     const result = inspectSuiteScripts();
-    assert.equal(result.version, "2026.10.30.4");
+    assert.equal(result.version, "2026.11.02.1");
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_RL_CRM_Integracion.js"));
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/CRM TINK/lib/SS2_1_LIB_CRM_Registros.js"));
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_UE_CRM_CambiosRegistros.js"));

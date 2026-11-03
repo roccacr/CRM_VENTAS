@@ -56,7 +56,7 @@ export function FormalizationRecordProgress({ state, compact = false }: { readon
             <ProgressHeader current={current} closed={closed} />
             <ol className="formalization-record-progress__steps" aria-label="Recorrido de etapas">
                 {RECORD_PROGRESS_STAGES.map((stage, index) => (
-                    <li key={stage.code} data-status={progressStatus(index, current, closed)} aria-current={!closed && index === current ? "step" : undefined}>
+                    <li key={stage.code} title={compact ? `${stage.label} · ${progressLabel(index, current, closed)}` : undefined} data-status={progressStatus(index, current, closed)} aria-current={!closed && index === current ? "step" : undefined}>
                         <span className="formalization-record-progress__marker" aria-hidden="true">
                             <stage.Icon />
                             {["completed", "previous"].includes(progressStatus(index, current, closed)) && <CheckOutlined className="formalization-record-progress__check" />}

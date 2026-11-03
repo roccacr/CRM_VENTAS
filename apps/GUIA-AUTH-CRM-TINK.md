@@ -1,5 +1,27 @@
 # Guía Técnica Completa: Sistema de Autenticación CRM TINK
 
+## Contrato vigente revisado — 2026-11-02
+
+La guía sigue describiendo el BFF instalado; el inventario completo se actualiza
+en [72](api/Arquitectura/72-Reconciliacion-Documental-20261102.md) y los mapas API22
+y frontend30. Las cifras de perfiles/login y pruebas antiguas no son un estado
+actual de las cuentas ni una nueva aceptación de autenticación real.
+
+- La SPA conserva cookies HttpOnly y prueba CSRF en memoria. El callback admite
+  `clientdata` opcional acotado, sin usarlo como identidad ni reemplazar state/PKCE.
+- El despliegue Habita usa origen web común mediante proxy para API y sockets;
+  [la evidencia del29](../deploy/habita/DEPLOYMENT-20261029.md) no certifica la sesión
+  actual de ningún empleado ni despliegue de los commits posteriores.
+- Socket.IO de notas autentica la sesión y revalida participantes/capacidades;
+  una invitación no concede permisos sobre órdenes ni otros registros vinculados.
+- `POST /integrations/netsuite/local/order-events` no usa sesión de navegador:
+  exige prueba de máquina propia, configuración explícita y `development`.
+  Solo ese método sustituye CSRF por esa prueba; no es un webhook anónimo ni
+  habilitable en producción. Su acuse `persisted:false` no acredita sincronización.
+- Pino elimina query/fragment del URL y censura credenciales antes del formato
+  legible de desarrollo; producción conserva JSON compacto. No registrar códigos
+  OAuth, cookies, tokens ni snapshots de clientes para diagnosticar autenticación.
+
 Revision documental 2026-10-27: los consumidores actuales y los nuevos endpoints
 protegidos se inventarian en [22 API](api/Arquitectura/22-Mapa-de-Implementacion-API.md)
 y [30 frontend](frontend/Arquitectura/30-Estado-Frontend-Verificado.md).

@@ -2,22 +2,29 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
 import { expect, it, vi } from "vitest";
+const EVENT_FIELDS: Record<string, boolean> = Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((field) => [field, false]));
+const EVENT_PROVIDERS = { "N/crypto/random": { generateUUID: () => "11111111-1111-4111-8111-111111111111" }, "N/format": { Type: { DATETIME: "datetime" }, parse: ({ value }: { value: string }) => new Date(value) } };
 
 const entry = new URL("../../src/integrations/netsuite/suitescript/SS2_1_UE_CRM_CambiosRegistros.js", import.meta.url);
 const root = new URL("./", entry);
 
-function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?: string; response?: { code: number; body: string }; error?: boolean } = {}) {
+function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?: string; response?: { code: number; body: string }; error?: boolean; conflictOnce?: boolean } = {}) {
     const logger = { debug: vi.fn(), error: vi.fn() };
+    let attempts = 0;
+    let sequence = 0;
     const post = vi.fn((_request: unknown) => {
+        if (options.conflictOnce && attempts++ === 0) return { code: 409, body: "conflict" };
         if (options.error) throw new Error("PRIVATE NETWORK ERROR");
-        return options.response ?? { code: 200, body: JSON.stringify({ schemaVersion: 1, received: true, persisted: false, netsuiteId: "123" }) };
+        return options.response ?? { code: 200, body: JSON.stringify({ schemaVersion: 2, received: true, persisted: true, netsuiteId: "123", eventId: (JSON.parse((_request as { body: string }).body) as { event: { eventId: string } }).event.eventId }) };
     });
-    const loadRecord = vi.fn(() => ({ getValue: ({ fieldId }: { fieldId: string }) => (fieldId === "tranid" ? "OV-123" : null), getText: () => null, getLineCount: () => 0 }));
+    const loadRecord = vi.fn(({ type }: { type: string }) => ({ getValue: ({ fieldId }: { fieldId: string }) => (type === "currency" ? "USD" : fieldId === "currency" ? 1 : fieldId === "tranid" ? "OV-123" : fieldId === "trandate" ? new Date(2026, 10, 2) : (EVENT_FIELDS[fieldId] ?? null)), getText: () => null, getSublists: () => ["item"], getLineCount: () => 0 }));
     const providers: Record<string, unknown> = {
+        ...EVENT_PROVIDERS,
+        "N/crypto/random": { generateUUID: () => `${sequence++ === 0 ? "11111111" : "22222222"}-1111-4111-8111-111111111111` },
         "N/runtime": { accountId, envType, EnvType: { SANDBOX: "SANDBOX" }, getCurrentScript: () => ({ getParameter: () => options.url ?? "https://nontransgressively-sequential-leif.ngrok-free.dev/integrations/netsuite/local/order-events" }) },
         "N/log": logger,
         "N/record": { load: loadRecord },
-        "N/search": {},
+        "N/search": { lookupFields: () => ({ lastmodifieddate: "2026-11-02T20:00:00.000Z", ...EVENT_FIELDS }) },
         "N/https": { post, createSecureString: vi.fn(() => ({ secret: "opaque" })) },
     };
     const cache = new Map<string, unknown>();
@@ -87,9 +94,10 @@ it.each([
 it("reuses full order read for xedit and sends the mapped snapshot with a secure header", () => {
     const f = fixture();
     f.handlers.afterSubmit({ type: "xedit", newRecord: { type: "salesorder", id: 123, _csrf: "DO NOT SEND" } });
-    expect(f.loadRecord).toHaveBeenCalledExactlyOnceWith({ type: "salesorder", id: "123", isDynamic: false });
+    expect(f.loadRecord).toHaveBeenCalledTimes(2);
+    expect(f.loadRecord).toHaveBeenCalledWith({ type: "salesorder", id: "123", isDynamic: false });
     const sent = f.post.mock.calls[0]?.[0] as { body: string; headers: Record<string, unknown> };
-    expect(JSON.parse(sent.body)).toMatchObject({ schemaVersion: 1, source: { environment: "sandbox", accountId: "4552704_SB1" }, event: { netsuiteId: "123", eventType: "xedit" }, snapshot: { data: { fields: { initialtranid: "OV-123" } } } });
+    expect(JSON.parse(sent.body)).toMatchObject({ schemaVersion: 2, source: { environment: "sandbox", accountId: "4552704_SB1" }, event: { netsuiteId: "123", eventType: "xedit" }, snapshot: { data: { fields: { initialtranid: "OV-123", crm_sync_projection: 1, crm_transaction_date: "2026-11-02", crm_owner_employee: null, entity: null, custbody38: null } } } });
     expect(sent.headers.Authorization).toEqual({ secret: "opaque" });
     expect(sent.body).not.toContain("DO NOT SEND");
 });
@@ -116,4 +124,15 @@ it("reports network failures without throwing after the record was saved", () =>
         f.handlers.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 123 } });
     }).not.toThrow();
     expect(f.logger.error.mock.calls[0]?.[0]).toMatchObject({ details: { delivered: false, status: "delivery_failed" } });
+});
+
+it("rereads the full order with a new observation ID after a 409; network retries keep their original body", () => {
+    const f = fixture(undefined, undefined, { conflictOnce: true });
+    f.handlers.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 123 } });
+    expect(f.post.mock.calls.length).toBe(2);
+    expect(f.loadRecord).toHaveBeenCalledTimes(4);
+    const bodies = f.post.mock.calls.map(([request]) => JSON.parse((request as { body: string }).body) as { event: { eventId: string; snapshotReadStartedAt: string; snapshotReadCompletedAt: string } });
+    expect(bodies[0]?.event.eventId).not.toBe(bodies[1]?.event.eventId);
+    expect(bodies.every((body) => Boolean(body.event.snapshotReadStartedAt) && Boolean(body.event.snapshotReadCompletedAt))).toBe(true);
+    expect(f.logger.debug.mock.calls[0]?.[0]).toMatchObject({ details: { delivered: true } });
 });

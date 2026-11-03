@@ -14,6 +14,7 @@ import { CALENDAR_LEGACY_READER } from "../../modules/crm/calendar/calendar.cont
 import { CAMPAIGNS_LEGACY_ACCESS } from "../../modules/crm/campaigns/campaigns-legacy.port.js";
 import { CATALOG_FALLBACK_READER } from "../../modules/crm/catalogs/catalog-fallback.js";
 import { CLASSES_LEGACY_ACCESS } from "../../modules/crm/classes/classes-legacy.port.js";
+import { LEAD_PROFILE_LEGACY_READER } from "../../modules/crm/leads/lead-profile.contract.js";
 import { LOCATIONS_LEGACY_ACCESS } from "../../modules/crm/locations/locations-legacy.port.js";
 import { MARKETING_HOME_LEGACY_READER } from "../../modules/crm/marketing/marketing-home.port.js";
 import { MARKETING_LEADS_REPORT_LEGACY_READER } from "../../modules/crm/marketing/marketing-leads-report.port.js";
@@ -40,6 +41,7 @@ import { isLegacyCrmEnabled } from "./legacy-crm-access.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 import { LegacyFollowUpReader } from "./legacy-follow-up.reader.js";
 import { LegacyHomeSummaryReader } from "./legacy-home-summary.reader.js";
+import { LegacyLeadProfileReader } from "./legacy-lead-profile.reader.js";
 import { LegacyMarketingHomeReader } from "./legacy-marketing-home.reader.js";
 import { LegacyMarketingLeadsReportReader } from "./legacy-marketing-leads-report.reader.js";
 import { LegacyOrderTimingReader } from "./legacy-order-timing.reader.js";
@@ -54,6 +56,7 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
 @Global()
 @Module({
     providers: [
+        { provide: LEAD_PROFILE_LEGACY_READER, useClass: LegacyLeadProfileReader },
         { provide: CALENDAR_LEGACY_READER, useClass: LegacyCalendarReader },
         {
             provide: LEGACY_CRM_DATABASE,
@@ -80,6 +83,7 @@ import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js"
         { provide: UNIT_FILES_LEGACY, useClass: LegacyUnitFilesReader },
     ],
     exports: [
+        LEAD_PROFILE_LEGACY_READER,
         CALENDAR_LEGACY_READER,
         FORMALIZATION_APPROVAL_LEGACY,
         APPROVAL_LEGACY_READER,

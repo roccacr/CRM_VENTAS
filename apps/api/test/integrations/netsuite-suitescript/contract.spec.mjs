@@ -1,19 +1,20 @@
 // Prueba de contrato emisor <-> receptor: el JSON que SuiteScript envia lo valida el controlador REAL de NestJS
-// (solo lectura de ese archivo), y el recibo real que este devuelve lo valida el emisor. No hay dobles del receptor.
+// y el emisor valida el contrato del acuse. El servicio de persistencia es un doble sin BD en esta suite;
+// la persistencia real y el rollback se verifican aparte en netsuite-order-events.local-sql.spec.ts.
 import "reflect-metadata";
 
 import { BadRequestException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
 import { NetsuiteLocalEventsController } from "../../../src/integrations/netsuite/netsuite-local-events.controller.js";
-import { loadAmd, logMock, recordMock, runtimeMock, searchMock } from "./amd-harness.mjs";
+import { EVENT_PROVIDERS, loadAmd, logMock, recordMock, runtimeMock, searchMock } from "./amd-harness.mjs";
 
 const ORDER_FIELDS = { tranid: "OV-214", total: 123456789.001, custbody90: true, custbody43: false, memo: "Nota" };
 const ORDER_TEXTS = { trandate: "28/10/2026", entity: "Cliente", subsidiary: "Subsidiaria" };
 
 /** Ejecuta el User Event real; el POST lo atiende el controlador real de NestJS. */
 function runUserEvent({ lineCount = 2, eventType = "edit", id = 214, tamper } = {}) {
-    const controller = new NetsuiteLocalEventsController();
+    const controller = new NetsuiteLocalEventsController({ receive: (payload) => ({ schemaVersion: 2, received: true, persisted: true, netsuiteId: payload.event.netsuiteId, eventId: payload.event.eventId }) });
     const received = [];
     const rejected = [];
     const record = recordMock({ fields: ORDER_FIELDS, texts: ORDER_TEXTS, lineCount });
@@ -32,13 +33,7 @@ function runUserEvent({ lineCount = 2, eventType = "edit", id = 214, tamper } = 
             }
         }),
     };
-    const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", {
-        "N/runtime": runtimeMock(),
-        "N/record": { load: record.load, submitFields: record.submitFields },
-        "N/search": searchMock(),
-        "N/log": log,
-        "N/https": https,
-    });
+    const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(ORDER_FIELDS), "N/log": log, "N/https": https });
     entry.afterSubmit({ type: eventType, newRecord: { type: "salesorder", id } });
     return { received, rejected, log, https };
 }
@@ -88,7 +83,7 @@ describe("emisor SuiteScript <-> receptor NestJS", () => {
     it("the real payload carries exactly the keys the strict receiver schema allows", () => {
         const { received } = runUserEvent();
         expect(Object.keys(received[0]).sort()).toEqual(["event", "schemaVersion", "snapshot", "source"]);
-        expect(Object.keys(received[0].event).sort()).toEqual(["eventType", "netsuiteId", "observedAt", "recordType"]);
+        expect(Object.keys(received[0].event).sort()).toEqual(["eventId", "eventType", "netsuiteId", "observedAt", "recordType", "snapshotReadCompletedAt", "snapshotReadStartedAt", "sourceModifiedAt"]);
         expect(Object.keys(received[0].snapshot.data).sort()).toEqual(["fields", "id", "sublists", "type"]);
     });
 });

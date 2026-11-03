@@ -108,6 +108,7 @@ function expectedCatalogCodes(route: (typeof routes)[number]): string[] {
 
 function expectedCodes(route: (typeof routes)[number]): string[] {
     const explicit: Record<string, string[]> = {
+        "GET /leads/profile": ["lead.profile.read"],
         "GET /marketing/home/summary": ["mercadeo.home.read"],
         "GET /marketing/leads/report": ["mercadeo.leads.read"],
         "POST /formalization/contracts/send": ["formalizacion.contracts.send"],
@@ -198,7 +199,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     it("requires a descriptor on every registered permission handler", () => {
-        expect(new Set(routes.map((route) => route.handler)).size).toBe(79);
+        expect(new Set(routes.map((route) => route.handler)).size).toBe(80);
         expect(routes.some((route) => route.path === "/marketing/home/summary")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/leads/report")).toBe(true);
         expect(routes.some((route) => route.path === "/audit/records/:recordId/timeline")).toBe(true);
