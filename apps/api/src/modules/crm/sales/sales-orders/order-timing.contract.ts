@@ -57,9 +57,17 @@ export interface TimingPagination {
     offset: number;
     limit: number;
 }
+function parseJsonOrNull(text: string): unknown {
+    try {
+        return JSON.parse(text) as unknown;
+    } catch {
+        return null;
+    }
+}
 /** Snapshots preserve historical names. Reference-only legacy evidence is not attributed by guesswork. */
 export function timingPerson(snapshot: unknown, reference: unknown): TimingPerson | null {
-    const value = typeof snapshot === "string" ? (JSON.parse(snapshot) as unknown) : snapshot;
+    // Un snapshot historico danado (texto no JSON) no debe tumbar toda la lectura del historial: se trata como sin datos.
+    const value = typeof snapshot === "string" ? parseJsonOrNull(snapshot) : snapshot;
     const person = z
         .looseObject({ publicId: z.string().optional(), name: z.string().trim().min(1).optional() })
         .catch({})

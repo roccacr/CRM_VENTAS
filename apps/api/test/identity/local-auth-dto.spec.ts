@@ -59,3 +59,34 @@ describe("local auth DTOs", () => {
         await expect(getFieldConstraints(reset, "resetToken")).resolves.toHaveProperty("maxLength");
     });
 });
+
+describe("emails con caracteres invisibles", () => {
+    const INVISIBLE = ["\u200b", "\u200d", "\u202e", "\u00ad", "\u0000", "\u0007"];
+    const emailErrors = async (dto: object) => (await validate(dto)).filter((error) => error.property === "email");
+
+    it.each(INVISIBLE)("login y reset rechazan %j al final, al inicio y en medio del correo", async (char) => {
+        for (const email of [`user@example.com${char}`, `${char}user@example.com`, `us${char}er@example.com`]) {
+            expect(await emailErrors(plainToInstance(LocalLoginDto, { email, password: "x".repeat(12) }))).not.toHaveLength(0);
+            expect(await emailErrors(plainToInstance(RequestLocalResetDto, { email }))).not.toHaveLength(0);
+        }
+    });
+
+    it("el BOM (U+FEFF) en los bordes lo elimina trim(); en medio se rechaza", async () => {
+        const edge = plainToInstance(LocalLoginDto, { email: "\ufeffuser@example.com\ufeff", password: "x".repeat(12) });
+        expect(edge.email).toBe("user@example.com");
+        expect(await emailErrors(edge)).toHaveLength(0);
+        expect(await emailErrors(plainToInstance(LocalLoginDto, { email: "us\ufeffer@example.com", password: "x".repeat(12) }))).not.toHaveLength(0);
+    });
+
+    it("el alta de usuarios del sistema tambien los rechaza", async () => {
+        const dto = plainToInstance(CreateSystemUserDto, { email: "user@example.com\u200b" });
+        expect(await emailErrors(dto)).not.toHaveLength(0);
+    });
+
+    it("sigue aceptando un correo normal con mayusculas y espacios externos", async () => {
+        const login = plainToInstance(LocalLoginDto, { email: "  User@Example.COM ", password: "x".repeat(12) });
+        expect(await emailErrors(login)).toHaveLength(0);
+        expect(login.email).toBe("user@example.com");
+        expect(await emailErrors(plainToInstance(CreateSystemUserDto, { email: "user@example.com" }))).toHaveLength(0);
+    });
+});

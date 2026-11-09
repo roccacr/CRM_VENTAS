@@ -1,8 +1,8 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
-import { IsEmail, IsString, MaxLength, MinLength } from "class-validator";
+import { IsEmail, IsString, Matches, MaxLength, MinLength } from "class-validator";
 
-import { transformCaseInsensitiveIdentifier } from "../../../../common/security/identifier-normalization.js";
+import { NO_INVISIBLE_CHARACTERS, transformCaseInsensitiveIdentifier } from "../../../../common/security/identifier-normalization.js";
 
 /** Longitud maxima tecnica de un correo segun el estandar usado por clientes y servidores modernos. */
 const MAX_EMAIL_LENGTH = 254;
@@ -30,6 +30,7 @@ export class LocalLoginDto {
     @ApiProperty({ description: "Correo canonico del usuario CRM.", example: "usuario@roccacr.com", maxLength: MAX_EMAIL_LENGTH })
     @Transform(transformCaseInsensitiveIdentifier)
     @IsEmail()
+    @Matches(NO_INVISIBLE_CHARACTERS)
     @MaxLength(MAX_EMAIL_LENGTH)
     email!: string;
 
@@ -51,6 +52,7 @@ export class RequestLocalResetDto {
     })
     @Transform(transformCaseInsensitiveIdentifier)
     @IsEmail()
+    @Matches(NO_INVISIBLE_CHARACTERS)
     @MaxLength(MAX_EMAIL_LENGTH)
     email!: string;
 }

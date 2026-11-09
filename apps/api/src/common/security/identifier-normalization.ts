@@ -16,3 +16,10 @@ export const normalizeCaseInsensitiveIdentifier = (value: string): string => val
  * Adaptador para `class-transformer`.
  */
 export const transformCaseInsensitiveIdentifier = ({ value }: { value: unknown }): unknown => (typeof value === "string" ? normalizeCaseInsensitiveIdentifier(value) : value);
+
+/**
+ * Rechaza caracteres de control y de formato Unicode (zero-width, marcas bidi, BOM) dentro de un identificador.
+ * `trim()` no los elimina y `@IsEmail()` los acepta: sin este filtro un correo con un zero-width space (U+200B) al final
+ * seria una identidad distinta (otra llave de rate limit, otro HMAC de auditoria) que parece identica al ojo.
+ */
+export const NO_INVISIBLE_CHARACTERS = /^[^\p{Cc}\p{Cf}]*$/u;

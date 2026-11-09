@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested } from "class-validator";
 
+import { NO_INVISIBLE_CHARACTERS } from "../../../../common/security/identifier-normalization.js";
 import { MAX_LOCAL_PASSWORD_LENGTH, MIN_LOCAL_PASSWORD_LENGTH } from "./local-auth.dto.js";
 
 const SYSTEM_USER_STATUSES = ["active", "blocked", "inactive", "pending"] as const;
@@ -135,6 +136,7 @@ export class CreateSystemUserDto {
     @ApiProperty({ description: "Correo corporativo principal.", maxLength: 255 })
     @Transform(toTrimmedString)
     @IsEmail()
+    @Matches(NO_INVISIBLE_CHARACTERS)
     @MaxLength(255)
     email!: string;
 
@@ -221,6 +223,7 @@ export class UpdateSystemUserDto {
     @ApiProperty({ description: "Correo corporativo principal.", maxLength: 255 })
     @Transform(toTrimmedString)
     @IsEmail()
+    @Matches(NO_INVISIBLE_CHARACTERS)
     @MaxLength(255)
     email!: string;
 
