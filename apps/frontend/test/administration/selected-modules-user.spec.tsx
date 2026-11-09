@@ -12,7 +12,14 @@ import { installBrowserApiDoubles } from "../support/browser";
 beforeEach(() => {
     installBrowserApiDoubles();
 });
-afterEach(cleanup);
+afterEach(async () => {
+    cleanup();
+    // AntD Form schedules a 10 ms validation-state update even when the drawer is unmounted.
+    // Keep jsdom alive until those pending callbacks finish.
+    await new Promise<void>((resolve) => {
+        setTimeout(resolve, 20);
+    });
+});
 const role = { code: "jefe_general", name: "Jefe General", locked: true, users: 0, moduleCodes: ["ventas", "mercadeo"], permissionInheritance: "selected_modules" as const };
 const moduleOptions = ["ventas", "mercadeo", "formalizacion", "administration"].map((code) => ({ code, name: code, views: [{ code: "home", name: "Inicio", permissions: [{ code: `${code}.home.read`, name: "Leer", sensitive: false }] }] }));
 
