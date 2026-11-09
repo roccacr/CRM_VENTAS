@@ -15,17 +15,27 @@ describe("finiquito independiente", () => {
     ])("rechaza checks no confirmados %s/%s", (saleLost, contractSigned) => {
         expect(finiquitoEligible({ available: true, saleLost, contractSigned })).toBe(false);
     });
-    it("no habilita órdenes inactivas", () => { expect(finiquitoEligible({ available: false, saleLost: true, contractSigned: true })).toBe(false); });
+    it("no habilita órdenes inactivas", () => {
+        expect(finiquitoEligible({ available: false, saleLost: true, contractSigned: true })).toBe(false);
+    });
     it.each([
         [null, "pending_send"],
         ["pending_send", "sent"],
         ["sent", "signed"],
-    ] as const)("permite %s → %s", (before, after) => { expect(() => { assertFiniquitoTransition(before, after); }).not.toThrow(); });
+    ] as const)("permite %s → %s", (before, after) => {
+        expect(() => {
+            assertFiniquitoTransition(before, after);
+        }).not.toThrow();
+    });
     it.each([
         [null, "sent"],
         [null, "signed"],
         ["pending_send", "signed"],
         ["signed", "sent"],
         ["sent", "pending_send"],
-    ] as const)("rechaza saltar o retroceder %s → %s", (before, after) => { expect(() => { assertFiniquitoTransition(before, after); }).toThrow(); });
+    ] as const)("rechaza saltar o retroceder %s → %s", (before, after) => {
+        expect(() => {
+            assertFiniquitoTransition(before, after);
+        }).toThrow();
+    });
 });

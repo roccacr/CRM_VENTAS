@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { EVENT_PROVIDERS, EVENT_TEST_ID, loadAmd, logMock, nsError, READY, recordMock, runtimeMock, searchMock } from "./amd-harness.mjs";
 
-const SALES_ORDERS = "modules/01_sales-orders/SS2_1_LIB_CRM_OrdenesVenta.js";
+const LIBRARY = "SS2_1_LIB_CRM_habita.js";
 const throwing = (error) => () => {
     throw error;
 };
@@ -10,8 +10,9 @@ const throwing = (error) => () => {
 /** Carga un modulo con NetSuite simulado y devuelve los dobles para contar llamadas (gobernanza). */
 function ordersFixture({ record = recordMock(), search = searchMock(READY) } = {}) {
     const nativeRecord = { load: record.load, submitFields: record.submitFields };
-    const orders = loadAmd(SALES_ORDERS, { "N/record": nativeRecord, "N/search": search });
-    return { orders, record, search };
+    const workflow = { initiate: vi.fn() };
+    const { salesOrders: orders } = loadAmd(LIBRARY, { "N/record": nativeRecord, "N/search": search, "N/workflow": workflow });
+    return { orders, record, search, workflow };
 }
 
 describe("salesOrders GET", () => {
@@ -73,28 +74,26 @@ describe("salesOrders PUT approveFormalization", () => {
 
     it("approves with 2 lookups, 1 write and ZERO record.load", () => {
         const search = searchMock(READY, (arg, n) => (n === 1 ? READY : { ...READY, custbodyid_firma_rc: true }));
-        const { orders, record } = ordersFixture({ search });
+        const { orders, record, workflow } = ordersFixture({ search });
         expect(put(orders)).toEqual(approved(false));
         expect(search.lookupFields).toHaveBeenCalledTimes(2);
         expect(search.lookupFields.mock.calls[0][0].columns).toEqual(["custbody43", "custbody_aprueba_jefe_ventas", "custbodyid_firma_rocca", "custbodyid_firma_rc"]);
-        expect(record.submitFields).toHaveBeenCalledExactlyOnceWith({
-            type: "salesorder",
-            id: "214",
-            values: { custbodyid_firma_rc: true },
-            options: { enableSourcing: false, ignoreMandatoryFields: false },
-        });
+        expect(workflow.initiate).toHaveBeenCalledExactlyOnceWith({ recordType: "salesorder", recordId: "214", workflowId: "customworkflow219" });
+        expect(record.submitFields).not.toHaveBeenCalled();
         expect(record.load).not.toHaveBeenCalled();
     });
     it("is idempotent: already approved costs one lookup and no write, even without prerequisites", () => {
         const search = searchMock({ ...READY, custbodyid_firma_rc: true, custbody_aprueba_jefe_ventas: false });
-        const { orders, record } = ordersFixture({ search });
+        const { orders, record, workflow } = ordersFixture({ search });
         expect(put(orders)).toEqual(approved(true));
         expect(search.lookupFields).toHaveBeenCalledOnce();
+        expect(workflow.initiate).not.toHaveBeenCalled();
         expect(record.submitFields).not.toHaveBeenCalled();
     });
     it("rejects a cancelled order, even if already approved, without writing", () => {
-        const { orders, record } = ordersFixture({ search: searchMock({ ...READY, custbody43: true, custbodyid_firma_rc: true }) });
+        const { orders, record, workflow } = ordersFixture({ search: searchMock({ ...READY, custbody43: true, custbodyid_firma_rc: true }) });
         expect(put(orders)).toMatchObject({ status: 409, error: { code: "SALES_ORDER_CANCELLED" } });
+        expect(workflow.initiate).not.toHaveBeenCalled();
         expect(record.submitFields).not.toHaveBeenCalled();
     });
     it.each([
@@ -104,8 +103,9 @@ describe("salesOrders PUT approveFormalization", () => {
         ["jefe truthy number", { custbody_aprueba_jefe_ventas: 1 }],
         ["rocca string T", { custbodyid_firma_rocca: "T" }],
     ])("requires strict booleans for prerequisites (%s)", (_name, override) => {
-        const { orders, record } = ordersFixture({ search: searchMock({ ...READY, ...override }) });
+        const { orders, record, workflow } = ordersFixture({ search: searchMock({ ...READY, ...override }) });
         expect(put(orders)).toMatchObject({ status: 409, error: { code: "APPROVAL_PREREQUISITES_REQUIRED" } });
+        expect(workflow.initiate).not.toHaveBeenCalled();
         expect(record.submitFields).not.toHaveBeenCalled();
     });
     it("does not treat a truthy non-boolean cancelled or approved flag as true", () => {
@@ -121,7 +121,7 @@ describe("salesOrders PUT approveFormalization", () => {
         expect(JSON.stringify(put(broken.orders))).not.toContain("SECRET");
     });
     it.each([
-        ["write fails", (record) => record.submitFields.mockImplementation(throwing(new Error("SECRET"))), searchMock(READY), "FORMALIZATION_APPROVAL_OUTCOME_UNKNOWN"],
+        ["write fails", (workflow) => workflow.initiate.mockImplementation(throwing(new Error("SECRET"))), searchMock(READY), "FORMALIZATION_APPROVAL_OUTCOME_UNKNOWN"],
         [
             "confirmation lookup throws",
             () => {},
@@ -134,10 +134,12 @@ describe("salesOrders PUT approveFormalization", () => {
         ["confirmation is false", () => {}, searchMock(READY), "FORMALIZATION_APPROVAL_UNCONFIRMED"],
         ["confirmation is truthy non-boolean", () => {}, searchMock(READY, (arg, n) => (n === 1 ? READY : { ...READY, custbodyid_firma_rc: "T" })), "FORMALIZATION_APPROVAL_UNCONFIRMED"],
     ])("answers 502 'unknown outcome' when %s", (_name, arrange, search, code) => {
-        const { orders, record } = ordersFixture({ search });
-        arrange(record);
+        const { orders, record, workflow } = ordersFixture({ search });
+        arrange(workflow);
         const response = put(orders);
         expect(response).toMatchObject({ status: 502, error: { code } });
+        expect(workflow.initiate).toHaveBeenCalledOnce();
+        expect(record.submitFields).not.toHaveBeenCalled();
         expect(JSON.stringify(response)).not.toContain("SECRET");
     });
     it.each([
@@ -149,27 +151,30 @@ describe("salesOrders PUT approveFormalization", () => {
         ["custbody43", null],
     ])("does not confirm success when %s changes between validation and confirmation (value %j)", (field, value) => {
         const search = searchMock(READY, (arg, n) => (n === 1 ? READY : { ...READY, custbodyid_firma_rc: true, [field]: value }));
-        const { orders, record } = ordersFixture({ search });
+        const { orders, record, workflow } = ordersFixture({ search });
         expect(put(orders)).toMatchObject({ status: 409, error: { code: "APPROVAL_STATE_CHANGED" } });
-        expect(record.submitFields).toHaveBeenCalledOnce();
+        expect(workflow.initiate).toHaveBeenCalledOnce();
+        expect(record.submitFields).not.toHaveBeenCalled();
         expect(search.lookupFields).toHaveBeenCalledTimes(2);
         expect(search.lookupFields.mock.calls[1][0].columns).toHaveLength(4);
     });
     it("validates the request before any NetSuite call", () => {
-        const { orders, record, search } = ordersFixture();
+        const { orders, record, search, workflow } = ordersFixture();
         expect(orders.put({ module: "salesOrders" })).toMatchObject({ status: 501 });
         expect(orders.put({ module: "salesOrders", action: "delete", id: "1" })).toMatchObject({ error: { code: "INVALID_ACTION" } });
         expect(put(orders, { extra: true })).toMatchObject({ error: { code: "INVALID_REQUEST" } });
         expect(put(orders, { id: "x" })).toMatchObject({ error: { code: "INVALID_ID" } });
         expect(search.lookupFields).not.toHaveBeenCalled();
         expect(record.load).not.toHaveBeenCalled();
+        expect(workflow.initiate).not.toHaveBeenCalled();
         expect(record.submitFields).not.toHaveBeenCalled();
     });
-    it("two concurrent-looking requests both write the same true value (documented non-atomicity)", () => {
-        const { orders, record } = ordersFixture({ search: searchMock(READY, (arg, n) => (n % 2 === 1 ? READY : { ...READY, custbodyid_firma_rc: true })) });
+    it("starts the workflow twice when neither preflight sees approval (documented non-atomicity)", () => {
+        const { orders, record, workflow } = ordersFixture({ search: searchMock(READY, (arg, n) => (n % 2 === 1 ? READY : { ...READY, custbodyid_firma_rc: true })) });
         expect(put(orders)).toEqual(approved(false));
         expect(put(orders)).toEqual(approved(false));
-        expect(record.submitFields).toHaveBeenCalledTimes(2);
+        expect(workflow.initiate).toHaveBeenCalledTimes(2);
+        expect(record.submitFields).not.toHaveBeenCalled();
     });
 });
 
@@ -179,8 +184,8 @@ describe("module surface", () => {
         expect(Object.keys(orders).sort()).toEqual(["get", "getSalesOrderById", "getSalesOrderEventById", "put"]);
         expect(Object.isFrozen(orders)).toBe(true);
     });
-    it.each([["modules/02_leads/SS2_1_LIB_CRM_Leads.js"], ["modules/03_estimates/SS2_1_LIB_CRM_Estimaciones.js"]])("%s stays reserved (501) and spends nothing", (path) => {
-        const reserved = loadAmd(path, {});
+    it.each(["leads", "estimates"])("%s stays reserved (501) and spends nothing", (path) => {
+        const reserved = loadAmd(LIBRARY)[path];
         expect(reserved.get({ module: "x" })).toMatchObject({ status: 501, error: { code: "NOT_IMPLEMENTED" } });
         expect(reserved.put({ module: "x" })).toMatchObject({ status: 501 });
     });
@@ -188,13 +193,15 @@ describe("module surface", () => {
 
 describe("RESTlet entry point (integrated)", () => {
     function restlet({ runtime = runtimeMock(), record = recordMock(), search = searchMock(READY), log = logMock() } = {}) {
-        const handlers = loadAmd("SS2_1_RL_CRM_Integracion.js", {
+        const workflow = { initiate: vi.fn() };
+        const handlers = loadAmd("SS2_1_RL_CRM_Habita.js", {
+            "N/workflow": workflow,
             "N/runtime": runtime,
             "N/record": { load: record.load, submitFields: record.submitFields },
             "N/search": search,
             "N/log": log,
         });
-        return { handlers, record, search, log };
+        return { handlers, record, search, log, workflow };
     }
 
     it("serves a GET end to end with one load and one final debug log", () => {
@@ -205,10 +212,11 @@ describe("RESTlet entry point (integrated)", () => {
         expect(log.debug.mock.calls[0][0]).toMatchObject({ title: "CRM_v2_good_flow: resultado", details: { module: "salesOrders", action: "get", netsuiteId: "214", status: 200 } });
     });
     it("returns 403 outside the sandbox and touches no NetSuite API", () => {
-        const { handlers, record, search } = restlet({ runtime: runtimeMock({ envType: "PRODUCTION" }) });
-        for (const method of ["get", "put"]) expect(handlers[method]({ module: "salesOrders", id: "1", action: "approveFormalization" })).toMatchObject({ status: 403, error: { code: "SANDBOX_REQUIRED", message: expect.stringContaining("4552704_SB1") } });
+        const { handlers, record, search, workflow } = restlet({ runtime: runtimeMock({ envType: "PRODUCTION" }) });
+        for (const method of ["get", "put"]) expect(handlers[method]({ module: "salesOrders", id: "1", action: "approveFormalization" })).toMatchObject({ status: 403, error: { code: "ENVIRONMENT_NOT_AUTHORIZED", message: expect.stringContaining("no esta autorizado") } });
         expect(record.load).not.toHaveBeenCalled();
         expect(search.lookupFields).not.toHaveBeenCalled();
+        expect(workflow.initiate).not.toHaveBeenCalled();
     });
     it.each([undefined])("answers 501 without arguments", (request) => {
         expect(restlet().handlers.get(request)).toMatchObject({ status: 501 });
@@ -269,14 +277,19 @@ describe("RESTlet entry point (integrated)", () => {
     });
     it("runs a full approval PUT within the expected governance budget", () => {
         const search = searchMock(READY, (arg, n) => (n === 1 ? READY : { ...READY, custbodyid_firma_rc: true }));
-        const { handlers, record } = restlet({ search });
+        const { handlers, record, workflow } = restlet({ search });
         expect(handlers.put({ module: "salesOrders", action: "approveFormalization", id: "214" })).toMatchObject({ status: 200, data: { approved: true, alreadyApproved: false } });
         expect(record.load).not.toHaveBeenCalled();
         expect(search.lookupFields).toHaveBeenCalledTimes(2);
-        expect(record.submitFields).toHaveBeenCalledOnce();
+        expect(workflow.initiate).toHaveBeenCalledOnce();
+        expect(record.submitFields).not.toHaveBeenCalled();
     });
-    it("never requires N/https (the RESTlet must not load the transport)", () => {
-        expect(() => loadAmd("SS2_1_RL_CRM_Integracion.js", { "N/runtime": runtimeMock(), "N/record": {}, "N/search": {}, "N/log": logMock() })).not.toThrow();
+    it("loads the RESTlet without using the shared transport", () => {
+        const https = { post: vi.fn(), createSecureString: vi.fn() };
+        const handlers = loadAmd("SS2_1_RL_CRM_Habita.js", { "N/https": https });
+        expect(Object.keys(handlers).sort()).toEqual(["get", "put"]);
+        expect(https.post).not.toHaveBeenCalled();
+        expect(https.createSecureString).not.toHaveBeenCalled();
     });
 });
 
@@ -286,7 +299,7 @@ describe("Sales order event snapshot", () => {
         const second = recordMock({ fields: { custbody13: 200 } });
         first.load.mockReturnValueOnce(first.rec).mockReturnValueOnce(second.rec);
         const https = { createSecureString: () => "opaque", post: vi.fn(() => ({ code: 200, body: JSON.stringify({ schemaVersion: 2, received: true, persisted: true, eventId: EVENT_TEST_ID, netsuiteId: "7" }) })) };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": first, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
+        const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": first, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
         entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 7 } });
         expect(https.post.mock.calls.length).toBe(0);
     });
@@ -294,7 +307,7 @@ describe("Sales order event snapshot", () => {
         const record = recordMock({ lineCount: 3 });
         const sent = [];
         const https = { createSecureString: (a) => a.input, post: vi.fn((o) => (sent.push(JSON.parse(o.body)), { code: 200, body: JSON.stringify({ schemaVersion: 2, received: true, persisted: true, eventId: EVENT_TEST_ID, netsuiteId: "7" }) })) };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
+        const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
         entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 7 } });
         const item = sent[0].snapshot.data.sublists.item;
         expect(Array.isArray(item)).toBe(true);
@@ -306,7 +319,7 @@ describe("Sales order event snapshot", () => {
     it("passes a failed snapshot through unchanged", () => {
         const record = recordMock({ lineCount: 1001 });
         const https = { createSecureString: (a) => a.input, post: vi.fn() };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
+        const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
         entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 7 } });
         expect(https.post.mock.calls.length).toBe(0);
     });
@@ -316,7 +329,7 @@ describe("User Event entry point (integrated)", () => {
     const RECEIPT = JSON.stringify({ schemaVersion: 2, received: true, persisted: true, eventId: EVENT_TEST_ID, netsuiteId: "214" });
     function userEvent({ runtime = runtimeMock(), record = recordMock(), post = () => ({ code: 200, body: RECEIPT }), log = logMock(), search = searchMock() } = {}) {
         const https = { createSecureString: vi.fn((arg) => arg.input), post: vi.fn(post) };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": search, "N/log": log, "N/https": https });
+        const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": search, "N/log": log, "N/https": https });
         return { entry, https, record, log };
     }
     const save = (type = "salesorder", id = 214, eventType = "edit") => ({ type: eventType, newRecord: { type, id } });

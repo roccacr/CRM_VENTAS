@@ -8,6 +8,7 @@ import type { IdentityProfile } from "../../src/modules/crm/identity/identity.ty
 const id = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const profile = {
     user: { publicId: id },
+    roles: [],
     orgUnits: [{ code: "ventas", status: "active" }],
     permissions: [
         { code: "ventas.calendar.read", effect: "allow", scope: "self" },

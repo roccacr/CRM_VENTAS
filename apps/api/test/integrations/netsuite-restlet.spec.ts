@@ -21,7 +21,7 @@ function loadAmd(url: URL, providers: Providers, cache: Map<string, unknown>, na
     if (!captured) throw new Error("define() was not called by " + url.href);
     const resolved = captured.dependencies.map((dependency) => {
         // Reproduce la ubicacion absoluta del File Cabinet usando los modulos locales reales.
-        const cabinetRoot = "/SuiteScripts/CRM TINK/";
+        const cabinetRoot = "/SuiteScripts/";
         if (dependency.startsWith(cabinetRoot)) {
             return loadAmd(new URL(dependency.slice(cabinetRoot.length) + ".js", ENTRY), providers, cache, nativeDependencies);
         }
@@ -39,16 +39,17 @@ function loadAmd(url: URL, providers: Providers, cache: Map<string, unknown>, na
 interface Doubles {
     logger?: { debug: unknown; error: unknown };
     search?: unknown;
+    workflow?: { initiate: ReturnType<typeof vi.fn> };
 }
-const ENTRY = new URL("../../src/integrations/netsuite/suitescript/SS2_1_RL_CRM_Integracion.js", import.meta.url);
+const ENTRY = new URL("../../src/integrations/netsuite/suitescript/SS2_1_RL_CRM_Habita.js", import.meta.url);
 
 /** Carga el RESTlet completo (entrada + lib + modules) con proveedores aislados; sin conexion a NetSuite. */
-function load(accountId = "4552704_SB1", envType = "SANDBOX", record = recordMock(), { logger = { debug: vi.fn(), error: vi.fn() }, search = searchMock() }: Doubles = {}) {
+function load(accountId = "4552704_SB1", envType = "SANDBOX", record = recordMock(), { logger = { debug: vi.fn(), error: vi.fn() }, search = searchMock(), workflow = { initiate: vi.fn() } }: Doubles = {}) {
     const native = new Set<string>();
-    const providers: Providers = { "N/runtime": { accountId, envType, EnvType: { SANDBOX: "SANDBOX" } }, "N/record": record, "N/search": search, "N/log": logger };
+    const providers: Providers = { "N/runtime": { accountId, envType, EnvType: { SANDBOX: "SANDBOX", PRODUCTION: "PRODUCTION" }, getCurrentScript: () => ({ getParameter: () => undefined }) }, "N/record": record, "N/search": search, "N/log": logger, "N/workflow": workflow, "N/https": {}, "N/crypto/random": {}, "N/format": {} };
     const handlers = loadAmd(ENTRY, providers, new Map(), native) as Record<string, (request?: unknown) => unknown>;
     // Los modulos de apoyo solo pueden depender de estos servicios de NetSuite.
-    expect([...native].sort()).toEqual(["N/log", "N/record", "N/runtime", "N/search"]);
+    expect([...native].sort()).toEqual(["N/crypto/random", "N/format", "N/https", "N/log", "N/record", "N/runtime", "N/search", "N/workflow"]);
     return handlers;
 }
 it("loads modules without accessing NetSuite APIs during define evaluation", () => {
@@ -82,12 +83,12 @@ it("never accepts an inherited module selector", () => {
     expect(load().get?.(Object.create({ module: "leads" }))).toMatchObject({ status: 400, error: { code: "INVALID_MODULE" } });
 });
 it.each([
-    ["4552704", "PRODUCTION"],
+    ["OTHER", "PRODUCTION"],
     ["OTHER_SB1", "SANDBOX"],
     ["4552704_SB1", "PRODUCTION"],
-])("blocks both entry points outside the exact sandbox: %s / %s", (account, env) => {
+])("blocks both entry points outside the authorized account: %s / %s", (account, env) => {
     for (const method of ["get", "put"]) {
-        expect(load(account, env)[method]?.({ module: "salesOrders" })).toMatchObject({ status: 403, error: { code: "SANDBOX_REQUIRED" } });
+        expect(load(account, env)[method]?.({ module: "salesOrders" })).toMatchObject({ status: 403, error: { code: "ENVIRONMENT_NOT_AUTHORIZED" } });
     }
 });
 
@@ -134,15 +135,17 @@ it("confirms an existing approval without rewriting it even if previous checks w
 it.each([false, true])("confirms formalization approval with alreadyApproved=%s after reading flags with lookupFields", (alreadyApproved) => {
     const record = recordMock({ ...READY, custbodyid_firma_rc: alreadyApproved });
     const search = searchMock({ ...READY, custbodyid_firma_rc: alreadyApproved });
+    const workflow = { initiate: vi.fn() };
     // Tras escribir, la relectura debe devolver true.
-    search.lookupFields.mockImplementation(({ columns }) => Object.fromEntries(columns.map((column) => [column, column === "custbodyid_firma_rc" && !alreadyApproved && record.submitFields.mock.calls.length ? true : ({ ...READY, custbodyid_firma_rc: alreadyApproved } as Record<string, unknown>)[column]])));
+    search.lookupFields.mockImplementation(({ columns }) => Object.fromEntries(columns.map((column) => [column, column === "custbodyid_firma_rc" && !alreadyApproved && workflow.initiate.mock.calls.length ? true : ({ ...READY, custbodyid_firma_rc: alreadyApproved } as Record<string, unknown>)[column]])));
     const logger = { debug: vi.fn(), error: vi.fn() };
-    expect(load(undefined, undefined, record, { logger, search }).put?.(APPROVAL)).toEqual({ status: 200, data: { type: "salesorder", id: "214", approval: "formalization", approved: true, alreadyApproved } });
+    expect(load(undefined, undefined, record, { logger, search, workflow }).put?.(APPROVAL)).toEqual({ status: 200, data: { type: "salesorder", id: "214", approval: "formalization", approved: true, alreadyApproved } });
     // Las casillas se leen con lookupFields (no record.load); tras escribir hay una segunda lectura de confirmacion.
     expect(record.load).not.toHaveBeenCalled();
     expect(search.lookupFields).toHaveBeenCalledTimes(alreadyApproved ? 1 : 2);
-    if (alreadyApproved) expect(record.submitFields).not.toHaveBeenCalled();
-    else expect(record.submitFields).toHaveBeenCalledExactlyOnceWith({ type: "salesorder", id: "214", values: { custbodyid_firma_rc: true }, options: { enableSourcing: false, ignoreMandatoryFields: false } });
+    if (alreadyApproved) expect(workflow.initiate).not.toHaveBeenCalled();
+    else expect(workflow.initiate).toHaveBeenCalledExactlyOnceWith({ recordType: "salesorder", recordId: "214", workflowId: "customworkflow219" });
+    expect(record.submitFields).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledTimes(1);
     expect(logger.error).not.toHaveBeenCalled();
 });
@@ -165,8 +168,9 @@ it.each([{ action: "other" }, { action: "approveFormalization", extra: true }, {
 it.each([false, "T", null])("never confirms an unverified approval %j", (confirmation) => {
     const record = recordMock(READY);
     const search = searchMock(READY);
-    search.lookupFields.mockImplementation(({ columns }) => Object.fromEntries(columns.map((column) => [column, column === "custbodyid_firma_rc" && record.submitFields.mock.calls.length ? confirmation : (READY as Record<string, unknown>)[column]])));
-    const result = load(undefined, undefined, record, { search }).put?.(APPROVAL);
+    const workflow = { initiate: vi.fn() };
+    search.lookupFields.mockImplementation(({ columns }) => Object.fromEntries(columns.map((column) => [column, column === "custbodyid_firma_rc" && workflow.initiate.mock.calls.length ? confirmation : (READY as Record<string, unknown>)[column]])));
+    const result = load(undefined, undefined, record, { search, workflow }).put?.(APPROVAL);
     expect(result).toMatchObject({ status: 502, error: { code: "FORMALIZATION_APPROVAL_UNCONFIRMED" } });
     expect(JSON.stringify(result)).not.toContain("no fue modificada");
 });
@@ -178,11 +182,12 @@ it.each(["T", 1, null, undefined])("requires strict boolean prerequisite approva
     expect(record.submitFields).not.toHaveBeenCalled();
 });
 
-it.each(["submit", "reload"])("sanitizes %s failures as unknown outcome with a single final log", (failure) => {
+it.each(["initiate", "verify"])("sanitizes %s failures as unknown outcome with diagnostic and result logs", (failure) => {
     const record = recordMock(READY);
     const search = searchMock(READY);
-    if (failure === "submit")
-        record.submitFields.mockImplementation(() => {
+    const workflow = { initiate: vi.fn() };
+    if (failure === "initiate")
+        workflow.initiate.mockImplementation(() => {
             throw new Error("PRIVATE_WRITE_ERROR");
         });
     else {
@@ -195,9 +200,11 @@ it.each(["submit", "reload"])("sanitizes %s failures as unknown outcome with a s
         });
     }
     const logger = { debug: vi.fn(), error: vi.fn() };
-    const result = load(undefined, undefined, record, { logger, search }).put?.(APPROVAL);
+    const result = load(undefined, undefined, record, { logger, search, workflow }).put?.(APPROVAL);
     expect(result).toMatchObject({ status: 502, error: { code: "FORMALIZATION_APPROVAL_OUTCOME_UNKNOWN" } });
-    expect(logger.error).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledTimes(2);
+    expect(logger.error.mock.calls[0]?.[0]).toMatchObject({ title: "CRM: diagnostico aprobacion workflow", details: { phase: failure } });
+    expect(logger.error.mock.calls[1]?.[0]).toMatchObject({ title: "CRM_v2_good_flow: resultado", details: { status: 502 } });
     expect(logger.debug).not.toHaveBeenCalled();
     expect(JSON.stringify([result, logger.error.mock.calls])).not.toContain("PRIVATE_");
 });
@@ -205,19 +212,21 @@ it.each(["submit", "reload"])("sanitizes %s failures as unknown outcome with a s
 it("reports a read failure before any write as a definite error, not an unknown outcome", () => {
     const record = recordMock(READY);
     const search = searchMock(READY);
+    const workflow = { initiate: vi.fn() };
     search.lookupFields.mockImplementation(() => {
         throw Object.assign(new Error("PII"), { name: "RCRD_DSNT_EXIST" });
     });
-    expect(load(undefined, undefined, record, { search }).put?.(APPROVAL)).toEqual({ status: 404, error: { code: "SALES_ORDER_NOT_FOUND", message: "La orden de venta no existe." } });
+    expect(load(undefined, undefined, record, { search, workflow }).put?.(APPROVAL)).toEqual({ status: 404, error: { code: "SALES_ORDER_NOT_FOUND", message: "La orden de venta no existe." } });
     search.lookupFields.mockImplementation(() => {
         throw new Error("PII");
     });
-    expect(load(undefined, undefined, record, { search }).put?.(APPROVAL)).toMatchObject({ status: 502, error: { code: "SALES_ORDER_READ_ERROR" } });
+    expect(load(undefined, undefined, record, { search, workflow }).put?.(APPROVAL)).toMatchObject({ status: 502, error: { code: "SALES_ORDER_READ_ERROR" } });
+    expect(workflow.initiate).not.toHaveBeenCalled();
     expect(record.submitFields).not.toHaveBeenCalled();
 });
-it("blocks approval writes outside sandbox", () => {
+it("blocks approval writes outside the authorized account", () => {
     const record = recordMock(READY);
-    expect(load("4552704", "PRODUCTION", record).put?.({ module: "salesOrders", action: "approveFormalization", id: "214" })).toMatchObject({ status: 403 });
+    expect(load("OTHER", "PRODUCTION", record).put?.({ module: "salesOrders", action: "approveFormalization", id: "214" })).toMatchObject({ status: 403 });
     expect(record.load).not.toHaveBeenCalled();
     expect(record.submitFields).not.toHaveBeenCalled();
 });
@@ -278,7 +287,8 @@ it("keeps PUT disabled even for a valid sales order", () => {
 it.each([Infinity, NaN, { password: "secret" }, ["session"], new Date("2026-10-28")])("omits unsupported provider values %j", (value) => {
     const record = recordMock();
     const loaded = record.load();
-    loaded.getValue.mockReturnValue(value);
+    const getValue = loaded.getValue.getMockImplementation();
+    loaded.getValue.mockImplementation((field) => (field.fieldId === "memo" ? value : getValue?.(field)));
     record.load.mockReturnValue(loaded);
     const result = load(undefined, undefined, record).get?.({ module: "salesOrders", id: "214" });
     expect(result).toMatchObject({ status: 200, data: { fields: { memo: null } } });
@@ -303,9 +313,9 @@ it("reads dates and percentages exclusively as display text", () => {
         expect(loaded.getValue).not.toHaveBeenCalledWith({ fieldId });
     }
 });
-it("does not load records outside the exact sandbox", () => {
+it("does not load records outside the authorized account", () => {
     const record = recordMock();
-    load("4552704", "PRODUCTION", record).get?.({ module: "salesOrders", id: "214" });
+    load("OTHER", "PRODUCTION", record).get?.({ module: "salesOrders", id: "214" });
     expect(record.load).not.toHaveBeenCalled();
 });
 
@@ -345,7 +355,7 @@ it("logs safe execution metadata without request or response data", () => {
     const logger = { debug: vi.fn(), error: vi.fn() };
     load(undefined, undefined, recordMock(), { logger }).get?.({ module: "salesOrders", id: "214", secret: "PRIVATE_TEST_DETAIL" });
     expect(logger.debug).toHaveBeenCalledTimes(1);
-    expect(logger.debug).toHaveBeenLastCalledWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.11.02.1", module: "salesOrders", action: "get", netsuiteId: "214", status: 200, durationMs: expect.any(Number) as unknown } });
+    expect(logger.debug).toHaveBeenLastCalledWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: expect.stringMatching(/^\d{4}\.\d{2}\.\d{2}\.\d+$/) as unknown, module: "salesOrders", action: "get", netsuiteId: "214", status: 200, durationMs: expect.any(Number) as unknown } });
     expect(logger.error).not.toHaveBeenCalled();
     expect(JSON.stringify(logger.debug.mock.calls)).not.toMatch(/PRIVATE_TEST_DETAIL|Etiqueta|123456789/);
 });
@@ -356,7 +366,7 @@ it("logs a sanitized failure code without the provider message", () => {
     });
     const logger = { debug: vi.fn(), error: vi.fn() };
     load(undefined, undefined, record, { logger }).get?.({ module: "salesOrders", id: "214" });
-    expect(logger.error).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.11.02.1", module: "salesOrders", action: "get", netsuiteId: "214", status: 502, code: "SALES_ORDER_READ_ERROR", durationMs: expect.any(Number) as unknown } });
+    expect(logger.error).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: expect.stringMatching(/^\d{4}\.\d{2}\.\d{2}\.\d+$/) as unknown, module: "salesOrders", action: "get", netsuiteId: "214", status: 502, code: "SALES_ORDER_READ_ERROR", durationMs: expect.any(Number) as unknown } });
     expect(logger.debug).not.toHaveBeenCalled();
     expect(JSON.stringify(logger.error.mock.calls)).not.toContain("PRIVATE_TEST_DETAIL");
 });
@@ -376,10 +386,10 @@ it("includes only validated order IDs in the single final log", () => {
     const logger = { debug: vi.fn(), error: vi.fn() };
     const handlers = load(undefined, undefined, recordMock(), { logger });
     handlers.get?.({ module: "salesOrders", id: "214" });
-    expect(logger.debug).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.11.02.1", module: "salesOrders", action: "get", netsuiteId: "214", status: 200, durationMs: expect.any(Number) as unknown } });
+    expect(logger.debug).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: expect.stringMatching(/^\d{4}\.\d{2}\.\d{2}\.\d+$/) as unknown, module: "salesOrders", action: "get", netsuiteId: "214", status: 200, durationMs: expect.any(Number) as unknown } });
     logger.debug.mockClear();
     handlers.get?.({ module: "salesOrders", id: "invalid" });
-    expect(logger.debug).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: "2026.11.02.1", module: "salesOrders", action: "get", status: 400, code: "INVALID_ID", durationMs: expect.any(Number) as unknown } });
+    expect(logger.debug).toHaveBeenCalledExactlyOnceWith({ title: "CRM_v2_good_flow: resultado", details: { scriptVersion: expect.stringMatching(/^\d{4}\.\d{2}\.\d{2}\.\d+$/) as unknown, module: "salesOrders", action: "get", status: 400, code: "INVALID_ID", durationMs: expect.any(Number) as unknown } });
 });
 
 // Intercalado determinista de dos peticiones: no equivale a una prueba de carga en NetSuite.
@@ -396,14 +406,16 @@ it("keeps approval true when two requests read the same previous value", () => {
     });
     const search = searchMock();
     search.lookupFields.mockImplementation(({ columns }) => Object.fromEntries(columns.map((column) => [column, column === "custbodyid_firma_rc" ? approved : READY[column as keyof typeof READY]])));
-    const handlers = load(undefined, undefined, record, { search });
-    record.submitFields.mockImplementation(() => {
-        if (record.submitFields.mock.calls.length === 1) secondResponse = handlers.put?.(APPROVAL);
+    const workflow = { initiate: vi.fn() };
+    const handlers = load(undefined, undefined, record, { search, workflow });
+    workflow.initiate.mockImplementation(() => {
+        if (workflow.initiate.mock.calls.length === 1) secondResponse = handlers.put?.(APPROVAL);
         approved = true;
     });
     expect(handlers.put?.(APPROVAL)).toMatchObject({ status: 200 });
     expect(secondResponse).toMatchObject({ status: 200 });
     expect(approved).toBe(true);
     // Ambas lecturas fueron previas a la escritura: el flujo no promete exclusion mutua.
-    expect(record.submitFields).toHaveBeenCalledTimes(2);
+    expect(workflow.initiate).toHaveBeenCalledTimes(2);
+    expect(record.submitFields).not.toHaveBeenCalled();
 });

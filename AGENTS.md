@@ -16,6 +16,16 @@ The command currently accepts no arguments. If arguments are needed later, add e
 
 Do not create another `check-all.cmd` under `scripts/` or inside an app. API and frontend remain separate projects with their own `pnpm-lock.yaml`, package scripts, and local rules.
 
+## Mandatory verification for critical changes
+
+Changes to authorization, sessions, external inputs, integrations, or durable business state require all three controls before merge:
+
+1. An independent adversarial reviewer tries to bypass the affected controls at their real entry points. Record the reviewed revision, attempted cases, evidence, and disposition. Confirmed bypasses require a fix and a regression test.
+2. Express the affected invariants as generated properties using the app's existing test runner. For the Habita API use Vitest and fast-check. Cover replay, ordering, and transactional effects where applicable. Retain the seed, shrink path, and smallest failing case if a property fails.
+3. Fuzz the affected input boundary with malformed and boundary values. Assert controlled rejection and verify that unauthorized or invalid inputs leave business state and the relevant audit trail consistent.
+
+Use synthetic inputs and isolated fixtures for adversarial runs, properties, and fuzzing. The Habita NetSuite persistence suite runs in GitHub Actions against a disposable loopback MariaDB instance. The pull request must include the evidence for the three controls and the result of the applicable CI checks.
+
 ## Project Skills
 
 Project-local skills are installed under `.agents/skills/`. Source revisions, installation verification, applicability and design precedence are recorded in [SKILLS.md](SKILLS.md). Consult relevant entrypoints before using them; installing a skill does not authorize unrelated workflows, dependency changes, production actions or fabricated business data.

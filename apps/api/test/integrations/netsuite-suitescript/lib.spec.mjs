@@ -2,23 +2,23 @@ import { describe, expect, it, vi } from "vitest";
 
 import { EVENT_PROVIDERS, EVENT_TEST_ID, loadAmd, logMock, nsError, recordMock, runtimeMock, searchMock } from "./amd-harness.mjs";
 
-const lib = (name, providers = {}) => loadAmd(`lib/SS2_1_LIB_CRM_${name}.js`, providers);
+const lib = (name, providers = {}) => loadAmd("SS2_1_LIB_CRM_habita.js", providers)[name];
 const throwing = (error) => () => {
     throw error;
 };
 
 describe("Respuestas", () => {
-    const { fail, ok, notImplemented } = lib("Respuestas");
+    const { fail, ok, notImplemented } = lib("responses");
     it("builds the single success and error shapes", () => {
         expect(ok({ a: 1 })).toEqual({ status: 200, data: { a: 1 } });
         expect(fail(400, "X", "msg")).toEqual({ status: 400, error: { code: "X", message: "msg" } });
         expect(notImplemented()).toMatchObject({ status: 501, error: { code: "NOT_IMPLEMENTED" } });
     });
-    it("exports a frozen API", () => expect(Object.isFrozen(lib("Respuestas"))).toBe(true));
+    it("exports a frozen API", () => expect(Object.isFrozen(lib("responses"))).toBe(true));
 });
 
 describe("Validacion", () => {
-    const { hasOwn, isValidId, invalidIdResponse } = lib("Validacion");
+    const { hasOwn, isValidId, invalidIdResponse } = lib("validation");
     it("hasOwn ignores inherited properties", () => {
         expect(hasOwn({ a: 1 }, "a")).toBe(true);
         expect(hasOwn(Object.create({ a: 1 }), "a")).toBe(false);
@@ -40,7 +40,7 @@ describe("Validacion", () => {
 });
 
 describe("Campos", () => {
-    const campos = lib("Campos");
+    const campos = lib("fields");
     const { fieldMap, mapFields, bodyValue, bodyText, readSublist } = campos;
     it("exports only what consumers use", () => {
         expect(Object.keys(campos).sort()).toEqual(["bodyText", "bodyValue", "fieldMap", "mapFields", "readSublist"]);
@@ -129,7 +129,7 @@ describe("Campos", () => {
 });
 
 describe("ErroresProveedor", () => {
-    const { providerError } = lib("ErroresProveedor");
+    const { providerError } = lib("providerErrors");
     const errors = { notFound: { code: "NF", message: "no existe" }, readFailed: { code: "RF", message: "fallo" } };
     it("maps RCRD_DSNT_EXIST to 404", () => {
         expect(providerError(nsError("RCRD_DSNT_EXIST"), errors)).toEqual({ status: 404, error: { code: "NF", message: "no existe" } });
@@ -145,7 +145,7 @@ describe("ErroresProveedor", () => {
 });
 
 describe("ConsultarPorId.readById", () => {
-    const { readById } = lib("ConsultarPorId");
+    const { readById } = lib("readByIdFlow");
     const errors = { notFound: { code: "NF", message: "m" }, readFailed: { code: "RF", message: "m" } };
     it("rejects an invalid ID before reading (no governance spent)", () => {
         const read = vi.fn();
@@ -164,7 +164,7 @@ describe("ConsultarPorId.readById", () => {
 });
 
 describe("EjecutarAccion.runAction", () => {
-    const { runAction } = lib("EjecutarAccion");
+    const { runAction } = lib("runActionFlow");
     const action = vi.fn(() => ({ status: 200 }));
     const run = (request) => {
         action.mockClear();
@@ -194,7 +194,7 @@ describe("Logs.executionLog", () => {
     it("forwards to the chosen level with the script version and never mutates details", () => {
         const log = logMock();
         const details = { a: 1 };
-        lib("Logs", { "N/log": log }).executionLog("debug", "t", details);
+        lib("logging", { "N/log": log }).executionLog("debug", "t", details);
         expect(log.debug).toHaveBeenCalledExactlyOnceWith({
             title: "t",
             details: { a: 1, scriptVersion: expect.stringMatching(/^\d{4}\.\d{2}\.\d{2}\.\d+$/) },
@@ -202,7 +202,7 @@ describe("Logs.executionLog", () => {
         expect(details).toEqual({ a: 1 });
     });
     it("swallows logger failures, unknown levels and missing details", () => {
-        const { executionLog } = lib("Logs", { "N/log": { debug: throwing(new Error("down")) } });
+        const { executionLog } = lib("logging", { "N/log": { debug: throwing(new Error("down")) } });
         expect(() => executionLog("debug", "t", {})).not.toThrow();
         expect(() => executionLog("nope", "t", {})).not.toThrow();
         expect(() => executionLog("debug", "t")).not.toThrow();
@@ -213,14 +213,14 @@ describe("Registros", () => {
     it("declares the type without touching NetSuite APIs during define", () => {
         const record = {};
         Object.defineProperty(record, "Type", { get: throwing(new Error("UNAVAILABLE_IN_DEFINE")) });
-        const registros = lib("Registros", { "N/record": record, "N/search": {} });
+        const registros = lib("records", { "N/record": record, "N/search": {} });
         expect(registros.RECORD_TYPES.SALES_ORDER).toBe("salesorder");
         expect(Object.isFrozen(registros.RECORD_TYPES)).toBe(true);
     });
     it("loads in standard mode, looks up by columns and writes one flag without sourcing", () => {
         const record = { load: vi.fn(() => "REC"), submitFields: vi.fn() };
         const search = searchMock({ f: true });
-        const { loadRecord, lookupFlags, writeFlag } = lib("Registros", { "N/record": record, "N/search": search });
+        const { loadRecord, lookupFlags, writeFlag } = lib("records", { "N/record": record, "N/search": search });
         expect(loadRecord("salesorder", "5")).toBe("REC");
         expect(record.load).toHaveBeenCalledWith({ type: "salesorder", id: "5", isDynamic: false });
         expect(lookupFlags("salesorder", "5", ["f"])).toEqual({ f: true });
@@ -236,20 +236,22 @@ describe("Registros", () => {
 });
 
 describe("Entorno", () => {
-    const check = (runtime) => lib("Entorno", { "N/runtime": runtime }).isAuthorizedSandbox();
-    it("authorizes only the exact sandbox account AND environment", () => {
+    const check = (runtime) => lib("environment", { "N/runtime": runtime }).isAuthorizedEnvironment();
+    it("authorizes only the account configured for a supported environment", () => {
         expect(check(runtimeMock())).toBe(true);
         expect(check(runtimeMock({ accountId: "4552704" }))).toBe(false);
         expect(check(runtimeMock({ accountId: "OTHER_SB1" }))).toBe(false);
         expect(check(runtimeMock({ envType: "PRODUCTION" }))).toBe(false);
+        expect(check(runtimeMock({ envType: "PRODUCTION", accountId: "4552704" }))).toBe(true);
+        expect(check(runtimeMock({ configuredAccount: "OTHER_SB1" }))).toBe(false);
         expect(check({ ...runtimeMock(), accountId: undefined })).toBe(false);
     });
     it("evaluates at call time and exports a frozen API", () => {
         const runtime = runtimeMock();
-        const entorno = lib("Entorno", { "N/runtime": runtime });
+        const entorno = lib("environment", { "N/runtime": runtime });
         runtime.envType = "PRODUCTION";
-        expect(entorno.isAuthorizedSandbox()).toBe(false);
-        expect(entorno.SANDBOX_ACCOUNT).toBe("4552704_SB1");
+        expect(entorno.isAuthorizedEnvironment()).toBe(false);
+        expect(entorno.getEnvironmentName()).toBe("production");
         expect(Object.isFrozen(entorno)).toBe(true);
     });
 });
@@ -257,7 +259,7 @@ describe("Entorno", () => {
 describe("Eventos.afterSubmit", () => {
     const setup = ({ runtime = runtimeMock(), log = logMock() } = {}) => ({
         log,
-        afterSubmit: lib("Eventos", { "N/runtime": runtime, "N/log": log }).afterSubmit,
+        afterSubmit: lib("events", { "N/runtime": runtime, "N/log": log }).afterSubmit,
     });
     const handler = (result = { status: "received_local", delivered: true }) => vi.fn(() => result);
     const ctx = (over = {}) => ({ type: "edit", newRecord: { type: "salesorder", id: 214 }, ...over });
@@ -318,14 +320,14 @@ describe("Eventos.afterSubmit", () => {
 
 describe("EnviarEvento.sendRecordEvent", () => {
     const EVENT = { recordType: "salesorder", netsuiteId: "214", eventType: "edit" };
-    const GOOD_URL = "https://abc-def.ngrok-free.dev/integrations/netsuite/local/order-events";
+    const GOOD_URL = "https://abc-def.example.test/integrations/netsuite/local";
     const receipt = (over = {}) => JSON.stringify({ schemaVersion: 2, received: true, persisted: true, eventId: EVENT_TEST_ID, netsuiteId: "214", ...over });
     const setup = ({ runtime = runtimeMock(), post } = {}) => {
         const https = {
             createSecureString: vi.fn(({ input }) => `SECURE(${input})`),
             post: vi.fn(post ?? (() => ({ code: 200, body: receipt() }))),
         };
-        const { sendRecordEvent } = lib("EnviarEvento", { ...EVENT_PROVIDERS, "N/https": https, "N/runtime": runtime });
+        const { sendRecordEvent } = lib("delivery", { ...EVENT_PROVIDERS, "N/https": https, "N/runtime": runtime });
         // Por defecto se usa el endpoint de ordenes; los casos dinamicos pasan el suyo.
         return { https, send: (event, read, ...endpoint) => sendRecordEvent(event, read, ...(endpoint.length ? endpoint : ["order-events"])) };
     };
@@ -352,24 +354,24 @@ describe("EnviarEvento.sendRecordEvent", () => {
         expect(https.post).not.toHaveBeenCalled();
         expect(https.createSecureString).not.toHaveBeenCalled();
     });
-    it.each(["http://abc.ngrok-free.dev/integrations/netsuite/local/order-events", "https://evil.com/integrations/netsuite/local/order-events", "https://abc.ngrok-free.dev.evil.com/integrations/netsuite/local/order-events", "https://abc.ngrok-free.dev/other", "https://abc.ngrok-free.dev/integrations/netsuite/local/order-events?x=1", "https://ABC.ngrok-free.dev/integrations/netsuite/local/order-events"])("blocks the destination %s", (parameter) => {
+    it.each(["http://abc.example.test/integrations/netsuite/local", "https://user@abc.example.test/integrations/netsuite/local", "https://abc.example.test/../local", "https://abc.example.test/local#fragment", "https://abc.example.test/local?x=1", ""])("blocks the destination %s", (parameter) => {
         const { send, https } = setup({ runtime: runtimeMock({ parameter }) });
         const read = vi.fn();
         expect(send(EVENT, read)).toEqual({ status: "destination_blocked", delivered: false });
         expect(read).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();
     });
-    it("delivers once with auth header, closed payload and the default or parameterized URL", () => {
+    it("delivers once with a secure-string reference, closed payload and the configured URL", () => {
         const first = setup();
         expect(first.send(EVENT, snapshot)).toEqual({ status: "received_local", delivered: true });
         const [{ url, headers, body }] = first.https.post.mock.calls[0];
-        expect(url).toContain("ngrok-free.dev/integrations/netsuite/local/order-events");
-        // Credencial temporal directa de Sandbox; comprobar formato sin imprimir su valor.
+        expect(url).toBe("https://habita.example.test/integrations/netsuite/local/order-events");
+        // El secret se referencia por ID del deployment; nunca se envía en el cuerpo.
         expect(typeof headers.Authorization).toBe("string");
-        expect(/^SECURE\(Bearer [a-f0-9]{64}\)$/.test(headers.Authorization)).toBe(true);
+        expect(headers.Authorization).toBe("SECURE(Bearer {custsecret_habita_qa})");
         expect(first.https.createSecureString).toHaveBeenCalledOnce();
         const [credential] = first.https.createSecureString.mock.calls[0];
-        expect(/^Bearer [a-f0-9]{64}$/.test(credential.input)).toBe(true);
+        expect(credential.input).toBe("Bearer {custsecret_habita_qa}");
         expect(first.https.post).toHaveBeenCalledOnce();
         expect(JSON.parse(body)).toMatchObject({
             schemaVersion: 2,
@@ -381,20 +383,20 @@ describe("EnviarEvento.sendRecordEvent", () => {
         expect(body).not.toContain("custsecret");
         const second = setup({ runtime: runtimeMock({ parameter: GOOD_URL }) });
         second.send(EVENT, snapshot);
-        expect(second.https.post.mock.calls[0][0].url).toBe(GOOD_URL);
+        expect(second.https.post.mock.calls[0][0].url).toBe(GOOD_URL + "/order-events");
     });
     it("builds the URL from the module's own endpoint, so new record types need no library change", () => {
         for (const [endpoint, parameter] of [
             ["lead-events", undefined],
             ["estimate-events", undefined],
-            ["lead-events", GOOD_URL], // un parametro con la ruta antigua solo aporta el host
-            ["order-events", "https://abc-def.ngrok-free.dev"],
+            ["lead-events", GOOD_URL + "/"],
+            ["order-events", "https://abc-def.example.test"],
         ]) {
             const { send, https } = setup({ runtime: runtimeMock({ parameter }) });
             expect(send({ ...EVENT, recordType: "lead" }, snapshot, endpoint).delivered).toBe(true);
             const { url } = https.post.mock.calls[0][0];
             expect(url.startsWith("https://")).toBe(true);
-            expect(url.endsWith(".ngrok-free.dev/integrations/netsuite/local/" + endpoint)).toBe(true);
+            expect(url).toBe((parameter ?? "https://habita.example.test/integrations/netsuite/local").replace(/\/$/, "") + "/" + endpoint);
         }
     });
     it.each([undefined, null, 5, "", "orders", "order-events/../x", "order-events?x=1", "Order-events", "../order-events", "order_events", "http://evil.com", {}])("blocks the invalid module endpoint %j without reading or posting", (endpoint) => {

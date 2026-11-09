@@ -37,6 +37,7 @@ it.each(["formalizacion.orders.read", "formalizacion.orders.addendum.update"])("
 it("cannot infer order access from Owner alone or from the addendum grant", async () => {
     const f = setup();
     f.profile.roles = [{ code: "owner", status: "active" }] as IdentityProfile["roles"];
+    f.profile.permissions = f.profile.permissions.filter(({ code }) => code !== "formalizacion.orders.read");
     await expect(f.service.read("session", identity)).rejects.toMatchObject({ status: 403 });
     expect(f.repository.read).not.toHaveBeenCalled();
 });

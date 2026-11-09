@@ -6,6 +6,7 @@ import { ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
+import fc from "fast-check";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthGuard } from "../../src/common/security/auth.guard.js";
@@ -87,5 +88,23 @@ describe("finiquito HTTP con sesión, CSRF y permisos reales", () => {
         expect(response.statusCode).toBe(200);
         expect(response.json()).toMatchObject({ canUpdate: false });
         expect(finiquito).toHaveBeenCalledWith(expect.any(Object), undefined);
+    });
+
+    it("rechaza versiones de escritura malformadas antes de invocar el repositorio", async () => {
+        const invalidVersion = fc.oneof(fc.integer({ min: -2147483648, max: -1 }), fc.string(), fc.boolean(), fc.constant(null), fc.array(fc.jsonValue(), { maxLength: 4 }));
+        await fc.assert(
+            fc.asyncProperty(invalidVersion, async (expectedVersion) => {
+                const response = await app.inject({ method: "POST", url: "/formalization/orders/finiquito", payload: { ...body, expectedVersion }, headers: headers() });
+                expect(response.statusCode).toBe(400);
+                expect(finiquito).not.toHaveBeenCalled();
+            }),
+            { numRuns: 100 },
+        );
+    });
+
+    it.each(["actorPublicId", "eligible", "originStage"])("rechaza el campo de autoridad inyectado %s", async (field) => {
+        const response = await app.inject({ method: "POST", url: "/formalization/orders/finiquito", payload: { ...body, [field]: "forged" }, headers: headers() });
+        expect(response.statusCode).toBe(400);
+        expect(finiquito).not.toHaveBeenCalled();
     });
 });

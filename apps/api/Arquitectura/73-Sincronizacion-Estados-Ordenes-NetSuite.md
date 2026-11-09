@@ -121,6 +121,14 @@ Se verificó por lectura que RDR678 no tiene autoridad nativa y existe en legacy
 
 Las pruebas SQL opt-in usan exclusivamente loopback3309 y un datadir efímero propio netsuite-events-mariadb-20261102 (MariaDB10.4/InnoDB instalado). Nunca cargan .env ni conectan al RDS; rechazan otro datadir. Cubren HTTP autenticado con DB real, preferencia nativa, legacy, ausencia, diez flags/diff/historial visible, rollback por UPDATE o cualquiera de las dos bitácoras, duplicado concurrente, UUID conflictivo, revisión antigua y autoridad deshabilitada. No equivalen a ejecución MySQL8.4 ni a edición real de NetSuite.
 
+Con `NETSUITE_EVENTS_LOCAL_SQL_TESTS=1`, Vitest y fast-check ejecutan 40 secuencias de entrega por destino (nativo y legacy). Cada secuencia incluye reenvíos y revisiones fuera de orden a través del webhook local. Se comparan los indicadores de la orden, el cursor, los recibos técnicos de cada evento y las operaciones de la bitácora central con el estado esperado. Si una propiedad falla, fast-check reporta la semilla y reduce la secuencia a un contraejemplo reproducible.
+
+La misma suite envía JSON truncado y eventos JSON con fechas inválidas, IDs inconsistentes, tipos erróneos, campos de sobre inesperados o más de 500.000 bytes. Primero confirma que un evento válido de exactamente 500.000 bytes se persiste. Cada rechazo posterior debe devolver HTTP 400 y dejar intactas las filas nativa y legacy, el cursor, los recibos técnicos y la bitácora comercial.
+
+El job `Habita / NetSuite properties and fuzzing` de GitHub Actions prepara MariaDB efímero en loopback y exige que se ejecuten las propiedades SQL y los casos de fuzzing. También ejecuta las pruebas HTTP de autorización de Finiquito y aprobación de Formalización, y las de contrato y credenciales de los eventos NetSuite.
+
+La revisión adversarial independiente del 2026-11-09 verificó los rechazos HTTP y reprodujo un riesgo anterior a este cambio en el contrato y el comparador de revisiones. Un productor con credencial válida puede enviar un `sourceModifiedAt` futuro que, si se persiste, hace que revisiones legítimas posteriores se clasifiquen como antiguas. Queda pendiente definir la tolerancia de reloj y el tratamiento de eventos v2 históricos para validar esa corrección.
+
 Pendientes operativos: terminar la edición real controlada desde NetSuite y comprobar la revisión de origen; versión de origen real; activación explícita del escritor local; prueba y restauración de RDR678. No se desplegó código a producción ni se modificó el esquema legacy; únicamente se aplicó058 nativa autorizada.
 
 ### Conexión y prueba en curso

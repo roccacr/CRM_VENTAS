@@ -89,13 +89,15 @@ describe("Home summary HTTP without database providers", () => {
         expect(response.json()).not.toHaveProperty("counts");
         expect(legacyAggregate).not.toHaveBeenCalled();
     });
-    it("rejects the next request after active role revocation", async () => {
+    it("rejects the next request when role revocation removes its effective read grant", async () => {
         const request = { url: "/formalization/home/summary", headers: { cookie: `${SESSION_COOKIE_NAME}=session` } };
         expect((await app.inject(request)).statusCode).toBe(200);
         roles = [
             { code: "formalizacion", status: "inactive" },
             { code: "owner", status: "active" },
         ];
+        // La identidad real recalcula los permisos al revocar el rol; no conserva sus grants en memoria.
+        permissions = [];
         expect((await app.inject(request)).statusCode).toBe(403);
         expect(aggregate).toHaveBeenCalledOnce();
         expect(legacyAggregate).toHaveBeenCalledOnce();

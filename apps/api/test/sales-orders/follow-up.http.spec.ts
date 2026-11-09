@@ -73,8 +73,9 @@ describe("Formalization follow-up HTTP (persistence mocked)", () => {
         expect(distribution).not.toHaveBeenCalled();
         expect(legacy).not.toHaveBeenCalled();
     });
-    it("rejects distribution without membership before SQL", async () => {
+    it("rejects distribution without effective read grants before SQL", async () => {
         profile.roles = [];
+        profile.permissions = [];
         expect((await app.inject({ url: "/formalization/home/project-distribution", headers: { cookie: `${SESSION_COOKIE_NAME}=session` } })).statusCode).toBe(403);
         expect(native).not.toHaveBeenCalled();
         expect(legacy).not.toHaveBeenCalled();

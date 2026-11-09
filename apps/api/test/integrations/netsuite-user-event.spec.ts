@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 const EVENT_FIELDS: Record<string, boolean> = Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((field) => [field, false]));
 const EVENT_PROVIDERS = { "N/crypto/random": { generateUUID: () => "11111111-1111-4111-8111-111111111111" }, "N/format": { Type: { DATETIME: "datetime" }, parse: ({ value }: { value: string }) => new Date(value) } };
 
-const entry = new URL("../../src/integrations/netsuite/suitescript/SS2_1_UE_CRM_CambiosRegistros.js", import.meta.url);
+const entry = new URL("../../src/integrations/netsuite/suitescript/SS2_1_UE_CRM_Habita.js", import.meta.url);
 const root = new URL("./", entry);
 
 function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?: string; response?: { code: number; body: string }; error?: boolean; conflictOnce?: boolean } = {}) {
@@ -18,11 +18,13 @@ function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?
         return options.response ?? { code: 200, body: JSON.stringify({ schemaVersion: 2, received: true, persisted: true, netsuiteId: "123", eventId: (JSON.parse((_request as { body: string }).body) as { event: { eventId: string } }).event.eventId }) };
     });
     const loadRecord = vi.fn(({ type }: { type: string }) => ({ getValue: ({ fieldId }: { fieldId: string }) => (type === "currency" ? "USD" : fieldId === "currency" ? 1 : fieldId === "tranid" ? "OV-123" : fieldId === "trandate" ? new Date(2026, 10, 2) : (EVENT_FIELDS[fieldId] ?? null)), getText: () => null, getSublists: () => ["item"], getLineCount: () => 0 }));
+    const parameters: Record<string, string | undefined> = { custscript_crm_event_url: options.url ?? "https://habita.example.test/integrations/netsuite/local", custscript_crm_event_secret_id: "custsecret_habita_qa" };
     const providers: Record<string, unknown> = {
         ...EVENT_PROVIDERS,
         "N/crypto/random": { generateUUID: () => `${sequence++ === 0 ? "11111111" : "22222222"}-1111-4111-8111-111111111111` },
-        "N/runtime": { accountId, envType, EnvType: { SANDBOX: "SANDBOX" }, getCurrentScript: () => ({ getParameter: () => options.url ?? "https://nontransgressively-sequential-leif.ngrok-free.dev/integrations/netsuite/local/order-events" }) },
+        "N/runtime": { accountId, envType, EnvType: { SANDBOX: "SANDBOX", PRODUCTION: "PRODUCTION" }, getCurrentScript: () => ({ getParameter: ({ name }: { name: string }) => parameters[name] }) },
         "N/log": logger,
+        "N/workflow": { initiate: vi.fn() },
         "N/record": { load: loadRecord },
         "N/search": { lookupFields: () => ({ lastmodifieddate: "2026-11-02T20:00:00.000Z", ...EVENT_FIELDS }) },
         "N/https": { post, createSecureString: vi.fn(() => ({ secret: "opaque" })) },
@@ -39,7 +41,7 @@ function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?
                             if (!(dependency in providers)) throw new Error("Unexpected provider: " + dependency);
                             return providers[dependency];
                         }
-                        const cabinet = "/SuiteScripts/CRM TINK/";
+                        const cabinet = "/SuiteScripts/";
                         return load(dependency.startsWith(cabinet) ? new URL(dependency.slice(cabinet.length) + ".js", root) : new URL(dependency + ".js", url));
                     }),
                 );
@@ -65,7 +67,7 @@ it.each(["create", "edit", "xedit", "approve", "cancel", "reject"])("routes save
 });
 
 it.each([
-    ["4552704", "PRODUCTION"],
+    ["OTHER", "PRODUCTION"],
     ["OTHER_SB1", "SANDBOX"],
 ])("ignores a different account or environment: %s", (account, environment) => {
     const f = fixture(account, environment);
@@ -101,7 +103,7 @@ it("reuses full order read for xedit and sends the mapped snapshot with a secure
     expect(sent.headers.Authorization).toEqual({ secret: "opaque" });
     expect(sent.body).not.toContain("DO NOT SEND");
 });
-it.each(["http://localhost:3000/integrations/netsuite/local/order-events", "https://example.com/integrations/netsuite/local/order-events", "https://test.ngrok-free.dev/other"])("does not read or transmit to an unapproved destination: %s", (url) => {
+it.each(["http://localhost:3000/integrations/netsuite/local/order-events", "https://example.com/integrations/netsuite/local?x=1", "https://user@example.com/integrations/netsuite/local"])("does not read or transmit to an unapproved destination: %s", (url) => {
     const f = fixture(undefined, undefined, { url });
     f.handlers.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 123 } });
     expect(f.post).not.toHaveBeenCalled();

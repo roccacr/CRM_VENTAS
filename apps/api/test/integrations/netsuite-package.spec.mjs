@@ -21,7 +21,7 @@ function copyFixture(from, to) {
 
 it("maps the three unified scripts to their actual File Cabinet paths with hashes and version", () => {
     const result = inspectSuiteScripts();
-    assert.equal(result.version, "2026.11.03.4");
+    assert.equal(result.version, "2026.11.03.7");
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_RL_CRM_Habita.js"));
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_LIB_CRM_habita.js"));
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_UE_CRM_Habita.js"));

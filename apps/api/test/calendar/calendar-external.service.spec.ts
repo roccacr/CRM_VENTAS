@@ -11,7 +11,7 @@ import type { IdentityService } from "../../src/modules/crm/identity/identity.se
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
 
 const id = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
-const profile = { user: { publicId: id }, auth: { currentProvider: "microsoft", microsoft: { tenantId: "tenant", homeAccountId: "account" } }, orgUnits: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.calendar.read", effect: "allow", scope: "self" }] } as unknown as IdentityProfile;
+const profile = { user: { publicId: id }, auth: { currentProvider: "microsoft", microsoft: { tenantId: "tenant", homeAccountId: "account" } }, roles: [], orgUnits: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.calendar.read", effect: "allow", scope: "self" }] } as unknown as IdentityProfile;
 const input: CalendarInput = { moduleCode: "formalizacion", typeId: id, title: "Prueba", start: "2026-11-04T15:00:00Z", end: "2026-11-04T16:00:00Z", allDay: false, details: {}, publishToCalendar: true, operationId: "550e8400-e29b-41d4-a716-446655440000" };
 const event: CalendarRow = { ...input, id, internalId: 9, ownerPublicId: id, originModule: "formalizacion", source: "native", typeCode: "tarea", formKey: "formalizacion.general.v1", version: 1, status: "scheduled", description: null, location: null, allDay: 0, participants: [] };
 function fixture(links: { remoteId: string; eventId: string; uid?: string }[] = []) {

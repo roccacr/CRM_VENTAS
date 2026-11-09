@@ -412,3 +412,111 @@ Si custscript_crm_account_id falta (null, undefined o texto vacio), se usa la cu
 GET `?module=salesOrders&id=<id>&action=syncSnapshot` devuelve la proyeccion completa de eventos, lineas como arreglo y sourceModifiedAt/snapshotReadStartedAt/snapshotReadCompletedAt. Reutiliza doble lectura y validacion de cambios del productor de eventos. GET normal mantiene su contrato de presentacion. Solo cambio la libreria unificada; conservar los mismos RESTlet/UserEvent y deployments.
 
 La API exige la proyeccion verificada antes de escribir. Una libreria anterior devuelve la lectura comun sin metadatos y la API rechaza la sincronizacion sin actualizar la orden. Actualizar SuiteScripts/SS2_1_LIB_CRM_habita.js en el ambiente a probar. No basta desplegar el CRM para instalar esta capacidad en NetSuite.
+# Aprobación de Formalización en Sandbox y producción — 2026-11-03
+
+Este contrato vigente sustituye las restricciones históricas a Sandbox de los apartados anteriores.
+La API permite ambos entornos, siempre con sesión, CSRF y el permiso efectivo
+`formalizacion.orders.approve`; una denegación prevalece. El rol de integración TBA
+de NetSuite debe poder editar órdenes de venta. El RESTlet no recibe roles CRM ni
+confía en permisos enviados desde el navegador.
+
+## Archivos que actualizar en NetSuite
+
+Subir `SS2_1_LIB_CRM_habita.js` y `SS2_1_RL_CRM_Habita.js` a `/SuiteScripts/`,
+conservando sus nombres y la dependencia absoluta de la entrada. La aprobación está
+en la librería unificada; no crear los módulos antiguos citados en el historial.
+`SS2_1_UE_CRM_Habita.js` no necesita cambios para esta acción.
+
+En cada deployment mantener autenticación TBA, audiencia/rol de integración y
+`custscript_crm_account_id` coherentes con la cuenta: `4552704_SB1` en Sandbox,
+`4552704` en producción. La API selecciona URL y credenciales por su configuración
+de servidor; el navegador no puede elegir el entorno. La URL productiva debe apuntar
+a esta entrada compatible con PUT. Mantener el modo GET existente si todavía usa
+el contrato histórico; no asumir compatibilidad GET legacy con la entrada nueva.
+
+## Solicitud y modificación del cheque
+
+```http
+PUT <URL RESTlet configurada para el entorno>
+Content-Type: application/json
+Authorization: OAuth <firma TBA HMAC-SHA256>
+
+{"module":"salesOrders","action":"approveFormalization","id":"123"}
+```
+
+`id` es el ID interno de NetSuite resuelto por el backend, no el número visible de
+orden ni el ID del CRM. Antes de escribir se exige orden no caída (`custbody43`)
+y aprobaciones previas `custbody_aprueba_jefe_ventas=true` y
+`custbodyid_firma_rocca=true`. Si ya está aprobada y no caída responde sin escribir.
+Desde la versión `2026.11.03.7` se inicia el workflow corporativo con sus acciones de Entrada, sin escritura directa del cheque:
+
+Se importa `N/workflow`. La definición real revisada en producción (workflow interno553,
+script ID customworkflow219) contiene un único Estado1 con18 acciones en Entrada:
+aprobación, correos y creación de cuotas, entre otras. No tiene inicio automático
+por Creación ni por Vista/Actualizar. El contexto RESTlet está permitido.
+La llamada anterior `trigger` con stateId produjo
+`INVALID_WORKFLOW_ACTION_1_IN_WORKFLOW_STATE_2`; no correspondía al inicio del flujo.
+
+```js
+workflow.initiate({
+    recordType: "salesorder",
+    recordId: id,
+    workflowId: "customworkflow219",
+});
+```
+
+No se envía stateId ni actionId: initiate entra al estado inicial definido por
+SuiteFlow, donde se ejecutan sus acciones. No se encadena trigger, no hay fallback
+a submitFields ni reintento automático. Si ya está aprobada no inicia otra instancia.
+Un resultado desconocido requiere revisar el historial antes de repetir, porque el
+flujo puede haber enviado correos o creado cuotas aunque no se haya confirmado el cheque.
+Referencia: [Oracle workflow.initiate](https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_4344303916.html).
+
+Después relee las cuatro casillas; solo confirma si el cheque quedó `true`, la orden
+sigue no caída y los prerrequisitos siguen aprobados. Los workflows de la cuenta
+pueden tener efectos propios; la validación y escritura de NetSuite no son atómicas.
+
+Éxito confirmado (HTTP satisfactorio **y** este cuerpo):
+
+```json
+{"status":200,"data":{"type":"salesorder","id":"123","approval":"formalization","approved":true,"alreadyApproved":false}}
+```
+
+`alreadyApproved=true` indica que ya estaba marcado. Cuenta/entorno no autorizado:
+403; orden inexistente: 404; caída o sin requisitos: 409; cheque no confirmado o
+fallo después de escribir: 502 con resultado desconocido. No interpretar un HTTP200
+de NetSuite como éxito sin validar el `status` de aplicación y todos los campos.
+
+## Persistencia CRM y recuperación
+
+Solo con confirmación válida, el CRM actualiza la fuente autoritativa: nativa
+`crm_sales_order_approval` (`formalization/approved`) o legacy
+`ordenventa.aprobacion_forma_ov=1`, nunca ambas. Registra auditoría y paso a
+`contract_pending_send` cuando corresponde; conserva una etapa ya avanzada.
+Si NetSuite confirmó pero falla el commit local, devuelve
+`FORMALIZATION_APPROVAL_RECONCILIATION_REQUIRED`; reintentar la misma operación
+permite reconciliar. Un timeout puede haber aprobado en NetSuite: consultar el
+estado antes de reintentar. No hay rollback distribuido ni reintento automático.
+
+Esta entrega está validada con dobles locales; requiere subir scripts y desplegar
+la API. No acredita una aprobación real ni modifica órdenes por documentarla.
+
+## Diagnóstico de errores del workflow — versión2026.11.03.6
+
+El incidente de la orden NetSuite13320618 con versión2026.11.03.5 devolvió
+FORMALIZATION_APPROVAL_OUTCOME_UNKNOWN. Ese log no conserva la excepción original:
+no permite atribuir el fallo a permisos, instancia o estado sin evidencia adicional.
+No se reejecutó el workflow ni se modificó la orden durante la investigación.
+
+La versión2026.11.03.6 agrega una entrada N/log de nivel error con título fijo
+`CRM: diagnostico aprobacion workflow`, fase `trigger` (llamada a N/workflow) o
+`verify` (relectura), nombre técnico saneado del error y IDs de orden/workflow/estado.
+No registra mensaje, stack, cuerpo de solicitud ni datos del cliente. La respuesta
+pública permanece genérica y conserva el resultado desconocido. No se incorpora
+fallback a initiate, submitFields ni reintento automático.
+
+Actualizar solamente SS2_1_LIB_CRM_habita.js en NetSuite; RL no cambia. Primero revisar
+el estado y el historial de la instancia afectada. Una ejecución posterior debe ser
+controlada y autorizada, después de descartar que ya haya ejecutado sus acciones.
+El diagnóstico nuevo solo existe desde esta versión; no reconstruye excepciones
+que fueron descartadas por versiones anteriores.

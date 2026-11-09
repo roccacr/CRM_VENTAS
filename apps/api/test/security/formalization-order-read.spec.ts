@@ -18,8 +18,8 @@ describe("independent order detail authorization", () => {
             assertFormalizationOrderReadable(profile(code), { ...order, approved: 1, pendingApproval: true, rawStage: "contract_pending_send" });
         }).toThrow();
     });
-    it("denies explicit deny, inactive role and inactive order", () => {
-        for (const p of [profile("formalizacion.orders.read", "deny"), profile("formalizacion.orders.read", "allow", "inactive")])
+    it("denies explicit deny, an inactive role with no effective grant, and an inactive order", () => {
+        for (const p of [profile("formalizacion.orders.read", "deny"), { roles: [{ code: "formalizacion", status: "inactive" }], permissions: [] } as never])
             expect(() => {
                 assertFormalizationOrderReadable(p, order);
             }).toThrow();
@@ -27,13 +27,12 @@ describe("independent order detail authorization", () => {
             assertFormalizationOrderReadable(profile("formalizacion.orders.read"), { ...order, active: false });
         }).toThrow();
     });
-    it("requires the effective Formalizacion role and lets explicit deny override allow", () => {
-        const grant = { code: "formalizacion.orders.read", effect: "allow", scope: "self" };
-        const variants = [
-            { roles: [], permissions: [grant] },
-            { roles: [{ code: "owner", status: "active" }], permissions: [grant] },
-            { roles: [{ code: "formalizacion", status: "active" }], permissions: [grant, { ...grant, effect: "deny" }] },
-        ];
-        for (const p of variants) expect(hasRoutePermission(p as never, { kind: "formalization-order-read" }, {} as never)).toBe(false);
+    it("honors the effective personal grant and lets explicit deny override it", () => {
+        const grant = { code: "formalizacion.orders.read", effect: "allow", scope: "self", source: "override" };
+        for (const roles of [[], [{ code: "owner", status: "active" }], [{ code: "formalizacion", status: "inactive" }]]) {
+            const requirement = { kind: "formalization-order-read" } as const;
+            expect(hasRoutePermission({ roles, permissions: [grant] } as never, requirement, {} as never)).toBe(true);
+            expect(hasRoutePermission({ roles, permissions: [grant, { ...grant, effect: "deny" }] } as never, requirement, {} as never)).toBe(false);
+        }
     });
 });

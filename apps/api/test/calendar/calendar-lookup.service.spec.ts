@@ -337,3 +337,49 @@ it("exposes each readable CRM link independently and redacts an inaccessible not
         await f.db.destroy();
     }
 });
+
+describe("Marketing global lead lookup", () => {
+    it.each(["mercadeo", "jefe_mercadeo"])("lets %s search native and legacy leads across sellers", async (role) => {
+        const f = fixture(() => [], true);
+        const p = profile(["mercadeo.calendar.read", "mercadeo.leads.read", "mercadeo.reports.read_all"]);
+        p.roles = [{ code: role, name: role, status: "active" }];
+        p.orgUnits = [{ code: "mercadeo", status: "active" }] as never;
+        p.permissions = p.permissions.map((permission) => (permission.effect === "allow" ? { ...permission, scope: "self" } : permission));
+        try {
+            await f.service.lookup(p, { moduleCode: "mercadeo", kind: "leads", search: "Ana" });
+            expect(f.queries).toHaveLength(2);
+            expect(f.queries.every((query) => !query.sql.includes("u.public_id_user IN"))).toBe(true);
+            expect(f.queries.every((query) => !query.parameters.includes(actor))).toBe(true);
+            expect(f.queries[0]?.sql).toContain("crm_lead");
+            expect(f.queries[1]?.sql).toContain("crmdatabase-api");
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it.each(["absent", "denied"])("keeps seller filtering when global capability is %s", async (state) => {
+        const f = fixture();
+        const p = profile(["mercadeo.calendar.read", "mercadeo.leads.read"]);
+        p.orgUnits = [{ code: "mercadeo", status: "active" }] as never;
+        p.permissions = p.permissions.map((permission) => (permission.effect === "allow" ? { ...permission, scope: "self" } : permission));
+        if (state === "denied") p.permissions.push({ code: "mercadeo.reports.read_all", effect: "deny", scope: null, source: "override" });
+        try {
+            await f.service.lookup(p, { moduleCode: "mercadeo", kind: "leads", search: "Ana" });
+            expect(f.queries[0]?.sql).toContain("u.public_id_user IN");
+            expect(f.queries[0]?.parameters).toContain(actor);
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it.each(["absent", "denied"])("does not bypass a %s lead read permission", async (state) => {
+        const f = fixture();
+        const p = profile(["mercadeo.calendar.read", "mercadeo.reports.read_all"]);
+        p.orgUnits = [{ code: "mercadeo", status: "active" }] as never;
+        if (state === "denied") p.permissions.push({ code: "mercadeo.leads.read", effect: "deny", scope: null, source: "override" });
+        try {
+            await expect(f.service.lookup(p, { moduleCode: "mercadeo", kind: "leads", search: "Ana" })).rejects.toBeInstanceOf(ForbiddenException);
+            expect(f.queries).toHaveLength(0);
+        } finally {
+            await f.db.destroy();
+        }
+    });
+});

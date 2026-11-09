@@ -37,7 +37,7 @@ function netsuiteAuthorization(method: "GET" | "PUT", url: URL, credentials: Cre
             .join(", ")
     );
 }
-/** Server-configured reads and sandbox-only formalization approval; no caller-controlled URLs or scripts. */
+/** Lectura y aprobación en el entorno del servidor; el cliente no elige cuentas ni scripts. */
 @Injectable()
 export class NetsuiteRestletClient {
     /**
@@ -47,8 +47,8 @@ export class NetsuiteRestletClient {
     /** Confirm only the exact requested order and approval; lost responses leave the outcome unknown. */
     async approveFormalization(id: string): Promise<{ id: string; approved: true; alreadyApproved: boolean; environment: "sandbox" | "production" }> {
         if (!/^[1-9][0-9]*$/.test(id) || !Number.isSafeInteger(Number(id))) throw new BadRequestException("Identificador NetSuite invalido.");
-        if (this.environment() !== "sandbox") throw new ServiceUnavailableException("Aprobacion NetSuite disponible solamente en sandbox.");
-        const { credentials, url } = this.connection();
+        // La misma operación usa credenciales y destino del entorno validado, sin fallback entre cuentas.
+        const { credentials, url, environment } = this.connection();
         const authorization = netsuiteAuthorization("PUT", url, credentials, { nonce: randomBytes(16).toString("hex"), timestamp: String(Math.floor(Date.now() / 1000)) });
         try {
             const response = await fetch(url, { method: "PUT", redirect: "error", headers: { Authorization: authorization, Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ module: "salesOrders", action: "approveFormalization", id }), signal: AbortSignal.timeout(15000) });
@@ -57,7 +57,7 @@ export class NetsuiteRestletClient {
                 throw new Error("upstream");
             }
             const data = confirmApprovalBody(await this.readBody(response), id);
-            return { id, approved: true, alreadyApproved: data.alreadyApproved, environment: "sandbox" };
+            return { id, approved: true, alreadyApproved: data.alreadyApproved, environment };
         } catch (error) {
             if ([ConflictException, NotFoundException].some((type) => error instanceof type)) throw error;
             throw new BadGatewayException("Resultado de aprobacion NetSuite desconocido. Consulta el estado antes de reintentar.");

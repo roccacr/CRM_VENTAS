@@ -5,7 +5,7 @@ import type { DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
 import type { RecordAuditInput, RecordAuditService } from "../../src/modules/crm/audit/record-audit.service.js";
 import type { ContractTransitionLegacy } from "../../src/modules/crm/sales/sales-orders/contract-transition.port.js";
-import { type ContractTransitionCommand,ContractTransitionRepository } from "../../src/modules/crm/sales/sales-orders/contract-transition.repository.js";
+import { type ContractTransitionCommand, ContractTransitionRepository } from "../../src/modules/crm/sales/sales-orders/contract-transition.repository.js";
 
 function setup(native = true, flags = { available: true, saleLost: true, contractSigned: true }) {
     const queries: CompiledQuery[] = [];

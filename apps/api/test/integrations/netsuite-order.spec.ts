@@ -76,6 +76,19 @@ const sandbox = {
     NETSUITE_SANDBOX_RESTLET_URL: "https://4552704-sb1.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=customscript_read_order&deploy=customdeploy_read_order",
 };
 const approval = { type: "salesorder", id: "123", approval: "formalization", approved: true, alreadyApproved: false };
+it.each([false, true])("approves in configured production without using sandbox credentials: alreadyApproved=%s", async (alreadyApproved) => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 200, data: { ...approval, alreadyApproved } })));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(new NetsuiteRestletClient(config()).approveFormalization("123")).resolves.toEqual({ id: "123", approved: true, alreadyApproved, environment: "production" });
+    const [url, options] = fetcher.mock.calls[0] as [URL, RequestInit];
+    expect(url.href).toBe(config().get("NETSUITE_PRODUCTION_RESTLET_URL"));
+    expect(options.method).toBe("PUT");
+    expect(options.redirect).toBe("error");
+    expect(JSON.parse(options.body as string)).toEqual({ module: "salesOrders", action: "approveFormalization", id: "123" });
+    expect(new Headers(options.headers).get("Authorization")).toContain('realm="4552704"');
+    expect(new Headers(options.headers).get("Authorization")).toContain('oauth_consumer_key="consumer"');
+    expect(fetcher).toHaveBeenCalledOnce();
+});
 it("preserves confirmed absence during approval as a safe 404", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 404, error: { code: "SALES_ORDER_NOT_FOUND", message: "private" } }))));
     const failure: unknown = await new NetsuiteRestletClient(new ConfigService(sandbox)).approveFormalization("123").catch((error: unknown) => error);

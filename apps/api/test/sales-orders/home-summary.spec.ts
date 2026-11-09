@@ -25,8 +25,9 @@ describe("Home aggregate", () => {
         vi.useFakeTimers().setSystemTime(new Date("2027-01-01T06:00:00Z"));
         expect((await fixture().service.summary()).period.year).toBe(2027);
     });
-    it.each([[], [{ code: "formalizacion", status: "inactive" }], [{ code: "owner", status: "active" }]].map((roles) => ({ roles })))("denies without an active base role before snapshot: $roles", async ({ roles }) => {
+    it.each([[], [{ code: "formalizacion", status: "inactive" }], [{ code: "owner", status: "active" }]].map((roles) => ({ roles })))("denies without effective read permissions regardless of role labels: $roles", async ({ roles }) => {
         const f = fixture(roles);
+        f.identity.getCurrentUser.mockResolvedValue({ roles, permissions: [] });
         await expect(f.service.summary()).rejects.toMatchObject({ status: 403 });
         expect(f.repository.readSnapshot).not.toHaveBeenCalled();
         expect(f.legacy.aggregate).not.toHaveBeenCalled();

@@ -22,13 +22,19 @@ describe.each(destinations)("completion destination %s authorization", (targetSt
         await expect(f.service.transition("session", "set", { ...command, targetState })).resolves.toEqual({ sequence: 1 });
         expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ targetState, actorPublicId: "authenticated-actor", canSkipStages: false, ownOnly: false }));
     });
-    it.each(["owner", "jefe_general", "ventas", "mercadeo", ""])("rejects %s alone even with both grants", async (role) => {
+    it.each(["owner", "jefe_general", "ventas", "mercadeo", ""])("requires effective grants for %s and accepts personal grants once resolved", async (role) => {
         const f = fixture(role);
+        const personalGrants = f.profile.permissions.map((permission) => ({ ...permission, source: "override" }));
+        f.profile.permissions = [];
         await expect(f.service.transition("session", "set", { ...command, targetState })).rejects.toMatchObject({ status: 403 });
         expect(f.transition).not.toHaveBeenCalled();
+        f.profile.permissions = personalGrants;
+        await expect(f.service.transition("session", "set", { ...command, targetState })).resolves.toEqual({ sequence: 1 });
+        expect(f.transition).toHaveBeenCalledOnce();
     });
-    it.each(["inactive", "revoked"])("rejects %s operational membership", async (status) => {
+    it.each(["inactive", "revoked"])("rejects when the live profile loses its destination grant after %s membership", async (status) => {
         const f = fixture("formalizacion", status);
+        f.profile.permissions = f.profile.permissions.filter((entry) => entry.code !== `formalizacion.orders.stage.${targetState}`);
         await expect(f.service.transition("session", "set", { ...command, targetState })).rejects.toMatchObject({ status: 403 });
         expect(f.transition).not.toHaveBeenCalled();
     });
@@ -45,13 +51,13 @@ describe.each(destinations)("completion destination %s authorization", (targetSt
         await f.service.transition("session", "set", { ...command, targetState });
         expect(f.transition).toHaveBeenCalledWith(expect.objectContaining({ ownOnly: false }));
     });
-    it("revalidates role and grants on idempotency-key retry", async () => {
+    it("revalidates revoked grants and explicit denies on idempotency-key retry", async () => {
         const f = fixture();
         await f.service.transition("session", "set", { ...command, targetState });
-        f.profile.roles = [];
+        const permissions = f.profile.permissions;
+        f.profile.permissions = permissions.filter((entry) => entry.code !== "formalizacion.orders.stage.update");
         await expect(f.service.transition("session", "set", { ...command, targetState })).rejects.toMatchObject({ status: 403 });
-        f.profile.roles = [{ code: "formalizacion", status: "active" }];
-        f.profile.permissions.push(grant(`formalizacion.orders.stage.${targetState}`, "all_areas", "deny"));
+        f.profile.permissions = [...permissions, grant(`formalizacion.orders.stage.${targetState}`, "all_areas", "deny")];
         await expect(f.service.transition("session", "set", { ...command, targetState })).rejects.toMatchObject({ status: 403 });
         expect(f.getCurrentUser).toHaveBeenCalledTimes(3);
         expect(f.transition).toHaveBeenCalledTimes(1);
@@ -59,7 +65,7 @@ describe.each(destinations)("completion destination %s authorization", (targetSt
 });
 
 describe("completion command trust boundary", () => {
-    it.each(["owner", "jefe_general"])("accepts %s only when the live effective profile also contains Formalizacion", async (role) => {
+    it.each(["owner", "jefe_general"])("applies destination denial to %s even with an active Formalizacion role", async (role) => {
         const f = fixture(role);
         f.profile.roles.push({ code: "formalizacion", status: "active" });
         await f.service.transition("session", "set", { ...command, targetState: "closed" });

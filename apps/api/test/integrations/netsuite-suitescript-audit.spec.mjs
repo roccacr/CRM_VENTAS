@@ -30,7 +30,7 @@ function dispatch({ id = "214", memo = "audit", lineCount = 0, itemText } = {}) 
             }
         }),
     };
-    const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": record, "N/search": searchMock(), "N/log": log, "N/https": https });
+    const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": record, "N/search": searchMock(), "N/log": log, "N/https": https });
     entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id } });
     expect(record.submitFields).not.toHaveBeenCalled();
     return { https, rejected, log };
@@ -93,7 +93,8 @@ describe("SuiteScript adversarial producer/consumer contract audit (offline)", (
         });
         const https = { createSecureString: vi.fn(), post: vi.fn() };
         const readSnapshot = vi.fn();
-        const { sendRecordEvent } = loadAmd("lib/SS2_1_LIB_CRM_EnviarEvento.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/https": https });
+        const { delivery } = loadAmd("SS2_1_LIB_CRM_habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/https": https });
+        const { sendRecordEvent } = delivery;
         expect(() => sendRecordEvent({ recordType: "salesorder", netsuiteId: "214", eventType: "edit" }, readSnapshot, "order-events")).not.toThrow();
         expect(readSnapshot).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();
@@ -109,7 +110,7 @@ describe("SuiteScript adversarial producer/consumer contract audit (offline)", (
         });
         const record = recordMock();
         const https = { createSecureString: vi.fn(), post: vi.fn() };
-        const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/record": record, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
+        const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtime, "N/record": record, "N/search": searchMock(), "N/log": logMock(), "N/https": https });
         expect(() => entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: "214" } })).not.toThrow();
         expect(record.load).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();
@@ -125,14 +126,17 @@ describe("SuiteScript adversarial producer/consumer contract audit (offline)", (
         const current = { ...READY };
         const search = searchMock({}, ({ columns }) => Object.fromEntries(columns.map((column) => [column, current[column]])));
         const record = recordMock();
-        record.submitFields.mockImplementation(() => {
-            // Models another writer between initial validation and post-write confirmation.
-            current[field] = value;
-            current.custbodyid_firma_rc = true;
-        });
-        const handlers = loadAmd("SS2_1_RL_CRM_Integracion.js", { "N/runtime": runtimeMock(), "N/record": record, "N/search": search, "N/log": logMock() });
+        const workflow = {
+            initiate: vi.fn(() => {
+                // Models another writer between initial validation and post-write confirmation.
+                current[field] = value;
+                current.custbodyid_firma_rc = true;
+            }),
+        };
+        const handlers = loadAmd("SS2_1_RL_CRM_Habita.js", { "N/runtime": runtimeMock(), "N/record": record, "N/search": search, "N/log": logMock(), "N/workflow": workflow });
         const response = handlers.put({ module: "salesOrders", action: "approveFormalization", id: "214" });
-        expect(record.submitFields).toHaveBeenCalledOnce();
+        expect(workflow.initiate).toHaveBeenCalledOnce();
+        expect(record.submitFields).not.toHaveBeenCalled();
         expect(search.lookupFields).toHaveBeenCalledTimes(2);
         // Reproduces the documented non-atomicity; no version/CAS guarantee is assumed from NetSuite.
         expect(response).toMatchObject({ status: 409, error: { code: "APPROVAL_STATE_CHANGED" } });

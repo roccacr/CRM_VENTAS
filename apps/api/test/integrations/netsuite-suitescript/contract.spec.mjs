@@ -33,7 +33,7 @@ function runUserEvent({ lineCount = 2, eventType = "edit", id = 214, tamper } = 
             }
         }),
     };
-    const entry = loadAmd("SS2_1_UE_CRM_CambiosRegistros.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(ORDER_FIELDS), "N/log": log, "N/https": https });
+    const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": { load: record.load, submitFields: record.submitFields }, "N/search": searchMock(ORDER_FIELDS), "N/log": log, "N/https": https });
     entry.afterSubmit({ type: eventType, newRecord: { type: "salesorder", id } });
     return { received, rejected, log, https };
 }

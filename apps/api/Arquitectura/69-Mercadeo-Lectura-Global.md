@@ -1,13 +1,16 @@
 # Lectura global de Mercadeo
 
 El permiso `mercadeo.reports.read_all` permite consultar todos los vendedores en
-Inicio y Captación de Mercadeo. Cada vista sigue requiriendo su permiso ordinario:
-`mercadeo.home.read` o `mercadeo.leads.read`. Una denegación de esa lectura siempre
+Inicio y Captación de Mercadeo. El código local también lo aplica a la lectura del
+calendario CRM de Mercadeo y a la búsqueda de leads para sus relaciones. Cada
+vista sigue requiriendo su permiso ordinario (`mercadeo.home.read`,
+`mercadeo.leads.read` o `mercadeo.calendar.read`). Una denegación de esa lectura siempre
 bloquea la vista. Una denegación del permiso global conserva el filtro de alcance
 ordinario; no revoca por sí sola la lectura que ya estuviera autorizada.
 
 Esta capacidad no cambia el alcance organizativo, la edición de leads, eventos,
-notas ni el acceso a otros módulos. Se administra en Mercadeo / Informes y puede
+notas ni el acceso a otros módulos. Tampoco comparte buzones de Outlook ni evita
+la autorización de las notas. Se administra en Mercadeo / Informes y puede
 asignarse por rol o por empleado. La migración 056 crea el permiso sin concederlo
 automáticamente a roles o personas. Las asignaciones individuales usan el escritor
 de seguridad existente, incrementan la versión de permisos y registran auditoría.
@@ -20,6 +23,31 @@ observación fechada, no valores fijos ni una autorización para modificar carte
 
 La lectura mantiene la unión nativa/legacy, deduplicación y los filtros del período.
 No se copian ni modifican leads, órdenes ni registros de producción legacy.
+
+## Acceso por rol — 4 de noviembre de 2026
+
+Por solicitud expresa, los roles `mercadeo` y `jefe_mercadeo` incluyen ahora
+`mercadeo.reports.read_all`. Se agregó mediante el escritor transaccional de
+permisos de roles, conservando sus otros doce permisos, las membresías, los
+overrides personales y la configuración de los demás roles. Se registró auditoría
+y se incrementaron las versiones de permisos de las personas afectadas. Esta
+asignación persistida también alcanza a futuras personas con esos roles;
+no depende de excepciones por nombre o correo ni de convertir su alcance en
+`all_areas`. La migración histórica 056 sigue siendo únicamente la creación de la
+capacidad, sin concesiones automáticas.
+
+La reproducción con perfiles efectivos reales y un mismo snapshot de solo
+lectura mostró 0 leads para ambas cuentas de Mercadeo frente a 59 de Owner.
+Tras asignar la capacidad, las tres lecturas devolvieron 59 leads en 7 proyectos
+para el período 1–4 de noviembre, tanto en Inicio como en Captación. Son conteos
+observados, no resultados fijos. No se modificaron clientes ni se suplantaron
+sesiones de las empleadas.
+
+La ampliación local del calendario conserva `create`, `update` y `assign_lead`
+en su alcance previo. La lectura global requiere membresía activa y permiso de
+lectura del módulo; los permisos denegados siguen ganando. Las relaciones con
+órdenes continúan requiriendo acceso a Formalización. Este cambio de código no
+se considera publicado por haber corregido las concesiones en la BD compartida.
 
 ## Aplicación del 29 de octubre de 2026
 
@@ -42,3 +70,12 @@ la comprobación pública de disponibilidad del API respondieron HTTP 200. La
 lectura se verificó con perfiles reales y repositorios contra ambas BD; no se
 suplantaron las sesiones de los empleados ni se certificó una navegación
 interactiva desde sus dispositivos.
+
+### Publicación verificada — 4 de noviembre de 2026
+
+La ampliación de lectura de calendario y búsqueda de leads quedó publicada en
+Habita, release `20261104063243-06a489c-local`. Los perfiles efectivos reales de
+ambas usuarias fueron verificados con el código compilado productivo: lectura
+global de Mercadeo habilitada y edición de eventos todavía limitada a propios.
+OneDrive/documentos y calendario externo conservaron sus indicadores en `true`.
+Evidencia y límites en [el recibo del despliegue](../../../deploy/habita/DEPLOYMENT-20261104.md).

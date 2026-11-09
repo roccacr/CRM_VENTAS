@@ -5,6 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { ConfigService } from "@nestjs/config";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
+import fc from "fast-check";
 import { Kysely, MysqlDialect, sql } from "kysely";
 import { createPool } from "mysql2";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -107,14 +108,15 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await db.destroy();
         await admin.destroy();
     });
-    beforeEach(async () => {
+    beforeEach(resetFixture);
+    async function resetFixture(): Promise<void> {
         config.set("NETSUITE_ORDER_CANCELLATION_EFFECTS_ENABLED", false);
         await sql`DROP TRIGGER IF EXISTS fail_order_update`.execute(db);
         await sql`DROP TRIGGER IF EXISTS fail_success_audit`.execute(db);
         for (const table of ["audit_sales_order_state_event", "crmdatabase-api.audit_sales_order_state_event", "audit_sales_order_approval_event", "crm_sales_order_approval", "audit_record_event", "audit_record", "crm_sales_order_external_reference", "crm_sales_order", "int_external_system", "audit_netsuite_order_event", "int_netsuite_order_cursor", "crmdatabase-api.ordenventa"]) await sql`DELETE FROM ${sql.table(table)}`.execute(db);
         await sql`INSERT INTO int_external_system VALUES (1,'netsuite','active')`.execute(db);
         for (const table of ["crm_lead_external_reference", "crm_unit_file_external_reference", "crm_subsidiary_external_reference", "int_user_external_identity"]) await sql`DELETE FROM ${sql.id(table)}`.execute(db);
-    });
+    }
     function event(checked = true): PersistedOrderEvent {
         return {
             schemaVersion: 2,
@@ -315,6 +317,75 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
     async function audit() {
         return (await sql<{ result: string; destination: string | null; changes: unknown; payload: unknown }>`SELECT result,destination,changes,payload FROM audit_netsuite_order_event ORDER BY id`.execute(db)).rows.map((row) => ({ ...row, changes: typeof row.changes === "string" ? (JSON.parse(row.changes) as unknown) : row.changes, payload: typeof row.payload === "string" ? (JSON.parse(row.payload) as unknown) : row.payload }));
     }
+
+    function paddedEvent(bytes: number, checked: boolean): string {
+        const payload = event(checked);
+        const fields = payload.snapshot.data.fields;
+        for (let index = 0; index < 32; index++) fields["qa_padding_" + String(index)] = "x".repeat(15_500);
+        fields.qa_tail = "";
+        fields.qa_tail = "x".repeat(bytes - Buffer.byteLength(JSON.stringify(payload), "utf8"));
+        return JSON.stringify(payload);
+    }
+
+    const contractViolations = fc.oneof(
+        fc.string({ maxLength: 80 }).map((suffix) => {
+            const payload = event(false);
+            payload.event.sourceModifiedAt = "invalid-date-" + suffix;
+            return JSON.stringify(payload);
+        }),
+        fc.integer({ min: 124, max: 999_999 }).map((id) => {
+            const payload = event(false);
+            payload.snapshot.data.id = String(id);
+            return JSON.stringify(payload);
+        }),
+        fc.jsonValue().map((value) => JSON.stringify({ ...event(false), schemaVersion: [value] })),
+        fc.string({ maxLength: 80 }).map((value) => JSON.stringify({ ...event(false), unexpected: value })),
+    );
+
+    it.each([
+        {
+            name: "malformed JSON",
+            inputs: fc.integer({ min: 1, max: 200 }).map((removed) => JSON.stringify(event(false)).slice(0, -removed)),
+        },
+        {
+            name: "JSON that violates the event contract or byte limit",
+            inputs: fc.oneof(
+                contractViolations,
+                fc.integer({ min: 500_001, max: 500_100 }).map((bytes) => paddedEvent(bytes, false)),
+            ),
+        },
+    ])(
+        "rejects generated $name without persisting changes",
+        async ({ inputs }) => {
+            await native(2);
+            await legacy();
+            const request = (payload: string) => app.inject({ method: "POST", url: "/integrations/netsuite/local/order-events", headers: { authorization: "Bearer " + secret, "content-type": "application/json" }, payload });
+            const boundary = paddedEvent(500_000, true);
+            expect(Buffer.byteLength(boundary, "utf8")).toBe(500_000);
+            const accepted = await request(boundary);
+            expect(accepted.statusCode).toBe(200);
+            expect(accepted.json()).toMatchObject({ persisted: true, destination: "native", result: "applied" });
+
+            const readState = async () => ({
+                native: await flags("native"),
+                legacy: await flags("legacy"),
+                cursor: (await sql`SELECT * FROM int_netsuite_order_cursor`.execute(db)).rows,
+                receipts: await audit(),
+                commercial: (await sql`SELECT * FROM audit_record_event`.execute(db)).rows,
+            });
+            const baseline = await readState();
+            await fc.assert(
+                fc.asyncProperty(inputs, async (payload) => {
+                    const rejected = await request(payload);
+                    expect(rejected.statusCode).toBe(400);
+                    expect(await readState()).toEqual(baseline);
+                }),
+                { numRuns: 40 },
+            );
+        },
+        30_000,
+    );
+
     async function expectNativeProjection(row: Record<string, unknown> | undefined): Promise<void> {
         expect(row).toMatchObject({ list_price_sales_order: "125000.1500", net_sale_price_sales_order: "120000.0000", sale_price_sales_order: "130000.0000", advisor_commission_sales_order: "3500.2500", advisor_commission_calculated_sales_order: "yes" });
         const date = row?.transaction_date_sales_order as Date;
@@ -513,6 +584,74 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await expect(service.receive(older)).rejects.toThrow("anterior");
         expect((await flags("native"))?.contract_signed_sales_order).toBe("yes");
     });
+    it.each(["native", "legacy"] as const)(
+        "keeps the newest revision and audits each accepted change under generated delivery sequences in %s",
+        async (destination) => {
+            const seedOrder = destination === "native" ? native : legacy;
+            const revisions = fc.array(fc.integer({ min: 1, max: 12 }), { minLength: 1, maxLength: 18 });
+            const sourceTime = (revision: number) => Date.UTC(2026, 10, 2, 20, 0, revision);
+            await fc.assert(
+                fc.asyncProperty(revisions, fc.integer({ min: 0, max: 15 }), async (tail, flagOffset) => {
+                    await resetFixture();
+                    await seedOrder();
+
+                    const events = new Map<number, PersistedOrderEvent>();
+                    const arrival = [1, 3, 2, 1, ...tail].map((revision) => {
+                        const previous = events.get(revision);
+                        if (previous) return { revision, payload: previous };
+                        const payload = observedEvent(false, revision);
+                        payload.event.sourceModifiedAt = new Date(sourceTime(revision)).toISOString();
+                        payload.event.observedAt = new Date(sourceTime(30 + events.size)).toISOString();
+                        const flagBits = (revision + flagOffset) % 16;
+                        orderFlagMappings.slice(0, 4).forEach((mapping, index) => {
+                            payload.snapshot.data.fields[mapping.netsuite] = Boolean(flagBits & (1 << index));
+                        });
+                        events.set(revision, payload);
+                        return { revision, payload };
+                    });
+                    const receipts: { eventId: string; result: string; changes: unknown }[] = [];
+                    const changes: { operationId: string }[] = [];
+                    let newest = 0;
+                    let state: Record<string, string | number | null> = Object.fromEntries(orderFlagMappings.map((mapping) => [mapping[destination], destination === "native" ? "unknown" : null]));
+                    for (const { revision, payload } of arrival) {
+                        const eventId = payload.event.eventId;
+                        const earlierReceipt = receipts.find((receipt) => receipt.eventId === eventId);
+                        const stale = earlierReceipt ? earlierReceipt.result === "stale" : revision < newest;
+                        const response = await app.inject({ method: "POST", url: "/integrations/netsuite/local/order-events", headers: { authorization: "Bearer " + secret }, payload });
+                        expect(response.statusCode).toBe(stale ? 409 : 200);
+                        if (!stale) expect(response.json()).toMatchObject({ result: "applied", destination, duplicate: Boolean(earlierReceipt) });
+                        if (earlierReceipt) continue;
+                        if (stale) {
+                            receipts.push({ eventId, result: "stale", changes: [] });
+                            continue;
+                        }
+                        const nextState = Object.fromEntries(
+                            orderFlagMappings.map((mapping) => {
+                                const checked = payload.snapshot.data.fields[mapping.netsuite] === true;
+                                return [mapping[destination], destination === "native" ? (checked ? "yes" : "no") : Number(checked)];
+                            }),
+                        );
+                        const diff = orderFlagMappings.map((mapping) => ({ field: mapping.netsuite, column: mapping[destination], before: state[mapping[destination]], after: nextState[mapping[destination]] })).filter(({ before, after }) => before !== after);
+                        receipts.push({ eventId, result: "applied", changes: diff });
+                        changes.push({ operationId: "netsuite:" + payload.source.accountId + ":" + eventId });
+                        newest = revision;
+                        state = nextState;
+                    }
+
+                    expect(await flags(destination)).toMatchObject(state);
+                    const cursor = (await sql<{ revision: string | number }>`SELECT source_modified_ms AS revision FROM int_netsuite_order_cursor`.execute(db)).rows;
+                    expect(cursor.map((row) => Number(row.revision))).toEqual([sourceTime(newest)]);
+                    const storedReceipts = (await sql<{ eventId: string; result: string; changes: unknown }>`SELECT event_id AS eventId,result,changes FROM audit_netsuite_order_event WHERE result <> 'error' ORDER BY id`.execute(db)).rows;
+                    expect(storedReceipts.map((row) => ({ ...row, changes: typeof row.changes === "string" ? (JSON.parse(row.changes) as unknown) : row.changes }))).toEqual(receipts);
+                    const centralAudit = (await sql<{ operationId: string }>`SELECT operation_id_record_event AS operationId FROM audit_record_event`.execute(db)).rows;
+                    expect(centralAudit).toHaveLength(changes.length);
+                    expect(centralAudit).toEqual(expect.arrayContaining(changes));
+                }),
+                { numRuns: 40 },
+            );
+        },
+        60_000,
+    );
     it("does not fall back to legacy when an existing native reference is disabled", async () => {
         await native();
         await legacy();

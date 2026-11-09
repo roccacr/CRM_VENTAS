@@ -38,3 +38,20 @@ API: `common/security/route-permission.ts`, `integrations/netsuite/netsuite.modu
 Frontend: `modules/administration/catalogs/catalog-permissions.ts`, `modules/administration/banks/BanksPage.tsx`, `modules/home/GlobalHomeShell.tsx`, `formalization-read-policy.ts`, `FormalizationHomePage.tsx`, `FormalizationRecordSummary.tsx`, `FormAssignBank.tsx` y `routes/auth-state.ts`.
 
 La ejecución completa inicial de frontend terminó con 2012 aprobadas y 44 fallidas, antes de actualizar expectativas antiguas de rol y catálogo. El corte focalizado final de permisos/navegación/editor es 155/155. Los fallos adicionales de UI/fixtures anteriores no se presentan como corregidos por esta tarea.
+
+## Revisión de Formalización — 4 de noviembre de 2026
+
+- Perfiles reales revisados: Kattya (`jefe_formalizaciones`, con rol operativo heredado) y Milena (`formalizacion`), activas y con módulo Formalización. Sus permisos de lectura de órdenes y banners están presentes; no requieren una excepción individual de lectura global como Mercadeo.
+- Seguimiento, distribución por proyecto y acciones de orden usan alcance del módulo; el metadato `self` no restringe las órdenes al vendedor o responsable. En un snapshot nativo/legacy de solo lectura: Owner331, Kattya331 y Milena327 órdenes. Las cuatro restantes corresponden a pendientes de aprobación, permiso supervisor que Milena no tiene. Ambas consultan239 contratos pendientes. Los conteos son observaciones, no constantes.
+- La revisión encontró un límite adicional en calendario: ambas tenían lectura `self`, por lo que no consultaban eventos de otros organizadores. El ajuste central de `calendarAccess` amplía únicamente la población de lectura de Formalización para los roles activos `formalizacion` y `jefe_formalizaciones`. Continúa exigiendo membresía activa, permiso ordinario y ausencia de una denegación explícita; un rol por sí solo no concede acceso.
+- Crear y editar eventos mantiene su alcance anterior. Ver eventos de otro organizador no concede `canEdit`; tampoco abre Mercadeo/Administración, notas privadas o buzones ajenos de Outlook. Las excepciones personales y los permisos específicos de aprobación, Adéndum y bancos conservan sus diferencias.
+- Regresión: dos fallos reproducidos para calendario por rol y corregidos. Ocho suites API,182 pruebas aprobadas. Se corrigieron cinco fixtures de pruebas antiguas que revocaban etiquetas de rol pero conservaban sus permisos efectivos: ahora simulan la retirada real de los permisos heredados, sin añadir un bloqueo por nombre de rol al Home. No se cambió la política de lectura de órdenes.
+- No se modificaron usuarios, concesiones, catálogos, esquema ni datos de negocio en esta revisión. La corrección de calendario es código local hasta su publicación autorizada; no debe inferirse despliegue por las lecturas de la BD compartida.
+- Hallazgo adicional de UI: `auth-state.ts` derivaba la autorización de la ruta de órdenes del menú filtrado. Ocultar el menú «Gestión de formalizaciones» había bloqueado también `/home/formalization/orders`. La ruta ahora reutiliza `canReadFormalizationOrder` después de comprobar módulo visible/membresía; el menú permanece oculto. Se prueban ambos roles, denegación explícita, ausencia de membresía y rechazo de Mercadeo.
+
+Publicación de esta revisión confirmada en Habita: release `20261104065246-06a489c-local`,
+4 de noviembre de2026. Ambos perfiles reales verificaron lectura de órdenes y
+calendario completo del módulo; edición propia y diferencia de aprobación entre
+jefatura y operativo conservadas. Se publicó también la corrección de autorización
+de la ruta de órdenes independiente del menú oculto.234pruebas focalizadas aprobadas;
+recibo en [DEPLOYMENT-20261104](../../../deploy/habita/DEPLOYMENT-20261104.md).

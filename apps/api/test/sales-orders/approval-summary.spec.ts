@@ -12,10 +12,10 @@ describe("approval summary", () => {
         const service = new ApprovalSummaryService(identity as never, repository as never, legacy);
         return { service, repository, legacy, transaction };
     }
-    it("rejects an approvals grant without the active Formalizacion role", async () => {
-        const f = setup([permission], []);
-        await expect(f.service.summary()).rejects.toMatchObject({ status: 403 });
-        expect(f.repository.countPending).not.toHaveBeenCalled();
+    it("honors a personal approvals grant without a named Formalizacion role", async () => {
+        const f = setup([{ ...permission, source: "override" }], []);
+        await expect(f.service.summary()).resolves.toMatchObject({ total: 3 });
+        expect(f.repository.countPending).toHaveBeenCalledWith(f.transaction);
     });
     it("counts native orders and only non-migrated legacy orders", async () => {
         const { service } = setup();

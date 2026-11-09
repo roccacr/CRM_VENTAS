@@ -1,5 +1,23 @@
 # Aprobacion de Formalizacion confirmada por NetSuite
 
+## Ampliación vigente — 2026-11-03
+
+Por solicitud expresa del propietario, la aprobación admite Sandbox y producción.
+La API elimina el bloqueo exclusivo a Sandbox y usa URL, realm y credenciales del
+entorno validado por el servidor, sin fallback. Se conserva el permiso independiente
+`formalizacion.orders.approve`, deny, sesión/CSRF, requisitos comerciales, versiones,
+idempotencia, confirmación externa y transacción local con auditoría.
+El RESTlet unificado ejecuta `N/workflow.initiate` con `customworkflow219`,
+sin `stateId`, `actionId` ni escritura directa del cheque. La revisión real del flujo553
+confirmó sus18 acciones de Entrada en el estado inicial; la versión2026.11.03.7
+sustituye el trigger anterior que devolvía INVALID_WORKFLOW_ACTION_1_IN_WORKFLOW_STATE_2. El workflow
+es responsable de sus acciones y de marcar `custbodyid_firma_rc=true`; el RESTlet relee las
+casillas antes de confirmar. Esta decisión sustituye la escritura directa descrita
+en los apartados históricos. La configuración productiva debe apuntar a un deployment
+que implemente este PUT; esta entrega no publica ni ejecuta aprobaciones reales.
+Contrato y archivos de carga: [SuiteScript](../src/integrations/netsuite/suitescript/README.md).
+Este corte sustituye las limitaciones históricas a Sandbox de los apartados siguientes.
+
 ## Separación entre aprobar y entrar a Contratos — 2026-11-03
 
 La elegibilidad de Contratos pasó a usar exclusivamente la aprobación de

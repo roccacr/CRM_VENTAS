@@ -7,6 +7,7 @@ import { canReadFormalizationOrder } from "../../../common/security/route-permis
 import type { CrmDatabase } from "../../../database/database.types.js";
 import type { IdentityProfile } from "../identity/identity.types.js";
 import { includeDescendants } from "../marketing/marketing-home.repository.js";
+import { hasGlobalMarketingRead } from "../marketing/marketing-read.policy.js";
 import { canUseCollaboration } from "../notes/notes.permissions.js";
 import { CALENDAR_MODULES, type CalendarCrmDetail, type CalendarLink, calendarLink, type CalendarParticipant, calendarParticipant, type CalendarSelectionOption, type CalendarSelectionOptions } from "./calendar.contract.js";
 import { CalendarRepository } from "./calendar.repository.js";
@@ -261,7 +262,8 @@ export class CalendarLookupService {
             if (canReadFormalizationOrder(profile)) return { filter: undefined, needsOwner: false };
             throw new ForbiddenException("Leads no autorizados.");
         }
-        if (scopes.includes("all_areas")) return { filter: sql`TRUE`, needsOwner: false };
+        // El permiso de consulta global amplía vendedores, sin sustituir la lectura del recurso ni sus denegaciones.
+        if ([scopes.includes("all_areas"), hasGlobalMarketingRead(profile)].some(Boolean)) return { filter: sql`TRUE`, needsOwner: false };
         const sellers = await this.visibleSellers(tx, profile, scopes);
         return { filter: sellers.size ? sql`u.public_id_user IN (${sql.join([...sellers])})` : sql`FALSE`, needsOwner: true };
     }

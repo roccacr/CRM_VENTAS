@@ -3,9 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { ContractSummaryService } from "../../src/modules/crm/sales/sales-orders/contract-summary.service.js";
 
 const role = { code: "formalizacion", name: "Formalizacion", status: "active" };
-function setup(roles = [role]) {
+const permission = { code: "formalizacion.home.stages.read", effect: "allow" };
+function setup(roles = [role], permissions = [permission]) {
     const transaction = { isTransaction: true };
-    const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles, permissions: [{ code: "formalizacion.home.stages.read", effect: "allow" }] }) };
+    const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles, permissions }) };
     const repository = { readSnapshot: vi.fn().mockImplementation((read: (tx: object) => Promise<unknown>) => read(transaction)), countNative: vi.fn().mockResolvedValue({ toSend: 2, pendingSignature: 1 }) };
     const migrated = { migratedIds: vi.fn().mockResolvedValue([4]) };
     const legacy = {
@@ -30,11 +31,13 @@ describe("contract summary authority and membership", () => {
         expect(f.repository.countNative).toHaveBeenCalledWith(f.transaction);
         expect(f.legacy.pending.mock.calls).toEqual([[0, f.transaction]]);
     });
-    it.each([[], [{ ...role, status: "inactive" }], [{ ...role, code: "owner" }], [{ ...role, code: "jefe_formalizacion" }]].map((roles) => ({ roles })))("rejects missing active base role before source reads: $roles", async ({ roles }) => {
-        const f = setup(roles);
+    it.each([[], [{ ...role, status: "inactive" }], [{ ...role, code: "owner" }], [{ ...role, code: "jefe_formalizacion" }]].map((roles) => ({ roles })))("checks the effective grant independently of roles: $roles", async ({ roles }) => {
+        const f = setup(roles, []);
         await expect(f.service.summary()).rejects.toMatchObject({ status: 403 });
         expect(f.repository.countNative).not.toHaveBeenCalled();
         expect(f.legacy.pending).not.toHaveBeenCalled();
+        await expect(setup(roles).service.summary()).resolves.toMatchObject({ total: 5 });
+        await expect(setup(roles, [permission, { ...permission, effect: "deny" }]).service.summary()).rejects.toMatchObject({ status: 403 });
     });
     it("retains native only when legacy is explicitly retired", async () => {
         const f = setup();

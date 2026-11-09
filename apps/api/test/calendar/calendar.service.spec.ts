@@ -374,3 +374,60 @@ it.each([undefined, "  ", "ab", "x".repeat(2001)])("blocks an Adendum conversion
     expect(f.addendum.prepareEvent).not.toHaveBeenCalled();
     expect(f.external.publish).not.toHaveBeenCalled();
 });
+
+describe("Marketing global read is limited to calendar consultation", () => {
+    it.each(["mercadeo", "jefe_mercadeo"])("lets %s read other Marketing CRM events without edit authority", async (role) => {
+        const f = setup("self");
+        f.profile.roles = [{ code: role, name: role, status: "active" }];
+        f.profile.orgUnits = [{ code: "mercadeo", status: "active" }] as never;
+        f.profile.permissions = ["read", "create", "update"].map((action) => ({ code: `mercadeo.calendar.${action}`, effect: "allow", scope: "self", source: "role" }));
+        f.profile.permissions.push({ code: "mercadeo.reports.read_all", effect: "allow", scope: "self", source: "role" });
+        const other = { ...event, originModule: "mercadeo" as const, ownerPublicId: "another" };
+        f.repository.list.mockResolvedValue([other]);
+        f.repository.detailRecord.mockResolvedValue(other);
+        const result = await f.service.list("session", { ...query, moduleCodes: "mercadeo", contextModule: "mercadeo" });
+        expect(f.repository.list).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ broadModules: ["mercadeo"] }));
+        expect(f.legacy.list).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ broadModules: ["mercadeo"] }));
+        expect(result.events[0]?.canEdit).toBe(false);
+        await expect(f.service.detail("session", id)).resolves.toHaveProperty("crmDetail");
+        expect(calendarAccess(f.profile, "mercadeo", "update")).toEqual({ allowed: true, ownOnly: true });
+        expect(calendarAccess(f.profile, "mercadeo", "create")).toEqual({ allowed: true, ownOnly: true });
+        expect(calendarAccess(f.profile, "formalizacion", "read").allowed).toBe(false);
+        expect(f.external.publish).not.toHaveBeenCalled();
+    });
+    it.each(["absent", "denied"])("preserves own-only Marketing read when global capability is %s", (state) => {
+        const f = setup("self");
+        f.profile.permissions.push({ code: "mercadeo.calendar.read", effect: "allow", scope: "self", source: "role" });
+        if (state === "denied") f.profile.permissions.push({ code: "mercadeo.reports.read_all", effect: "deny", scope: null, source: "override" });
+        expect(calendarAccess(f.profile, "mercadeo", "read")).toEqual({ allowed: true, ownOnly: true });
+    });
+    it.each(["absent", "denied"])("never substitutes for a %s calendar read grant", (state) => {
+        const f = setup("self");
+        f.profile.permissions.push({ code: "mercadeo.reports.read_all", effect: "allow", scope: "self", source: "role" });
+        if (state === "denied") f.profile.permissions.push({ code: "mercadeo.calendar.read", effect: "deny", scope: null, source: "override" });
+        expect(calendarAccess(f.profile, "mercadeo", "read").allowed).toBe(false);
+    });
+});
+
+it("does not widen another module or override a global read deny", () => {
+    const f = setup("self");
+    f.profile.permissions.push({ code: "mercadeo.calendar.read", effect: "allow", scope: "self", source: "role" }, { code: "mercadeo.reports.read_all", effect: "allow", scope: "self", source: "role" });
+    expect(calendarAccess(f.profile, "formalizacion", "read")).toEqual({ allowed: true, ownOnly: true });
+    f.profile.permissions.push({ code: "mercadeo.reports.read_all", effect: "deny", scope: null, source: "override" });
+    expect(calendarAccess(f.profile, "mercadeo", "read")).toEqual({ allowed: true, ownOnly: true });
+});
+
+it.each(["formalizacion", "jefe_formalizaciones"])("lets %s consult other organizers without granting their editing", async (role) => {
+    const f = setup("self");
+    f.profile.roles = [{ code: role, name: role, status: "active" }];
+    const other = { ...event, ownerPublicId: "another" };
+    f.repository.list.mockResolvedValue([other]);
+    f.repository.detailRecord.mockResolvedValue(other);
+    const result = await f.service.list("session", query);
+    expect(f.repository.list).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ broadModules: ["formalizacion"] }));
+    expect(f.legacy.list).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ broadModules: ["formalizacion"] }));
+    expect(result.events[0]?.canEdit).toBe(false);
+    await expect(f.service.detail("session", id)).resolves.toHaveProperty("crmDetail");
+    expect(calendarAccess(f.profile, "formalizacion", "update")).toEqual({ allowed: true, ownOnly: true });
+    expect(f.external.publish).not.toHaveBeenCalled();
+});

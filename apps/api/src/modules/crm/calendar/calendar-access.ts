@@ -1,4 +1,5 @@
 import type { IdentityProfile } from "../identity/identity.types.js";
+import { hasGlobalMarketingRead } from "../marketing/marketing-read.policy.js";
 import { CALENDAR_MODULES, type CalendarModuleCode } from "./calendar.contract.js";
 
 export type CalendarAction = "read" | "create" | "update" | "assign_lead";
@@ -11,8 +12,12 @@ export function calendarAccess(profile: IdentityProfile, moduleCode: CalendarMod
     const knownScopes = ["self", "assigned", "own_area", "own_area_and_children", "all_areas"];
     const allowed = membership && !denied && grants.some((grant) => knownScopes.includes(grant.scope ?? ""));
     const read = action === "read" ? { allowed: true, ownOnly: false } : calendarAccess(profile, moduleCode, "read");
+    // La consulta global de Mercadeo no concede escritura sobre eventos ajenos ni acceso a otros módulos.
+    const globalMarketingRead = [action === "read", moduleCode === "mercadeo", hasGlobalMarketingRead(profile)].every(Boolean);
+    // La cartera de Formalización se consulta por equipo: el rol amplía población, nunca sustituye permiso ni membresía.
+    const globalFormalizationRead = [action === "read", moduleCode === "formalizacion", profile.roles.some((role) => role.status === "active" && ["formalizacion", "jefe_formalizaciones"].includes(role.code))].every(Boolean);
     // Writing cannot expose an event outside the effective read scope.
-    return { allowed: allowed && read.allowed, ownOnly: read.ownOnly || !grants.some((grant) => ["own_area", "own_area_and_children", "all_areas"].includes(grant.scope ?? "")) };
+    return { allowed: allowed && read.allowed, ownOnly: read.ownOnly || (!globalMarketingRead && !globalFormalizationRead && !grants.some((grant) => ["own_area", "own_area_and_children", "all_areas"].includes(grant.scope ?? ""))) };
 }
 /** The global guard grants only entry; the service validates every requested module and resource. */
 export function calendarRouteAccess(profile: IdentityProfile, action: CalendarAction): boolean {

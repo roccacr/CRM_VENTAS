@@ -77,7 +77,11 @@ define(["/SuiteScripts/SS2_1_LIB_CRM_habita"], (crm) => {
     function dispatch(method, request) {
         // 1. Candado de cuenta y entorno, configurados por deployment.
         if (!environment.isAuthorizedEnvironment()) {
-            return fail(403, "ENVIRONMENT_NOT_AUTHORIZED", "El deployment no esta autorizado para esta cuenta o entorno.");
+            return fail(
+                403,
+                "ENVIRONMENT_NOT_AUTHORIZED",
+                "El deployment no esta autorizado para esta cuenta o entorno.",
+            );
         }
 
         // 2. Sin solicitud: se conserva la respuesta historica (501).
