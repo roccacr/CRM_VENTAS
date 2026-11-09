@@ -38,6 +38,10 @@ export default defineConfig({
         environment: "jsdom",
         // Bound jsdom memory pressure consistently with the coverage command.
         maxWorkers: 2,
+        setupFiles: ["./test/setup.ts"],
+        // jsdom + antd con 2 workers hace que tests de formularios largos superen los 5 s por defecto bajo carga (SystemUsersPage). 20 s evita falsos rojos sin ocultar cuelgues reales.
+        testTimeout: 20_000,
+        hookTimeout: 20_000,
         coverage: {
             provider: "v8",
             include: ["src/**/*.{ts,tsx}"],
