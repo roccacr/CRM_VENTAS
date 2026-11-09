@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ADMINISTRATION_CATALOGS } from "../../src/modules/administration/catalogs/catalog-definitions";
@@ -86,8 +86,14 @@ describe("CatalogItemsPage", () => {
         });
     });
 
-    afterEach(() => {
-        cleanup();
+    afterEach(async () => {
+        // Drawer forms leave deferred AntD validation and React updates in flight.
+        await act(async () => {
+            cleanup();
+            await new Promise<void>((resolve) => {
+                setTimeout(resolve, 20);
+            });
+        });
         vi.clearAllMocks();
     });
 
