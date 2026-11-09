@@ -10,7 +10,7 @@ import { useState } from "react";
 import { type CalendarEvent, type CalendarStatusCommand, changeCalendarStatus } from "../../services/calendar/calendar-service";
 
 const labels = { complete: "Completar evento", cancel: "Cancelar evento", reactivate: "Reactivar evento" };
-const explanations = { complete: "Se marcará como completado en CRM. La cita histórica se conserva en Outlook.", cancel: "Se cancelará en CRM y Outlook. Microsoft enviará la cancelación a los invitados.", reactivate: "Volverá a estar programado. Si estaba cancelado, se creará una nueva invitación en Outlook." };
+const explanations = { complete: "Se marcará como completado en Habita. La cita histórica se conserva en Outlook.", cancel: "Se cancelará en Habita y Outlook. Microsoft enviará la cancelación a los invitados.", reactivate: "Volverá a estar programado. Si estaba cancelado, se creará una nueva invitación en Outlook." };
 
 /** Solo presenta capacidades del servidor; cada comando revalida autoría, permisos y versión. */
 export function CalendarEventActions({ event, onChanged }: { readonly event: CalendarEvent | null | undefined; readonly onChanged?: (() => void) | undefined }) {
@@ -82,7 +82,7 @@ function StatusDialog({ event, action, onClose, onChanged }: { readonly event: C
         try {
             const result = await changeCalendarStatus(event.id, command);
             if (!["synced", "crm_only"].includes(result.delivery.status)) {
-                setFailure("El estado se guardó en CRM, pero Outlook no confirmó la operación. Reintenta con el mismo identificador.");
+                setFailure("El estado se guardó en Habita, pero Outlook no confirmó la operación. Reintenta con el mismo identificador.");
                 return;
             }
             setSuccess(true);

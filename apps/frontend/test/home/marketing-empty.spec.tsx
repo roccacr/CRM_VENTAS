@@ -32,7 +32,8 @@ describe("Marketing home pending real data", () => {
         }
         expect(screen.queryByText(/Datos de demostración|ficticios/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Proyecto Norte|Proyecto Parque|Proyecto Centro|Dayan|Marlon|Gabriel|Valeria/)).not.toBeInTheDocument();
-        expect(screen.getByRole("combobox", { name: "Vendedor" })).toBeDisabled();
+        // El filtro por vendedor ya no existe: el alcance lo define la API, solo queda el filtro de proyecto.
+        expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
         expect(screen.getByRole("combobox", { name: "Proyecto" })).toBeDisabled();
         expect(request).not.toHaveBeenCalled();
     });

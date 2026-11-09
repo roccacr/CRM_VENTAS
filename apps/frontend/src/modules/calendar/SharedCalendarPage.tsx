@@ -178,7 +178,7 @@ function OutlookFeedNotice({ data }: { readonly data: CalendarData }) {
     if (data.loading || !data.outlookStatus || data.outlookStatus === "connected") return null;
     return (
         <p className="calendar-notice" role="status">
-            Se muestran los eventos CRM. Outlook {data.outlookStatus === "consent_required" ? "requiere autorización de Microsoft" : "no pudo consultarse"}; su agenda está incompleta. Pulsa recargar para reintentar.
+            Se muestran los eventos Habita. Outlook {data.outlookStatus === "consent_required" ? "requiere autorización de Microsoft" : "no pudo consultarse"}; su agenda está incompleta. Pulsa recargar para reintentar.
         </p>
     );
 }

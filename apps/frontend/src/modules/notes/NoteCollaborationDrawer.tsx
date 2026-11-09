@@ -475,8 +475,8 @@ function FollowToggle({ thread, locked, background, update }: SectionProps) {
 function contextLabel(context: NoteContext | null): string {
     if (context === null) return "Vínculo restringido · Sin acceso al registro";
     if (context.kind === "personal") return "Nota personal · Sin vínculo con una vista";
-    if (context.kind === "sales_order") return context.source === "legacy" ? `Vinculada a orden de venta ${context.id}` : "Vinculada a una orden de venta del CRM";
-    return "Vinculada a una vista del CRM";
+    if (context.kind === "sales_order") return context.source === "legacy" ? `Vinculada a orden de venta ${context.id}` : "Vinculada a una orden de venta de Habita";
+    return "Vinculada a una vista de Habita";
 }
 function ParticipantSummary({ thread }: { readonly thread: NoteThread }) {
     const shown = thread.participants.slice(0, 4);

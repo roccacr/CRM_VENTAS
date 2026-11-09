@@ -1,5 +1,12 @@
 # Logo ROCCA
 
+## Marca aplicada en Habita
+
+`logoRDR.svg` es el archivo oficial suministrado para el login, las pantallas
+de autenticación, el encabezado de escritorio y móvil, la marca de agua y el
+icono de pestaña. Las vistas de React comparten la ruta y las dimensiones en
+`src/config/branding.ts`.
+
 ## Referencias revisadas — 2026-11-02
 
 Se confirmó en el código actual que `index.html` referencia los favicons PNG/SVG
@@ -12,7 +19,7 @@ Inventario y límites: [72](../../../api/Arquitectura/72-Reconciliacion-Document
 
 `index.html` declara los favicons PNG y SVG locales. LoginPage, GlobalHomeShell y AuthStateScreens referencian `/Logo/rocca-concept.png`; el SVG oficial esta conservado como alternativa. Se verificaron archivos y referencias, no calidad visual, nitidez, transparencia real ni optimizacion de peso mediante una medicion nueva. La procedencia y fecha de generacion siguientes conservan su registro historico; no son una certificacion de marca ni una aprobacion nueva.
 
-## Icono de pestana
+## Archivos históricos de marca
 
 `rocca-favicon.png` es un monograma R original generado para la pestana del
 nuevo sistema: blanco sobre fondo carbon, sin texto pequeno. Se referencia
@@ -31,9 +38,8 @@ solo se adapta el relleno blanco a #111318 para superficies claras.
 
 El SVG oficial queda conservado como alternativa.
 
-La version actualmente aplicada es `rocca-concept.png`: propuesta original
+La versión anterior `rocca-concept.png` es una propuesta original
 generada el 20/10/2026 por solicitud del usuario, inspirada en la identidad de
 ROCCA. No es el logo oficial aprobado. PNG transparente de alta resolucion,
 usado en encabezado, navegacion movil, login y estados de autenticacion.
-No depende de fuentes ni servicios externos. Para restaurar la marca oficial,
-cambiar ROCCA_LOGO_SRC a /Logo/rocca-official.svg en las tres vistas.
+No depende de fuentes ni servicios externos.

@@ -302,7 +302,6 @@ it("explains comparisons, completed status, cohort counts and only nonzero quali
     expect(await screen.findByText(/Una cita futura cuenta/)).toBeInTheDocument();
 });
 
-
 it("offers only project filtering while retaining the seller breakdown", async () => {
     request.mockResolvedValue(fixture());
     render(<MarketingHomePage currentUser={user} />);
@@ -315,4 +314,15 @@ it("offers only project filtering while retaining the seller breakdown", async (
     await selectMarketing("Proyecto", "Proyecto Real");
     expect(screen.getByLabelText("Leads: 5")).toBeInTheDocument();
     expect(request).toHaveBeenCalledTimes(1);
+});
+
+it.each(["mercadeo", "jefe_mercadeo"])("shows other sellers' authorized totals for a %s identity", async (roleCode) => {
+    request.mockResolvedValue(fixture());
+    render(<MarketingHomePage currentUser={{ ...user, publicId: `${roleCode}-user` }} />);
+    expect(await screen.findByLabelText("Leads: 5")).toBeInTheDocument();
+    const ranking = screen.getByRole("region", { name: "Leads por vendedor" });
+    expect(within(ranking).getByText("Vendedor Uno")).toBeInTheDocument();
+    expect(within(ranking).getByText("Vendedor Dos")).toBeInTheDocument();
+    expect(request).toHaveBeenCalledWith("month");
+    expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
 });

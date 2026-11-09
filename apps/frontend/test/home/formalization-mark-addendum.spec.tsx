@@ -39,6 +39,14 @@ async function open() {
     fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Motivo de la orden" } });
 }
 
+it("keeps the manual addendum dialog above the global overlay and order drawer", async () => {
+    render(<FormalizationMarkAddendum item={item} permissions={permissions} />);
+    await open();
+    expect(screen.getByRole("dialog").closest(".ant-modal-wrap")).toHaveStyle({ zIndex: 1400 });
+    expect(screen.getByRole("button", { name: "Marcar pendiente" })).toBeEnabled();
+    expect(markOrderAddendumPending).not.toHaveBeenCalled();
+});
+
 it.each(["native", "legacy"] as const)("marks %s manually from both order views and refreshes their marker/count callbacks", async (source) => {
     const id = source === "legacy" ? "78" : "01ARZ3NDEKTSV4RRFFQ69G5FAV";
     const order = { ...item, source, id };

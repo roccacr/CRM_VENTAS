@@ -165,3 +165,32 @@ Evidencia local: deploy-publish-final.log, deploy-api-tests.log y deploy-fronten
 
 Comprobación visual final del release20261103221757: Mercadeo en Habita mantuvo50 leads al editar meses, y solo después de Aplicar filtro mostró octubre/noviembre en15 proyectos,1461 leads, sin error. Captura local: C:/codex-data/visualizations/2026/11/03/marketing-periods/produccion-ultima-version.png. No hubo escrituras de negocio.
 
+
+## Publicación completa — aprobación Formalización — 03/11/2026 16:57 Costa Rica
+
+- Solicitud expresa: publicar todos los cambios y conservar OneDrive y calendario activos. Publicador existente sobre copia fija; base06a489c y cambios locales. Sin commit/push ni migraciones.
+- Release activo verificado: **20261103225704-06a489c-local**. Paquete SHA256dfacab95543549e348bb838dd35f512423d6cb7aec1f87f98860da7a1d989dfe. Release anterior20261103221757-4d446ed-local conservado para rollback.
+- Builds API y frontend aprobados desde la copia fija. Verificación independiente de1404 fuentes y770 artefactos sin diferencias. Código compilado confirma retirada del bloqueo de aprobación exclusivo a Sandbox; permisos, auditoría y confirmación NetSuite permanecen.
+- Configuración privada conservada byte por byte: SHA256c2d87895d07f041aa1726678871b60149f0fb0528d4e254f367451521165614c. ENABLE_ORDER_DOCUMENTS=true y ENABLE_CALENDAR_EXTERNAL=true antes y después. Servicio habita-pm2 activo; live/ready/login/ruta de órdenes200. POST de aprobación sin sesión/CSRF403, sin escritura de negocio.
+- QA focalizado previo de esta acción:132 pruebas API y349 frontend aprobadas; lint API, typecheck y compilación aprobados. No se ejecutó aprobación real en NetSuite ni se subieron scripts al File Cabinet; una prueba externa requiere una orden elegida expresamente. No se afirma aceptación externa por salud del servicio.
+- Comparación final del workspace contra el paquete: cero archivos modificados o nuevos pendientes. Este recibo se incorpora después de activar; no cambia el runtime desplegado.
+- Evidencia privada: C:/codex-data/tmp/habita-approval-release-current.txt apunta a preflight.log, publish.log y verification.log. Copia fija en %TEMP%/habita-publish-9a4b4f4b6afc4055bf655b9902351278. Copia temporal de llave eliminada; original preservada.
+
+## Publicación completa — workflow y modal de adéndum — 03/11/2026
+
+- Autorización expresa: publicar todos los cambios y mantener calendario/OneDrive habilitados. Release activo **20261103231611-06a489c-local**, base06a489c con cambios locales; paquete SHA2563edd4a88476b07e3ba6b1ce8f22464e36037218ce8517a5ad1114d028cc1dfbc. Anterior20261103225704-06a489c-local conservado para rollback. Sin commit/push ni migraciones.
+- Builds API/frontend aprobados sobre copia fija. Verificación remota independiente:1404 fuentes y770 artefactos correctos, HTML público idéntico al build; servicio habita-pm2 activo, live/ready/órdenes200.
+- ENABLE_ORDER_DOCUMENTS=true y ENABLE_CALENDAR_EXTERNAL=true antes/después. Configuración privada conservada byte por byte: SHA256c2d87895d07f041aa1726678871b60149f0fb0528d4e254f367451521165614c.
+- Incluye modal de marcación manual por encima de la capa global y SuiteScript2026.11.03.5 con N/workflow.trigger, customworkflow219/workflowstate2778. La librería se publica como fuente del CRM; no equivale a subirla al File Cabinet de NetSuite. No se ejecutaron workflows/aprobaciones reales ni mutaciones de órdenes para QA.
+- QA focalizado previo:158 pruebas API de aprobación/cliente/paquete y38 frontend de adéndum, lint de archivos tocados, typecheck/build aprobados. Comparación del workspace frente a la copia fija sin diferencias de fuentes antes de este recibo.
+- Evidencia privada: C:/codex-data/tmp/habita-workflow-release-current.txt apunta a preflight.log, publish.log y verification.log. Copia fija %TEMP%/habita-publish-186081d3799c406497f18abfff5d0c08. Copias temporales de llave eliminadas; original intacta.
+
+## Publicación final de pendientes — 03/11/2026 17:46 Costa Rica
+
+- Solicitud expresa de publicar pendientes en Habita. Release activo: **20261103234602-06a489c-local**; anterior20261103231611-06a489c-local conservado para rollback. Paquete SHA256568b93fbe6c7199b44209b0e1adc139e6543fe2c5b79f0e8122cc6fbb2dab62a. Sin commit/push ni migraciones.
+- Frente al release anterior se publicaron siete fuentes pendientes: librería SuiteScript, sus pruebas y documentación. La versión publicada como fuente es2026.11.03.7; desplegar Habita no actualiza el File Cabinet de NetSuite ni ejecuta workflows reales.
+-122 pruebas focalizadas aprobadas (107API y15frontend), lint API focalizado aprobado; builds API/frontend desde copia fija aprobados. No se reejecutó ni se acredita verde la suite global.
+- Verificación independiente:1404 fuentes y770 artefactos sin diferencias; HTML y10assets públicos conhashigual. Login, Formalización, Captación y live/ready200; identity/me sin sesión401. Serviciohabita-pm2activo.
+- Archivo privadoapi.envconservado byteporbyte (SHA256c2d87895d07f041aa1726678871b60149f0fb0528d4e254f367451521165614c, modo0600). Calendario externo y documentos continúantrue. No se cambiaron BD, credenciales ni servicios vecinos.
+- Comparación del checkout frente al paquete antes de este recibo: cero fuentes modificadas durante la publicación. Los accesos de usuarios y la limpieza de datos autorizados anteriormente ya son cambios de BD compartida, no migraciones ejecutadas durante este despliegue.
+- Evidencia local: C:/codex-data/tmp/habita-final-current.txt apunta al directorio conpublish.log,verification.log, manifiesto previo y diagnóstico de diferencias. Copias temporales de llave eliminadas; original intacta.

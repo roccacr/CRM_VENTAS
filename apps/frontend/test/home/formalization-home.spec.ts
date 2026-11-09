@@ -17,16 +17,17 @@ const profile = (codes: readonly string[]): IdentityProfile => ({
 
 describe("Formalization Home-only access", () => {
     const homeOnly = profile([]);
-    it("shows Inicio and the visual management option and selects a valid login destination", () => {
+    it("shows Inicio with the management menu intentionally hidden and selects a valid login destination", () => {
         const workspaces = getVisibleNavigationWorkspaces(homeOnly.permissions, homeOnly.orgUnits);
         expect(workspaces.map(({ code }) => code)).toEqual(["formalization"]);
-        expect(workspaces[0]?.menuItems.map(({ label }) => label)).toEqual(["Inicio", "Gestión de formalizaciones"]);
+        expect(workspaces[0]?.menuItems.map(({ label }) => label)).toEqual(["Inicio"]);
         expect(getDefaultAuthenticatedPath(homeOnly)).toBe("/home/formalization");
         expect(resolveRouteState(homeOnly, "/home/formalization").status).toBe("authenticated");
-        expect(resolveRouteState(homeOnly, "/home/formalization/orders").status).toBe("authenticated");
+        expect(resolveRouteState(homeOnly, "/home/formalization/orders").status).toBe("forbidden");
         expect(resolveRouteState(homeOnly, "/home/formalization/calendar").status).toBe("forbidden");
         expect(resolveRouteState(profile([]), "/home/formalization/calendar").status).toBe("forbidden");
-        expect(resolveRouteState(profile([]), "/home/formalization/orders").status).toBe("authenticated");
+        expect(resolveRouteState(profile([]), "/home/formalization/orders").status).toBe("forbidden");
+        expect(resolveRouteState(profile(["formalizacion.orders.read", "formalizacion.home.contracts.read"]), "/home/formalization/orders").status).toBe("authenticated");
     });
     it.each(["projects", "campaigns", "classes", "locations", "subsidiaries", "brokers", "files"])("denies the %s catalog URL", (catalog) => {
         expect(resolveRouteState(homeOnly, `/home/formalization/catalogs/${catalog}`).status).toBe("forbidden");
@@ -66,4 +67,17 @@ it("keeps query-based calendar origin navigation permission-bound", () => {
     const path = "/home/formalization/calendar?date=2026-10-28&event=event-1";
     expect(resolveRouteState(profile(["formalizacion.calendar.read"]), path).status).toBe("authenticated");
     expect(resolveRouteState(profile([]), path).status).toBe("forbidden");
+});
+
+it.each(["formalizacion", "jefe_formalizaciones"])("keeps the hidden order route available to authorized %s", (role) => {
+    const current = profile(["formalizacion.orders.read", "formalizacion.home.contracts.read"]);
+    const authorized: IdentityProfile = { ...current, roles: [{ code: role, name: role, status: "active" }] };
+    expect(resolveRouteState(authorized, "/home/formalization/orders").status).toBe("authenticated");
+    expect(getVisibleNavigationWorkspaces(authorized.permissions, authorized.orgUnits)[0]?.menuItems.some((item) => item.code === "formalization-management")).toBe(false);
+    expect(resolveRouteState(authorized, "/home/marketing/leads").status).toBe("forbidden");
+});
+it.each(["denied", "no_membership"])("keeps the hidden order route protected when %s", (state) => {
+    const current = profile(["formalizacion.orders.read"]);
+    const restricted: IdentityProfile = state === "denied" ? { ...current, permissions: [...current.permissions, { code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" }] } : { ...current, orgUnits: [] };
+    expect(resolveRouteState(restricted, "/home/formalization/orders").status).toBe("forbidden");
 });

@@ -13,7 +13,7 @@ interface SynchronizationProps {
 }
 function synchronizationNotice(result: Awaited<ReturnType<typeof synchronizeNetsuiteOrder>>): string {
     if (result.result === "unchanged") return "La orden ya coincide con NetSuite. Sin cambios.";
-    return `${String(result.changes)} campos actualizados en ${result.destination === "native" ? "CRM" : "el sistema anterior"}.`;
+    return `${String(result.changes)} campos actualizados en ${result.destination === "native" ? "Habita" : "el sistema anterior"}.`;
 }
 function useSynchronization({ identity, allowed, onEnvironment, onSynchronized }: SynchronizationProps) {
     const [context, setContext] = useState<NetsuiteSynchronizationContext | null>(null);
@@ -117,7 +117,7 @@ export function NetsuiteSynchronizationActions(props: SynchronizationProps) {
                 <p>
                     Origen: <strong>NetSuite {label}</strong>.
                 </p>
-                <p>Se actualizarán los campos mapeados de esta orden en su base correspondiente con los valores de NetSuite. Se conservarán los campos internos del CRM y los valores que NetSuite no envíe. Los indicadores recibidos pueden avanzar la etapa según las reglas existentes de Formalización.</p>
+                <p>Se actualizarán los campos mapeados de esta orden en su base correspondiente con los valores de NetSuite. Se conservarán los campos internos de Habita y los valores que NetSuite no envíe. Los indicadores recibidos pueden avanzar la etapa según las reglas existentes de Formalización.</p>
             </Modal>
         </div>
     );

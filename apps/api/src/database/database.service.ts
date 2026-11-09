@@ -21,6 +21,12 @@ import { buildMysqlPoolOptions } from "./mysql-pool-options.js";
 const MYSQL_CONNECTION_LIMIT = 10;
 
 /**
+ * Maximo de peticiones esperando conexion. Al superarlo mysql2 falla rapido en
+ * lugar de acumular trabajo sin limite bajo saturacion.
+ */
+const MYSQL_QUEUE_LIMIT = 200;
+
+/**
  * Valida que el runtime apunte a la base CRM nueva.
  *
  * Se declara como assertion function para que TypeScript reduzca el tipo de
@@ -50,6 +56,7 @@ const buildPoolOptions = (config: ConfigService, database: string): PoolOptions 
         password: config.getOrThrow<string>("DB_PASSWORD"),
         database,
         connectionLimit: MYSQL_CONNECTION_LIMIT,
+        queueLimit: MYSQL_QUEUE_LIMIT,
         ssl: config.getOrThrow<boolean>("DB_SSL"),
         ...(sslCaPath ? { sslCaPath } : {}),
     });

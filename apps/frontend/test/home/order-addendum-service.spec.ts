@@ -9,7 +9,7 @@ beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(apiRequest).mockResolvedValue(state);
 });
-it("reads the marker by exact normalized CRM identity", async () => {
+it("reads the marker by exact normalized Habita identity", async () => {
     expect(await getOrderAddendum({ source: "legacy", id: "legacy:78" })).toEqual(state);
     expect(apiRequest).toHaveBeenCalledWith("/formalization/orders/addendum?source=legacy&id=78");
 });

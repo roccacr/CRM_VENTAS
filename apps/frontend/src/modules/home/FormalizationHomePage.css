@@ -164,7 +164,6 @@
     cursor: pointer;
 }
 
-.formalization-approval-strip > .formalization-banner__icon,
 .formalization-approval-strip > .formalization-banner__content {
     pointer-events: none;
 }
@@ -245,18 +244,6 @@
     --banner-accent: #147849;
 }
 
-.formalization-banner__icon {
-    display: grid;
-    flex: 0 0 34px;
-    width: 34px;
-    height: 34px;
-    place-items: center;
-    border-radius: 5px;
-    color: #ffffff;
-    background: #0e1116;
-    font-size: 16px;
-}
-
 .formalization-banner__content {
     z-index: 1;
     display: flex;
@@ -335,42 +322,17 @@
     gap: 4px;
 }
 
-/* Patrón original, con más contraste que la opacidad inicial de 0.1. */
 .formalization-banner__pattern {
     position: absolute;
     top: 0;
     right: 0;
-    width: 64px;
-    height: 64px;
-    overflow: hidden;
-    opacity: 0.35;
+    width: min(48%, 250px);
+    height: 100%;
+    color: #496180;
+    opacity: 0.25;
+    mask-image: linear-gradient(to left, #000 12%, transparent 100%), linear-gradient(to bottom, #000 10%, transparent 100%);
+    mask-composite: intersect;
     pointer-events: none;
-}
-
-.formalization-banner__pattern i {
-    position: absolute;
-    width: 64px;
-    height: 64px;
-    border: 1px solid #13bda5;
-}
-
-.formalization-banner__pattern i:nth-child(1) {
-    inset: 0 0 auto auto;
-}
-.formalization-banner__pattern i:nth-child(2) {
-    inset: 8px 8px auto auto;
-}
-.formalization-banner__pattern i:nth-child(3) {
-    inset: 16px 16px auto auto;
-}
-.formalization-banner__pattern i:nth-child(4) {
-    inset: 24px 24px auto auto;
-}
-.formalization-banner__pattern i:nth-child(5) {
-    inset: 32px 32px auto auto;
-}
-.formalization-banner__pattern i:nth-child(6) {
-    inset: 40px 40px auto auto;
 }
 
 /* Escala de Proyectos (Arquitectura/26) solo para la zona operativa; los banners usan sus variables propias.

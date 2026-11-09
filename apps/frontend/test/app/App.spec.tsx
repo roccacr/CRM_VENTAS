@@ -385,7 +385,8 @@ describe("App", () => {
         vi.stubGlobal("fetch", fetchMock);
         window.history.replaceState(null, "", "/auth/login");
         render(<App />);
-        await user.type(await screen.findByLabelText("Correo administrativo", { selector: "input" }), "roberto@roccacr.com");
+        await user.click(await screen.findByRole("button", { name: "Usar credenciales locales" }));
+        await user.type(await screen.findByLabelText("Correo electrónico", { selector: "input" }), "roberto@roccacr.com");
         await user.type(screen.getByLabelText("Contraseña", { selector: "input" }), "PasswordSeguro123!");
         await user.click(screen.getByRole("button", { name: "Ingresar" }));
         await act(async () => {
@@ -397,7 +398,7 @@ describe("App", () => {
         });
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/me")).toBe(false);
         expect(window.location.pathname).toBe("/auth/login");
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
     });
 
     it("cancela el arranque Microsoft tardio tras rechazo antes de navegar el popup", async () => {
@@ -419,7 +420,7 @@ describe("App", () => {
         window.history.replaceState(null, "", "/auth/login");
         try {
             render(<App />);
-            await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+            await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
             await act(async () => {
                 await expect(refreshAuthenticatedSession()).rejects.toMatchObject({ status: 401 });
             });
@@ -454,14 +455,14 @@ describe("App", () => {
         await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
         await screen.findByRole("heading", { name: "Bienvenido" });
         expect(window.location.pathname).toBe("/auth/login");
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => ["/identity/session", "/identity/me"].includes(getRequestPath(input)))).toHaveLength(identityReads);
         await act(async () => {
             releaseLogout(createJsonResponse({ success: true }));
             await pendingLogout;
         });
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: /Ingresar$/u })).toBeEnabled();
+            expect(screen.getByRole("button", { name: /Iniciar sesión con Microsoft$/u })).toBeEnabled();
         });
         expect(fetchMock.mock.calls.filter(([input]) => ["/identity/session", "/identity/me"].includes(getRequestPath(input)))).toHaveLength(identityReads);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/refresh")).toBe(false);
@@ -509,7 +510,7 @@ describe("App", () => {
         window.history.replaceState(null, "", "/auth/login");
         try {
             render(<App />);
-            await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+            await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
             await waitFor(() => {
                 expect(profileRequested).toBe(true);
             });
@@ -521,8 +522,8 @@ describe("App", () => {
                 await pendingProfile;
             });
             expect(window.location.pathname).toBe("/auth/login");
-            expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "Continuar con Microsoft" })).toBeEnabled();
+            expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Iniciar sesión con Microsoft" })).toBeEnabled();
         } finally {
             open.mockRestore();
         }
@@ -558,7 +559,8 @@ describe("App", () => {
         );
         window.history.replaceState(null, "", "/auth/login");
         render(<App />);
-        await user.type(await screen.findByLabelText("Correo administrativo", { selector: "input" }), "roberto@roccacr.com");
+        await user.click(await screen.findByRole("button", { name: "Usar credenciales locales" }));
+        await user.type(await screen.findByLabelText("Correo electrónico", { selector: "input" }), "roberto@roccacr.com");
         await user.type(screen.getByLabelText("Contraseña", { selector: "input" }), "PasswordSeguro123!");
         await user.click(screen.getByRole("button", { name: "Ingresar" }));
         await waitFor(() => {
@@ -572,7 +574,7 @@ describe("App", () => {
             await pendingProfile;
         });
         expect(window.location.pathname).toBe("/auth/login");
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
     });
 
     it("libera el reintento explicito tras alcanzar el limite de refresh durante checking", async () => {
@@ -619,7 +621,7 @@ describe("App", () => {
             });
             await Promise.resolve();
         });
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
     });
 
     it("limita la relectura si cada perfil pendiente dispara otra renovacion", async () => {
@@ -636,7 +638,7 @@ describe("App", () => {
         window.history.replaceState(null, "", "/home/administration");
         render(<App />);
         await screen.findByRole("heading", { name: "Sesión expirada" });
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/me")).toHaveLength(2);
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(2);
     });
@@ -678,7 +680,7 @@ describe("App", () => {
             releaseOldProfile(createJsonResponse(authenticatedProfile));
         });
         if (outcome === "rejected") {
-            await screen.findByRole("button", { name: "Ingresar" });
+            await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" });
         } else {
             await screen.findByRole("heading", { name: "Acceso no autorizado" });
             expect(profileCalls).toBe(2);
@@ -706,8 +708,8 @@ describe("App", () => {
         await act(async () => {
             await expect(apiRequest("/revoked-context-probe")).rejects.toMatchObject({ status: 401 });
         });
-        await screen.findByRole("button", { name: "Ingresar" });
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" });
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
         expect(window.location.pathname).toBe("/auth/login");
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
     });
@@ -730,7 +732,7 @@ describe("App", () => {
         mockIdentityFetch({ session: anonymousSession });
         window.history.replaceState(null, "", "/auth/login?microsoftStatus=failed&q=soporte#login");
         render(<App />);
-        await screen.findByRole("button", { name: "Ingresar" });
+        await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" });
         expect(window.location.search).toBe("?q=soporte");
         expect(window.location.hash).toBe("#login");
     });
@@ -789,7 +791,7 @@ describe("App", () => {
         await act(async () => {
             await vi.advanceTimersByTimeAsync(0);
         });
-        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBeInTheDocument();
         expect(screen.queryByRole("status", { name: /sesión/i })).not.toBeInTheDocument();
         await act(async () => {
             await vi.dynamicImportSettled();
@@ -856,12 +858,13 @@ describe("App", () => {
         view.rerender(<AppRouteContent {...props} path="/home/formalization" />);
         expect(screen.queryByRole("heading", { name: "Acceso no autorizado" })).not.toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
-        expect(fetchMock).not.toHaveBeenCalled();
+        // El shell consulta las notificaciones del calendario; sin grants no debe pedir datos de Formalización.
+        expect(fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => !url.endsWith("/calendar/notifications"))).toEqual([]);
     });
     it("keeps a valid profile without grants inside the shell at login", () => {
         render(<AppRouteContent authState={{ status: "forbidden", profile: { ...authenticatedProfile, permissions: [] } }} authRetryFeedback={null} isAuthRetryDisabled={false} isMicrosoftSessionPending={false} isSubmittingLogin={false} loginError={null} onLocalLogin={vi.fn()} onLogout={vi.fn()} onMicrosoftLogin={vi.fn()} onNavigate={vi.fn()} onRetryAuthCheck={vi.fn()} path="/auth/login" />);
         expect(screen.getByRole("heading", { name: "Acceso no autorizado" })).toBeInTheDocument();
-        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Volver a iniciar sesión" })).not.toBeInTheDocument();
         expect(screen.queryByRole("textbox", { name: /correo/i })).not.toBeInTheDocument();
     });
@@ -947,7 +950,7 @@ describe("App", () => {
         expect(window.location.search).toBe("");
     });
 
-    it("muestra mensaje de cuenta no asignada cuando Microsoft autentica pero CRM rechaza la identidad", async () => {
+    it("muestra mensaje de cuenta no asignada cuando Microsoft autentica pero Habita rechaza la identidad", async () => {
         mockIdentityFetch({ session: anonymousSession });
         Object.defineProperty(window, "opener", {
             configurable: true,
@@ -959,20 +962,20 @@ describe("App", () => {
 
         render(<App />);
 
-        expect(await screen.findByText("Tu cuenta Microsoft se validó, pero todavía no está asignada al CRM. Solicita que la vinculen a tu usuario interno.")).toBeInTheDocument();
+        expect(await screen.findByText("Tu cuenta Microsoft se validó, pero todavía no está asignada a Habita. Solicita que la vinculen a tu usuario interno.")).toBeInTheDocument();
         expect(screen.queryByText("No pudimos completar el inicio con Microsoft. Inténtalo de nuevo o selecciona otra cuenta.")).not.toBeInTheDocument();
         expect(window.location.pathname).toBe("/auth/login");
         expect(window.location.search).toBe("");
     });
 
-    it("muestra mensaje de usuario no autorizado cuando el usuario CRM esta inactivo o bloqueado", async () => {
+    it("muestra mensaje de usuario no autorizado cuando el usuario Habita esta inactivo o bloqueado", async () => {
         mockIdentityFetch({ session: anonymousSession });
         window.history.replaceState(null, "", "/auth/login?microsoftStatus=unauthorized");
 
         render(<App />);
 
-        expect(await screen.findByText("Tu cuenta Microsoft se validó, pero tu usuario CRM no está autorizado para iniciar sesión. Contacta a soporte o a tu administrador.")).toBeInTheDocument();
-        expect(screen.queryByText("Tu cuenta Microsoft se validó, pero todavía no está asignada al CRM. Solicita que la vinculen a tu usuario interno.")).not.toBeInTheDocument();
+        expect(await screen.findByText("Tu cuenta Microsoft se validó, pero tu usuario Habita no está autorizado para iniciar sesión. Contacta a soporte o a tu administrador.")).toBeInTheDocument();
+        expect(screen.queryByText("Tu cuenta Microsoft se validó, pero todavía no está asignada a Habita. Solicita que la vinculen a tu usuario interno.")).not.toBeInTheDocument();
         expect(window.location.pathname).toBe("/auth/login");
         expect(window.location.search).toBe("");
     });
@@ -1033,7 +1036,7 @@ describe("App", () => {
         expect(screen.queryByRole("heading", { name: "Bienvenido" })).not.toBeInTheDocument();
     });
 
-    it("no renderiza el CRM completo dentro del popup Microsoft exitoso", async () => {
+    it("no renderiza Habita completo dentro del popup Microsoft exitoso", async () => {
         mockIdentityFetch({ profile: authenticatedProfile, session: authenticatedSession });
         const closeSpy = vi.spyOn(window, "close").mockImplementation(() => undefined);
         Object.defineProperty(window, "opener", {
@@ -1064,7 +1067,7 @@ describe("App", () => {
 
         expect(await screen.findByRole("heading", { name: "Bienvenido" })).toBeInTheDocument();
         expect(window.location.pathname).toBe("/auth/login");
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
     });
 
     it("renderiza /home/administration como home del modulo de administracion", async () => {
@@ -1074,7 +1077,7 @@ describe("App", () => {
         render(<App />);
 
         await expectAdministrationHomeHeading();
-        expect(await screen.findByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(await screen.findByRole("banner", { name: "Barra superior global Habita" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Hola Roberto Carlos al módulo Administración" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Usuarios del sistema" })).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Datos de sesion recibidos desde el API")).not.toBeInTheDocument();
@@ -1125,7 +1128,7 @@ describe("App", () => {
         render(<App />);
 
         expect(await screen.findByRole("heading", { name: "Acceso no autorizado" })).toBeInTheDocument();
-        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBeInTheDocument();
         expect(within(screen.getByRole("navigation", { name: "Navegación principal" })).queryAllByRole("button")).toHaveLength(0);
         expect(screen.queryByRole("button", { name: "Volver a iniciar sesión" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Volver al inicio" })).not.toBeInTheDocument();
@@ -1376,7 +1379,7 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
-        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Gestión de formalizaciones" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         // El refresh propio invalida el primer bootstrap: se permite una relectura segura.
@@ -1409,7 +1412,8 @@ describe("App", () => {
             </StrictMode>,
         );
 
-        await user.type(await screen.findByLabelText("Correo administrativo", { selector: "input" }), "roberto@roccacr.com");
+        await user.click(await screen.findByRole("button", { name: "Usar credenciales locales" }));
+        await user.type(await screen.findByLabelText("Correo electrónico", { selector: "input" }), "roberto@roccacr.com");
         await user.type(screen.getByLabelText("Contraseña", { selector: "input" }), "PasswordSeguro123!");
         await user.click(screen.getByRole("button", { name: "Ingresar" }));
 
@@ -1440,14 +1444,14 @@ describe("App", () => {
         );
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/formalization");
-        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
-        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Gestión de formalizaciones" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(previousSessionReads + 2);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/refresh")).toBe(false);
         expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/identity/session"), expect.objectContaining({ credentials: "include", cache: "no-store", method: "GET" }));
-        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Iniciar sesión con Microsoft" })).not.toBeInTheDocument();
     }, 10_000);
 
     it("no restaura acceso cuando session devuelve anonimo 200 y refresh rechaza con 401", async () => {
@@ -1460,9 +1464,9 @@ describe("App", () => {
         vi.stubGlobal("fetch", fetchMock);
         window.history.replaceState(null, "", "/home/administration");
         render(<App />);
-        expect(await screen.findByRole("button", { name: "Ingresar" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" })).toBeInTheDocument();
         expect(window.location.pathname).toBe("/auth/login");
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/me")).toBe(false);
     });
@@ -1483,8 +1487,8 @@ describe("App", () => {
         render(<App />);
         expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/formalization");
-        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Iniciar sesión con Microsoft" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(status === 403 ? 2 : 1);
         expect(fetchMock.mock.calls.some(([input]) => /\/identity\/(?:me|logout|local\/login)$/u.test(getRequestPath(input)))).toBe(false);
     });
@@ -1519,10 +1523,10 @@ describe("App", () => {
             </StrictMode>,
         );
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Iniciar sesión con Microsoft" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
-        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Gestión de formalizaciones" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).includes("/catalogs/"))).toBe(false);
@@ -1550,7 +1554,7 @@ describe("App", () => {
             within(within(mobileDrawer).getByRole("group", { name: "Opciones de Catálogos" }))
                 .getAllByRole("button")
                 .map((button) => button.textContent),
-        ).toEqual(["Proyectos", "Campañas", "Clases", "Corredores", "Expedientes", "Subsidiarias", "Ubicaciones"]);
+        ).toEqual(["Proyectos", "Bancos", "Campañas", "Clases", "Corredores", "Expedientes", "Subsidiarias", "Ubicaciones"]);
     });
 
     it("cierra sesion desde el menu movil y vuelve al login", async () => {
@@ -1639,7 +1643,7 @@ describe("App", () => {
 
         render(<App />);
 
-        await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+        await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
 
         expect(openSpy).toHaveBeenCalledWith("about:blank", "rocca-microsoft-login", expect.stringContaining("width=520"));
         await waitFor(() => {
@@ -1688,7 +1692,7 @@ describe("App", () => {
 
         render(<App />);
 
-        await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+        await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
 
         expect(await screen.findByRole("heading", { name: "Verificando sesión" })).toBeInTheDocument();
         expect(screen.queryByText("No pudimos completar el inicio con Microsoft. Inténtalo de nuevo o selecciona otra cuenta.")).not.toBeInTheDocument();
@@ -1737,7 +1741,7 @@ describe("App", () => {
 
         render(<App />);
 
-        await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+        await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
 
         await waitFor(() => {
             expect(popupWindow.location.href).toBe(authorizationUrl);
@@ -1802,7 +1806,7 @@ describe("App", () => {
 
         render(<App />);
 
-        await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+        await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
 
         await waitFor(() => {
             expect(popupWindow.location.href).toBe(authorizationUrl);
@@ -1853,7 +1857,7 @@ describe("App", () => {
 
         render(<App />);
 
-        await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+        await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
 
         expect(await screen.findByText("No se pudo preparar la protección de la sesión. Actualiza la página e inténtalo de nuevo.")).toBeInTheDocument();
         expect(popupWindow.close).toHaveBeenCalledTimes(1);
@@ -1892,7 +1896,7 @@ describe("App", () => {
 
         render(<App />);
 
-        await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+        await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
 
         expect(screen.queryByText("No pudimos completar el inicio con Microsoft. Inténtalo de nuevo o selecciona otra cuenta.")).not.toBeInTheDocument();
 
@@ -1935,11 +1939,11 @@ describe("App", () => {
 
         render(<App />);
 
-        await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+        await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
 
         popupWindow.location.href = `${window.location.origin}/auth/login?microsoftStatus=unassigned`;
 
-        expect(await screen.findByText("Tu cuenta Microsoft se validó, pero todavía no está asignada al CRM. Solicita que la vinculen a tu usuario interno.")).toBeInTheDocument();
+        expect(await screen.findByText("Tu cuenta Microsoft se validó, pero todavía no está asignada a Habita. Solicita que la vinculen a tu usuario interno.")).toBeInTheDocument();
         expect(screen.queryByText("No pudimos completar el inicio con Microsoft. Inténtalo de nuevo o selecciona otra cuenta.")).not.toBeInTheDocument();
         expect(popupWindow.close).toHaveBeenCalledTimes(1);
     });
@@ -1977,7 +1981,7 @@ describe("App", () => {
 
         render(<App />);
 
-        await user.click(await screen.findByRole("button", { name: "Continuar con Microsoft" }));
+        await user.click(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" }));
 
         popupWindow.location.href = `${window.location.origin}/auth/login`;
         window.dispatchEvent(
@@ -2030,13 +2034,13 @@ describe("App", () => {
             </StrictMode>,
         );
         expect(await screen.findByRole("heading", { name: "Sin conexión" })).toBeInTheDocument();
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/formalization");
         offline = false;
         fireEvent.click(screen.getByRole("button", { name: "Reintentar conexión" }));
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
-        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Iniciar sesión con Microsoft" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/formalization");
         expect(fetchMock.mock.calls.every(([, init]) => init?.credentials === "include" && init.method === "GET")).toBe(true);
@@ -2126,9 +2130,9 @@ describe("App", () => {
 
         render(<App />);
 
-        expect(await screen.findByRole("button", { name: "Ingresar" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Iniciar sesión con Microsoft" })).toBeInTheDocument();
         expect(window.location.pathname).toBe("/auth/login");
-        expect(screen.queryByRole("banner", { name: "Barra superior global CRM TINK" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("banner", { name: "Barra superior global Habita" })).not.toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith(
             buildApiUrl("/identity/refresh"),
             expect.objectContaining({
@@ -2177,9 +2181,9 @@ describe("App", () => {
 
         expect(await screen.findByRole("heading", { name: "Ruta no encontrada" })).toBeInTheDocument();
         expect(within(screen.getByRole("alert")).getByRole("img", { name: "question-circle" })).toBeInTheDocument();
-        expect(screen.getByText("La dirección solicitada no existe o fue movida dentro del CRM.")).toBeInTheDocument();
+        expect(screen.getByText("La dirección solicitada no existe o fue movida dentro de Habita.")).toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/no-existe");
-        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+        expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBeInTheDocument();
     });
     it("mantiene navegacion autorizada desde una ruta denegada y prioriza una URL desconocida", async () => {
         const profile: IdentityProfile = { ...authenticatedProfile, permissions: [{ code: "formalizacion.home.read", effect: "allow", scope: "self", source: "role" }], orgUnits: [{ publicId: "formalization", code: "formalizacion", name: "Formalización", membership: "member", scope: "self", status: "active" }] };
@@ -2187,20 +2191,20 @@ describe("App", () => {
         window.history.replaceState(null, "", "/home/formalization/catalogs/brokers");
         render(<App />);
         expect(await screen.findByRole("heading", { name: "Acceso no autorizado" })).toBeInTheDocument();
-        const header = screen.getByRole("banner", { name: "Barra superior global CRM TINK" });
+        const header = screen.getByRole("banner", { name: "Barra superior global Habita" });
         expect(screen.queryByRole("button", { name: "Volver a iniciar sesión" })).not.toBeInTheDocument();
         act(() => {
             window.history.pushState(null, "", "/home/no-existe");
             window.dispatchEvent(new PopStateEvent("popstate"));
         });
         expect(await screen.findByRole("heading", { name: "Ruta no encontrada" })).toBeInTheDocument();
-        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBe(header);
+        expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBe(header);
         fireEvent.click(screen.getByRole("button", { name: "Volver al inicio" }));
         await waitFor(() => {
             expect(window.location.pathname).toBe("/home/formalization");
         });
         expect(screen.queryByRole("heading", { name: "Ruta no encontrada" })).not.toBeInTheDocument();
-        expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBe(header);
+        expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBe(header);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).includes("/catalogs/"))).toBe(false);
     });
 });
@@ -2229,5 +2233,5 @@ it("Inicio leaves an order on the same pathname and clears its identity without 
     expect(screen.queryByText("Orden no disponible.")).not.toBeInTheDocument();
     expect(window.location.pathname).toBe("/home/formalization");
     expect(window.location.search).toBe("");
-    expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
+    expect(screen.getByRole("banner", { name: "Barra superior global Habita" })).toBeInTheDocument();
 });

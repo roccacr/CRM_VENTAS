@@ -225,13 +225,15 @@ it("shows a successful empty result with zero rather than an error", async () =>
     expect(screen.getByText("0 órdenes")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
 });
-it("gates Home reads by active role and allow without deny, and removes revoked rows", async () => {
+it("gates Home reads by effective allow without deny (active role not required), and removes revoked rows", async () => {
     const { rerender } = render(<FormalizationHomePage />);
     expect(reads()).toHaveLength(0);
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[detail, allow, { ...allow, effect: "deny" }]} />);
     expect(reads()).toHaveLength(0);
+    // Los grants efectivos autorizan la lectura; un rol inactivo ya no la bloquea.
     rerender(<FormalizationHomePage roles={[{ ...role, status: "inactive" }]} effectivePermissions={[detail, allow]} />);
-    expect(reads()).toHaveLength(0);
+    await screen.findByText("OV-REAL");
+    expect(reads()).toHaveLength(1);
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[detail, allow]} />);
     await screen.findByText("OV-REAL");
     expect(reads()).toHaveLength(1);
@@ -376,7 +378,7 @@ it("opens the real order in the complete page and returns with the current filte
     expect(screen.queryByRole("heading", { name: "Orden de venta OV-COMPLETA" })).toBeNull();
 });
 
-it("opens the full record above the workspace in the CRM and preserves the list on return", async () => {
+it("opens the full record above the workspace in the Habita and preserves the list on return", async () => {
     vi.mocked(apiRequest).mockImplementation((path) => {
         const data = payload("OV-PAGINA");
         const item = { ...data.items[0], id: "01ARZ3NDEKTSV4RRFFQ69G5FAV" };
@@ -411,7 +413,7 @@ it("shows the shared compact timeline inside the side panel", async () => {
     expect(screen.getByRole("button", { name: "Ver orden completa" })).toBeTruthy();
 });
 
-it("revalidates only the committed CRM order and preserves provider details after a stage change", async () => {
+it("revalidates only the committed Habita order and preserves provider details after a stage change", async () => {
     window.history.replaceState({}, "", "/home/formalization/orders?orderSource=legacy&orderId=208");
     let committed = false;
     const data = payload("RDR673");

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { canReadCalendar } from "../../src/modules/calendar/calendar-config";
 import { DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, type EffectiveNavigationPermission, getVisibleNavigationWorkspaces, GlobalHomeShell, type GlobalMenuItem, type WorkspaceProfile } from "../../src/modules/home/GlobalHomeShell";
 import { AUTH_LOGIN_PATH, getAppRoute } from "../../src/routes/app-routes";
 import { getDefaultAuthenticatedPath, getRedirectPath, resolveRouteState } from "../../src/routes/auth-state";
@@ -33,6 +34,24 @@ const routeProfile = (permissions: readonly EffectiveNavigationPermission[], ...
     roles: [],
     session: { expiresAt: "2099-01-01T00:00:00Z", expiresInSeconds: 60, permissionVersion: 1, publicId: "session", status: "active" },
     user: { displayName: "Navigation user", email: "navigation@example.test", permissionVersion: 1, profileImageUrl: null, publicId: "user", status: "active" },
+});
+
+it.each(["mercadeo", "jefe_mercadeo"])("keeps the real %s grants inside Marketing without requiring Owner", (roleCode) => {
+    const codes = [...["project", "campaign", "class", "broker", "file", "subsidiary", "location"].map((catalog) => `mercadeo.catalog_${catalog}.read`), "mercadeo.home.read", "mercadeo.leads.read", "mercadeo.calendar.read", "mercadeo.calendar.create", "mercadeo.calendar.update", "mercadeo.reports.read_all", ...["archive_own", "create", "edit_own", "edit_reply_own", "read", "reply", "resolve_own", "share_own", "withdraw_reply_own"].map((action) => `mercadeo.notes.${action}`)];
+    const profile = { ...routeProfile(codes.map(allow), "mercadeo"), roles: [{ code: roleCode, name: roleCode, status: "active" }] };
+    expect(getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits).map((workspace) => workspace.code)).toEqual(["marketing"]);
+    for (const path of ["/home/marketing", "/home/marketing/leads", "/home/marketing/calendar", "/home/marketing/catalogs/projects"]) expect(resolveRouteState(profile, path).status).toBe("authenticated");
+    for (const path of ["/home/formalization", "/home/administration", "/home/sales"]) expect(resolveRouteState(profile, path).status).toBe("forbidden");
+    expect(canReadCalendar(profile.permissions, "mercadeo")).toBe(true);
+    expect(canReadCalendar(profile.permissions, "formalizacion")).toBe(false);
+    const denied = { ...profile, permissions: [...profile.permissions, { code: "mercadeo.leads.read", effect: "deny" as const, scope: "self", source: "override" as const }] };
+    expect(resolveRouteState(denied, "/home/marketing/leads").status).toBe("forbidden");
+});
+
+it("does not treat global report population as permission to open a Marketing section", () => {
+    const profile = routeProfile([allow("mercadeo.reports.read_all")], "mercadeo");
+    expect(getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits)).toEqual([]);
+    expect(resolveRouteState(profile, "/home/marketing/leads").status).toBe("forbidden");
 });
 
 describe("exact registered route access", () => {

@@ -411,7 +411,7 @@ export function FormalizationOrderDocuments({ item, permissions }: { readonly it
             refresh();
         } catch {
             closePopupIfOpen(popup);
-            setError("Conecta la misma cuenta del CRM. El acceso a archivos puede requerir aprobación del administrador Microsoft.");
+            setError("Conecta la misma cuenta de Habita. El acceso a archivos puede requerir aprobación del administrador Microsoft.");
         } finally {
             setBusy(false);
         }

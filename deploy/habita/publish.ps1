@@ -16,6 +16,7 @@ $privateKey = Join-Path $scratch 'deploy.pem'
 $payload = Join-Path $scratch 'release'
 [void](New-Item -ItemType Directory -Path $payload)
 $oldOrigin = $env:VITE_API_ORIGIN
+$oldRelease = $env:VITE_HABITA_RELEASE
 $junctions = @()
 try {
     Copy-Item -LiteralPath (Resolve-Path -LiteralPath $SshKeyPath).Path -Destination $privateKey
@@ -45,6 +46,7 @@ try {
     & pnpm --dir (Join-Path $payload 'apps/api') build
     if ($LASTEXITCODE -ne 0) { throw 'Fallo el build del API.' }
     $env:VITE_API_ORIGIN = 'https://habita.roccacr.com'
+    $env:VITE_HABITA_RELEASE = $releaseId
     & pnpm --dir (Join-Path $payload 'apps/frontend') build
     if ($LASTEXITCODE -ne 0) { throw 'Fallo el build del frontend.' }
 
@@ -75,6 +77,7 @@ try {
     Write-Output "Publicado y verificado: $releaseId | SHA256 $digest"
 } finally {
     $env:VITE_API_ORIGIN = $oldOrigin
+    $env:VITE_HABITA_RELEASE = $oldRelease
     foreach ($junction in $junctions) {
         if ((Test-Path -LiteralPath $junction) -and ((Get-Item -LiteralPath $junction).Attributes -band [IO.FileAttributes]::ReparsePoint)) { [IO.Directory]::Delete($junction) }
     }

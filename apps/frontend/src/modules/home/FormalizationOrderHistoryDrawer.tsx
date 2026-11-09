@@ -83,7 +83,7 @@ function Entry({ event, latest }: { readonly event: OrderHistoryEntry; readonly 
             <p className="client-history__meta">
                 <span>{event.actorName ?? "Responsable no registrado"}</span>
                 <VersionChip event={event} />
-                <span className="client-history__source">{event.source === "legacy" ? "Sistema anterior" : "CRM nuevo"}</span>
+                <span className="client-history__source">{event.source === "legacy" ? "Sistema anterior" : "Habita"}</span>
             </p>
         </li>
     );
@@ -97,7 +97,7 @@ function Timeline({ page }: { readonly page: OrderHistoryPage }) {
             <p className="client-history__note">{page.coverage.note}</p>
             {page.coverage.legacyLinked && !page.coverage.legacyAvailable && (
                 <p role="status" className="client-history__note client-history__note--warn">
-                    El historial de etapas legacy no está disponible; se muestra la auditoría conservada en el CRM nuevo.
+                    El historial de etapas legacy no está disponible; se muestra la auditoría conservada en Habita.
                 </p>
             )}
             {!page.items.length && <p className="client-history__empty">No hay acciones registradas para esta orden. No se inventaron transiciones anteriores.</p>}

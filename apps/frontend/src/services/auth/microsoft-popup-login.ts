@@ -31,8 +31,8 @@ const MICROSOFT_POPUP_MIN_WIDTH_PX = 768;
 /** Valores de `?microsoftStatus=` que el BFF agrega al volver al frontend con error. */
 const MICROSOFT_STATUS_MESSAGES = {
     failed: "No pudimos completar el inicio con Microsoft. Inténtalo de nuevo o selecciona otra cuenta.",
-    unassigned: "Tu cuenta Microsoft se validó, pero todavía no está asignada al CRM. Solicita que la vinculen a tu usuario interno.",
-    unauthorized: "Tu cuenta Microsoft se validó, pero tu usuario CRM no está autorizado para iniciar sesión. Contacta a soporte o a tu administrador.",
+    unassigned: "Tu cuenta Microsoft se validó, pero todavía no está asignada a Habita. Solicita que la vinculen a tu usuario interno.",
+    unauthorized: "Tu cuenta Microsoft se validó, pero tu usuario Habita no está autorizado para iniciar sesión. Contacta a soporte o a tu administrador.",
 } as const;
 
 export type MicrosoftStatus = keyof typeof MICROSOFT_STATUS_MESSAGES;

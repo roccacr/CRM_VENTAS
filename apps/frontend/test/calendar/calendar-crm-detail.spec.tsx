@@ -18,9 +18,9 @@ const crm: CalendarCrmDetail = {
     typeLabel: "Reunión",
     typeColor: "#15803d",
     colorOverride: null,
-    title: "Nombre original CRM",
-    description: "Descripción registrada CRM",
-    location: "Sala CRM",
+    title: "Nombre original Habita",
+    description: "Descripción registrada Habita",
+    location: "Sala Habita",
     start: "2026-11-04T15:00:00Z",
     end: "2026-11-04T16:00:00Z",
     allDay: false,
@@ -28,7 +28,7 @@ const crm: CalendarCrmDetail = {
     reference: "Orden 208",
     teamsRequested: true,
     roomAddress: "sala@example.test",
-    organizerName: "Organizador CRM",
+    organizerName: "Organizador Habita",
     timezone: "America/Costa_Rica",
     cancellationReason: null,
     createdAt: "2026-11-03T15:00:00Z",
@@ -41,25 +41,25 @@ const crm: CalendarCrmDetail = {
     participants: [{ label: "Ana", email: "ana@example.test" }],
     restrictedLinks: true,
 };
-it("shows the CRM type color and authorized relations without replacing them with Outlook fields", () => {
+it("shows the Habita type color and authorized relations without replacing them with Outlook fields", () => {
     render(<CalendarCrmDetails event={{ title: "Título Outlook", description: "Descripción Outlook", version: 2, crmDetail: crm } as CalendarEvent} />);
     expect(screen.getByText("Reunión").querySelector("span")).toHaveStyle({ backgroundColor: "#15803d" });
-    expect(screen.getByText("Nombre original CRM")).toBeVisible();
-    expect(screen.getByText("Descripción registrada CRM")).toBeVisible();
+    expect(screen.getByText("Nombre original Habita")).toBeVisible();
+    expect(screen.getByText("Descripción registrada Habita")).toBeVisible();
     expect(screen.getByText(/AVI223/)).toBeVisible();
     expect(screen.getByText(/Cliente vinculado/)).toBeVisible();
     expect(screen.getByText("Hay vínculos restringidos por tus permisos.")).toBeVisible();
 });
-it("does not invent a CRM association for an Outlook-only event", () => {
+it("does not invent a Habita association for an Outlook-only event", () => {
     render(<CalendarCrmDetails event={{ source: "outlook" } as CalendarEvent} />);
-    expect(screen.getByText("Sin registro CRM vinculado.")).toBeVisible();
+    expect(screen.getByText("Sin registro Habita vinculado.")).toBeVisible();
     expect(screen.queryByText("Registros vinculados")).not.toBeInTheDocument();
 });
 
-it("loads authorized CRM relations only when the detail opens and shows a preload", async () => {
+it("loads authorized Habita relations only when the detail opens and shows a preload", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ schemaVersion: 1, crmDetail: crm });
     render(<CalendarCrmDetails event={{ id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", source: "native", version: 2, crmDetail: { ...crm, loaded: false } } as CalendarEvent} />);
-    expect(screen.getByRole("status", { name: "Cargando datos CRM" })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Cargando datos Habita" })).toBeInTheDocument();
     expect(await screen.findByText(/AVI223/)).toBeVisible();
     expect(apiRequest).toHaveBeenCalledWith("/calendar/events/01ARZ3NDEKTSV4RRFFQ69G5FAV/detail");
 });

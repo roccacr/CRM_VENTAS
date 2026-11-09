@@ -31,7 +31,7 @@ export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, { rea
                 <Result
                     status="error"
                     title="No se pudo mostrar esta vista"
-                    subTitle="Puedes reintentar. Si el problema continúa, vuelve a abrir el CRM más tarde."
+                    subTitle="Puedes reintentar. Si el problema continúa, vuelve a abrir Habita más tarde."
                     extra={
                         <Button
                             icon={<ReloadOutlined aria-hidden="true" />}

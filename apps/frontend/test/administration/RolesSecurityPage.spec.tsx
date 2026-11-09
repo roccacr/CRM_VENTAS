@@ -663,7 +663,7 @@ describe("RolesSecurityPage", () => {
 
         await chooseOption("Rol", "Owner (1 usuario)", ".ant-select-item-option-content");
 
-        expect(screen.getByRole("note")).toHaveTextContent("Rol protegidoControl máximo del CRM. Uso limitado a muy pocas personas.");
+        expect(screen.getByRole("note")).toHaveTextContent("Rol protegidoControl máximo de Habita. Uso limitado a muy pocas personas.");
         expect(getPermissionSwitch("Crear lead")).toBeChecked();
         expect(getPermissionSwitch("Crear lead")).toBeDisabled();
         expect(getPermissionSwitch("Acceso a la sección")).toBeDisabled();

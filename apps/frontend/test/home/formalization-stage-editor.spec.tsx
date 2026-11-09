@@ -208,7 +208,7 @@ it("requires a reason to jump directly from pending send to transfer signed", ()
     show({ ...item, unitTransferred: true, state: { ...item.state, code: "contract_pending_send", label: "Por enviar" } });
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "transfer_signed" } });
     expect(screen.getByRole("button", { name: "Guardar" }).hasAttribute("disabled")).toBe(true);
-    fireEvent.change(screen.getByLabelText("Motivo del cambio excepcional"), { target: { value: "Trámite completado fuera del CRM" } });
+    fireEvent.change(screen.getByLabelText("Motivo del cambio excepcional"), { target: { value: "Trámite completado fuera de Habita" } });
     expect(screen.getByRole("button", { name: "Guardar" }).hasAttribute("disabled")).toBe(false);
     expect(apiRequest).not.toHaveBeenCalled();
 });
@@ -262,14 +262,14 @@ it("shows a visible error alert for a confirmed absent Sandbox order", async () 
     expect(alert.textContent).toContain("La orden de venta no existe en NetSuite en el entorno configurado.");
     expect(saved).not.toHaveBeenCalled();
 });
-it("reports that NetSuite was already approved after synchronizing the CRM", async () => {
+it("reports that NetSuite was already approved after synchronizing the Habita", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ source: "legacy", id: "1", approved: true, state: "contract_pending_send", sequence: 4, replayed: false, alreadyApproved: true });
     showApproval();
     await confirmApproval();
     await waitFor(() => {
         expect(saved).toHaveBeenCalledOnce();
     });
-    expect(notification.success).toHaveBeenCalledWith(expect.objectContaining({ placement: "bottomLeft", title: "Aprobación completada", description: "NetSuite ya tenía marcada la aprobación de Formalización. El CRM quedó sincronizado." }));
+    expect(notification.success).toHaveBeenCalledWith(expect.objectContaining({ placement: "bottomLeft", title: "Aprobación completada", description: "NetSuite ya tenía marcada la aprobación de Formalización. El Habita quedó sincronizado." }));
     expect(screen.queryByRole("alert")).toBeNull();
 });
 async function confirmApproval() {
@@ -414,11 +414,11 @@ it.each(ORDER_STAGES)("accepts approved replay at current known state $code with
     expect(refresh).not.toHaveBeenCalled();
 });
 
-it("explains confirmed provider approval awaiting CRM reconciliation and retries the same UUID", async () => {
+it("explains confirmed provider approval awaiting Habita reconciliation and retries the same UUID", async () => {
     vi.mocked(apiRequest).mockRejectedValue(new ApiClientError("unavailable", 503, { code: "FORMALIZATION_APPROVAL_RECONCILIATION_REQUIRED" }));
     showApproval();
     await confirmApproval();
-    expect((await screen.findByRole("alert")).textContent).toBe("NetSuite confirmó la aprobación, pero falta sincronizar el CRM. Reintenta la misma operación.");
+    expect((await screen.findByRole("alert")).textContent).toBe("NetSuite confirmó la aprobación, pero falta sincronizar Habita. Reintenta la misma operación.");
     expect(saved).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
     expect(apiRequest).toHaveBeenCalledOnce();

@@ -22,7 +22,7 @@ const catalogResponse = {
         {
             detail: "Proyecto importado",
             externalReferences: [{ externalId: "252150004", status: "active", systemCode: "netsuite", systemName: "NetSuite" }],
-            name: "CRM Legacy",
+            name: "Habita Legacy",
             nativeCode: "projects-crm-legacy",
             publicId: "CAT-001",
             status: "active",
@@ -44,7 +44,7 @@ describe("catalog-service", () => {
             expect(url.pathname).toBe("/catalogs/projects/items");
             expect(url.searchParams.get("moduleCode")).toBe("administration");
             expect(url.searchParams.get("limit")).toBe("100");
-            expect(url.searchParams.get("search")).toBe("CRM");
+            expect(url.searchParams.get("search")).toBe("Habita");
             expect(url.searchParams.get("status")).toBe("active");
 
             return createJsonResponse(catalogResponse);
@@ -53,9 +53,9 @@ describe("catalog-service", () => {
         vi.stubGlobal("fetch", fetchMock);
         const { listCatalogItems } = await import("../../src/services/catalogs/catalog-service");
 
-        await expect(listCatalogItems("projects", { limit: 100, moduleCode: "administration", search: "CRM", status: "active" })).resolves.toEqual(catalogResponse);
+        await expect(listCatalogItems("projects", { limit: 100, moduleCode: "administration", search: "Habita", status: "active" })).resolves.toEqual(catalogResponse);
         expect(fetchMock).toHaveBeenCalledWith(
-            buildApiUrl("/catalogs/projects/items?moduleCode=administration&search=CRM&status=active&limit=100"),
+            buildApiUrl("/catalogs/projects/items?moduleCode=administration&search=Habita&status=active&limit=100"),
             expect.objectContaining({
                 credentials: "include",
                 method: "GET",

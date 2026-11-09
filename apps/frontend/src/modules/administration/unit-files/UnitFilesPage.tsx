@@ -466,7 +466,7 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
                             <h3>Registro</h3>
                             <dl className="unit-files-values">
                                 <div>
-                                    <dt>ID CRM</dt>
+                                    <dt>ID Habita</dt>
                                     <dd>{detail.nativeCode ? detail.id : "Pendiente de migración"}</dd>
                                 </div>
                                 <div>
@@ -474,7 +474,7 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
                                     <dd>{detail.nativeCode || "Pendiente de migración"}</dd>
                                 </div>
                                 <div>
-                                    <dt>ID del proyecto CRM</dt>
+                                    <dt>ID del proyecto Habita</dt>
                                     <dd>{detail.project.id}</dd>
                                 </div>
                                 <div>

@@ -239,7 +239,7 @@ describe("CatalogItemsPage", () => {
         render(<CatalogItemsPage catalog={catalog} />);
         const loading = await screen.findByRole("status", { name: "Cargando proyectos" });
         expect(within(loading).getByText("Cargando proyectos...")).toBeInTheDocument();
-        expect(within(loading).getByText("Sincronizando registros y catálogo CRM")).toBeInTheDocument();
+        expect(within(loading).getByText("Sincronizando registros y catálogo Habita")).toBeInTheDocument();
         expect(loading.querySelector(".projects-view-loader__ring")).toBeInTheDocument();
         expect(loading.querySelector(".ant-skeleton")).not.toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Listado de Proyectos" })).toHaveAttribute("aria-busy", "true");
@@ -663,7 +663,7 @@ describe("CatalogItemsPage", () => {
             detail: "Details",
             references: [
                 { externalId: "0", systemCode: "odoo", systemName: "Odoo", status: "pending" },
-                { externalId: "85", systemCode: "legacy", systemName: "CRM Legacy", status: "inactive" },
+                { externalId: "85", systemCode: "legacy", systemName: "Habita Legacy", status: "inactive" },
             ],
             missing: 2,
         },
@@ -697,7 +697,7 @@ describe("CatalogItemsPage", () => {
             expect(within(providerCard).getByText(reference.externalId)).toBeInTheDocument();
         }
         if (references.some((reference) => reference.systemCode === "legacy")) {
-            expect(within(drawer).getByText("CRM Legacy")).toBeInTheDocument();
+            expect(within(drawer).getByText("Habita Legacy")).toBeInTheDocument();
             expect(within(drawer).getByText("Pendiente")).toBeInTheDocument();
         }
     });

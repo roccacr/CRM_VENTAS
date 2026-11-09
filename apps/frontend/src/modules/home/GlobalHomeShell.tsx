@@ -43,6 +43,7 @@ import Tooltip from "antd/es/tooltip";
 import type { FocusEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { ROCCA_LOGO } from "../../config/branding";
 import { buildApiUrl } from "../../config/frontend-env";
 import type { IdentityOrgUnit, IdentityProfile } from "../../services/auth/identity-contracts";
 import { ADMINISTRATION_CATALOGS } from "../administration/catalogs/catalog-definitions";
@@ -50,8 +51,7 @@ import { NotesRealtimeProvider } from "../notes/NotesRealtimeProvider";
 import { NotesButton, NotesNotificationsButton, PersonalNotesProvider } from "../notes/PersonalNotes";
 import { FormalizationCalendarQuickCreate } from "./FormalizationCalendarQuickCreate";
 
-/** Ruta pública del logo. El shell no la resuelve por entorno. */
-const ROCCA_LOGO_SRC = "/Logo/rocca-concept.png";
+const HABITA_VERSION = "v2.0.0";
 
 /**
  * Anchos heurísticos del menú de escritorio, en píxeles.
@@ -821,6 +821,17 @@ function UserAvatarContent({ user }: { readonly user: GlobalHomeCurrentUser | un
     );
 }
 
+function HabitaVersion() {
+    const release = import.meta.env.VITE_HABITA_RELEASE;
+    const revision = release?.match(/^\d{14}-([a-f0-9]{7})-local$/u)?.[1];
+    return (
+        <span className="global-home-brand-version" title={revision ? `Habita ${HABITA_VERSION} · Release ${release}` : `Habita ${HABITA_VERSION} · Compilación sin identificador de release`}>
+            <span>{HABITA_VERSION}</span>
+            <small>{revision ?? (import.meta.env.PROD ? "Sin ID" : "Local")}</small>
+        </span>
+    );
+}
+
 /**
  * Barra móvil. En escritorio el CSS la oculta.
  *
@@ -828,11 +839,14 @@ function UserAvatarContent({ user }: { readonly user: GlobalHomeCurrentUser | un
  */
 function MobileAppBar({ onMenuOpen, user }: MobileAppBarProps) {
     return (
-        <div className="global-home-mobile-bar" role="banner" aria-label="Barra móvil global CRM TINK">
+        <div className="global-home-mobile-bar" role="banner" aria-label="Barra móvil global Habita">
             <button className="global-home-mobile-bar__icon-button" type="button" aria-label="Abrir menú de navegación" onClick={onMenuOpen}>
                 <MenuOutlined aria-hidden="true" />
             </button>
-            <img className="global-home-mobile-bar__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
+            <div className="global-home-mobile-bar__brand">
+                <img className="global-home-mobile-bar__logo" {...ROCCA_LOGO} alt="ROCCA Development Group" />
+                <HabitaVersion />
+            </div>
 
             <div className="global-home-mobile-bar__actions" aria-label="Acciones rápidas móviles">
                 <NotesNotificationsButton mobile />
@@ -1569,10 +1583,11 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
                         user={currentUser}
                     />
 
-                    <header className="global-home-header" role="banner" aria-label="Barra superior global CRM TINK">
+                    <header className="global-home-header" role="banner" aria-label="Barra superior global Habita">
                         <div className="global-home-header__inner">
                             <div className="global-home-header__brand">
-                                <img className="global-home-header__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
+                                <img className="global-home-header__logo" {...ROCCA_LOGO} alt="ROCCA Development Group" />
+                                <HabitaVersion />
                             </div>
 
                             <div className="global-home-header__workspace" role="group" aria-label="Módulo y búsqueda">
@@ -1624,7 +1639,7 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
                     </nav>
 
                     <main className="global-home-stage" aria-label="Contenido principal">
-                        <img className="global-home-stage__watermark" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="" aria-hidden="true" />
+                        <img className="global-home-stage__watermark" {...ROCCA_LOGO} alt="" aria-hidden="true" />
                         {children}
                     </main>
                 </div>

@@ -46,7 +46,7 @@ it.each(["Guardar evento", "Cerrar evento"])("opens an empty Formalización form
     const onNavigate = vi.fn();
     const url = window.location.href;
     render(shell({ onMenuItemSelect: onNavigate }));
-    const header = within(screen.getByRole("banner", { name: "Barra superior global CRM TINK" }));
+    const header = within(screen.getByRole("banner", { name: "Barra superior global Habita" }));
     fireEvent.click(await header.findByRole("button", { name: "Nuevo evento de Formalización" }));
     expect(screen.getByRole("dialog", { name: "Nuevo evento de Formalización" })).toBeInTheDocument();
     const props = vi.mocked(CalendarEventDrawer).mock.calls.at(-1)?.[0];
@@ -111,7 +111,7 @@ it.each(["Guardar evento", "Cerrar evento"])("opens a clean Mercadeo event in th
     const navigate = vi.fn();
     vi.mocked(getCalendars).mockResolvedValue([calendar, marketingCalendar]);
     render(shell({ initialWorkspaceCode: "marketing", effectivePermissions: marketingPermissions, orgUnits: [{ code: "mercadeo", status: "active" }], onMenuItemSelect: navigate }));
-    const header = within(screen.getByRole("banner", { name: "Barra superior global CRM TINK" }));
+    const header = within(screen.getByRole("banner", { name: "Barra superior global Habita" }));
     fireEvent.click(await header.findByRole("button", { name: "Nuevo evento de Mercadeo" }));
     const props = vi.mocked(CalendarEventDrawer).mock.calls.at(-1)?.[0];
     expect(props).toMatchObject({ event: null, currentModule: "mercadeo", calendar: marketingCalendar });

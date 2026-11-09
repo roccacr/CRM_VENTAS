@@ -19,14 +19,14 @@ it("preserves the standard navigation styling for a Home-only Formalization prof
     expect(screen.getByRole("button", { name: "Inicio" }).getAttribute("aria-current")).toBe("page");
     expect(screen.queryByRole("button", { name: "Contratos" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Expedientes" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Gestión de formalizaciones" })).toBeNull();
     expect(navigationStyles).not.toContain(".global-home-menu--single");
 });
 
-it("connects the approved management menu to the preview orders route", () => {
+it("keeps the management entry out of the Formalization menu while its route stays available", () => {
     const workspace = ASSIGNED_WORKSPACES.find((item) => item.code === "formalization");
-    expect(workspace?.menuItems.map((item) => item.label)).toEqual(["Inicio", "Gestión de formalizaciones", "Calendario", "Catálogos"]);
-    expect(workspace?.menuItems.find((item) => item.code === "formalization-management")?.routePath).toBe("/home/formalization/orders");
+    expect(workspace?.menuItems.map((item) => item.label)).toEqual(["Inicio", "Calendario", "Catálogos"]);
+    expect(workspace?.menuItems.find((item) => item.code === "formalization-management")).toBeUndefined();
 });
 
 it("keeps dropdowns outside the tablet navigation clipping area", () => {
@@ -57,6 +57,20 @@ it("applies the enterprise palette only to navigation surfaces", () => {
 afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+});
+
+it("shows the Habita version and release revision next to both logos", () => {
+    vi.stubEnv("VITE_HABITA_RELEASE", "20261109180000-48b7707-local");
+    installBrowserApiDoubles();
+    render(<GlobalHomeShell initialWorkspaceCode="all">Content</GlobalHomeShell>);
+
+    const badges = screen.getAllByTitle("Habita v2.0.0 · Release 20261109180000-48b7707-local");
+    expect(badges).toHaveLength(2);
+    for (const badge of badges) {
+        expect(badge.previousElementSibling?.tagName).toBe("IMG");
+        expect(badge.textContent).toBe("v2.0.048b7707");
+    }
 });
 
 it.each([38, 850])("keeps a dropdown inside the viewport from trigger x=%s and repositions on resize", (left) => {

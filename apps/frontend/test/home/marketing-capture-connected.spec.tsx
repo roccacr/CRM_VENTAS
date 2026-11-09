@@ -25,6 +25,17 @@ const deferred = () => {
 };
 const open = () => render(<MarketingLeadCapturePage currentUser={captureUser} />);
 
+it.each(["mercadeo", "jefe_mercadeo"])("keeps all returned sellers for a %s identity", async (roleCode) => {
+    const response = captureResponse();
+    api.request.mockResolvedValue(response);
+    render(<MarketingLeadCapturePage currentUser={{ ...captureUser, publicId: `${roleCode}-user` }} />);
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    const total = response.rows.filter((row) => row.date >= "2026-10-01" && row.date <= response.today).reduce((sum, row) => sum + row.leads, 0);
+    expect(document.querySelector(".capture-block__aside")).toHaveTextContent(`${new Intl.NumberFormat("es-CR").format(total).replace(/\s/gu, " ")} leads`);
+    expect(api.request).toHaveBeenCalledWith("/marketing/leads/report?period=month");
+    expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
+});
+
 describe("connected capture report", () => {
     it("applies week and keeps it visible while editing a return to month", async () => {
         const week = deferred(),

@@ -47,6 +47,11 @@ describe("buildMysqlPoolOptions", () => {
         expect(options.multipleStatements).toBe(false);
     });
 
+    it("aplica queueLimit solo cuando se define y no lo fija por defecto", () => {
+        expect(buildMysqlPoolOptions({ ...BASE_POOL_INPUT, ssl: false }).queueLimit).toBeUndefined();
+        expect(buildMysqlPoolOptions({ ...BASE_POOL_INPUT, ssl: false, queueLimit: 200 }).queueLimit).toBe(200);
+    });
+
     it("no agrega configuracion ssl cuando DB_SSL esta apagado", () => {
         const options = buildMysqlPoolOptions({
             ...BASE_POOL_INPUT,

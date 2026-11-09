@@ -11,6 +11,8 @@ export default defineConfig({
             include: ["src/**/*.ts"],
             exclude: ["src/main.ts", "src/**/*.types.ts"],
             reporter: ["text-summary", "json-summary", "lcov"],
+            // Piso graduado: medicion base 2026-11-09 = 78.6% stmts / 68.9% branches / 84.5% funcs / 81.8% lines. Subir cuando la cobertura mejore.
+            thresholds: { statements: 75, branches: 65, functions: 80, lines: 78 },
         },
     },
 });

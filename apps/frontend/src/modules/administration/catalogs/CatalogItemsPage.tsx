@@ -739,7 +739,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                             <span>{catalog.label}</span>
                         </nav>
                         <CatalogPageTitle catalog={catalog} isLoading={isLoading || !permissions.read} total={permissions.read ? total : 0} />
-                        <p>Gestión de valores nativos CRM y sus referencias externas.</p>
+                        <p>Gestión de valores nativos Habita y sus referencias externas.</p>
                     </div>
                     <CatalogHeaderActions canRead={permissions.read} canCreate={permissions.create} catalogCode={catalog.code} isLoading={isLoading} isSaving={isSaving} isSavingStatus={isSavingStatus} onRefresh={refreshItems} onCreate={openCreate} />
                 </section>

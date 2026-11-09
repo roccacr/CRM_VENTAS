@@ -22,10 +22,12 @@ describe("LoginPage", () => {
         expect(screen.queryByText(/^v\d+\.\d+\.\d+$/u)).not.toBeInTheDocument();
     });
 
-    it("mantiene atributos nativos para teclado movil y autofill sin controles locales no funcionales", () => {
+    it("mantiene atributos nativos para teclado movil y autofill sin controles locales no funcionales", async () => {
+        const user = userEvent.setup();
         render(<LoginPage />);
+        await user.click(screen.getByRole("button", { name: "Usar credenciales locales" }));
 
-        const email = screen.getByLabelText("Correo administrativo", { selector: "input" });
+        const email = screen.getByLabelText("Correo electrónico", { selector: "input" });
         const password = screen.getByLabelText("Contraseña", { selector: "input" });
 
         expect(email).toHaveAttribute("type", "email");
@@ -40,10 +42,11 @@ describe("LoginPage", () => {
     it("muestra errores alineados al flujo cuando se envia vacio", async () => {
         const user = userEvent.setup();
         render(<LoginPage />);
+        await user.click(screen.getByRole("button", { name: "Usar credenciales locales" }));
 
         await user.click(screen.getByRole("button", { name: "Ingresar" }));
 
-        const email = screen.getByLabelText("Correo administrativo", { selector: "input" });
+        const email = screen.getByLabelText("Correo electrónico", { selector: "input" });
         const password = screen.getByLabelText("Contraseña", { selector: "input" });
 
         expect(screen.getByText("Ingresa tu correo.")).toBeInTheDocument();
@@ -57,8 +60,9 @@ describe("LoginPage", () => {
     it("muestra error al perder foco y lo limpia mientras el usuario corrige", async () => {
         const user = userEvent.setup();
         render(<LoginPage />);
+        await user.click(screen.getByRole("button", { name: "Usar credenciales locales" }));
 
-        const email = screen.getByLabelText("Correo administrativo", { selector: "input" });
+        const email = screen.getByLabelText("Correo electrónico", { selector: "input" });
         const password = screen.getByLabelText("Contraseña", { selector: "input" });
 
         await user.type(email, "correo-invalido");
@@ -80,8 +84,8 @@ describe("LoginPage", () => {
         const user = userEvent.setup();
         const onLocalLogin = vi.fn(() => new Promise<void>(() => undefined));
         render(<LoginPage onLocalLogin={onLocalLogin} />);
-
-        await user.type(screen.getByLabelText("Correo administrativo", { selector: "input" }), "rzuniga@roccacr.com");
+        await user.click(screen.getByRole("button", { name: "Usar credenciales locales" }));
+        await user.type(screen.getByLabelText("Correo electrónico", { selector: "input" }), "rzuniga@roccacr.com");
         await user.type(screen.getByLabelText("Contraseña", { selector: "input" }), "Rocca-Temporal123!");
         await user.click(screen.getByRole("button", { name: "Ingresar" }));
 
@@ -94,5 +98,37 @@ describe("LoginPage", () => {
             email: "rzuniga@roccacr.com",
             password: "Rocca-Temporal123!",
         });
+    });
+});
+
+describe("LoginPage jerarquia de metodos", () => {
+    it("presenta Microsoft como metodo principal y pliega las credenciales locales", async () => {
+        const user = userEvent.setup();
+        render(<LoginPage />);
+
+        expect(screen.getByRole("button", { name: "Iniciar sesión con Microsoft" })).toBeEnabled();
+        expect(screen.getByText("Ingresa con tu cuenta corporativa de Microsoft.")).toBeInTheDocument();
+
+        const toggle = screen.getByRole("button", { name: "Usar credenciales locales" });
+        expect(toggle).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
+
+        await user.click(toggle);
+
+        expect(toggle).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("button", { name: "Ingresar" })).toBeInTheDocument();
+    });
+
+    it("ubica el error del API junto al metodo que fallo", async () => {
+        const user = userEvent.setup();
+        const onMicrosoftLogin = vi.fn(() => Promise.resolve());
+        const { rerender } = render(<LoginPage onMicrosoftLogin={onMicrosoftLogin} />);
+
+        await user.click(screen.getByRole("button", { name: "Iniciar sesión con Microsoft" }));
+        rerender(<LoginPage authError="No se pudo iniciar con Microsoft." onMicrosoftLogin={onMicrosoftLogin} />);
+
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent("No se pudo iniciar con Microsoft.");
+        expect(alert.closest("#login-local-panel")).toBeNull();
     });
 });

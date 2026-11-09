@@ -41,7 +41,7 @@ it("distinguishes a confirmed missing provider order from a temporary connection
     expect(screen.getByTestId("load-error").textContent).toBe("La orden de venta no existe en NetSuite en el entorno configurado.");
     expect(screen.getByTestId("provider-order").textContent).toBe("");
 });
-it("logs once under StrictMode and adds CRM identity and resolved NetSuite reference to URL only", async () => {
+it("logs once under StrictMode and adds Habita identity and resolved NetSuite reference to URL only", async () => {
     render(
         <StrictMode>
             <Harness record={{ source: "legacy", id: "legacy:208" }} />
@@ -57,7 +57,7 @@ it("logs once under StrictMode and adds CRM identity and resolved NetSuite refer
     expect(query.get("netsuiteId")).toBe("123");
     expect(screen.queryByRole("textbox")).toBeNull();
 });
-it("loads from CRM identity on refresh and ignores an untrusted provider ID in URL", async () => {
+it("loads from Habita identity on refresh and ignores an untrusted provider ID in URL", async () => {
     window.history.replaceState({}, "", "/home/formalization?orderSource=legacy&orderId=208&netsuiteId=999");
     render(<Harness />);
     await waitFor(() => {

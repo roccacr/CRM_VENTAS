@@ -485,7 +485,7 @@ export function SystemUsersPage() {
                                 <span>Usuarios</span>
                             </nav>
                             <UsersPageTitle isLoading={loadState === "loading"} total={permissions.list ? pageTotal : 0} />
-                            <p>Gestión de personas, accesos y estado operativo dentro del CRM.</p>
+                            <p>Gestión de personas, accesos y estado operativo dentro de Habita.</p>
                         </div>
                         <UsersHeaderActions
                             canCreate={permissions.create && createUserCatalog.roleOptions.length > 0}

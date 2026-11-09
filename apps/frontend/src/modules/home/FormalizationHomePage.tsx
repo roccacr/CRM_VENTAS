@@ -1,7 +1,6 @@
 import "./FormalizationHomePage.css";
 
 import ArrowLeftOutlined from "@ant-design/icons/ArrowLeftOutlined";
-import FileAddOutlined from "@ant-design/icons/FileAddOutlined";
 import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
@@ -50,14 +49,25 @@ const greetingFor = (user: FormalizationHomeProps["currentUser"]) => {
     return name ? `Hola, ${name}` : "Hola";
 };
 
-/** Patrón original de cuadrados; decorativo y fuera del árbol accesible. */
-function BannerCorner() {
+const BANNER_PLAN_PATHS = {
+    approvals: "M25 15h28v34H25zM33 15v-4h12v4M31 26h15m-15 7h15m-15 7 4 4 8-8",
+    addendum: "M21 22h27v29H21zM28 15h27v29M27 29h14m-14 6h14m-7 4v8m-4-4h8",
+    contracts: "M24 12h20l10 10v28H24zm20 0v10h10M30 27h17m-17 6h17m-17 10 4-4 4 4 5-2h5",
+    bank: "m19 24 20-12 20 12zM22 47h34m-31-4h28m-25-16v16m7-16v16m8-16v16m7-16v16",
+    balance: "M23 13h31v36H23zm5 6h21v8H28zm0 14h4m5 0h4m5 0h4m-22 6h4m5 0h4m5 0h4m-22 6h4m5 0h4m5 0h4",
+    transfer: "M22 18h31m-6-6 6 6-6 6M54 36H23m6-6-6 6 6 6",
+    signed: "M24 12h22l8 8v30H24zm22 0v8h8M30 25h16m-16 6h13m-12 9 5 5 11-11",
+    closed: "M22 27h33v22H22zm-3 0 19-14 20 14M32 38l5 5 9-10",
+};
+
+/** El motivo de plano acompaña la etapa y queda fuera del árbol accesible. */
+function BannerCorner({ kind }: { readonly kind: keyof typeof BANNER_PLAN_PATHS }) {
     return (
-        <span className="formalization-banner__pattern" aria-hidden="true">
-            {Array.from({ length: 6 }, (_, index) => (
-                <i key={index} />
-            ))}
-        </span>
+        <svg className="formalization-banner__pattern" viewBox="0 0 180 84" preserveAspectRatio="xMaxYMin slice" fill="none" stroke="currentColor" aria-hidden="true" focusable="false">
+            <path opacity=".38" d="M0 12h180M0 28h180M0 44h180M0 60h180M0 76h180M20 0v84M42 0v84M64 0v84M86 0v84M108 0v84M130 0v84M152 0v84M174 0v84" />
+            <path opacity=".62" d="M12 62h40l20-18h46m-54 8v18h35m-23-50h32l10-8h54m-12-4v8m-42-8v8m-33 40h75m-52-4v8m28-8v8m24-8v8" />
+            <path d={BANNER_PLAN_PATHS[kind]} transform="translate(112 2)" strokeLinejoin="round" strokeLinecap="round" />
+        </svg>
     );
 }
 
@@ -109,13 +119,13 @@ function useBannerSummary<T>(load: () => Promise<T>, enabled: boolean, refreshVe
 }
 
 const pendingBanners = {
-    approvals: { title: "Pendientes de aprobación", subject: "aprobación", load: getApprovalCount, icon: <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/approvals.svg`} width={24} height={24} alt="" /> },
-    addendum: { title: "Pendientes de adéndum", subject: "adéndum", load: getPendingAddendumCount, icon: <FileAddOutlined /> },
+    approvals: { title: "Pendientes de aprobación", subject: "aprobación", load: getApprovalCount },
+    addendum: { title: "Pendientes de adéndum", subject: "adéndum", load: getPendingAddendumCount },
 };
 
 /** Los pendientes comparten presentación; cada fuente y permiso conserva su consulta independiente. */
 function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }: { readonly kind: "approvals" | "addendum"; readonly canOpen?: boolean; readonly onOpen: () => void; readonly enabled: boolean; readonly refreshVersion: number }) {
-    const { title, subject, load, icon } = pendingBanners[kind];
+    const { title, subject, load } = pendingBanners[kind];
     const { value: count, failed, retry } = useBannerSummary(load, enabled, refreshVersion);
     const caption = failed ? "No disponible" : count === null ? "Consultando…" : "Por revisar";
     const loading = [count === null, !failed].every(Boolean);
@@ -123,9 +133,6 @@ function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }:
     return (
         <div className="formalization-banner formalization-banner--pending formalization-approval-strip" data-kind={kind} aria-busy={loading}>
             <button type="button" className="formalization-approval-strip__action" aria-label={action.label} aria-busy={loading} disabled={[!failed, !canOpen].every(Boolean)} onClick={action.onClick} />
-            <span className="formalization-banner__icon" aria-hidden="true">
-                {icon}
-            </span>
             <span className="formalization-banner__content">
                 <span className="formalization-title-help">
                     <span className="formalization-approval-strip__title">{title}</span>
@@ -149,7 +156,7 @@ function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }:
                     </span>
                 </span>
             </span>
-            <BannerCorner />
+            <BannerCorner kind={kind} />
         </div>
     );
 }
@@ -163,7 +170,6 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
         {
             code: "contracts",
             label: "Contratos pendientes",
-            icon: "contracts",
             tone: "pending",
             parts: [
                 { label: "Por enviar", value: counts.contracts.toSend, filter: "send" },
@@ -173,17 +179,16 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
         {
             code: "bank",
             label: "Gestión bancaria",
-            icon: "bank",
             tone: "neutral",
             parts: [
                 { label: "Sin iniciar", value: counts.banking, filter: "bank_not_started" },
                 { label: "En proceso", value: counts.bankingInProgress, filter: "bank_in_progress" },
             ],
         },
-        { code: "balance", label: "Pendientes de saldo", icon: "balance", tone: "neutral", parts: [{ label: "Consulta financiera", value: counts.balance, filter: "balance" }] },
-        { code: "transfer", label: "Traspasos pendientes", icon: "transfer", tone: "pending", parts: [{ label: "Por gestionar", value: counts.transferPending, filter: "transfer" }] },
-        { code: "signed", label: "Traspaso firmado", icon: "signed", tone: "success", parts: [{ label: "Firma registrada · Llaves pendientes", value: counts.transferSigned, filter: "signed" }] },
-        { code: "closed", label: "Formalizaciones cerradas este año", icon: "closed", tone: "success", parts: [{ label: "Proceso finalizado", value: counts.closedThisYear, filter: "closed" }] },
+        { code: "balance", label: "Pendientes de saldo", tone: "neutral", parts: [{ label: "Consulta financiera", value: counts.balance, filter: "balance" }] },
+        { code: "transfer", label: "Traspasos pendientes", tone: "pending", parts: [{ label: "Por gestionar", value: counts.transferPending, filter: "transfer" }] },
+        { code: "signed", label: "Traspaso firmado", tone: "success", parts: [{ label: "Firma registrada · Llaves pendientes", value: counts.transferSigned, filter: "signed" }] },
+        { code: "closed", label: "Formalizaciones cerradas este año", tone: "success", parts: [{ label: "Proceso finalizado", value: counts.closedThisYear, filter: "closed" }] },
     ] as const;
     return (
         <>
@@ -191,9 +196,6 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
                 .filter((banner) => allowedQueues.includes(banner.code === "bank" ? "bank" : banner.parts[0].filter))
                 .map((banner) => (
                     <article key={banner.code} className={`formalization-banner formalization-banner--${banner.tone}`} aria-labelledby={`formalization-${banner.code}`} aria-busy={loading}>
-                        <span className="formalization-banner__icon" aria-hidden="true">
-                            <img src={`${import.meta.env.BASE_URL}illustrations/formalization-icons/${banner.icon}.svg`} width={24} height={24} alt="" />
-                        </span>
                         <div className="formalization-banner__content">
                             <div className="formalization-title-help">
                                 <h2 id={`formalization-${banner.code}`}>{banner.label}</h2>
@@ -232,7 +234,7 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
                                 ))}
                             </div>
                         </div>
-                        <BannerCorner />
+                        <BannerCorner kind={banner.code} />
                     </article>
                 ))}
         </>

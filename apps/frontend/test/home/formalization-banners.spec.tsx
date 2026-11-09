@@ -187,16 +187,16 @@ it("keeps unauthorized follow-up disabled and an empty recent-activity surface",
     expect(screen.getByText("Los movimientos recientes aún no están disponibles.")).toBeTruthy();
 });
 
-it("keeps follow-up disabled without the effective role even with approval permission", () => {
+it("keeps follow-up disabled without grants and enables it from the effective approval permission alone", () => {
     installBrowserApiDoubles();
     const { rerender } = render(<FormalizationHomePage />);
     expect(screen.queryByRole("combobox", { name: "Bandeja de seguimiento" })).toBeNull();
     const permission = { code: "formalizacion.home.approvals.read", effect: "allow" as const };
-    rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
-    expect(screen.queryByRole("combobox", { name: "Bandeja de seguimiento" })).toBeNull();
     expect(screen.getByText("El seguimiento de órdenes aún no está disponible.")).toBeTruthy();
+    // La autorizacion usa solo los grants efectivos de la API; el rol activo ya no es requisito.
+    rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
+    expect(screen.getByRole("combobox", { name: "Bandeja de seguimiento" })).toBeTruthy();
     expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
-    expect(screen.queryByRole("option", { name: "Todas (0)" })).toBeNull();
 });
 
 it.each(["role", "override"] as const)("keeps approvals unmounted until an effective %s permission arrives", (source) => {
@@ -217,17 +217,15 @@ it.each(["role", "override"] as const)("keeps approvals unmounted until an effec
     expect(screen.queryByRole("button", { name: bannerName })).toBeNull();
 });
 
-it("preserves decorative SVG artwork for permitted banner containers", () => {
+it("uses distinct background artwork without foreground icons in permitted banners", () => {
     installBrowserApiDoubles();
     const { container } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, { code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
-    const icons = [...container.querySelectorAll(".formalization-banner__icon img")];
-    expect(icons).toHaveLength(7);
-    expect(icons.map((icon) => icon.getAttribute("src")?.split("/").pop())).toEqual(["approvals.svg", "contracts.svg", "bank.svg", "balance.svg", "transfer.svg", "signed.svg", "closed.svg"]);
-    for (const icon of icons) {
-        expect(icon.getAttribute("alt")).toBe("");
-        expect(icon.getAttribute("width")).toBe("24");
-        expect(icon.getAttribute("height")).toBe("24");
-        expect(icon.parentElement?.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelector(".formalization-banner__icon")).toBeNull();
+    const patterns = [...container.querySelectorAll(".formalization-banner > svg.formalization-banner__pattern")];
+    expect(patterns).toHaveLength(7);
+    expect(new Set(patterns.map((pattern) => pattern.lastElementChild?.getAttribute("d"))).size).toBe(7);
+    for (const pattern of patterns) {
+        expect(pattern.getAttribute("aria-hidden")).toBe("true");
     }
 });
 
@@ -334,11 +332,11 @@ it("revoking one category discards its mounted queue and pending data", async ()
     expect(screen.queryByRole("option", { name: /Gestión bancaria/ })).toBeNull();
 });
 
-it("does not request approvals without the active effective role", () => {
+it("requests approvals from the effective grant without requiring an active role", () => {
     installBrowserApiDoubles();
     render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
-    expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
-    expect(getApprovalCount).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeTruthy();
+    expect(getApprovalCount).toHaveBeenCalledTimes(1);
 });
 
 it("shows independently verified banking counts and no invented zero after summary failure", async () => {

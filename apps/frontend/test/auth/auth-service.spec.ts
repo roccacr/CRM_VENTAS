@@ -149,7 +149,7 @@ describe("auth-service", () => {
             isCurrentUser: false,
             lastActivityAt: null,
             mfaStatus: "not_configured",
-            name: "Usuario CRM",
+            name: "Usuario Habita",
             orgUnit: { code: "ventas", name: "Ventas", publicId: "ORG-VENTAS" },
             profileImageUrl: null,
             provider: "local",

@@ -2,6 +2,7 @@ import CheckOutlined from "@ant-design/icons/CheckOutlined";
 import LockOutlined from "@ant-design/icons/LockOutlined";
 import { useState } from "react";
 
+import { ROCCA_LOGO } from "../../config/branding";
 import { buildApiUrl } from "../../config/frontend-env";
 import type { AccessProblemKind, SessionStatusPhase } from "../../routes/auth-state";
 import type { IdentityUser } from "../../services/auth/identity-contracts";
@@ -12,8 +13,6 @@ import type { IdentityUser } from "../../services/auth/identity-contracts";
  *
  * Ninguna muestra datos del CRM ni detalle técnico del BFF.
  */
-
-const ROCCA_LOGO_SRC = "/Logo/rocca-concept.png";
 
 /** Textos de cada fallo de acceso. No incluyen estado HTTP, stack ni detalle del BFF. */
 const ACCESS_PROBLEM_COPY: Record<AccessProblemKind, { readonly description: string; readonly title: string }> = {
@@ -107,7 +106,7 @@ export function SessionStatusScreen({ phase, user }: { readonly phase: SessionSt
     return (
         <main className="app-auth-state app-auth-state--loading">
             <section className="app-auth-loader" role="status" aria-live="polite" aria-labelledby="app-auth-loader-title">
-                <img className="app-auth-state__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
+                <img className="app-auth-state__logo" {...ROCCA_LOGO} alt="ROCCA Development Group" />
                 {/* La key reinicia el avatar al cambiar de fase o de foto, para reintentar la imagen. */}
                 <SessionStatusAvatar key={`${phase}-${user?.profileImageUrl ?? "profile-fallback"}`} phase={phase} user={user} />
                 <div className="app-auth-loader__copy">
@@ -136,7 +135,7 @@ function AuthStateCard({ description, isSecondaryActionDisabled = false, onPrima
     return (
         <main className="app-auth-state">
             <section className="app-auth-card" aria-labelledby="app-auth-card-title">
-                <img className="app-auth-state__logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" />
+                <img className="app-auth-state__logo" {...ROCCA_LOGO} alt="ROCCA Development Group" />
                 <span className="app-auth-card__icon" aria-hidden="true">
                     <LockOutlined />
                 </span>
@@ -169,7 +168,7 @@ export function ForbiddenScreen({ onLogout }: { readonly onLogout: () => void })
 
 /** Ruta fuera del mapa. No muestra datos de sesión para no confirmar qué rutas existen. */
 export function NotFoundScreen({ onNavigateHome }: { readonly onNavigateHome: () => void }) {
-    return <AuthStateCard description="La dirección solicitada no existe o fue movida dentro del CRM." onPrimaryAction={onNavigateHome} primaryActionLabel="Volver al inicio" title="Ruta no encontrada" />;
+    return <AuthStateCard description="La dirección solicitada no existe o fue movida dentro de Habita." onPrimaryAction={onNavigateHome} primaryActionLabel="Volver al inicio" title="Ruta no encontrada" />;
 }
 
 interface AccessProblemScreenProps {

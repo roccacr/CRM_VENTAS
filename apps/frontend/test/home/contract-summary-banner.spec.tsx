@@ -34,14 +34,10 @@ it.each([
     try {
         render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, { code: "formalizacion.contracts.send", effect: "allow" }, { code: "formalizacion.contracts.revert", effect: "allow" }]} />);
         fireEvent.click(await screen.findByRole("button", { name: `Abrir ${label}` }));
-        const heading = screen.getByRole("heading", { name: title, level: 1 });
-        const header = heading.closest("header");
-        expect(header).not.toBeNull();
-        if (!header) throw new Error("Missing queue header");
-        expect(within(header).queryByText("0 órdenes")).toBeNull();
-        const queue = await screen.findByRole("region", { name: "Órdenes filtradas" });
-        expect(within(queue).getByText("No hay órdenes para estos filtros.")).toBeTruthy();
-        expect(within(queue).getAllByRole("row")).toHaveLength(2);
+        // La bandeja se aplica sobre el seguimiento embebido en Inicio; ya no abre una pagina de cola con encabezado propio.
+        expect(screen.queryByRole("heading", { name: title, level: 1 })).toBeNull();
+        expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
+        expect(screen.getByRole("combobox", { name: "Bandeja de seguimiento" })).toBeTruthy();
         expect(screen.queryByRole("table", { name: "Contratos" })).toBeNull();
         expect(screen.queryAllByRole("button", { name: /Registrar envío|Revertir envío|Ver seguimiento de/ })).toHaveLength(0);
         expect(screen.queryByText(/órdenes cargadas|DEMO-OV-/)).toBeNull();

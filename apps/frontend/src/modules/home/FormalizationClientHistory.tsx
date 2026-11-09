@@ -42,7 +42,7 @@ export function FormalizationClientHistory({ initial, identity }: { readonly ini
                     <p className="client-history__note">Registros vinculados al cliente. Las fechas del sistema anterior conservan su hora de origen, sin zona horaria confirmada.</p>
                     {page.legacyAvailable === false && (
                         <p role="status" className="client-history__note client-history__note--warn">
-                            La conexión al sistema anterior está deshabilitada. Se muestran únicamente los registros conservados en el CRM nuevo.
+                            La conexión al sistema anterior está deshabilitada. Se muestran únicamente los registros conservados en Habita.
                         </p>
                     )}
                     {!page.items.length && <p className="client-history__empty">No hay registros de bitácora disponibles.</p>}
@@ -88,7 +88,7 @@ function HistoryEntry({ entry }: { readonly entry: ClientHistoryPage["items"][nu
             <p className="client-history__meta">
                 <span data-empty={!entry.actorName}>{actor}</span>
                 <ActorCoverage entry={entry} />
-                <span className="client-history__source">{entry.source === "legacy" ? "Sistema anterior" : "CRM nuevo"}</span>
+                <span className="client-history__source">{entry.source === "legacy" ? "Sistema anterior" : "Habita"}</span>
             </p>
         </li>
     );

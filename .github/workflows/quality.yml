@@ -49,8 +49,7 @@ jobs:
           retention-days: 7
 
   dependency-audit:
-    name: Dependencies / ${{ matrix.app }} (informational)
-    continue-on-error: true
+    name: Dependencies / ${{ matrix.app }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
@@ -71,8 +70,8 @@ jobs:
         with:
           node-version: "22"
       - run: pnpm install --frozen-lockfile
-      - name: Audit production and development dependencies without modifying lockfiles
-        run: pnpm audit
+      - name: Audit production and development dependencies without modifying lockfiles (blocks on high/critical)
+        run: pnpm audit --audit-level=high
 
   habita-netsuite:
     name: Habita / NetSuite properties and fuzzing

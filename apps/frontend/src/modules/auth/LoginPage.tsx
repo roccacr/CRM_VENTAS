@@ -11,29 +11,36 @@ import MailOutlined from "@ant-design/icons/MailOutlined";
 import WarningOutlined from "@ant-design/icons/WarningOutlined";
 import Button from "antd/es/button";
 import ConfigProvider from "antd/es/config-provider";
-import Divider from "antd/es/divider";
 import Form from "antd/es/form";
 import Input from "antd/es/input";
 import Typography from "antd/es/typography";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { ROCCA_LOGO } from "../../config/branding";
+
+type LoginMethod = "microsoft" | "local";
 
 const LOGIN_COPY = {
-    eyebrow: "CRM TINK",
+    eyebrow: "Habita",
     title: "Bienvenido",
-    subtitle: "Inicia sesión con tu cuenta corporativa para continuar.",
+    subtitle: "Ingresa con tu cuenta corporativa de Microsoft.",
     emailLabel: "Correo electrónico",
     emailPlaceholder: "usuario@roccacr.com",
     passwordLabel: "Contraseña",
     passwordPlaceholder: "Ingresa tu contraseña",
     signIn: "Ingresar",
-    localDivider: "O ingresa con credenciales locales",
-    microsoft: "Continuar con Microsoft",
-    footerSecurity: "Acceso corporativo protegido",
+    localToggle: "Usar credenciales locales",
+    localToggleHide: "Ocultar credenciales locales",
+    localHelp: "Solo para cuentas locales autorizadas por TI.",
+    microsoft: "Iniciar sesión con Microsoft",
+    microsoftPending: "Completa el inicio de sesión en la ventana de Microsoft.",
+    footerSecurity: "Acceso protegido · Sesión cifrada",
     offline: "Sin conexión a Internet. Revisa tu red e inténtalo nuevamente.",
     authenticating: "Verificando credenciales...",
 } as const;
 
-const ROCCA_LOGO_SRC = "/Logo/rocca-concept.png";
+/** Debe coincidir con la duración de transición de `.login-local-panel` en el CSS. */
+const LOCAL_PANEL_TRANSITION_MS = 260;
 
 /**
  * Filtro mínimo para avisar un correo mal formado antes de salir del campo.
@@ -66,6 +73,22 @@ const renderFieldError = (messageKey: keyof typeof LOGIN_ERROR_TEXT, errorId: st
         <span>{LOGIN_ERROR_TEXT[messageKey]}</span>
     </span>
 );
+
+const renderStatus = (text: string | null, tone: "info" | "error") => {
+    if (!text) {
+        return null;
+    }
+
+    return tone === "error" ? (
+        <div className="login-status-message login-status-message--error" role="alert" aria-live="assertive">
+            {text}
+        </div>
+    ) : (
+        <div className="login-status-message login-status-message--info" role="status" aria-live="polite">
+            {text}
+        </div>
+    );
+};
 
 interface LoginFormValues {
     readonly email: string;
@@ -140,6 +163,14 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
     const [form] = Form.useForm<LoginFormValues>();
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+    /** Las credenciales locales son la vía secundaria: quedan plegadas hasta que el usuario las pida. */
+    const [isLocalOpen, setIsLocalOpen] = useState(false);
+    /** El panel se monta antes de animar la entrada y se desmonta después de animar la salida. */
+    const [isLocalMounted, setIsLocalMounted] = useState(false);
+    const [isLocalEntered, setIsLocalEntered] = useState(false);
+    const localTimerRef = useRef<number | undefined>(undefined);
+    /** Método del último intento; ubica el error del API junto al método que falló. */
+    const [lastMethod, setLastMethod] = useState<LoginMethod>("microsoft");
 
     /**
      * Borra el error cuando el campo ya es válido.
@@ -224,6 +255,7 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
             return;
         }
 
+        setLastMethod("local");
         setStatusMessage(LOGIN_COPY.authenticating);
 
         try {
@@ -246,8 +278,46 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
             return;
         }
 
+        setLastMethod("microsoft");
         void onMicrosoftLogin();
     };
+
+    useEffect(
+        () => () => {
+            window.clearTimeout(localTimerRef.current);
+        },
+        [],
+    );
+
+    /**
+     * Despliega o pliega el acceso local con transición.
+     *
+     * Al abrir, el panel entra al DOM de inmediato (los campos quedan accesibles)
+     * y la clase de entrada se aplica en el siguiente frame para que el navegador
+     * anime. Al cerrar, se desmonta tras la animación para sacarlo del orden de tabulación.
+     */
+    const toggleLocal = (): void => {
+        window.clearTimeout(localTimerRef.current);
+
+        if (isLocalOpen) {
+            setIsLocalOpen(false);
+            setIsLocalEntered(false);
+            localTimerRef.current = window.setTimeout(() => {
+                setIsLocalMounted(false);
+            }, LOCAL_PANEL_TRANSITION_MS);
+            return;
+        }
+
+        setIsLocalOpen(true);
+        setIsLocalMounted(true);
+        window.requestAnimationFrame(() => {
+            setIsLocalEntered(true);
+            document.getElementById("email")?.focus({ preventScroll: true });
+        });
+    };
+
+    const authErrorView = renderStatus(authError, "error");
+    const isMicrosoftBusy = isSubmitting && lastMethod === "microsoft";
 
     return (
         <ConfigProvider
@@ -263,15 +333,15 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
             <main className="login-shell" aria-labelledby="login-title">
                 <section className="login-card">
                     <div className="login-card__body">
-                        <img className="login-logo" src={ROCCA_LOGO_SRC} width="2170" height="725" alt="ROCCA Development Group" fetchPriority="high" />
+                        <img className="login-logo" {...ROCCA_LOGO} alt="ROCCA Development Group" fetchPriority="high" />
 
                         <Typography.Title id="login-title" className="login-title" level={1}>
                             {LOGIN_COPY.title}
                         </Typography.Title>
                         <Typography.Text className="login-subtitle">{LOGIN_COPY.subtitle}</Typography.Text>
 
-                        <div className="login-provider-grid" aria-label="Proveedor principal de autenticación corporativa">
-                            <Button className="login-provider-button login-provider-button--primary" type="primary" loading={isSubmitting} onClick={handleMicrosoftLogin} block>
+                        <div className="login-provider-grid">
+                            <Button className="login-provider-button login-provider-button--primary" type="primary" loading={isMicrosoftBusy} disabled={isSubmitting && lastMethod === "local"} onClick={handleMicrosoftLogin} block>
                                 <span className="login-microsoft-logo" aria-hidden="true">
                                     <span />
                                     <span />
@@ -280,28 +350,26 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
                                 </span>
                                 {LOGIN_COPY.microsoft}
                             </Button>
+                            {renderStatus(isMicrosoftBusy ? LOGIN_COPY.microsoftPending : null, "info")}
+                            {lastMethod === "microsoft" ? authErrorView : null}
                         </div>
 
-                        <Divider className="login-divider">{LOGIN_COPY.localDivider}</Divider>
+                        <button type="button" className="login-link login-local-toggle" aria-expanded={isLocalOpen} aria-controls="login-local-panel" onClick={toggleLocal}>
+                            {isLocalOpen ? LOGIN_COPY.localToggleHide : LOGIN_COPY.localToggle}
+                        </button>
 
-                        {authError ? (
-                            <div className="login-status-message login-status-message--error" role="alert" aria-live="assertive">
-                                {authError}
-                            </div>
-                        ) : null}
-
-                        {statusMessage ? (
-                            <div className="login-status-message login-status-message--info" role="status" aria-live="polite">
-                                {statusMessage}
-                            </div>
-                        ) : null}
+                        <div id="login-local-panel" className={`login-local-panel${isLocalEntered ? " login-local-panel--open" : ""}`} hidden={!isLocalMounted}>
+                            <div className="login-local-panel__inner">
+                            <p className="login-local-help">{LOGIN_COPY.localHelp}</p>
+                            {lastMethod === "local" ? authErrorView : null}
+                            {renderStatus(statusMessage, "info")}
 
                         <Form<LoginFormValues> form={form} className="login-form" layout="vertical" requiredMark={false} initialValues={{}} onValuesChange={clearResolvedFieldError}>
                             <Form.Item label={LOGIN_COPY.emailLabel} name="email" validateStatus={fieldErrors.email ? "error" : ""} help={fieldErrors.email ? renderFieldError(fieldErrors.email, LOGIN_ERROR_IDS.email) : null}>
                                 <Input
                                     aria-describedby={fieldErrors.email ? LOGIN_ERROR_IDS.email : undefined}
                                     aria-invalid={Boolean(fieldErrors.email)}
-                                    aria-label="Correo administrativo"
+                                    aria-label="Correo electrónico"
                                     prefix={<MailOutlined aria-hidden="true" />}
                                     placeholder={LOGIN_COPY.emailPlaceholder}
                                     type="email"
@@ -337,6 +405,8 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
                                 {LOGIN_COPY.signIn}
                             </Button>
                         </Form>
+                            </div>
+                        </div>
                     </div>
 
                     <footer className="login-footer">

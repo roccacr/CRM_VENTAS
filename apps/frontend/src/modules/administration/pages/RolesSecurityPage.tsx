@@ -881,7 +881,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
                         <p className="roles-security-protected" role="note">
                             <SafetyCertificateOutlined aria-hidden="true" />
                             <strong>Rol protegido</strong>
-                            <span>{isOwnerContext ? "Control máximo del CRM. Uso limitado a muy pocas personas." : "Plantilla de permisos administrada por el sistema."}</span>
+                            <span>{isOwnerContext ? "Control máximo de Habita. Uso limitado a muy pocas personas." : "Plantilla de permisos administrada por el sistema."}</span>
                         </p>
                     ) : null}
                     {selectedUser ? (

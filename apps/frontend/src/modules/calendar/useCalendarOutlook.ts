@@ -100,7 +100,7 @@ export function useCalendarOutlook(fields: CalendarFields, moduleCode: CalendarM
             setRevision((value) => value + 1);
         } catch {
             closePopupIfOpen(popup);
-            setConnectionError("No se completó la conexión. Inicia con la misma cuenta del CRM; los permisos pueden requerir aprobación del administrador.");
+            setConnectionError("No se completó la conexión. Inicia con la misma cuenta de Habita; los permisos pueden requerir aprobación del administrador.");
         } finally {
             setConnecting(false);
         }

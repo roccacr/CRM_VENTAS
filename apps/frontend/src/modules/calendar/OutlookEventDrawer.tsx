@@ -123,7 +123,7 @@ function EditActions({ event, moduleCode, onSaved, onEditCrm }: Omit<Props, "onC
     return (
         <>
             {moduleCode && onSaved && event.source === "outlook" && <OutlookEventEdit event={event} moduleCode={moduleCode} onSaved={onSaved} />}
-            {[event.source === "native", event.canEdit, onEditCrm].every(Boolean) && <Button onClick={onEditCrm}>Editar evento CRM</Button>}
+            {[event.source === "native", event.canEdit, onEditCrm].every(Boolean) && <Button onClick={onEditCrm}>Editar evento Habita</Button>}
         </>
     );
 }
@@ -141,7 +141,7 @@ export function OutlookEventDrawer({ event, onClose, moduleCode, onSaved, onEdit
             closable={{ placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
             className="user-detail-drawer shared-calendar-drawer"
             open
-            title={event.crmDetail ? "Detalle del evento · Outlook y CRM" : "Evento de Outlook"}
+            title={event.crmDetail ? "Detalle del evento · Outlook y Habita" : "Evento de Outlook"}
             extra={
                 detail?.webLink ? (
                     <Button type="primary" href={detail.webLink} target="_blank" rel="noopener noreferrer" icon={<LinkOutlined aria-hidden="true" />}>

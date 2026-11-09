@@ -9,7 +9,7 @@ beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(apiRequest).mockResolvedValue(data);
 });
-it("reads the CRM record independently from the provider using internal identity", async () => {
+it("reads the Habita record independently from the provider using internal identity", async () => {
     expect(await getDatabaseOrder({ source: "legacy", id: "legacy:208" })).toEqual(data);
     expect(apiRequest).toHaveBeenCalledExactlyOnceWith("/formalization/orders/legacy/208/database");
 });

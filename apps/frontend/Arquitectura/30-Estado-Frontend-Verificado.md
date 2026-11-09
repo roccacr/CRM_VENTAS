@@ -476,3 +476,11 @@ La selección múltiple de meses, semanas, trimestres y años permanece en edici
 El tipo de Período también queda en edición: Hoy/Semana/Mes/Trimestre/Año/Personalizado no consulta ni cambia el rango, agrupación o gráfico aplicados al cambiar el desplegable. Solo Aplicar filtro confirma el tipo junto con sus intervalos.
 
 La comparación temporal se presenta primero por proyecto (o dimensión elegida) y luego por período. El gráfico reúne sus barras en un bloque compacto con escala común; el desglose usa una matriz con una fila por dimensión, períodos como columnas, total por fila y totales por período. Se conserva la cohorte, los ceros y los porcentajes originales.
+
+## Acceso de Mercadeo por rol — revisión 2026-11-04
+
+La navegación requiere membresía activa en `mercadeo` y el permiso efectivo de cada sección: `mercadeo.home.read`, `mercadeo.leads.read` y `mercadeo.calendar.read`. Los catálogos conservan sus permisos específicos. Los perfiles con rol `mercadeo` o `jefe_mercadeo` no necesitan Owner y no reciben acceso a Administración, Ventas o Formalización por esta habilitación.
+
+`mercadeo.reports.read_all` amplía la población autorizada de los reportes de Inicio y Captación a todos los vendedores; no abre secciones por sí solo ni concede edición. Debe estar asignado a los roles de Mercadeo para cumplir la regla de lectura completa. Un `deny` explícito sigue prevaleciendo. El frontend no agrega el identificador del usuario ni un vendedor a las consultas de esos reportes: conserva los filtros de período, proyecto, medida y calificación sobre los datos autorizados que devuelve la API.
+
+La revisión del incidente no encontró un filtro de identidad adicional en estas vistas ni un bloqueo exclusivo a Owner. Las pruebas de navegación utilizan ambos roles sin Owner, los permisos base, notas y lectura global; comprueban las rutas de Mercadeo y el rechazo de módulos ajenos. Las pruebas conectadas comprueban que identidades diferentes del vendedor conservan todos los totales recibidos. Esto no sustituye la verificación real de permisos efectivos en BD y de la sesión Microsoft, documentada por separado.

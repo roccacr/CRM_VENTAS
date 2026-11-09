@@ -57,7 +57,7 @@ const mockUsersResponse = {
             lastActivityAt: null,
             mfaStatus: "pending",
             name: "Javier Castro",
-            orgUnit: { code: "crm_tink", name: "CRM Tink", publicId: "ORG-CRM" },
+            orgUnit: { code: "crm_tink", name: "Habita Tink", publicId: "ORG-CRM" },
             profileImageUrl: null,
             provider: "local",
             publicId: "USR-ROCCA-0003",
@@ -389,7 +389,7 @@ describe("SystemUsersPage", () => {
         expect(within(getUserRow("Andrea Valverde")).getByText("Consulta")).toBeInTheDocument();
         expect(within(getUserRow("Andrea Valverde")).getByText("Finanzas")).toBeInTheDocument();
         expect(within(getUserRow("Roberto Carlos Zúñiga Altamirano")).getByText("+2")).toBeInTheDocument();
-        expect(within(getUserRow("Javier Castro")).getByText("CRM Tink")).toBeInTheDocument();
+        expect(within(getUserRow("Javier Castro")).getByText("Habita Tink")).toBeInTheDocument();
         expect(container.querySelector(".administration-users-table .administration-users-avatar")).not.toBeInTheDocument();
     });
 

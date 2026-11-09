@@ -109,7 +109,7 @@ function OrderDetailsContent({ item, permissions }: { readonly item: FollowUpIte
     if (!detail) return <p role="status">El detalle de la orden no está disponible.</p>;
     return (
         <div className="user-detail-drawer__sections formalization-order-details" aria-label="Detalle completo de la orden">
-            <p className="client-detail__note">Datos de la orden · {state.source === "native" ? "CRM" : "Sistema anterior"}</p>
+            <p className="client-detail__note">Datos de la orden · {state.source === "native" ? "Habita" : "Sistema anterior"}</p>
             {detail.warnings.includes("client:linked_sources") && <p role="status">Datos del cliente vinculados entre ambos sistemas.</p>}
             {detail.warnings.some((warning) => warning !== "client:linked_sources") && <p role="status">Algunas relaciones o datos de la orden no están disponibles. Se muestran únicamente los valores confirmados.</p>}
             <div className="formalization-order-details__grid">

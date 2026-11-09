@@ -1,0 +1,24 @@
+# Publicación Habita — 4 de noviembre de 2026
+
+## Mercadeo: lectura completa por rol
+
+- Autorización expresa en este chat para publicar la corrección. Release activo **20261104063243-06a489c-local**; anterior **20261103234602-06a489c-local** conservado para rollback. SHA256 del paquete: `9140aa5cca1782f6db83324fe5bdd08e821620f4e11d30f0ca7a4471283b2567`.
+- Cambio funcional: lectura del calendario CRM de Mercadeo y búsqueda de leads vinculables sin filtro de vendedor cuando el perfil tiene `mercadeo.reports.read_all`. Se siguen exigiendo membresía y permiso ordinario; denegaciones prevalecen. No amplía edición de eventos ajenos, acceso a otros módulos, notas privadas ni buzones Outlook.
+- Los roles `mercadeo` y `jefe_mercadeo` ya recibieron el permiso mediante el escritor auditado de roles antes de desplegar, conservando las demás concesiones. La comprobación de datos reales previa mostró Inicio/Captación: Diana59,Michelle59,Owner59 para noviembre1–4,7proyectos. No se modificaron credenciales ni se suplantaron sesiones.
+- QA de esta publicación: **116 pruebas API y77frontend aprobadas**; lint API focalizado aprobado. Builds API/frontend aprobados sobre copia fija. No se reejecutó ni se acredita aprobada la suite global.
+- Verificación independiente del servidor: **1404fuentes y770artefactos** sin discrepancias; HTML y10assets públicos coinciden con el paquete. Login, Formalización, Captación, live/ready200; identity/me sin sesión401; habita-pm2activo.
+- Verificación de perfiles efectivos con código compilado del nuevo release y BD productiva: Diana yMichelle activas, solo móduloMercadeo, lectura global/Inicio/Captación autorizadas; `calendarRead={allowed:true,ownOnly:false}` y `calendarUpdate={allowed:true,ownOnly:true}`. Formalización yAdministración noautorizadas. Esta comprobación no es un login Microsoft interactivo en sus dispositivos.
+- Entorno privado conservado byteporbyte: SHA256 `c2d87895d07f041aa1726678871b60149f0fb0528d4e254f367451521165614c`, modo0600. `ENABLE_CALENDAR_EXTERNAL=true` y `ENABLE_ORDER_DOCUMENTS=true`.
+- Sin migraciones, commits/push ni escrituras de negocio durante el despliegue. Comparación del checkout contra la copia fija antes de este recibo: cero cambios posteriores de fuentes. Copias temporales de llave eliminadas; original intacta.
+- Evidencia privada: `C:/codex-data/tmp/habita-marketing-current.txt` apunta a `publish.log`, `verification.log`, `profiles.log`, manifiesto previo y listado de diferencias.
+
+## Formalización: revisión por roles y acceso a órdenes — 00:52 Costa Rica
+
+- Autorización expresa para publicar la corrección de Formalización. Release activo **20261104065246-06a489c-local**; anterior20261104063243-06a489c-local conservado para rollback. Paquete SHA256 `5b268ebc8ef9b0302d944a0134eb40451944c9d01afcf81e774a71ce7d28f45d`.
+- Órdenes y banners ya tenían población global: snapshot readonly Owner331,Kattya331,Milena327. Las cuatro órdenes de diferencia pertenecen a pendientes de aprobación, permiso supervisor; ambas tienen239contratos pendientes. No se ampliaron sus permisos de aprobación, bancos ni Adéndum.
+- Correcciones: lectura de calendario Formalización por equipo para sus dos roles activos, exigiendo permiso ordinario y membresía, sin ampliar edición; autorización de `/home/formalization/orders` desacoplada del menú de gestión oculto, reutilizando el permiso exacto de lectura y manteniendo membresía/denegaciones.
+-234 pruebas focalizadas aprobadas:182API/8suites y52frontend/2suites. Lint focalizado y typecheck/build aprobados; ambas apps compiladas desde copia fija. No se reejecutó ni se acredita verde la suite global. Se alinearon fixtures históricos con retiro real de permisos al revocar roles y con el menú oculto solicitado.
+- Verificación independiente del release:1406fuentes y770artefactos correctos, HTML y10assets públicos conhashigual. Login, Formalización, Captación, live/ready200; identity/me sin sesión401; habita-pm2activo.
+- Perfiles reales con código compilado de producción: Kattya yMilena activas y solo móduloFormalización; orderReadtrue; calendarReadallowedtrue/ownOnlyfalse; calendarUpdateallowedtrue/ownOnlytrue; Mercadeo noautorizado. Aprobaciones visibles solo aKattya. No se inició sesión Microsoft por ellas ni se alteraron credenciales.
+- Configuración privada preservada byteporbyte (SHA256 `c2d87895d07f041aa1726678871b60149f0fb0528d4e254f367451521165614c`, modo0600). Calendario externo y documentos siguen `true`. Sin migraciones, cambios de BD, commits/push ni efectos externos de negocio.
+- Comparación final del checkout contra la copia fija antes de este recibo: cero fuentes posteriores. Copias temporales de llave eliminadas; original intacta. Evidencias privadas: `C:/codex-data/tmp/habita-formalization-current.txt` y `C:/codex-data/tmp/formalization-access-20261104/`.

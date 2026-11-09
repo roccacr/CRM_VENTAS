@@ -211,10 +211,18 @@ export class CalendarLookupService {
                 return this.leads(tx, profile, source, query);
             case "orders": {
                 const rows = await this.orders(tx, profile, source, query);
+                // Varias ordenes comparten lead: se resuelve una sola vez por lead y se reutiliza el resultado autorizado de esta peticion.
+                const leadByLeadId = new Map<string, Promise<CalendarLookupItem["lead"]>>();
                 return Promise.all(
                     rows.map(async (row) => {
                         const leadId: unknown = Reflect.get(row, "leadId");
-                        const lead = await this.orderLead(tx, profile, source, typeof leadId === "string" ? leadId : undefined);
+                        const resolvedLeadId = typeof leadId === "string" ? leadId : undefined;
+                        let pending = resolvedLeadId ? leadByLeadId.get(resolvedLeadId) : undefined;
+                        if (!pending) {
+                            pending = this.orderLead(tx, profile, source, resolvedLeadId);
+                            if (resolvedLeadId) leadByLeadId.set(resolvedLeadId, pending);
+                        }
+                        const lead = await pending;
                         return { ...row, ...(lead ? { lead } : {}) };
                     }),
                 );

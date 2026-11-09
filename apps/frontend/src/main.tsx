@@ -19,7 +19,7 @@ function getRootElement(): HTMLElement {
     const rootElement = document.getElementById(ROOT_ELEMENT_ID);
 
     if (!rootElement) {
-        throw new Error(`Falta el elemento #${ROOT_ELEMENT_ID} para iniciar el frontend CRM TINK.`);
+        throw new Error(`Falta el elemento #${ROOT_ELEMENT_ID} para iniciar el frontend Habita.`);
     }
 
     return rootElement;

@@ -120,7 +120,7 @@ export function CatalogItemsDataTable(props: CatalogItemsDataTableProps) {
                 <div className="projects-view-loader" data-loading={props.isLoading} role="status" aria-label={`Cargando ${props.label.toLocaleLowerCase("es-CR")}`}>
                     <span className="projects-view-loader__ring" aria-hidden="true" />
                     <span className="projects-view-loader__title">Cargando {props.label.toLocaleLowerCase("es-CR")}...</span>
-                    <span className="projects-view-loader__caption">Sincronizando registros y catálogo CRM</span>
+                    <span className="projects-view-loader__caption">Sincronizando registros y catálogo Habita</span>
                 </div>
             )}
             {(!props.isLoading || props.items.length > 0) && (

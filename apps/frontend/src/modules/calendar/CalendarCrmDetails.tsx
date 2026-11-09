@@ -19,9 +19,9 @@ function linkedRecordPath(link: CalendarCrmDetail["links"][number]): string | nu
 export function CalendarCrmDetails({ event }: { readonly event: CalendarEvent }) {
     if (!event.crmDetail)
         return (
-            <section className="event-card calendar-crm-detail" aria-label="Datos CRM">
-                <h2>Datos CRM</h2>
-                <p>{event.source === "outlook" ? "Sin registro CRM vinculado." : "No hay detalles CRM adicionales disponibles."}</p>
+            <section className="event-card calendar-crm-detail" aria-label="Datos Habita">
+                <h2>Datos Habita</h2>
+                <p>{event.source === "outlook" ? "Sin registro Habita vinculado." : "No hay detalles Habita adicionales disponibles."}</p>
             </section>
         );
     return event.crmDetail.loaded ? <CrmContent crm={event.crmDetail} outlookBody={event.description} eventId={event.id} /> : <CrmLoader event={event} />;
@@ -45,15 +45,15 @@ function CrmLoader({ event }: { readonly event: CalendarEvent }) {
     }, [event.id, key]);
     if (snapshot?.key !== key)
         return (
-            <section className="event-card calendar-crm-detail" role="status" aria-label="Cargando datos CRM">
+            <section className="event-card calendar-crm-detail" role="status" aria-label="Cargando datos Habita">
                 <Skeleton active paragraph={{ rows: 5 }} />
             </section>
         );
     if (!snapshot.detail)
         return (
-            <section className="event-card calendar-crm-detail" aria-label="Datos CRM">
-                <h2>Datos CRM</h2>
-                <p role="status">No se pudieron consultar los datos CRM actuales.</p>
+            <section className="event-card calendar-crm-detail" aria-label="Datos Habita">
+                <h2>Datos Habita</h2>
+                <p role="status">No se pudieron consultar los datos Habita actuales.</p>
                 <button
                     type="button"
                     onClick={() => {
@@ -98,7 +98,7 @@ function CrmLinks({ crm }: { readonly crm: CalendarCrmDetail }) {
 function CrmParticipants({ crm }: { readonly crm: CalendarCrmDetail }) {
     return (
         <>
-            <h3>Participantes registrados en CRM</h3>
+            <h3>Participantes registrados en Habita</h3>
             {crm.participants.length ? (
                 <ul>
                     {crm.participants.map((person, index) => (
@@ -120,8 +120,8 @@ function CrmContent({ crm, outlookBody, eventId }: { readonly crm: CalendarCrmDe
         void markCalendarEventRead(eventId).catch(() => undefined);
     }, [eventId]);
     return (
-        <section className="event-card calendar-crm-detail" aria-label="Datos CRM">
-            <h2>Datos CRM</h2>
+        <section className="event-card calendar-crm-detail" aria-label="Datos Habita">
+            <h2>Datos Habita</h2>
             <p className="calendar-crm-detail__type">
                 <span aria-hidden="true" style={{ backgroundColor: crm.typeColor ?? "#64748b" }} />
                 {crm.typeLabel}
@@ -171,7 +171,7 @@ function CrmValues({ crm, version, showDescription }: { readonly crm: CalendarCr
                 fields={[
                     ["Módulo", CALENDAR_CONTEXT[crm.moduleCode].label],
                     ["Estado", statusLabels[crm.status]],
-                    ["Nombre en CRM", crm.title],
+                    ["Nombre en Habita", crm.title],
                     ["Referencia interna", crm.reference, true],
                     ["Organizador", crm.organizerName],
                 ]}
@@ -202,7 +202,7 @@ function CrmValues({ crm, version, showDescription }: { readonly crm: CalendarCr
                 <>
                     <hr className="calendar-crm-detail__rule" />
                     <div className="calendar-crm-detail__group">
-                        <h3>Descripción guardada en CRM</h3>
+                        <h3>Descripción guardada en Habita</h3>
                         <p className="calendar-crm-detail__description">{crm.description || "Sin descripción."}</p>
                     </div>
                 </>

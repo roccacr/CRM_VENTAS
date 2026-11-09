@@ -28,7 +28,7 @@ it("renders independent module and type colors on the real calendar event elemen
     expect(element?.style.getPropertyValue("--fc-event-color")).toBe("#475569");
     expect(element).toHaveAttribute("title", "Evento dos colores · Formalización · General");
 });
-it("displays an Outlook-only event without inventing CRM ownership or exposing an editor", async () => {
+it("displays an Outlook-only event without inventing Habita ownership or exposing an editor", async () => {
     const remote = { ...event, id: "outlook-only", source: "outlook", originModule: null, typeId: "", typeCode: "", formKey: "outlook.readonly", canEdit: false, details: {}, title: "Cita personal" };
     vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [remote], outlookStatus: "connected" }));
     render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);

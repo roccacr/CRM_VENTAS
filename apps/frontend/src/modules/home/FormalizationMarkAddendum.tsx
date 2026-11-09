@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiClientError } from "../../services/api/api-client";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { getOrderAddendum, markOrderAddendumPending, type OrderAddendum, type PendingAddendumCommand } from "../../services/formalization/order-addendum-service";
+import { ADMINISTRATION_MODAL_Z_INDEX } from "../administration/administration-theme";
 import { type AddendumPermission, canMarkOrderAddendum } from "./order-addendum-permissions";
 
 interface Props {
@@ -119,6 +120,8 @@ function MarkAddendumDialog(props: DialogProps) {
     return (
         <Modal
             open
+            // La capa global de oscurecimiento también cubre modales con el nivel predeterminado de AntD.
+            zIndex={ADMINISTRATION_MODAL_Z_INDEX}
             title={`Marcar adéndum pendiente · ${props.item.number}`}
             onCancel={() => {
                 if (!model.busy) props.onClose();

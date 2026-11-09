@@ -7,7 +7,7 @@ afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
 });
-it("does not mistake the existing CRM session for completed calendar consent", async () => {
+it("does not mistake the existing Habita session for completed calendar consent", async () => {
     vi.useFakeTimers();
     const close = vi.fn();
     const popup = { closed: false, location: { origin: "https://login.microsoftonline.com", search: "" }, close } as unknown as Window;

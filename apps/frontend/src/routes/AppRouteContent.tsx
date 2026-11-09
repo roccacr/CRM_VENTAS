@@ -108,7 +108,7 @@ function AuthenticatedRouteFeedback({ unknown, defaultPath, onNavigate }: { read
                         {unknown ? "Ruta no encontrada" : "Acceso no autorizado"}
                     </span>
                 }
-                subTitle={unknown ? "La dirección solicitada no existe o fue movida dentro del CRM." : "Tu usuario está autenticado, pero no tiene permiso para abrir esta vista."}
+                subTitle={unknown ? "La dirección solicitada no existe o fue movida dentro de Habita." : "Tu usuario está autenticado, pero no tiene permiso para abrir esta vista."}
                 extra={
                     defaultPath ? (
                         <Button

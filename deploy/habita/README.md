@@ -93,6 +93,11 @@ Desde PowerShell 7, con Node 22, pnpm 10.28.2 y dependencias locales instaladas:
 ./deploy/habita/publish.ps1 -SshKeyPath 'RUTA_A_LA_LLAVE.pem'
 ```
 
+El encabezado de Habita muestra la versión del producto junto al logo.
+El publicador incorpora el identificador del release en la compilación del
+frontend. La etiqueta muestra la revisión corta y su detalle conserva el
+identificador completo.
+
 Incluye la rama actual y sus cambios locales, sin commit/push. Compila API y
 frontend desde una copia fija antes de transferir, verifica la copia de código,
 excluye `.env` y llaves, y verifica SHA-256 en destino. `activate-release.sh`

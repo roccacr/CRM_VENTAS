@@ -138,7 +138,7 @@ it("preserves drawer navigation and follow-up with one authorized client read an
 it("labels the authoritative returned source and suppresses an obsolete actor from the requested source", async () => {
     vi.mocked(getDatabaseOrder).mockResolvedValue({ ...snapshot(), source: "native" });
     render(<FormalizationOrderDetails item={item} />);
-    await screen.findByText("Datos de la orden · CRM");
+    await screen.findByText("Datos de la orden · Habita");
     expect(screen.queryByText("Datos de la orden · Sistema anterior")).toBeNull();
     expect(screen.queryByText("Autor verificado")).toBeNull();
 });

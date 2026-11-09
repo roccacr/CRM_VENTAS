@@ -34,7 +34,7 @@ export function FormalizationApprovalAction({ item, onSaved, onRefresh, onApprov
             operation.current ??= crypto.randomUUID();
             const result = await approveFormalizationOrder({ source: item.source, id: item.id, expectedSequence: Number(item.stateVersion), operationId: operation.current });
             // Lock a completed command even if the targeted refresh fails or has not remounted us yet.
-            const successMessage = result.alreadyApproved ? "NetSuite ya tenía marcada la aprobación de Formalización. El CRM quedó sincronizado." : "Aprobación de Formalización guardada en NetSuite y en el CRM.";
+            const successMessage = result.alreadyApproved ? "NetSuite ya tenía marcada la aprobación de Formalización. El Habita quedó sincronizado." : "Aprobación de Formalización guardada en NetSuite y en Habita.";
             notification.success({ title: "Aprobación completada", description: successMessage, placement: "bottomLeft", duration: 6 });
             setBlocked(true);
             setConfirming(false);
@@ -104,7 +104,7 @@ export function FormalizationApprovalAction({ item, onSaved, onRefresh, onApprov
 function approvalError(failure: unknown): string {
     if (!(failure instanceof ApiClientError)) return "No se pudo confirmar la aprobación. Puedes reintentar la misma operación.";
     const code = approvalErrorCode(failure.responseBody);
-    if (failure.status === 503 && code === "FORMALIZATION_APPROVAL_RECONCILIATION_REQUIRED") return "NetSuite confirmó la aprobación, pero falta sincronizar el CRM. Reintenta la misma operación.";
+    if (failure.status === 503 && code === "FORMALIZATION_APPROVAL_RECONCILIATION_REQUIRED") return "NetSuite confirmó la aprobación, pero falta sincronizar Habita. Reintenta la misma operación.";
     if ([404, 409].includes(failure.status)) return APPROVAL_REJECTIONS.get(code) ?? "La orden cambió o ya no está disponible. Actualiza la orden antes de aprobar.";
     if ([401, 403].includes(failure.status)) return "No tienes permiso vigente para aprobar esta orden. Actualiza la orden para verificar tu acceso.";
     return "No se pudo confirmar la aprobación. Puedes reintentar la misma operación.";
@@ -116,10 +116,10 @@ function validVersion(value: unknown): boolean {
 
 // Only fixed messages are shown; a provider or server message cannot inject arbitrary details.
 const APPROVAL_REJECTIONS: ReadonlyMap<string, string> = new Map([
-    ["CRM_SALES_ORDER_NOT_FOUND", "La orden de venta ya no existe o no está disponible en el CRM."],
-    ["CRM_SALES_ORDER_UNAVAILABLE", "No se puede aprobar: la orden está inactiva o marcada como venta caída en el CRM."],
-    ["CRM_APPROVAL_PREREQUISITES_REQUIRED", "En el CRM faltan las aprobaciones de Jefe de Ventas y/o Desarrolladora."],
-    ["NETSUITE_SALES_ORDER_NOT_FOUND", "La orden de venta no existe en NetSuite en el entorno configurado. No se aprobó ni se modificó el CRM."],
+    ["CRM_SALES_ORDER_NOT_FOUND", "La orden de venta ya no existe o no está disponible en Habita."],
+    ["CRM_SALES_ORDER_UNAVAILABLE", "No se puede aprobar: la orden está inactiva o marcada como venta caída en Habita."],
+    ["CRM_APPROVAL_PREREQUISITES_REQUIRED", "En Habita faltan las aprobaciones de Jefe de Ventas y/o Desarrolladora."],
+    ["NETSUITE_SALES_ORDER_NOT_FOUND", "La orden de venta no existe en NetSuite en el entorno configurado. No se aprobó ni se modificó Habita."],
     ["APPROVAL_PREREQUISITES_REQUIRED", "NetSuite rechazó la aprobación: faltan las aprobaciones de Jefe de Ventas y/o Desarrolladora. Revisa la orden en el entorno configurado."],
     ["SALES_ORDER_CANCELLED", "NetSuite rechazó la aprobación porque la orden está marcada como venta caída."],
 ]);

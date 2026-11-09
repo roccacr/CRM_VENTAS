@@ -12,6 +12,8 @@ export interface MysqlPoolOptionsInput {
     port: number;
     user: string;
     connectionLimit: number;
+    /** Maximo de peticiones en espera de conexion; 0 (default de mysql2) = sin limite. */
+    queueLimit?: number;
     ssl: boolean;
     sslCaPath?: string;
 }
@@ -55,6 +57,10 @@ export const buildMysqlPoolOptions = (input: MysqlPoolOptionsInput): PoolOptions
         connectionLimit: input.connectionLimit,
         multipleStatements: false,
     };
+
+    if (input.queueLimit !== undefined) {
+        poolOptions.queueLimit = input.queueLimit;
+    }
 
     const sslOptions = buildSslOptions(input);
 

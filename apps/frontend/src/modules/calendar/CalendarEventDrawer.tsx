@@ -222,7 +222,7 @@ function FailureNotice({ model, onRefresh }: { readonly model: Model; readonly o
             <p role="alert">{model.failure.message}</p>
             {model.confirmedId && (
                 <button type="button" onClick={model.finishCrmOnly}>
-                    Cerrar con evento guardado en CRM
+                    Cerrar con evento guardado en Habita
                 </button>
             )}
             {model.failure.stale && <Button onClick={onRefresh}>Recargar calendario</Button>}
@@ -435,7 +435,7 @@ function DeliveryNotice({ model }: { readonly model: Model }) {
                 </div>
             </div>
             <p role="status" className="calendar-save-result__intro">
-                Ya está disponible en CRM y en tu calendario de Outlook.
+                Ya está disponible en Habita y en tu calendario de Outlook.
             </p>
             <div className="calendar-save-result__summary">
                 <h3>{model.fields.title}</h3>

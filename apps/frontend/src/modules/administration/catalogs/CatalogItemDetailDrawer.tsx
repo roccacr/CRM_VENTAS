@@ -300,7 +300,7 @@ export function CatalogItemDetailDrawer({ canEdit: editPermission, canInactivate
                             items={[
                                 {
                                     key: "publicId",
-                                    label: "ID CRM",
+                                    label: "ID Habita",
                                     children: <CatalogDetailIdentifier value={item.publicId} pendingMigration={item.publicId.startsWith("legacy:")} />,
                                 },
                                 {

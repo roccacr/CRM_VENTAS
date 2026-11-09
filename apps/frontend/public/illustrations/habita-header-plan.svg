@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 56" preserveAspectRatio="none">
+  <defs>
+    <pattern id="grid" width="16" height="14" patternUnits="userSpaceOnUse">
+      <path d="M0 14V0h16" fill="none" stroke="#ddd" stroke-width=".6"/>
+    </pattern>
+  </defs>
+  <path fill="url(#grid)" d="M0 0h1600v56H0z"/>
+  <g fill="none" stroke="#bcbcbc" stroke-width=".85" stroke-linejoin="round">
+    <!-- Planta y cotas -->
+    <path d="M-18 10h144v38H-18M-8 14h130v30H-8m53-30v14m0 12v4m37-30v30m0-17h40M0 30h45m0-2a12 12 0 0 1 12 12H45M92 20h20m-20 16h20M7 5h111M7 2v6m38-6v6m37-6v6m36-6v6M138 10v38m-3-38h6m-6 38h6"/>
+    <path d="M126 29h57l18-16h71l17 16h78m-167 0h72m-66 0v18h60V29m-49 6h12v12m13-12h13v7h-13z"/>
+    <!-- Fachada y niveles -->
+    <path d="M366 29h42l24-23h113l22 23h37m-187 18h157m-142 0V19h113v28m-103-23h19v9h-19zm31 0h19v9h-19zm31 0h19v9h-19zm-62 14h19v9h-19zm31 0h19v9h-19zm31 0h19v9h-19zm-76-25h121m-116-9v5m109-5v5m11 8v29m-4-29h8m-8 29h8"/>
+    <!-- Expediente, firma y sello -->
+    <path d="M604 29h49l19-18h43l10 10v27h-53V11m43 0v10h10m-45 1h24m-24 6h35m-35 6h24m-24 8 5-4 4 4 5-2h11m20-11h41l16 15h56"/>
+    <circle cx="721" cy="42" r="8"/>
+    <path d="m717 42 3 3 5-6"/>
+    <!-- Alcance comercial y libro contable -->
+    <path d="M839 44h112m-106 0V10m8 34V33h12v11m8 0V28h12v16m8 0V23h12v21m8 0V16h12v28m-67-17 20-5 20-5 21-8 31 20h79m-113-18h8v7m105 11 20-17h78v33h-78V12m0 11h78m-55 0v22m32-22v22m-55-11h78m-72-6h10m13 0h16m15 0h13m-67 11h10m13 0h16m15 0h13"/>
+    <!-- Hitos de entrega -->
+    <path d="M1127 29h51l23-16h98l19 16h91l18-16h173m-422 16 23 16h98l19-16m91 0 18 16h173"/>
+    <circle cx="1222" cy="29" r="9"/>
+    <circle cx="1250" cy="29" r="9"/>
+    <circle cx="1278" cy="29" r="9"/>
+    <path d="m1218 29 3 3 5-6m20 3 3 3 5-6m24-1v8m-4-4h8"/>
+  </g>
+</svg>

@@ -118,7 +118,7 @@ function pendingDelivery(command: CalendarEventCommand, saved: CalendarEvent): b
 }
 function deliveryFailure(saved: CalendarEvent) {
     const stale = saved.delivery?.status === "conflict";
-    const message = stale ? `Evento ${saved.id} guardado en CRM. Outlook detectó otra versión del evento. Recarga el calendario para revisar sus datos antes de volver a sincronizar.` : `Evento ${saved.id} guardado en CRM. Outlook no confirmó la sincronización. Reintenta la misma operación o conserva solo el registro CRM.`;
+    const message = stale ? `Evento ${saved.id} guardado en Habita. Outlook detectó otra versión del evento. Recarga el calendario para revisar sus datos antes de volver a sincronizar.` : `Evento ${saved.id} guardado en Habita. Outlook no confirmó la sincronización. Reintenta la misma operación o conserva solo el registro Habita.`;
     return { stale, uncertain: !stale, message };
 }
 function writeFailure(error: unknown) {

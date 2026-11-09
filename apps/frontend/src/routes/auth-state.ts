@@ -5,6 +5,7 @@
  * vuelve a autorizar cada llamada. Un fallo en login deja ver el formulario;
  * un fallo en una ruta privada muestra el problema de acceso.
  */
+import { canReadFormalizationOrder } from "../modules/home/formalization-read-policy";
 import { ASSIGNED_WORKSPACES, getVisibleNavigationWorkspaces } from "../modules/home/GlobalHomeShell";
 import { ApiClientError, refreshAuthenticatedSession } from "../services/api/api-client";
 import { getIdentityProfile, getIdentitySession } from "../services/auth/auth-service";
@@ -50,6 +51,9 @@ const hasWorkspaceRouteAccess = (profile: IdentityProfile, path: string): boolea
 
     const workspace = getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits).find((item) => item.code === workspaceCode);
     if (!workspace) return false;
+
+    // El menú de gestión está oculto por UX; la ruta de la orden conserva su autorización propia.
+    if ([workspaceCode === "formalization", route.menuItemCode === "formalization-management"].every(Boolean)) return canReadFormalizationOrder(profile.roles, profile.permissions);
 
     const homePath = getWorkspaceHomePath(workspaceCode);
     const definition = ASSIGNED_WORKSPACES.find((item) => item.code === workspaceCode);
