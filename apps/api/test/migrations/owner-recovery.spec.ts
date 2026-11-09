@@ -30,9 +30,9 @@ describe("owner-only recovery selection", () => {
     });
 
     it("fails closed if Roberto or Owner is missing or ambiguous", () => {
-        expect(() => selectOwnerRecoveryRows({ ...snapshot, sec_user: [] })).toThrow();
-        expect(() => selectOwnerRecoveryRows({ ...snapshot, sec_user: [...snapshot.sec_user, ...snapshot.sec_user] })).toThrow();
-        expect(() => selectOwnerRecoveryRows({ ...snapshot, sec_role: [] })).toThrow();
-        expect(() => selectOwnerRecoveryRows({ ...snapshot, sec_auth_identity: [] })).toThrow();
+        expect(() => selectOwnerRecoveryRows({ ...snapshot, sec_user: [] })).toThrow("Recovery requires exactly one Roberto identity and one active Owner role");
+        expect(() => selectOwnerRecoveryRows({ ...snapshot, sec_user: [...snapshot.sec_user, ...snapshot.sec_user] })).toThrow("Recovery requires exactly one Roberto identity and one active Owner role");
+        expect(() => selectOwnerRecoveryRows({ ...snapshot, sec_role: [] })).toThrow("Recovery requires exactly one Roberto identity and one active Owner role");
+        expect(() => selectOwnerRecoveryRows({ ...snapshot, sec_auth_identity: [] })).toThrow("Owner authentication identity missing");
     });
 });

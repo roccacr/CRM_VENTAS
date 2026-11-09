@@ -157,7 +157,7 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         const trigger = destination === "native" ? "cancel_failure" : "crmdatabase-api.cancel_failure";
         await sql`CREATE TRIGGER ${sql.table(trigger)} BEFORE UPDATE ON ${sql.table(table)} FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic cancellation error'`.execute(db);
         try {
-            await expect(service.receive(cancellationEvent(true, 2))).rejects.toThrow();
+            await expect(service.receive(cancellationEvent(true, 2))).rejects.toThrow("Fallo al actualizar la orden o confirmar su bitacora.");
             const row = await flags(destination);
             const expected = destination === "native" ? { cancelled_sales_order: "unknown", cancellation_marked_on_sales_order: null } : { caida_ov: null, envioReservaCaida: null };
             expect(row).toMatchObject(expected);
@@ -294,7 +294,7 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         const table = await paidBalanceFixture(destination);
         await sql`CREATE TRIGGER fail_paid_state_audit BEFORE INSERT ON audit_record_event FOR EACH ROW BEGIN IF NEW.action_record_event='state_change' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic state audit failure'; END IF; END`.execute(db);
         try {
-            await expect(service.receive(paidEvent())).rejects.toThrow();
+            await expect(service.receive(paidEvent())).rejects.toThrow("Fallo al actualizar la orden o confirmar su bitacora.");
             expect((await flags(destination))?.[destination === "native" ? "installments_fully_paid_sales_order" : "cuotas_pagadas_completo_ov"]).toBe(destination === "native" ? "no" : 0);
             expect((await sql`SELECT * FROM ${sql.table(table)}`.execute(db)).rows).toHaveLength(1);
             expect((await sql`SELECT * FROM int_netsuite_order_cursor`.execute(db)).rows).toHaveLength(0);
@@ -562,14 +562,14 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
     it("rolls back a failed update and records the error", async () => {
         await native();
         await sql`CREATE TRIGGER fail_order_update BEFORE UPDATE ON crm_sales_order FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic failure'`.execute(db);
-        await expect(service.receive(event())).rejects.toThrow();
+        await expect(service.receive(event())).rejects.toThrow("Fallo al actualizar la orden o confirmar su bitacora.");
         expect((await flags("native"))?.contract_signed_sales_order).toBe("unknown");
         expect((await audit())[0]).toMatchObject({ result: "error", destination: "native" });
     });
     it("rolls back legacy too when writing the native audit fails", async () => {
         await legacy();
         await sql`CREATE TRIGGER fail_success_audit BEFORE INSERT ON audit_netsuite_order_event FOR EACH ROW BEGIN IF NEW.result='applied' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic audit failure'; END IF; END`.execute(db);
-        await expect(service.receive(event())).rejects.toThrow();
+        await expect(service.receive(event())).rejects.toThrow("Fallo al actualizar la orden o confirmar su bitacora.");
         expect((await flags("legacy"))?.cuotas_pagadas_completo_ov).toBeNull();
         expect((await audit())[0]).toMatchObject({ result: "error", destination: "legacy" });
     });
@@ -577,7 +577,7 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await legacy();
         await sql`CREATE TRIGGER fail_central_audit BEFORE INSERT ON audit_record_event FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic central audit failure'`.execute(db);
         try {
-            await expect(service.receive(event())).rejects.toThrow();
+            await expect(service.receive(event())).rejects.toThrow("Fallo al actualizar la orden o confirmar su bitacora.");
             expect((await flags("legacy"))?.cuotas_pagadas_completo_ov).toBeNull();
             expect((await audit())[0]).toMatchObject({ result: "error", destination: "legacy" });
         } finally {

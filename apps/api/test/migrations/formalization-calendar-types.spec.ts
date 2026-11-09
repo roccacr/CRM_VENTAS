@@ -2,6 +2,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it } from "vitest";
 
 import { formalizationCalendarTypesMigration as migration } from "../../migrations/schema-only/202611020061_formalization_calendar_types.js";
+import { anyOf } from "../support/throws.js";
 type TypeRow = { id: number; publicId: string; moduleId: number; code: string; label: string; color: string; formKey: string; status: string };
 const modules = ["formalizacion", "mercadeo", "ventas", "contabilidad"].map((code, i) => ({ id: i + 1, code, status: "active", deleted: null }));
 const existingGeneral: TypeRow = { id: 51, publicId: "general-id", moduleId: 1, code: "general", label: "Mi evento", color: "#496180", formKey: "formalizacion.custom.v3", status: "inactive" };
@@ -99,7 +100,7 @@ describe("Formalización calendar types migration", () => {
     it.each([{ database: "crmdatabase-api" }, { missingModule: true }, { noLedger: true }, { noActor: true }])("rejects unsafe prerequisites %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Formalization calendar types require CRM_THINK_V2", "An active Formalización module is required", "Formalization calendar types require migration 054", "Active Owner audit attribution is required"));
             expect(f.rows()).toEqual([existingGeneral]);
         } finally {
             await f.db.destroy();

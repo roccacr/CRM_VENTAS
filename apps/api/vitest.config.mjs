@@ -5,6 +5,7 @@ const realMysqlTests = [process.env.IDENTITY_ACCESS_MYSQL_TESTS, process.env.ADM
 
 export default defineConfig({
     test: {
+        reporters: ["default", "./test/support/skipped-persistence-reporter.mjs"],
         fileParallelism: !realMysqlTests,
         coverage: {
             provider: "v8",

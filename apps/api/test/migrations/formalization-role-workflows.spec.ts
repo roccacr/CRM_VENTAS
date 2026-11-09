@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { formalizationRolePermissions, formalizationRoleWorkflowsMigration as migration } from "../../migrations/schema-only/202610280049_formalization_role_workflows.js";
 import { schemaMigrations, selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
+import { anyOf } from "../support/throws.js";
 
 type Grant = { role: number; code: string; status: string };
 type Options = { database?: string; missingTable?: boolean; missingRole?: boolean; missingPermission?: boolean; inactivePermission?: boolean; actorMissing?: boolean; failAudit?: boolean; grants?: Grant[] };
@@ -102,7 +103,7 @@ describe("Formalization role workflow baseline", () => {
     it.each([{ database: "crmdatabase-api" }, { missingTable: true }, { missingRole: true }, { missingPermission: true }, { inactivePermission: true }, { actorMissing: true }])("fails closed before mutations on invalid native configuration %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Formalization workflow grants require CRM_THINK_V2", "Formalization workflow grants require native InnoDB security tables", "Both active Formalization workflow roles are required", "Active Formalization permission definitions are incomplete or conflicting", "Formalization workflow grants require Owner audit attribution"));
             expect(writes(f.queries)).toEqual([]);
             expect(f.transactions).toEqual(["begin", "rollback"]);
         } finally {

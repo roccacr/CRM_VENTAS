@@ -24,7 +24,7 @@ describe("NetSuite operational flags", () => {
     it.each([undefined, null, "false", "true", 0, 1, ""])("rejects missing or ambiguous flags: %s", (value) => {
         const fields: Record<string, unknown> = Object.fromEntries(orderFlagMappings.map((field) => [field.netsuite, true]));
         fields.custbody_cuotas_pagadas = value;
-        expect(() => mapOrderFlags(fields, "native", {})).toThrow();
+        expect(() => mapOrderFlags(fields, "native", {})).toThrow("Checkbox requerido invalido: custbody_cuotas_pagadas");
     });
     it("reports only actual changes and preserves the previous value", () => {
         const fields: Record<string, unknown> = Object.fromEntries(orderFlagMappings.map((field) => [field.netsuite, false]));

@@ -50,9 +50,9 @@ describe("self-bound notification API", () => {
     });
     it("never marks another or revoked notification and rejects future cutoffs", async () => {
         const f = fixture();
-        await expect(f.service.read("session", id)).rejects.toThrow();
+        await expect(f.service.read("session", id)).rejects.toThrow("Notificacion disponible no encontrada.");
         expect(f.repository.markRead).not.toHaveBeenCalled();
-        await expect(f.service.readAll("session", { through: "2999-01-01T00:00:00.000Z" })).rejects.toThrow();
+        await expect(f.service.readAll("session", { through: "2999-01-01T00:00:00.000Z" })).rejects.toThrow("El corte de lectura no puede ser futuro.");
     });
     it("only marks authorized existing metadata through the observed instant", async () => {
         const f = fixture();

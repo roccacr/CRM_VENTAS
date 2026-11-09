@@ -34,6 +34,6 @@ describe("MicrosoftMsalCacheCryptoService", () => {
         const service = createCryptoService();
         const encrypted = service.encrypt('{"cache":true}');
 
-        expect(() => service.decrypt({ ...encrypted, ciphertext: `${encrypted.ciphertext.slice(0, -2)}AA` })).toThrow();
+        expect(() => service.decrypt({ ...encrypted, ciphertext: `${encrypted.ciphertext.slice(0, -2)}AA` })).toThrow("Unsupported state or unable to authenticate data");
     });
 });

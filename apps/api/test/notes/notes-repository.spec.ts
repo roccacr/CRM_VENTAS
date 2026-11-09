@@ -1,3 +1,4 @@
+import { ConflictException } from "@nestjs/common";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult } from "kysely";
 import { describe, expect, it, vi } from "vitest";
 
@@ -92,7 +93,7 @@ describe("notes repository transactions", () => {
         { status: "open" as const, version: 2 },
     ])("rejects archived or stale lifecycle changes before writes: %j", async (note) => {
         const f = fixture({ note });
-        await expect(f.repository.lifecycle(access, original.publicId, { moduleCode: "ventas", operationId: input.operationId, expectedVersion: 1 }, "complete")).rejects.toThrow();
+        await expect(f.repository.lifecycle(access, original.publicId, { moduleCode: "ventas", operationId: input.operationId, expectedVersion: 1 }, "complete")).rejects.toThrow(ConflictException);
         expect(f.audit.append).not.toHaveBeenCalled();
         expect(f.lifecycle).toEqual(["begin", "rollback"]);
         await f.db.destroy();

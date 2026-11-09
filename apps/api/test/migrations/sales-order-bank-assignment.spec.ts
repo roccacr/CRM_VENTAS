@@ -2,6 +2,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it } from "vitest";
 
 import { salesOrderBankAssignmentDdl, salesOrderBankAssignmentMigration } from "../../migrations/schema-only/202611030069_sales_order_bank_assignment.js";
+import { anyOf } from "../support/throws.js";
 
 function fixture(options: { destination?: string; drift?: boolean; missingParent?: boolean; failCreate?: boolean } = {}) {
     const queries: CompiledQuery[] = [];
@@ -49,7 +50,7 @@ describe("central sales-order bank assignment schema", () => {
     });
     it.each([{ destination: "crmdatabase-api" }, { drift: true }, { missingParent: true }])("rejects preflight %j before DDL", async (options) => {
         const f = fixture(options);
-        await expect(salesOrderBankAssignmentMigration.up(f.db)).rejects.toThrow();
+        await expect(salesOrderBankAssignmentMigration.up(f.db)).rejects.toThrow(anyOf("Banks schema destination mismatch", "Bank assignment schema drift; reconcile explicitly before retry", "Bank assignment requires native InnoDB parent tables"));
         expect(f.queries.some((q) => q.sql.startsWith("CREATE TABLE"))).toBe(false);
         await f.db.destroy();
     });

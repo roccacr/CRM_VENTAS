@@ -16,16 +16,16 @@ describe("independent order detail authorization", () => {
     it.each(["formalizacion.home.contracts.read", "formalizacion.home.approvals.read", "formalizacion.home.stages.read"])("denies banner-only %s", (code) => {
         expect(() => {
             assertFormalizationOrderReadable(profile(code), { ...order, approved: 1, pendingApproval: true, rawStage: "contract_pending_send" });
-        }).toThrow();
+        }).toThrow("No tiene permiso para consultar esta orden.");
     });
     it("denies explicit deny, an inactive role with no effective grant, and an inactive order", () => {
         for (const p of [profile("formalizacion.orders.read", "deny"), { roles: [{ code: "formalizacion", status: "inactive" }], permissions: [] } as never])
             expect(() => {
                 assertFormalizationOrderReadable(p, order);
-            }).toThrow();
+            }).toThrow("No tiene permiso para consultar esta orden.");
         expect(() => {
             assertFormalizationOrderReadable(profile("formalizacion.orders.read"), { ...order, active: false });
-        }).toThrow();
+        }).toThrow("Orden disponible no encontrada.");
     });
     it("honors the effective personal grant and lets explicit deny override it", () => {
         const grant = { code: "formalizacion.orders.read", effect: "allow", scope: "self", source: "override" };

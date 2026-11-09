@@ -2,6 +2,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it } from "vitest";
 
 import { ownerRoleInheritanceMigration } from "../../migrations/schema-only/202610230027_owner_role_inheritance.js";
+import { anyOf } from "../support/throws.js";
 
 function fixture(options: { destination?: string; incompatibleColumn?: boolean; failAudit?: boolean; inactiveGrant?: boolean; unsafeEngine?: boolean; noActor?: boolean } = {}) {
     const queries: CompiledQuery[] = [];
@@ -71,7 +72,7 @@ describe("Owner inheritance migration, without MySQL fixtures", () => {
     it.each([{ destination: "crmdatabase-api" }, { incompatibleColumn: true }, { inactiveGrant: true }, { unsafeEngine: true }, { noActor: true }])("rejects unsafe configuration: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(ownerRoleInheritanceMigration.up(f.db)).rejects.toThrow();
+            await expect(ownerRoleInheritanceMigration.up(f.db)).rejects.toThrow(anyOf("Owner inheritance requires CRM_THINK_V2", "Owner inheritance column conflicts with existing schema", "Stage read grant was revoked; refusing silent reactivation", "Owner inheritance requires all identity/audit tables to be InnoDB", "Owner inheritance requires an active Owner without a role.assign deny; recovery "));
             expect(f.state.inherited).toBe(false);
             expect(f.state.audits).toBe(0);
         } finally {

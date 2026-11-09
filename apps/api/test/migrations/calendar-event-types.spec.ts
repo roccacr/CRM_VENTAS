@@ -2,6 +2,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it, vi } from "vitest";
 
 import { calendarEventTypesMigration as migration } from "../../migrations/schema-only/202610290054_calendar_event_types.js";
+import { anyOf } from "../support/throws.js";
 
 vi.mock("../../src/modules/crm/calendar/calendar-event-types.catalog.js", () => ({
     CALENDAR_EVENT_TYPES: [
@@ -163,7 +164,7 @@ describe("calendar event types migration 054", () => {
     it.each([{ database: "crmdatabase-api" }, { database: "crm_think_v2" }, { noLedger: true }, { missingTable: true }, { missingModule: true }, { noActor: true }])("fails closed before any DML: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Calendar event types require exactly CRM_THINK_V2", "Calendar event types require registered migration 051", "Calendar event types require native InnoDB configuration/audit tables", "Calendar event types require all four existing modules", "Calendar event type changes require active Owner audit attribution"));
             expect(writes(f.queries)).toEqual([]);
             expect(f.transactions).toEqual(["begin", "rollback"]);
         } finally {

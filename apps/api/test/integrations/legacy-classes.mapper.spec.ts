@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 
 import { mapLegacyClass } from "../../src/integrations/legacy-crm/classes/legacy-classes.mapper.js";
 
@@ -10,6 +11,6 @@ describe("Classes canonical legacy mapping", () => {
         expect(mapLegacyClass({ legacyId: 42, name: null, externalId: null, status })).toMatchObject({ name: "Sin asignar", status: "inactive", externalReferences: [] });
     });
     it("rejects unsupported statuses instead of silently publishing incorrect data", () => {
-        expect(() => mapLegacyClass({ legacyId: 42, name: "Class", externalId: 5, status: 2 })).toThrow();
+        expect(() => mapLegacyClass({ legacyId: 42, name: "Class", externalId: 5, status: 2 })).toThrow(ZodError);
     });
 });

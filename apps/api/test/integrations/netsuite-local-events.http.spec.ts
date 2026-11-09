@@ -82,5 +82,5 @@ it("does not exempt browser mutations from CSRF even with a machine token", asyn
 it("checks proof in its own guard too when the global guard is absent", () => {
     const guard = new LocalServiceTokenGuard(new ConfigService({ NODE_ENV: "development", NETSUITE_LOCAL_EVENTS_ENABLED: true, NETSUITE_LOCAL_EVENTS_SECRET: secret }));
     const request = { headers: {} };
-    expect(() => guard.canActivate({ switchToHttp: () => ({ getRequest: () => request }) } as never)).toThrow();
+    expect(() => guard.canActivate({ getHandler: () => function handler() {}, switchToHttp: () => ({ getRequest: () => request }) } as never)).toThrow("Credencial de integracion invalida.");
 });

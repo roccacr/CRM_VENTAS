@@ -25,7 +25,7 @@ describe("native lead schema", () => {
     it.each(["crmdatabase-api", "other"])("rejects destination %s before writes", async (name) => {
         const f = fixture(name);
         try {
-            await expect(leadsDomainMigration.up(f.db)).rejects.toThrow();
+            await expect(leadsDomainMigration.up(f.db)).rejects.toThrow("Leads migration requires CRM_THINK_V2");
             expect(f.queries).toHaveLength(1);
         } finally {
             await f.db.destroy();

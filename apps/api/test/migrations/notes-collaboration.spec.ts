@@ -2,6 +2,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it } from "vitest";
 
 import { notesCollaborationMigration } from "../../migrations/schema-only/202610270044_notes_collaboration.js";
+import { anyOf } from "../support/throws.js";
 function fixture(options: { destination?: string; ledger?: boolean; partial?: boolean; missing?: boolean; conflict?: boolean } = {}) {
     const queries: CompiledQuery[] = [];
     const routes = [
@@ -28,7 +29,7 @@ function fixture(options: { destination?: string; ledger?: boolean; partial?: bo
 describe("schema044 collaboration migration", () => {
     it.each([{ destination: "legacy" }, { ledger: false }, { partial: true }, { missing: true }, { conflict: true }])("fails closed before DDL for %j", async (options) => {
         const f = fixture(options);
-        await expect(notesCollaborationMigration.up(f.db)).rejects.toThrow();
+        await expect(notesCollaborationMigration.up(f.db)).rejects.toThrow(anyOf("Collaboration requires CRM_THINK_V2", "Collaboration requires registered foundation 040", "Partial collaboration schema requires explicit recovery", "Missing collaboration dependencies", "Conflicting notes collaboration permissions"));
         expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
         await f.db.destroy();
     });

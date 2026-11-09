@@ -7,6 +7,7 @@ import type { DatabaseService } from "../../src/database/database.service.js";
 import type { SecurityAuditService } from "../../src/modules/crm/audit/security-audit.service.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
 import type { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const code = "formalizacion.orders.read";
 const description = "Ver orden de venta";
@@ -145,7 +146,7 @@ describe("formalization order read permission migration", () => {
     ] satisfies Options[])("fails closed before writes: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Formalization order read permission requires CRM_THINK_V2", "Formalization order read permission requires native InnoDB security tables", "Formalization order read permission requires active Formalización and Owner base", "Formalization order read permission requires Owner migration attribution", "Formalization order read permission conflicts with existing configuration; recon"));
             expect(writes(f.queries)).toEqual([]);
             expect(f.transactions).toEqual(["begin", "rollback"]);
         } finally {

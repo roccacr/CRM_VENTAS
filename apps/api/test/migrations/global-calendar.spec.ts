@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { globalCalendarMigration, planGlobalCalendarSchema } from "../../migrations/schema-only/202610280051_global_calendar.js";
 import { legacyCalendarContextDdl, planLegacyCalendarContext, runLegacyCalendarContext } from "../../scripts/migrate-legacy-calendar-context.js";
+import { anyOf } from "../support/throws.js";
 
 type Row = Record<string, unknown>;
 const modules = ["formalizacion", "mercadeo", "ventas", "contabilidad"].map((code, i) => ({ id: i + 1, code, status: "active", deleted: null }));
@@ -131,7 +132,7 @@ describe("global calendar native 051", () => {
     it.each([{ database: "crmdatabase-api" }, { badTable: true }, { badIndex: true }, { columns: [{ ...nativeColumns[0], column_type: "text" }] }])("rejects unsafe native schema before mutations %j", async (options) => {
         const f = nativeFixture(options);
         try {
-            await expect(globalCalendarMigration.up(f.db)).rejects.toThrow();
+            await expect(globalCalendarMigration.up(f.db)).rejects.toThrow(anyOf("Global calendar requires CRM_THINK_V2", "Global calendar requires native InnoDB calendar/security tables", "Global calendar module/date index drift", "Global calendar column drift requires reconciliation"));
             expect(writes(f.queries)).toEqual([]);
         } finally {
             await f.db.destroy();
@@ -173,7 +174,7 @@ describe("global calendar native 051", () => {
     it.each([{ badPermission: true }, { missingActor: true }, { failAudit: true }])("rolls back configuration/permission transaction on failure %j", async (options) => {
         const f = nativeFixture(options);
         try {
-            await expect(globalCalendarMigration.up(f.db)).rejects.toThrow();
+            await expect(globalCalendarMigration.up(f.db)).rejects.toThrow(anyOf("Global calendar permission conflict requires reconciliation", "Global calendar requires Owner audit attribution", "Audit unavailable"));
             expect(f.transactions).toContain("rollback");
             expect(f.transactions).not.toContain("commit");
         } finally {
@@ -280,7 +281,7 @@ describe("legacy calendar context additive runner", () => {
     it.each([{ columnDrift: true }, { keyDrift: true }, { indexDrift: true }, { checkDrift: true }, { triggerDrift: true }])("rejects an existing table with drift without repairing it %j", async (drift) => {
         const f = legacyFixture({ existing: true, ...drift });
         try {
-            await expect(runLegacyCalendarContext(f.db, true)).rejects.toThrow();
+            await expect(runLegacyCalendarContext(f.db, true)).rejects.toThrow(anyOf("Legacy calendar context column drift requires reconciliation", "Legacy calendar context foreign key drift", "Legacy calendar context index drift", "Legacy calendar context check constraint drift", "Legacy calendar context trigger drift"));
             expect(writes(f.queries)).toEqual([]);
         } finally {
             await f.db.destroy();
@@ -331,7 +332,7 @@ describe("legacy calendar context additive runner", () => {
     it.each([{ database: "CRM_THINK_V2" }, { badParent: true }, { existingDrift: true }])("fails closed on legacy drift %j", async (options) => {
         const f = legacyFixture(options);
         try {
-            await expect(runLegacyCalendarContext(f.db, true)).rejects.toThrow();
+            await expect(runLegacyCalendarContext(f.db, true)).rejects.toThrow(anyOf("Legacy calendar context requires exactly crmdatabase-api", "Legacy calendars.id_calendar must be a signed INT", "Legacy calendar context table drift"));
             expect(writes(f.queries)).toEqual([]);
             expect(f.queries.at(-1)?.sql).toContain("RELEASE_LOCK");
         } finally {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { salesOrderBankAssignmentDdl } from "../../migrations/schema-only/202611030069_sales_order_bank_assignment.js";
 import { salesOrderBankAssignmentUnlinkDdl, salesOrderBankAssignmentUnlinkMigration, salesOrderBankAssignmentUnlinkMysqlDdl } from "../../migrations/schema-only/202611030071_sales_order_bank_assignment_unlink.js";
+import { anyOf } from "../support/throws.js";
 
 function fixture(options: { destination?: string; drift?: boolean; missingParent?: boolean; failCreate?: boolean; final?: boolean; partial?: boolean; definition?: string } = {}) {
     const queries: CompiledQuery[] = [];
@@ -46,7 +47,7 @@ describe("bank assignment unlink schema", () => {
     });
     it.each([{ destination: "crmdatabase-api" }, { drift: true }, { partial: true }])("rejects drift before ALTER %j", async (options) => {
         const f = fixture(options);
-        await expect(salesOrderBankAssignmentUnlinkMigration.up(f.db)).rejects.toThrow();
+        await expect(salesOrderBankAssignmentUnlinkMigration.up(f.db)).rejects.toThrow(anyOf("Banks schema destination mismatch", "Bank assignment schema drift; expected original069 or final071"));
         expect(f.queries.some((q) => q.sql.startsWith("ALTER TABLE"))).toBe(false);
         await f.db.destroy();
     });

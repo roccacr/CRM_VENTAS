@@ -5,6 +5,7 @@ import type { CrmDatabase } from "../../src/database/database.types.js";
 import type { RecordAuditInput } from "../../src/modules/crm/audit/record-audit.service.js";
 import type { AddendumOrder, FutureAddendum } from "../../src/modules/crm/sales/sales-orders/sales-order-addendum.port.js";
 import { SalesOrderAddendumRepository } from "../../src/modules/crm/sales/sales-orders/sales-order-addendum.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const id = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const leadId = "01ARZ3NDEKTSV4RRFFQ69G5FAX";
@@ -144,7 +145,7 @@ it.each(["completed", "cancelled"] as const)("manual %s is versioned, audited an
 it.each([{ absent: true }, { inactive: true }, { ambiguous: true }])("does not mutate an absent, inactive or ambiguous order: %j", async (options) => {
     const f = setup(options);
     try {
-        await expect(f.db.transaction().execute((tx) => f.repo.prepareEvent(tx, f.pending))).rejects.toThrow();
+        await expect(f.db.transaction().execute((tx) => f.repo.prepareEvent(tx, f.pending))).rejects.toThrow(anyOf("Orden disponible no encontrada.", "La identidad de la orden es ambigua."));
         expect(f.audit.append).not.toHaveBeenCalled();
         expect(f.steps).not.toContain("native-write");
     } finally {

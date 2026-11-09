@@ -2,6 +2,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it } from "vitest";
 
 import { selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
+import { anyOf } from "../support/throws.js";
 
 const name = "202610260035_sales_order_lead";
 const comment = "Lead nativo relacionado con la orden; nullable hasta contar con evidencia explicita";
@@ -78,7 +79,7 @@ describe("sales order native lead migration", () => {
     ])("fails closed before DDL for incompatible metadata: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(selectSchemaMigrations(name)[0]?.up(f.db)).rejects.toThrow();
+            await expect(selectSchemaMigrations(name)[0]?.up(f.db)).rejects.toThrow(anyOf("Sales order lead migration requires CRM_THINK_V2", "Incompatible sales order/lead tables; DBA reconciliation required", "Incompatible sales order lead column; DBA reconciliation required", "Incompatible sales order lead index; DBA reconciliation required", "Incompatible sales order lead foreign key; DBA reconciliation required", "Missing sales order lead column; DBA reconciliation required"));
             expect(f.queries.every((query) => query.sql.startsWith("SELECT"))).toBe(true);
         } finally {
             await f.db.destroy();

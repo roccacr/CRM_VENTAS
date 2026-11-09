@@ -7,11 +7,11 @@ const id = "01M4VECV87Y3Q3TGBBK8X2MHYX";
 describe("lead history read boundaries", () => {
     it("bounds batches and scopes cursors to the record", () => {
         expect(readHistoryQuery(id, {})).toEqual({ limit: 50, before: undefined });
-        expect(() => readHistoryQuery(id, { limit: 101 })).toThrow();
-        expect(() => readHistoryQuery(id, { extra: "raw" })).toThrow();
+        expect(() => readHistoryQuery(id, { limit: 101 })).toThrow("Invalid history query");
+        expect(() => readHistoryQuery(id, { extra: "raw" })).toThrow("Invalid history query");
         const cursor = Buffer.from(JSON.stringify({ recordId: id, before: 3 })).toString("base64url");
         expect(readHistoryQuery(id, { cursor, limit: "2" }).before).toBe(3);
-        expect(() => readHistoryQuery("01M4VECV87Y3Q3TGBBK8X2MHYY", { cursor })).toThrow();
+        expect(() => readHistoryQuery("01M4VECV87Y3Q3TGBBK8X2MHYY", { cursor })).toThrow("Invalid history cursor");
     });
     it("never exposes arbitrary snapshots or source identifiers", () => {
         expect(displayHistoryEntry({ original: { actorReference: 123 }, credential: "not visible" })).toBeNull();

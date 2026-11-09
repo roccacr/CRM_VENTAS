@@ -2,6 +2,7 @@ import { DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompile
 import { describe, expect, it } from "vitest";
 
 import { contractPermissionsMigration } from "../../migrations/schema-only/202610220025_contract_permissions.js";
+import { anyOf } from "../support/throws.js";
 
 function setup(options: { destination?: string; revoked?: boolean; conflict?: boolean } = {}) {
     const queries: { sql: string; parameters: readonly unknown[] }[] = [];
@@ -44,7 +45,7 @@ describe("contract permissions migration", () => {
     it.each([{ destination: "crmdatabase-api" }, { revoked: true }, { conflict: true }])("rejects wrong destination or revoked/conflicting configuration: %j", async (options) => {
         const f = setup(options);
         try {
-            await expect(contractPermissionsMigration.up(f.db)).rejects.toThrow();
+            await expect(contractPermissionsMigration.up(f.db)).rejects.toThrow(anyOf("Contract permissions require CRM_THINK_V2", "Previously revoked contract grant requires explicit reconciliation", "Contract permission conflicts with existing configuration"));
             expect(f.queries.some((query) => query.sql.startsWith("INSERT INTO sec_role_permission"))).toBe(false);
         } finally {
             await f.db.destroy();

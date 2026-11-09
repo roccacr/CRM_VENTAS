@@ -84,6 +84,6 @@ describe("buildMysqlPoolOptions", () => {
                 ssl: true,
                 sslCaPath: join(tmpdir(), "crm-think-ca-inexistente.pem"),
             }),
-        ).toThrow();
+        ).toThrow("ENOENT: no such file or directory, open 'C:\\Users\\ROBERT~1\\AppData\\Local\\Temp\\crm-think-ca-inexisten");
     });
 });

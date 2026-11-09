@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 
 import { formalizationCatalogAccessMigration as migration } from "../../migrations/schema-only/202610280050_formalization_catalog_access.js";
 import { selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
+import { anyOf } from "../support/throws.js";
 
 function fixture({ database = "CRM_THINK_V2", grants = true, actor = true } = {}) {
     const queries: CompiledQuery[] = [];
@@ -50,7 +51,7 @@ it.each([true, false])("revokes active role grants only, with audit and version 
 it.each([{ database: "crmdatabase-api" }, { actor: false }])("fails before writes for invalid destination or missing audit actor: %j", async (options) => {
     const f = fixture(options);
     try {
-        await expect(migration.up(f.db)).rejects.toThrow();
+        await expect(migration.up(f.db)).rejects.toThrow(anyOf("Catalog grant revocation requires CRM_THINK_V2", "Owner audit attribution required"));
         expect(f.queries.some((q) => /^(UPDATE|INSERT|DELETE)/.test(q.sql))).toBe(false);
     } finally {
         await f.db.destroy();

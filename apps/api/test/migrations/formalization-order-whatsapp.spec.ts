@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formalizationOrderWhatsappMigration as migration } from "../../migrations/schema-only/202611030064_formalization_order_whatsapp.js";
 import { selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const code = "formalizacion.orders.whatsapp";
 const description = "Ir a WhatsApp";
@@ -82,7 +83,7 @@ describe("permiso de WhatsApp en órdenes de Formalización", () => {
     ] satisfies Options[])("rechaza configuración incompatible antes de escribir: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Formalization order WhatsApp permission requires CRM_THINK_V2", "Formalization order WhatsApp permission requires native InnoDB security tables", "Formalization order WhatsApp permission requires all authorized active roles", "Formalization order WhatsApp permission requires Owner migration attribution", "Formalization order WhatsApp permission conflicts with existing configuration; r"));
             expect(writes(f.queries)).toEqual([]);
             expect(f.transactions).toEqual(["begin", "rollback"]);
         } finally {

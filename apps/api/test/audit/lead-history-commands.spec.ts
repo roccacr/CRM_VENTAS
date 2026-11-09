@@ -1,8 +1,10 @@
+import { BadRequestException } from "@nestjs/common";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult } from "kysely";
 import { describe, expect, it, vi } from "vitest";
 
 import type { CrmDatabase } from "../../src/database/database.types.js";
 import { LeadHistoryCommands } from "../../src/modules/crm/leads/lead-history-commands.js";
+import { anyOf } from "../support/throws.js";
 
 const command = { kind: "activity" as const, leadPublicId: "01M4VECV87Y3Q3TGBBK8X2MHYX", actorUserId: 7, operationId: "note-1", expectedVersion: 0, actionCode: "note_added", reasonCode: null, detail: "Nota de contacto" };
 function fixture(options: { failAudit?: boolean; version?: number; replay?: object; inactive?: boolean; reasonInactive?: boolean; stage?: string; sequence?: number } = {}) {
@@ -62,7 +64,7 @@ describe("native lead history commands", () => {
     it.each([{ reasonInactive: true }, { stage: "lost" }])("rejects invalid stage transitions without audit or business writes: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(f.service.execute({ kind: "status", leadPublicId: command.leadPublicId, actorUserId: 7, operationId: "loss", expectedVersion: 0, toStatusCode: "lost", reasonCode: "budget", detail: "Motivo" })).rejects.toThrow();
+            await expect(f.service.execute({ kind: "status", leadPublicId: command.leadPublicId, actorUserId: 7, operationId: "loss", expectedVersion: 0, toStatusCode: "lost", reasonCode: "budget", detail: "Motivo" })).rejects.toThrow(BadRequestException);
             expect(f.audit.append).not.toHaveBeenCalled();
             expect(f.lifecycle).toEqual(["begin", "rollback"]);
         } finally {
@@ -94,7 +96,7 @@ describe("native lead history commands", () => {
     it.each([{ version: 1 }, { inactive: true }])("rejects stale or inactive commands before changing the lead: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(f.service.execute(command)).rejects.toThrow();
+            await expect(f.service.execute(command)).rejects.toThrow(anyOf("Lead version changed; reload", "Active activity type required"));
             expect(f.audit.append).not.toHaveBeenCalled();
         } finally {
             await f.db.destroy();

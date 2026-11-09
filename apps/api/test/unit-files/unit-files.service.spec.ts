@@ -151,7 +151,7 @@ describe("Unit Files native-first service", () => {
         const { identity, repository, legacy, service } = setup(false);
         repository.list.mockResolvedValue([row(1)]);
         expect((await service.list("session", filter)).items).toHaveLength(1);
-        await expect(service.detail("session", "legacy:unit-files:1", "administration")).rejects.toThrow();
+        await expect(service.detail("session", "legacy:unit-files:1", "administration")).rejects.toThrow("Expediente no encontrado o proyecto pendiente de conciliacion.");
         expect(legacy.list).not.toHaveBeenCalled();
         expect(legacy.detail).not.toHaveBeenCalled();
         const nativeOnly = new UnitFilesService(identity as unknown as IdentityService, repository as unknown as UnitFilesRepository);

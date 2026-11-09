@@ -7,6 +7,7 @@ import type { DatabaseService } from "../../src/database/database.service.js";
 import type { SecurityAuditService } from "../../src/modules/crm/audit/security-audit.service.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
 import type { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const code = "formalizacion.orders.stage.update";
 const description = "Permite cambiar la etapa de una orden con tres aprobaciones completas; retrocesos requieren motivo; no envia correos ni modifica ERP.";
@@ -55,7 +56,7 @@ describe("independent formalization stage permission migration", () => {
     it.each([{ database: "crmdatabase-api" }, { tables: [] }, { tables: [{ table_name: "sec_permission", table_type: "VIEW", engine: null }] }, { tables: [{ table_name: "sec_permission", table_type: "BASE TABLE", engine: "MyISAM" }] }, ...Object.keys(definition).map((key) => ({ permissions: [{ ...definition, [key]: "drift" }] })), { permissions: [definition, definition] }])("fails closed without writes for drift: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(formalizationStagePermissionMigration.up(f.db)).rejects.toThrow();
+            await expect(formalizationStagePermissionMigration.up(f.db)).rejects.toThrow(anyOf("Formalization stage permission requires CRM_THINK_V2", "Formalization stage permission requires native InnoDB sec_permission", "Formalization stage permission conflicts with existing configuration; reconcilia"));
             expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
         } finally {
             await f.db.destroy();

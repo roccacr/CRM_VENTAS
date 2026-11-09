@@ -115,10 +115,10 @@ describe("collaboration live ACL orchestration", () => {
         await expect(service.eligibleDraftUsers("session", { moduleCode: "formalizacion", contextType: "personal" })).rejects.toBeInstanceOf(ForbiddenException);
     });
     it("rejects unknown body fields, duplicate mentions, malformed IDs and oversized pages", async () => {
-        await expect(service.reply("session", id, { operationId: "operation_00000001", text: "Hello", authorId: owner })).rejects.toThrow();
-        await expect(service.reply("session", id, { operationId: "operation_00000001", text: "Hello", mentionUserIds: [owner, owner] })).rejects.toThrow();
-        await expect(service.thread("session", "1", {})).rejects.toThrow();
-        await expect(service.thread("session", id, { replyPage: 1001 })).rejects.toThrow();
+        await expect(service.reply("session", id, { operationId: "operation_00000001", text: "Hello", authorId: owner })).rejects.toThrow("Solicitud de colaboracion invalida.");
+        await expect(service.reply("session", id, { operationId: "operation_00000001", text: "Hello", mentionUserIds: [owner, owner] })).rejects.toThrow("Solicitud de colaboracion invalida.");
+        await expect(service.thread("session", "1", {})).rejects.toThrow("Solicitud de colaboracion invalida.");
+        await expect(service.thread("session", id, { replyPage: 1001 })).rejects.toThrow("Solicitud de colaboracion invalida.");
     });
 });
 
@@ -145,7 +145,7 @@ it("directory pagination continues even if the first raw page has no eligible in
     repository.directory.mockResolvedValueOnce([{ publicId: third, displayName: "Third" }]);
     await expect(service.eligibleUsers("session", id, { page: "2" })).resolves.toEqual({ items: [{ publicId: third, displayName: "Third" }], hasMore: false });
     expect(repository.directory).toHaveBeenLastCalledWith("", 2);
-    await expect(service.eligibleUsers("session", id, { page: "0" })).rejects.toThrow();
+    await expect(service.eligibleUsers("session", id, { page: "0" })).rejects.toThrow("Solicitud de colaboracion invalida.");
 });
 
 it("redacts linked order identity in delivery facade for invited recipients", async () => {
@@ -218,7 +218,7 @@ it("only the author can manage additional display locations", async () => {
 });
 it("rejects unregistered display locations before persistence", async () => {
     identity.getCurrentUser.mockResolvedValue(makeProfile(owner, "mercadeo"));
-    await expect(service.replaceLocations("session", id, { operationId: "operation_12345678", expectedCollaborationVersion: 2, locations: [{ moduleCode: "mercadeo", code: "https://evil" }] })).rejects.toThrow();
+    await expect(service.replaceLocations("session", id, { operationId: "operation_12345678", expectedCollaborationVersion: 2, locations: [{ moduleCode: "mercadeo", code: "https://evil" }] })).rejects.toThrow("Solicitud de colaboracion invalida.");
 });
 
 it("author can attach a note to an independently authorized Home", async () => {

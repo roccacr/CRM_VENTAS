@@ -104,7 +104,7 @@ describe("real Socket.IO notes boundary", () => {
         const f = await fixture();
         for (const options of [{ origin: "http://evil.test" }, { csrf: "forged" }, { session: "foreign" }]) {
             const c = f.connect(options);
-            await expect(connected(c)).rejects.toThrow();
+            await expect(connected(c)).rejects.toThrow("Notes connection unavailable");
             expect(c.connected).toBe(false);
         }
     });

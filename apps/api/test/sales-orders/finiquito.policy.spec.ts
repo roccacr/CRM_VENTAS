@@ -36,6 +36,6 @@ describe("finiquito independiente", () => {
     ] as const)("rechaza saltar o retroceder %s → %s", (before, after) => {
         expect(() => {
             assertFiniquitoTransition(before, after);
-        }).toThrow();
+        }).toThrow("El finiquito cambió o la transición no es válida. Actualiza la orden.");
     });
 });

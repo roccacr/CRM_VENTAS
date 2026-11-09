@@ -8,7 +8,7 @@ it("defaults production event reception and persistence off", () => {
 it.each([{ NODE_ENV: "development" }, { FRONTEND_ORIGIN: "http://localhost:5173" }, { NETSUITE_ENVIRONMENT: "sandbox" }, { NETSUITE_PRODUCTION_EVENTS_SECRET: undefined }, { NETSUITE_PRODUCTION_EVENTS_SECRET: "invalid" }, { NETSUITE_PRODUCTION_EVENTS_SECRET: minimal.COOKIE_SECRET }, { NETSUITE_PRODUCTION_EVENTS_SECRET: minimal.AUTH_TOKEN_HASH_SECRET }, { NETSUITE_PRODUCTION_EVENTS_SECRET: minimal.AUDIT_HASH_SECRET }, { NETSUITE_LOCAL_EVENTS_SECRET: "d".repeat(64) }])(
     "rejects production event misconfiguration %j",
     (override) => {
-        expect(() => validateEnv({ ...minimal, NODE_ENV: "production", FRONTEND_ORIGIN: "https://habita.roccacr.com", NETSUITE_ENVIRONMENT: "production", NETSUITE_PRODUCTION_EVENTS_ENABLED: "true", NETSUITE_PRODUCTION_EVENTS_SECRET: "d".repeat(64), ...override })).toThrow();
+        expect(() => validateEnv({ ...minimal, NODE_ENV: "production", FRONTEND_ORIGIN: "https://habita.roccacr.com", NETSUITE_ENVIRONMENT: "production", NETSUITE_PRODUCTION_EVENTS_ENABLED: "true", NETSUITE_PRODUCTION_EVENTS_SECRET: "d".repeat(64), ...override })).toThrow("Configuracion de entorno invalida: [");
     },
 );
 it("requires reception before enabling production persistence", () => {

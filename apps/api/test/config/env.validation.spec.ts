@@ -223,10 +223,10 @@ describe("notes realtime configuration", () => {
 
 it("defaults NetSuite to production and rejects unknown environments", () => {
     expect(validateEnv(createValidEnv()).NETSUITE_ENVIRONMENT).toBe("production");
-    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_ENVIRONMENT: "invalid" })).toThrow();
+    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_ENVIRONMENT: "invalid" })).toThrow("Configuracion de entorno invalida: [");
 });
 it("requires complete sandbox configuration at bootstrap without production fallback", () => {
-    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_ENVIRONMENT: "sandbox", NETSUITE_REALM: "4552704", NETSUITE_CONSUMER_KEY: "production" })).toThrow();
+    expect(() => validateEnv({ ...createValidEnv(), NETSUITE_ENVIRONMENT: "sandbox", NETSUITE_REALM: "4552704", NETSUITE_CONSUMER_KEY: "production" })).toThrow("Configuracion de entorno invalida: [");
 });
 
 const sandboxEnv = {
@@ -264,7 +264,7 @@ it("keeps local NetSuite reception off by default", () => {
     expect(validateEnv(createValidEnv()).NETSUITE_LOCAL_EVENTS_ENABLED).toBe(false);
 });
 it.each([{ NODE_ENV: "production", NETSUITE_LOCAL_EVENTS_SECRET: "a".repeat(64) }, {}, { NETSUITE_LOCAL_EVENTS_SECRET: "short" }, { COOKIE_SECRET: "a".repeat(64), NETSUITE_LOCAL_EVENTS_SECRET: "a".repeat(64) }])("rejects unsafe enabled local reception", (config) => {
-    expect(() => validateEnv({ ...createValidEnv(), ...config, NETSUITE_LOCAL_EVENTS_ENABLED: "true" })).toThrow();
+    expect(() => validateEnv({ ...createValidEnv(), ...config, NETSUITE_LOCAL_EVENTS_ENABLED: "true" })).toThrow("Configuracion de entorno invalida: [");
 });
 it("accepts an exclusive local secret in development", () => {
     expect(validateEnv({ ...createValidEnv(), NODE_ENV: "development", NETSUITE_LOCAL_EVENTS_ENABLED: "true", NETSUITE_LOCAL_EVENTS_SECRET: "a".repeat(64) }).NETSUITE_LOCAL_EVENTS_ENABLED).toBe(true);

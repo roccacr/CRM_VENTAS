@@ -51,7 +51,7 @@ it("crea lectura/escritura para cuatro roles, audita y es idempotente", async ()
 it("no concede nada si falta un rol requerido", async () => {
     const f = fixture(true);
     try {
-        await expect(migration.up(f.db)).rejects.toThrow();
+        await expect(migration.up(f.db)).rejects.toThrow("Order documents permission requires all authorized active roles");
         expect(f.permissions.size).toBe(0);
     } finally {
         await f.db.destroy();

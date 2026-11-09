@@ -7,6 +7,7 @@ import type { CrmDatabase } from "../../src/database/database.types.js";
 import { LegacyCalendarReader } from "../../src/integrations/legacy-crm/legacy-calendar.reader.js";
 import type { CalendarInput, CalendarRow } from "../../src/modules/crm/calendar/calendar.contract.js";
 import { CalendarRepository } from "../../src/modules/crm/calendar/calendar.repository.js";
+import { anyOf } from "../support/throws.js";
 const id = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const input: CalendarInput = { moduleCode: "formalizacion", typeId: id, title: "Evento", start: "2026-10-28T14:00:00Z", end: "2026-10-28T15:00:00Z", allDay: false, details: {}, operationId: "550e8400-e29b-41d4-a716-446655440000" };
 const row: CalendarRow = { internalId: 5, ownerPublicId: "actor", id, source: "native", originModule: "formalizacion", typeId: id, typeCode: "tarea", formKey: "formalizacion.general.v1", title: "Evento", start: input.start, end: input.end, allDay: 0, description: null, location: null, status: "scheduled", version: 2, details: {} };
@@ -95,7 +96,7 @@ it("rolls back the event when its audit append fails", async () => {
 it.each([{ typeCode: "general" }, { version: 3 }, { ownerPublicId: "other" }, { originModule: "mercadeo" as const }, { status: "cancelled" as const }])("rejects stale version, foreign ownership/origin or cancellation under lock %j", async (before) => {
     const f = setup({ before });
     try {
-        await expect(f.repo.save("actor", { ...input, expectedVersion: 2 }, true, id)).rejects.toThrow();
+        await expect(f.repo.save("actor", { ...input, expectedVersion: 2 }, true, id)).rejects.toThrow(anyOf("Este tipo histórico solo está disponible para consulta.", "El evento cambió; recárguelo antes de guardar.", "Solo el organizador puede editar este evento.", "El evento solo se gestiona desde su módulo de origen.", "No se puede editar un evento cancelado."));
         expect(f.steps).toEqual(["begin", "rollback"]);
         expect(f.audit.append).not.toHaveBeenCalled();
         expect(f.queries.some((q) => q.sql.includes("FOR UPDATE") && q.sql.includes("FROM crm_calendar_event"))).toBe(true);

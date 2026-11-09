@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formalizationManualAddendumMigration as migration } from "../../migrations/schema-only/202611030066_formalization_manual_addendum.js";
 import { parseLegacyAddendumNoteArgs, runLegacyAddendumNote } from "../../scripts/migrate-legacy-addendum-note.js";
 import { selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
+import { anyOf } from "../support/throws.js";
 
 const definitions = [
     { code: "formalizacion.orders.addendum.mark_pending", module: "formalizacion", action: "mark_pending", description: "Marcar adéndum pendiente", status: "active" },
@@ -88,7 +89,7 @@ describe("066 nota de adéndum y permisos independientes", () => {
     it.each([{ database: "crmdatabase-api" }, { base: false }, { roles: [] }, { note: { type: "varchar(100)", nullable: "YES", defaultValue: null, extra: "" } }, { note: { type: "text", nullable: "NO", defaultValue: null, extra: "" } }, ...Object.keys(definitions[0] ?? {}).map((key) => ({ permissions: [{ ...definitions[0], [key]: "drift" }] as typeof definitions }))] satisfies Options[])("preflight rechaza diferencias antes de DDL: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Addendum destination mismatch", "Addendum note requires the three approved base columns", "Manual addendum requires four active roles", "Addendum note column drift", "Manual addendum permission drift"));
             expect(writes(f.queries)).toEqual([]);
         } finally {
             await f.db.destroy();
@@ -126,6 +127,6 @@ describe("066 nota de adéndum y permisos independientes", () => {
         }
     });
     it.each([[], ["--apply"], ["--apply=CRM_THINK_V2"], ["--plan", "--apply=crmdatabase-api"]].map((args) => ({ args })))("CLI rechaza opciones no autorizadas %j", ({ args }) => {
-        expect(() => parseLegacyAddendumNoteArgs(args)).toThrow();
+        expect(() => parseLegacyAddendumNoteArgs(args)).toThrow("Use exactly --plan or --apply=crmdatabase-api");
     });
 });

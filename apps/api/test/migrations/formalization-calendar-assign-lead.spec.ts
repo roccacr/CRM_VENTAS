@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formalizationCalendarAssignLeadMigration as migration } from "../../migrations/schema-only/202611030063_formalization_calendar_assign_lead.js";
 import { selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const code = "formalizacion.calendar.assign_lead";
 const description = "Asignar evento a un lead";
@@ -82,7 +83,7 @@ describe("permiso de asignación de evento a lead en Formalización", () => {
     ] satisfies Options[])("rechaza configuración incompatible antes de escribir: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Calendar lead assignment permission requires CRM_THINK_V2", "Calendar lead assignment permission requires native InnoDB security tables", "Calendar lead assignment permission requires all authorized active roles", "Calendar lead assignment permission requires Owner migration attribution", "Calendar lead assignment permission conflicts with existing configuration; recon"));
             expect(writes(f.queries)).toEqual([]);
             expect(f.transactions).toEqual(["begin", "rollback"]);
         } finally {

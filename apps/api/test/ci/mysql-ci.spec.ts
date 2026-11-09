@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 
 import { assertIsolatedMysqlConfig, assertMysqlReport } from "../../scripts/run-mysql-ci.js";
+import { anyOf } from "../support/throws.js";
 
 describe("MySQL CI fail-closed policy", () => {
     const environment = {
@@ -30,11 +32,11 @@ describe("MySQL CI fail-closed policy", () => {
         for (const key of ["CI", "GITHUB_ACTIONS", "MYSQL_TEST_CONFIRM", "MYSQL_TEST_SERVER_UUID", "MYSQL_TEST_DATASET", "DB_HOST", "DB_USER", "DB_PASSWORD"]) {
             expect(() => {
                 assertIsolatedMysqlConfig({ ...environment, [key]: "" });
-            }).toThrow();
+            }).toThrow(anyOf("Destino MySQL no autorizado para CI.", "BLOQUEADO POR INFRAESTRUCTURA: configuracion de pruebas incompleta."));
         }
         expect(() => {
             assertIsolatedMysqlConfig({ ...environment, ENABLE_LEGACY_FALLBACK: "true", LEGACY_CRM_DB_NAME: "crmdatabase-api" });
-        }).toThrow();
+        }).toThrow("Destino MySQL no autorizado para CI.");
     });
     const passed = { success: true, numTotalTests: 2, numPassedTests: 2, numPendingTests: 0, numTodoTests: 0, numFailedTests: 0, testResults: [{ name: "/repo/test/example.mysql.spec.ts", status: "passed", assertionResults: [{ status: "passed" }, { status: "passed" }] }] };
     it("accepts only executed and passing tests for every discovered MySQL file", () => {
@@ -53,13 +55,13 @@ describe("MySQL CI fail-closed policy", () => {
         ]) {
             expect(() => {
                 assertMysqlReport(report, ["test/example.mysql.spec.ts"]);
-            }).toThrow();
+            }).toThrow(ZodError);
         }
         expect(() => {
             assertMysqlReport(passed, ["test/other.mysql.spec.ts"]);
-        }).toThrow();
+        }).toThrow("Falta una suite MySQL requerida.");
         expect(() => {
             assertMysqlReport(passed, []);
-        }).toThrow();
+        }).toThrow("Pruebas MySQL incompletas.");
     });
 });

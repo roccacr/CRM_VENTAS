@@ -7,6 +7,7 @@ import type { DatabaseService } from "../../src/database/database.service.js";
 import type { SecurityAuditService } from "../../src/modules/crm/audit/security-audit.service.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
 import type { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const old = { id: 1, code: "formalizacion.home.stages.read", status: "active" };
 const tables = ["sec_permission", "sec_role", "sec_role_permission", "sec_user", "sec_user_role", "sec_user_permission_override", "audit_security_event"];
@@ -130,7 +131,7 @@ describe("formalization banner permissions migration", () => {
     it.each([{ database: "legacy" }, { engine: "MyISAM" }, { missingTable: true }, ...tables.map((unsafeTable) => ({ unsafeTable })), { drift: true }, { inactive: true }, { actorMissing: true }])("fails closed before writes: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Formalization banner permissions require CRM_THINK_V2", "Formalization banner permissions require native InnoDB security tables", "Conflicting banner permission definition; reconciliation required", "Formalization banner permissions require Owner migration attribution"));
             expect(writes(f)).toEqual([]);
             expect(f.transactions).toEqual(["begin", "rollback"]);
         } finally {

@@ -29,19 +29,19 @@ describe("manual NetSuite synchronization", () => {
     });
     it("rejects a read-only user before contacting NetSuite", async () => {
         const f = fixture("production", false);
-        await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow();
+        await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow("No tiene permiso para sincronizar esta orden.");
         expect(f.client.readSalesOrderSnapshot).not.toHaveBeenCalled();
         expect(f.events.receive).not.toHaveBeenCalled();
     });
     it("blocks disabled sandbox persistence before fetching or writing", async () => {
         const f = fixture("sandbox", true, false);
-        await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow();
+        await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow("Sincronizacion deshabilitada para este ambiente y base de datos.");
         expect(f.client.readSalesOrderSnapshot).not.toHaveBeenCalled();
     });
     it("rejects a mismatched provider order before persistence", async () => {
         const f = fixture();
         f.client.readSalesOrderSnapshot.mockResolvedValueOnce({ status: 200, data: { id: "999" } });
-        await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow();
+        await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow("Actualiza la libreria NetSuite: no devolvio una lectura verificada para sincronizar.");
         expect(f.events.receive).not.toHaveBeenCalled();
     });
     it("exposes the actual configured environment without writing", async () => {
@@ -59,7 +59,7 @@ it("rechecks permissions during the locked write after the provider read", async
         await manual.authorize({} as never, { destination: "legacy", id: "1" });
         return {} as never;
     });
-    await expect(f.service.synchronize("session", { source: "legacy", id: "1" })).rejects.toThrow();
+    await expect(f.service.synchronize("session", { source: "legacy", id: "1" })).rejects.toThrow("La autorizacion cambio durante la consulta; recarga la orden.");
     expect(f.repository.authorizeSynchronization).not.toHaveBeenCalled();
 });
 it("rechecks a revoked session after the provider read", async () => {
@@ -80,6 +80,6 @@ it.each(["identity", "projection", "window"])("rejects an invalid verified snaps
     if (mode === "identity") raw.data.id = "999";
     if (mode === "projection") raw.data.fields.crm_sync_projection = 0;
     if (mode === "window") raw.snapshotReadCompletedAt = "2026-11-03T18:02:00.000Z";
-    await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow();
+    await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow("NetSuite no devolvio la proyeccion completa y valida de esta orden.");
     expect(f.events.receive).not.toHaveBeenCalled();
 });

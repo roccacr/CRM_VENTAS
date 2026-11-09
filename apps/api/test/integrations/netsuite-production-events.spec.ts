@@ -24,7 +24,7 @@ describe("production event isolation", () => {
     it.each([{ NETSUITE_PRODUCTION_EVENTS_ENABLED: false }, { NETSUITE_PRODUCTION_EVENTS_PERSIST: false }, { NODE_ENV: "development" }, { FRONTEND_ORIGIN: "http://localhost:3000" }, { NETSUITE_ENVIRONMENT: "sandbox" }])("blocks direct writes before repository access: %j", async (override) => {
         const repository = { apply: vi.fn(), recordError: vi.fn() };
         const service = new NetsuiteOrderEventService(repository as never, new ConfigService({ ...config, ...override }));
-        await expect(service.receive(productionOrderEvent.parse(payload))).rejects.toThrow();
+        await expect(service.receive(productionOrderEvent.parse(payload))).rejects.toThrow("Persistencia NetSuite deshabilitada.");
         expect(repository.apply).not.toHaveBeenCalled();
         expect(repository.recordError).not.toHaveBeenCalled();
     });
@@ -70,7 +70,7 @@ it.each([{ NETSUITE_LOCAL_EVENTS_ENABLED: false }, { NETSUITE_LOCAL_EVENTS_PERSI
     const repository = { apply: vi.fn(), recordError: vi.fn() };
     const service = new NetsuiteOrderEventService(repository as never, new ConfigService({ NODE_ENV: "development", NETSUITE_LOCAL_EVENTS_ENABLED: true, NETSUITE_LOCAL_EVENTS_PERSIST: true, ...override }));
     const event = persistedOrderEvent.parse({ ...payload, source: { system: "netsuite", accountId: "4552704_SB1", environment: "sandbox" } });
-    await expect(service.receive(event)).rejects.toThrow();
+    await expect(service.receive(event)).rejects.toThrow("Persistencia NetSuite deshabilitada.");
     expect(repository.apply).not.toHaveBeenCalled();
     expect(repository.recordError).not.toHaveBeenCalled();
 });

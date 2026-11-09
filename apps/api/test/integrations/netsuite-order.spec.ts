@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { netsuiteGetAuthorization, NetsuiteRestletClient } from "../../src/integrations/netsuite/netsuite-restlet.client.js";
+import { anyOf } from "../support/throws.js";
 
 const config = () => new ConfigService({ NETSUITE_PRODUCTION_RESTLET_URL: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1764&deploy=1", NETSUITE_CONSUMER_KEY: "consumer", NETSUITE_CONSUMER_SECRET: "consumer-secret", NETSUITE_TOKEN_ID: "token", NETSUITE_TOKEN_SECRET: "token-secret", NETSUITE_REALM: "4552704", OAUTH_NETSUITE_SIGNATURE: "HMAC-SHA256" });
 afterEach(() => vi.unstubAllGlobals());
@@ -40,7 +41,7 @@ it("uses only GET, signs the explicitly configured extraction RESTlet and return
 it.each(["0", "../1", "1&script=999", "not-an-id"])("rejects invalid provider id %s before network", async (id) => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(config()).readSalesOrder(id)).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(config()).readSalesOrder(id)).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 it("sanitizes upstream errors and never returns credentials or provider failure content", async () => {
@@ -50,7 +51,7 @@ it("sanitizes upstream errors and never returns credentials or provider failure 
 it("does not send an unsigned request when credentials are absent", async () => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(new ConfigService()).readSalesOrder("123")).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(new ConfigService()).readSalesOrder("123")).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 
@@ -132,13 +133,13 @@ it.each([false, true])("sends approval JSON only to configured sandbox and confi
 it.each([undefined, "production", "other"])("blocks approval outside sandbox: %s", async (environment) => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, NETSUITE_ENVIRONMENT: environment })).approveFormalization("123")).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, NETSUITE_ENVIRONMENT: environment })).approveFormalization("123")).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 it.each(["0", "-1", "1e3", "001", "9007199254740992", "123 "])("rejects unsafe approval ID %s", async (id) => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(new ConfigService(sandbox)).approveFormalization(id)).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(new ConfigService(sandbox)).approveFormalization(id)).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 it.each([{ id: "124" }, { id: 123 }, { type: "estimate" }, { approval: "developer" }, { approved: "true" }, { approved: false }, { alreadyApproved: "false" }])("rejects mismatched approval confirmation %j", async (override) => {
@@ -158,7 +159,7 @@ it.each([{ status: 409, data: approval }, { status: "200", data: approval }, { s
 it.each(Object.keys(sandbox).filter((key) => key !== "NETSUITE_ENVIRONMENT"))("fails closed before PUT with missing sandbox setting %s", async (key) => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, [key]: undefined })).approveFormalization("123")).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, [key]: undefined })).approveFormalization("123")).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 it.each([302, 500])("reports unknown PUT outcome on upstream HTTP %s without following or retrying", async (status) => {
@@ -182,7 +183,7 @@ it.each(Object.keys(sandbox).filter((key) => key !== "NETSUITE_ENVIRONMENT"))("n
     const values: Record<string, string | undefined> = { ...sandbox, NETSUITE_CONSUMER_KEY: "production-consumer", NETSUITE_CONSUMER_SECRET: "production-secret", NETSUITE_TOKEN_ID: "production-token", NETSUITE_TOKEN_SECRET: "production-token-secret", NETSUITE_REALM: "4552704", [key]: undefined };
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(new ConfigService(values)).readSalesOrder("123")).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(new ConfigService(values)).readSalesOrder("123")).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 it.each([
@@ -203,7 +204,7 @@ it.each([
 ])("rejects incompatible configuration before fetch: %j", async (override) => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, ...override })).readSalesOrder("123")).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, ...override })).readSalesOrder("123")).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 it("keeps production default despite populated sandbox settings", async () => {
@@ -249,7 +250,7 @@ it.each([undefined, "", "https://4552704-sb1.restlets.api.netsuite.com/app/site/
     const settings = config();
     settings.set("FRONTEND_ORIGIN", "https://habita.roccacr.com");
     settings.set("NETSUITE_PRODUCTION_RESTLET_URL", url);
-    await expect(new NetsuiteRestletClient(settings).readSalesOrder("123")).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(settings).readSalesOrder("123")).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 
@@ -271,13 +272,13 @@ it.each(["NETSUITE_SANDBOX_RESTLET_URL", "NETSUITE_SANDBOX_TOKEN_ID"])("local ne
     settings.set(key, "");
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(settings).readSalesOrder("123")).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(settings).readSalesOrder("123")).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 it("Habita never substitutes complete sandbox credentials for missing production keys", async () => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
-    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, FRONTEND_ORIGIN: "https://habita.roccacr.com", NETSUITE_PRODUCTION_RESTLET_URL: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1&deploy=1" })).readSalesOrder("123")).rejects.toThrow();
+    await expect(new NetsuiteRestletClient(new ConfigService({ ...sandbox, FRONTEND_ORIGIN: "https://habita.roccacr.com", NETSUITE_PRODUCTION_RESTLET_URL: "https://4552704.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1&deploy=1" })).readSalesOrder("123")).rejects.toThrow(anyOf("Configuracion NetSuite incompatible", "Conexion NetSuite no configurada.", "Identificador NetSuite invalido."));
     expect(fetcher).not.toHaveBeenCalled();
 });
 

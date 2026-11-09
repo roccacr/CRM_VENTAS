@@ -5,6 +5,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it, vi } from "vitest";
 
 import { loadRecordAuditStatements, recordAuditMigration } from "../../migrations/schema-only/202610220023_record_audit.js";
+import { anyOf } from "../support/throws.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
     const original = await importOriginal<typeof fsPromises>();
@@ -114,7 +115,7 @@ describe("record audit preflight without a database", () => {
         vi.mocked(readFile).mockResolvedValueOnce(source);
         const { db, queries } = createDatabase(() => [{ name: "CRM_THINK_V2" }]);
         try {
-            await expect(recordAuditMigration.up(db)).rejects.toThrow();
+            await expect(recordAuditMigration.up(db)).rejects.toThrow(anyOf("La migracion de identidad debe poder extraer el nombre de tabla de cada sentenci", "Record audit requires exactly the two approved CREATE statements"));
             expect(queries.map((query) => query.sql)).toEqual(["SELECT DATABASE() AS name"]);
         } finally {
             await db.destroy();

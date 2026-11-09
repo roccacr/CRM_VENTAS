@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { planBankingInProgressStage, planPurchaseFundsColumn } from "../../migrations/schema-only/202611020062_formalization_purchase_funds.js";
 import { runLegacyPurchaseFunds } from "../../scripts/migrate-legacy-purchase-funds.js";
+import { anyOf } from "../support/throws.js";
 
 function fixture(source: "native" | "legacy", { existing = false, drift = false, wrong = false, existingStage = false }: { existing?: boolean; drift?: boolean; wrong?: boolean; existingStage?: boolean } = {}) {
     const queries: CompiledQuery[] = [];
@@ -74,7 +75,7 @@ describe("explicit purchase funds schema", () => {
         ] as const) {
             const { db } = fixture(source, { existing, drift, wrong });
             try {
-                if (drift || wrong) await expect(planPurchaseFundsColumn(db, source)).rejects.toThrow();
+                if (drift || wrong) await expect(planPurchaseFundsColumn(db, source)).rejects.toThrow(anyOf("Purchase funds column drift", "Purchase funds destination mismatch"));
                 else expect(await planPurchaseFundsColumn(db, source)).toEqual([]);
             } finally {
                 await db.destroy();

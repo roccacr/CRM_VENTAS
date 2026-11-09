@@ -172,7 +172,7 @@ describe("CalendarLookupService", () => {
     });
     it("bounds search and limits, rejects forged access and requires two characters for a typed lead search", async () => {
         const f = fixture();
-        for (const input of [{ search: "a".repeat(101) }, { limit: 101 }, { access: "all" }]) await expect(f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", ...input })).rejects.toThrow();
+        for (const input of [{ search: "a".repeat(101) }, { limit: 101 }, { access: "all" }]) await expect(f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", ...input })).rejects.toThrow("Selección de calendario inválida.");
         expect(await f.service.lookup(profile(), { moduleCode: "ventas", kind: "leads", search: "a" })).toEqual({ items: [] });
         expect(f.queries).toHaveLength(0);
     });
@@ -245,7 +245,7 @@ describe("CalendarLookupService", () => {
                 { entityType: "note", source: "legacy", id: "1" },
                 { entityType: "lead", source: "native", id: "bad" },
             ] as const)
-                await expect(f.service.validateLinks(tx, profile(), [link])).rejects.toThrow();
+                await expect(f.service.validateLinks(tx, profile(), [link])).rejects.toThrow(/^Vínculos?/);
         });
     });
 });

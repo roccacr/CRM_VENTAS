@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 
 import { mapLegacyLocation } from "../../src/integrations/legacy-crm/locations/legacy-locations.mapper.js";
 
@@ -10,6 +11,6 @@ describe("Locations canonical legacy mapping", () => {
         expect(mapLegacyLocation({ legacyId: 42, name: null, externalId: null, status })).toMatchObject({ name: "Sin asignar", status: "inactive", externalReferences: [] });
     });
     it("rejects unsupported statuses instead of silently publishing incorrect data", () => {
-        expect(() => mapLegacyLocation({ legacyId: 42, name: "Location", externalId: 5, status: 2 })).toThrow();
+        expect(() => mapLegacyLocation({ legacyId: 42, name: "Location", externalId: 5, status: 2 })).toThrow(ZodError);
     });
 });

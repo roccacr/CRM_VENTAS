@@ -2,6 +2,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it } from "vitest";
 
 import { loadNotesCommandsStatements, notesCommandsMigration } from "../../migrations/schema-only/202610270040_notes_commands.js";
+import { anyOf } from "../support/throws.js";
 
 const dependencies = ["crm_note", "crm_note_reply", "crm_note_participant", "crm_note_mention", "crm_note_link", "crm_note_placement", "int_note_external_reference", "sec_user", "sec_permission"];
 function fixture(options: { name?: string; missing?: boolean; partial?: boolean; column?: boolean; count?: number; conflict?: boolean; missingLedger?: boolean }) {
@@ -33,7 +34,7 @@ describe("notes commands stage two migration", () => {
     it.each([{ name: "legacy" }, { missing: true }, { partial: true }, { column: true }, { count: 1 }, { conflict: true }])("rejects unsafe preflight %j before DDL", async (options) => {
         const f = fixture(options);
         try {
-            await expect(notesCommandsMigration.up(f.db)).rejects.toThrow();
+            await expect(notesCommandsMigration.up(f.db)).rejects.toThrow(anyOf("Notes commands require CRM_THINK_V2", "Notes commands require 039 and native InnoDB dependencies", "Partial or existing notes commands schema requires explicit recovery", "Notes commands require empty crm_note; no module backfill is authorized", "Notes permission conflicts with existing configuration; explicit reconciliation "));
             expect(f.queries.every((query) => query.sql.startsWith("SELECT"))).toBe(true);
         } finally {
             await f.db.destroy();

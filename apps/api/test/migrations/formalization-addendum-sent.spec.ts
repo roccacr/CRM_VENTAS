@@ -17,7 +17,7 @@ describe("072 schema contract", () => {
     it("guards CLI and selection", () => {
         expect(parseLegacyAddendumSentArgs(["--plan"])).toBe(false);
         expect(parseLegacyAddendumSentArgs(["--apply=crmdatabase-api"])).toBe(true);
-        expect(() => parseLegacyAddendumSentArgs(["--apply"])).toThrow();
+        expect(() => parseLegacyAddendumSentArgs(["--apply"])).toThrow("Use exactly --plan or --apply=crmdatabase-api");
         expect(selectSchemaMigrations(formalizationAddendumSentMigration.name)).toEqual([formalizationAddendumSentMigration]);
     });
 });

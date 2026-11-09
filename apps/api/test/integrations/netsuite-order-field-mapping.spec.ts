@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 
 import { mapOrderFields, orderApprovalMappings, orderFieldMappings, readOrderRelationValues } from "../../src/integrations/netsuite/netsuite-order-event.mapper.js";
@@ -38,10 +39,10 @@ describe("NetSuite extended order projection", () => {
         expect(mapOrderFields(fields(), "native", before)).toEqual([]);
     });
     it.each(["12,500", "NaN", "1e6", "1000000000000000", "0.00001", true, undefined])("rejects ambiguous or lossy money %s", (value) => {
-        expect(() => mapOrderFields({ ...fields(), custbody13: value }, "native", {})).toThrow();
+        expect(() => mapOrderFields({ ...fields(), custbody13: value }, "native", {})).toThrow(BadRequestException);
     });
     it.each(["02/11/2026", "2026-02-30", "2026-13-01", undefined])("rejects non-calendar dates %s", (value) => {
-        expect(() => mapOrderFields({ ...fields(), crm_transaction_date: value }, "native", {})).toThrow();
+        expect(() => mapOrderFields({ ...fields(), crm_transaction_date: value }, "native", {})).toThrow("Fecha NetSuite requiere calendario ISO YYYY-MM-DD.");
     });
     it("propagates explicit empty money as NULL instead of zero", () => {
         expect(mapOrderFields({ ...fields(), custbody21: null }, "legacy", { comison_asesor_ov: "50" }).find((change) => change.field === "custbody21")).toEqual({ field: "custbody21", column: "comison_asesor_ov", before: "50", after: null });
@@ -51,7 +52,7 @@ describe("NetSuite extended order projection", () => {
         expect(changes.some((change) => ["crm_currency_iso", "custbody73"].includes(change.field))).toBe(false);
     });
     it("does not silently accept another projection version", () => {
-        expect(() => mapOrderFields({ ...fields(), crm_sync_projection: 2 }, "native", {})).toThrow();
+        expect(() => mapOrderFields({ ...fields(), crm_sync_projection: 2 }, "native", {})).toThrow("Proyeccion NetSuite no soportada.");
     });
     it.each(["native", "legacy"] as const)("maps three approvals without treating a false checkbox as approval in %s", (destination) => {
         const changes = mapOrderFields(fields(), destination, {});
@@ -59,7 +60,7 @@ describe("NetSuite extended order projection", () => {
         expect(changes.find((change) => change.field === "initialtranid")?.column).toBe(destination === "native" ? "transaction_number_sales_order_external_reference" : "id_ov_tranid");
     });
     it("rejects text which would be truncated by the legacy column", () => {
-        expect(() => mapOrderFields({ ...fields(), initialtranid: "x".repeat(51) }, "legacy", {})).toThrow();
+        expect(() => mapOrderFields({ ...fields(), initialtranid: "x".repeat(51) }, "legacy", {})).toThrow("Numero de orden NetSuite invalido o demasiado largo.");
     });
 });
 
@@ -82,6 +83,6 @@ describe("custbody37 purchase funds confirmed by NetSuite", () => {
         expect(mapOrderFields({ ...fields(), custbody37: "1" }, destination, { [column]: "own_funds" }).some((change) => change.field === "custbody37")).toBe(false);
     });
     it.each([0, 3, "Propios", "Financiado", true, undefined, " 1", "01", {}, []])("rejects unknown ids rather than guessing from labels %j", (value) => {
-        expect(() => mapOrderFields({ ...fields(), custbody37: value }, "native", {})).toThrow();
+        expect(() => mapOrderFields({ ...fields(), custbody37: value }, "native", {})).toThrow("custbody37 requiere 1 (Propios), 2 (Financiado) o vacio.");
     });
 });

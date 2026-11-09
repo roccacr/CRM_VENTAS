@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { leadHistoryMigration, leadHistoryStatements } from "../../migrations/schema-only/202610230032_lead_history.js";
 import { leadStageReasonsMigration } from "../../migrations/schema-only/202610230033_lead_stage_reasons.js";
+import { anyOf } from "../support/throws.js";
 
 function fixture(name = "CRM_THINK_V2", existing = false) {
     const queries: CompiledQuery[] = [];
@@ -36,7 +37,7 @@ describe("history schema boundaries", () => {
     it("rejects stage reason seeds against the old database", async () => {
         const f = fixture("crmdatabase-api");
         try {
-            await expect(leadStageReasonsMigration.up(f.db)).rejects.toThrow();
+            await expect(leadStageReasonsMigration.up(f.db)).rejects.toThrow("Lead stage reasons require CRM_THINK_V2");
             expect(f.queries).toHaveLength(1);
         } finally {
             await f.db.destroy();
@@ -48,7 +49,7 @@ describe("history schema boundaries", () => {
     ] as const)("rejects unsafe destination %s / existing=%s", async (name, existing) => {
         const f = fixture(name, existing);
         try {
-            await expect(leadHistoryMigration.up(f.db)).rejects.toThrow();
+            await expect(leadHistoryMigration.up(f.db)).rejects.toThrow(anyOf("Lead history requires CRM_THINK_V2", "Existing lead history tables require explicit recovery"));
             expect(f.queries.every((query) => query.sql.trim().startsWith("SELECT"))).toBe(true);
         } finally {
             await f.db.destroy();

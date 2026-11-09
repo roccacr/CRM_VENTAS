@@ -5,6 +5,7 @@ import { type DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
 import { type RecordAuditService } from "../../src/modules/crm/audit/record-audit.service.js";
 import { FormalizationApprovalRepository } from "../../src/modules/crm/sales/sales-orders/formalization-approval.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const command = { source: "native" as const, id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", actorPublicId: "actor", ownOnly: false, expectedSequence: 0, operationId: "550e8400-e29b-41d4-a716-446655440000", correlationId: "trace" };
 function setup(options: { native?: boolean; inactive?: boolean; prerequisites?: boolean; state?: string; sequence?: number; auditFailure?: boolean; erpFailure?: boolean; owner?: string; replay?: boolean; replayActor?: string; promotion?: boolean } = {}) {
@@ -105,7 +106,7 @@ it.each([true, false])("confirms ERP before committing the authoritative approva
 it.each([{ inactive: true }, { prerequisites: false }, { state: "contract_pending_signature" }, { sequence: 2, state: "pending_approval" }, { owner: "other" }])("rejects invalid business state, version or resource scope before ERP %j", async (options) => {
     const f = setup(options);
     try {
-        await expect(f.repo.approve({ ...command, ownOnly: true })).rejects.toThrow();
+        await expect(f.repo.approve({ ...command, ownOnly: true })).rejects.toThrow(anyOf("La orden está inactiva o marcada como venta caída en el CRM.", "En el CRM faltan las aprobaciones de Jefe de Ventas y/o Desarrolladora.", "La orden cambió. Actualiza antes de aprobar.", "La orden está fuera de su alcance."));
         expect(f.erp.approveFormalization).not.toHaveBeenCalled();
         expect(f.audit.append).not.toHaveBeenCalled();
         expect(f.steps.at(-1)).toBe("rollback");

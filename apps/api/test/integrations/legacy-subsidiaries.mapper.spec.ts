@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 
 import { mapLegacySubsidiary } from "../../src/integrations/legacy-crm/subsidiaries/legacy-subsidiaries.mapper.js";
 
@@ -10,6 +11,6 @@ describe("Subsidiaries canonical legacy mapping", () => {
         expect(mapLegacySubsidiary({ legacyId: 42, name: null, externalId: null, status })).toMatchObject({ name: "Sin asignar", status: "inactive", externalReferences: [] });
     });
     it("rejects unsupported statuses instead of silently publishing incorrect data", () => {
-        expect(() => mapLegacySubsidiary({ legacyId: 42, name: "Subsidiary", externalId: 5, status: 2 })).toThrow();
+        expect(() => mapLegacySubsidiary({ legacyId: 42, name: "Subsidiary", externalId: 5, status: 2 })).toThrow(ZodError);
     });
 });

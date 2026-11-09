@@ -83,9 +83,9 @@ it("registra 073 para ejecutar únicamente esta migración", () => {
 it("no permite aplicar legacy con argumentos ambiguos", () => {
     expect(parseLegacyLeadQualificationArgs(["--plan"])).toBe(false);
     expect(parseLegacyLeadQualificationArgs(["--apply=crmdatabase-api"])).toBe(true);
-    expect(() => parseLegacyLeadQualificationArgs([])).toThrow();
-    expect(() => parseLegacyLeadQualificationArgs(["--apply"])).toThrow();
-    expect(() => parseLegacyLeadQualificationArgs(["--apply=CRM_THINK_V2"])).toThrow();
+    expect(() => parseLegacyLeadQualificationArgs([])).toThrow("Use exactly --plan or --apply=crmdatabase-api");
+    expect(() => parseLegacyLeadQualificationArgs(["--apply"])).toThrow("Use exactly --plan or --apply=crmdatabase-api");
+    expect(() => parseLegacyLeadQualificationArgs(["--apply=CRM_THINK_V2"])).toThrow("Use exactly --plan or --apply=crmdatabase-api");
 });
 
 it("compatibilidad legacy es solo de sesión y conserva las FK", async () => {

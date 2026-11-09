@@ -1,5 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import { describe, expect, it, vi } from "vitest";
+import { ZodError } from "zod";
 
 import { mapLegacyCampaign } from "../../src/integrations/legacy-crm/campaigns/legacy-campaigns.mapper.js";
 import { LegacyCatalogReader } from "../../src/integrations/legacy-crm/legacy-catalog.reader.js";
@@ -16,8 +17,8 @@ describe("isolated legacy catalog adapter", () => {
         expect(mapLegacyCatalogItem(code, { legacyId: 42, externalId: -5, name: " Default ", status: 1 }).publicId).toBe(item.publicId);
     });
     it("rejects invalid source identifiers and unknown status values", () => {
-        expect(() => mapLegacyCatalogItem("projects", { legacyId: 42, externalId: 1.5, name: "A", status: 1 })).toThrow();
-        expect(() => mapLegacyCatalogItem("projects", { legacyId: 42, externalId: 1, name: "A", status: 99 })).toThrow();
+        expect(() => mapLegacyCatalogItem("projects", { legacyId: 42, externalId: 1.5, name: "A", status: 1 })).toThrow(ZodError);
+        expect(() => mapLegacyCatalogItem("projects", { legacyId: 42, externalId: 1, name: "A", status: 99 })).toThrow(ZodError);
     });
     it("never accesses the legacy database when disabled", async () => {
         const access = vi.spyOn(LegacyCrmDatabaseService.prototype, "db", "get");

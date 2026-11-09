@@ -6,6 +6,7 @@ import { salesOrderStageTrackingMigration } from "../../migrations/schema-only/2
 import { buildSalesOrderStageDurationView, normalizeStageDurationView } from "../../migrations/schema-only/sales-order-stage-duration.sql.js";
 import { planLegacyStageTracking, runLegacyStageTracking } from "../../scripts/migrate-legacy-sales-order-stage-tracking.js";
 import { selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
+import { anyOf } from "../support/throws.js";
 
 function fixture(drift = false, database = "CRM_THINK_V2", responses: [string, Record<string, unknown>[]][] = []) {
     const queries: CompiledQuery[] = [];
@@ -59,7 +60,7 @@ describe("stage tracking migration slice", () => {
         if (fragment.includes("VIEWS")) responses.push(["FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'audit_sales_order_state_duration'", [{ table_type: "VIEW" }]]);
         const f = fixture(false, "CRM_THINK_V2", responses);
         try {
-            await expect(salesOrderStageTrackingMigration.up(f.db)).rejects.toThrow();
+            await expect(salesOrderStageTrackingMigration.up(f.db)).rejects.toThrow("Stage tracking schema drift; DBA reconciliation required");
             expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
         } finally {
             await f.db.destroy();
@@ -98,7 +99,7 @@ describe("stage tracking migration slice", () => {
     it.each(["SET NULL", "CASCADE"])("rejects native FK deletion drift: %s", async (delete_rule) => {
         const f = fixture(false, "CRM_THINK_V2", [["information_schema.KEY_COLUMN_USAGE", [{ constraint_name: "fk_so_state_responsible", column_name: "responsible_user_id_sales_order_state_event", ordinal_position: 1, referenced_table_schema: "CRM_THINK_V2", referenced_table_name: "sec_user", referenced_column_name: "id_user", delete_rule, update_rule: "RESTRICT" }]]]);
         try {
-            await expect(salesOrderStageTrackingMigration.up(f.db)).rejects.toThrow();
+            await expect(salesOrderStageTrackingMigration.up(f.db)).rejects.toThrow("Stage tracking schema drift; DBA reconciliation required");
             expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
         } finally {
             await f.db.destroy();
@@ -107,7 +108,7 @@ describe("stage tracking migration slice", () => {
     it("rejects an existing legacy responsible FK before DDL", async () => {
         const f = fixture(false, "crmdatabase-api", [["information_schema.KEY_COLUMN_USAGE", [{ column_name: "responsible_reference_sales_order_state_event" }]]]);
         try {
-            await expect(planLegacyStageTracking(f.db)).rejects.toThrow();
+            await expect(planLegacyStageTracking(f.db)).rejects.toThrow("Stage tracking schema drift; DBA reconciliation required");
             expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
         } finally {
             await f.db.destroy();
@@ -142,7 +143,7 @@ describe("stage tracking migration slice", () => {
     ] as const)("fails closed before writes for drift or destination", async (drift, database) => {
         const f = fixture(drift, database);
         try {
-            await expect(salesOrderStageTrackingMigration.up(f.db)).rejects.toThrow();
+            await expect(salesOrderStageTrackingMigration.up(f.db)).rejects.toThrow(anyOf("Stage tracking schema drift; DBA reconciliation required", "Stage tracking requires CRM_THINK_V2"));
             expect(f.queries.every((q) => q.sql.startsWith("SELECT"))).toBe(true);
         } finally {
             await f.db.destroy();

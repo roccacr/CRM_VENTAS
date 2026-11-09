@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 
 import { classifyLegacyHistory, historyFingerprint, legacyHistoryRowSchema } from "../../src/integrations/legacy-crm/lead-history/legacy-lead-history.model.js";
 
@@ -36,7 +37,7 @@ describe("legacy lead history interpretation", () => {
         expect(historyFingerprint(parsed)).not.toBe(historyFingerprint({ ...parsed, detail: "Texto modificado" }));
     });
     it("rejects malformed rows instead of silently dropping evidence", () => {
-        expect(() => legacyHistoryRowSchema.parse({ ...row, id: 0 })).toThrow();
-        expect(() => legacyHistoryRowSchema.parse({ ...row, detail: { unsafe: true } })).toThrow();
+        expect(() => legacyHistoryRowSchema.parse({ ...row, id: 0 })).toThrow(ZodError);
+        expect(() => legacyHistoryRowSchema.parse({ ...row, detail: { unsafe: true } })).toThrow(ZodError);
     });
 });

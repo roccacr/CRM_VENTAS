@@ -1,3 +1,4 @@
+import { BadRequestException, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult } from "kysely";
 import { describe, expect, it, vi } from "vitest";
@@ -171,7 +172,7 @@ describe("central transactional record writer", () => {
     it.each([{ ready: false }, { schema: "crmdatabase-api" }])("fails closed on an unprepared destination %j", async (options) => {
         const { db, service, queries, lifecycle } = setup(options);
         try {
-            await expect(db.transaction().execute(async (tx) => service.append(tx, { ...input, actor: await service.captureActor(tx, 1) }))).rejects.toThrow();
+            await expect(db.transaction().execute(async (tx) => service.append(tx, { ...input, actor: await service.captureActor(tx, 1) }))).rejects.toThrow(ServiceUnavailableException);
             expect(queries.some((query) => /^insert/i.test(query.sql))).toBe(false);
             expect(lifecycle).toEqual(["begin", "rollback"]);
         } finally {
@@ -226,7 +227,7 @@ describe("central transactional record writer", () => {
     ])("rejects invalid or unsupported input before SQL %#", async (value) => {
         const { db, service, queries } = setup();
         try {
-            await expect(db.transaction().execute((tx) => service.append(tx, value as typeof input))).rejects.toThrow();
+            await expect(db.transaction().execute((tx) => service.append(tx, value as typeof input))).rejects.toThrow(BadRequestException);
             expect(queries).toHaveLength(0);
         } finally {
             await db.destroy();

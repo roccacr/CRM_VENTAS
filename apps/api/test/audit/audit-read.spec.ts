@@ -20,7 +20,7 @@ it("requires module and section, caps batch size and binds cursor to scope", asy
     const query = { moduleCode: "administration", sectionCode: "catalogs", limit: 10 };
     const cursor = encodeAuditCursor(query, 42);
     expect(decodeAuditCursor({ ...query, cursor })).toBe(42);
-    expect(() => decodeAuditCursor({ ...query, sectionCode: "users", cursor })).toThrow();
+    expect(() => decodeAuditCursor({ ...query, sectionCode: "users", cursor })).toThrow("Cursor de auditoría inválido.");
 });
 describe("audit read authorization", () => {
     // Independent expected decisions: an explicit deny wins in either entry order.
@@ -135,7 +135,7 @@ describe("audit read authorization", () => {
         const result = await service.detail("cookie", publicId);
         expect(result.changeSet?.changes).toEqual(changeSet.changes);
         expect(JSON.stringify(result)).not.toMatch(/secret|password|metadata|private/);
-        await expect(service.detail("cookie", "invalid")).rejects.toThrow();
+        await expect(service.detail("cookie", "invalid")).rejects.toThrow("Identificador de evento inválido.");
         expect(detail).toHaveBeenCalledTimes(1);
         detail.mockResolvedValueOnce({ publicId, createdAt: "2026-10-13T12:00:00Z", changeSet: null });
         expect((await service.detail("cookie", publicId)).changeSet).toBeNull();
@@ -171,7 +171,7 @@ describe("audit read authorization", () => {
         const service = new AuditReadService(identity as unknown as IdentityService, { list } as unknown as AuditReadRepository);
         expect((await service.options("cookie")).modules[0].code).toBe("administration");
         expect(list).not.toHaveBeenCalled();
-        await expect(service.list("cookie", { moduleCode: "ventas", sectionCode: "users", limit: 10 })).rejects.toThrow();
+        await expect(service.list("cookie", { moduleCode: "ventas", sectionCode: "users", limit: 10 })).rejects.toThrow("Sección inválida para el módulo.");
         expect(list).not.toHaveBeenCalled();
     });
     it("supports existing role.assign access and marks missing catalog context explicitly", async () => {

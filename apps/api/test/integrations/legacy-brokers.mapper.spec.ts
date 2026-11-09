@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 
 import { mapLegacyBroker } from "../../src/integrations/legacy-crm/brokers/legacy-brokers.mapper.js";
 
@@ -10,7 +11,7 @@ describe("Brokers canonical legacy mapping", () => {
         expect(mapLegacyBroker({ legacyId: 42, name: null, externalId: null, status })).toMatchObject({ name: "Sin asignar", status: "inactive", externalReferences: [] });
     });
     it("rejects unsupported statuses instead of silently publishing incorrect data", () => {
-        expect(() => mapLegacyBroker({ legacyId: 42, name: "Broker", externalId: 5, status: 2 })).toThrow();
+        expect(() => mapLegacyBroker({ legacyId: 42, name: "Broker", externalId: 5, status: 2 })).toThrow(ZodError);
     });
     it("never exposes obsolete legacy fields in the canonical contract", () => {
         const item = mapLegacyBroker({ legacyId: 7, name: "Broker", externalId: 19, status: 1, valoridNetsuite: 99, categoria_corredor: "obsolete", empresa_corredor: "obsolete", telefono_corredor: "obsolete", correo__corredor: "obsolete" });

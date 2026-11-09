@@ -119,7 +119,7 @@ it("tickets cifrados expiran y detectan alteración, clave, usuario y orden dist
         [ticket.slice(0, -4) + "xxxx", secret, "a", "78"],
         [sealUploadTicket({ ...payload, expires: Date.now() - 1 }, secret), secret, "a", "78"],
     ])
-        expect(() => openUploadTicket(value ?? "", key ?? "", user ?? "", target ?? "")).toThrow();
+        expect(() => openUploadTicket(value ?? "", key ?? "", user ?? "", target ?? "")).toThrow("La carga expiró o no pertenece a esta orden y usuario. Consulta los archivos antes de iniciar otra c");
 });
 describe("Graph aislado por carpeta", () => {
     const graph = new OrderDocumentsGraph();

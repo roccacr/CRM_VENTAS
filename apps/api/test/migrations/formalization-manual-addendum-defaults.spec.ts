@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formalizationManualAddendumDefaultsMigration as migration } from "../../migrations/schema-only/202611030067_formalization_manual_addendum_defaults.js";
 import { selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const code = "formalizacion.orders.addendum.mark_pending";
 const description = "Marcar adéndum pendiente";
@@ -82,7 +83,7 @@ describe("067 defaults explícitos del marcado manual de adéndum", () => {
     ] satisfies Options[])("rechaza configuración incompatible antes de escribir: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(anyOf("Manual addendum defaults permission requires CRM_THINK_V2", "Manual addendum defaults permission requires native InnoDB security tables", "Manual addendum defaults permission requires all authorized active roles", "Manual addendum defaults permission requires Owner migration attribution", "Manual addendum defaults requires the existing active permission from migration "));
             expect(writes(f.queries)).toEqual([]);
             expect(f.transactions).toEqual(["begin", "rollback"]);
         } finally {

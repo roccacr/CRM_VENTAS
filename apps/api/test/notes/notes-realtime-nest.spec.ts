@@ -118,5 +118,5 @@ it("integrates the real Nest/Fastify gateway despite global HTTP guards and isol
 });
 it("rejects a CSRF token belonging to a different session at the actual Nest handshake", async () => {
     const f = await fixture();
-    await expect(f.connect("session-guest", createSignedCsrfToken(secret, "session-owner"))).rejects.toThrow();
+    await expect(f.connect("session-guest", createSignedCsrfToken(secret, "session-owner"))).rejects.toThrow("Notes connection unavailable");
 });

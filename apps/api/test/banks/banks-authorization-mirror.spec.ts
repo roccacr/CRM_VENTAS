@@ -51,7 +51,7 @@ describe("Banks mirror gates and SQL", () => {
         const tx = { isTransaction: true, executeQuery } as unknown as Transaction<CrmDatabase>;
         expect(() => {
             writer.assertWritable();
-        }).toThrow();
+        }).toThrow("Banks mirror requires explicit legacy writes and exact legacy schema.");
         await expect(writer.writeBank(tx, bank)).rejects.toMatchObject({ status: 503 });
         expect(executeQuery).not.toHaveBeenCalled();
     });
