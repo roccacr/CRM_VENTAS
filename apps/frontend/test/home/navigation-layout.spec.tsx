@@ -19,14 +19,13 @@ it("preserves the standard navigation styling for a Home-only Formalization prof
     expect(screen.getByRole("button", { name: "Inicio" }).getAttribute("aria-current")).toBe("page");
     expect(screen.queryByRole("button", { name: "Contratos" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Expedientes" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Gestión de formalizaciones" })).toBeNull();
     expect(navigationStyles).not.toContain(".global-home-menu--single");
 });
 
-it("connects the approved management menu to the preview orders route", () => {
+it("keeps the management shortcut out of the Formalization navigation", () => {
     const workspace = ASSIGNED_WORKSPACES.find((item) => item.code === "formalization");
-    expect(workspace?.menuItems.map((item) => item.label)).toEqual(["Inicio", "Gestión de formalizaciones", "Calendario", "Catálogos"]);
-    expect(workspace?.menuItems.find((item) => item.code === "formalization-management")?.routePath).toBe("/home/formalization/orders");
+    expect(workspace?.menuItems.map((item) => item.label)).toEqual(["Inicio", "Calendario", "Catálogos"]);
 });
 
 it("keeps dropdowns outside the tablet navigation clipping area", () => {

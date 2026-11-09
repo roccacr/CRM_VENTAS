@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import ConfigProvider from "antd/es/config-provider";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { FormalizationFiniquito } from "../../src/modules/home/FormalizationFiniquito";
@@ -52,11 +53,23 @@ it("una firma registrada termina la rama", async () => {
 
 it("confirma envío y firma secuenciales antes de registrar cada cambio", async () => {
     vi.mocked(apiRequest).mockResolvedValueOnce({ eligible: true, status: "pending_send", version: 1, originStage: "bank_management", canUpdate: true }).mockResolvedValueOnce({ eligible: true, status: "sent", version: 2, originStage: "bank_management", canUpdate: true }).mockResolvedValueOnce({ eligible: true, status: "signed", version: 3, originStage: "bank_management", canUpdate: true });
-    render(<FormalizationFiniquito item={item} allowed />);
+    render(
+        <ConfigProvider theme={{ token: { motion: false } }}>
+            <FormalizationFiniquito item={item} allowed />
+        </ConfigProvider>,
+    );
     fireEvent.click(await screen.findByRole("button", { name: /Registrar envío/ }));
     expect(apiRequest).toHaveBeenCalledOnce();
-    fireEvent.click(await screen.findByRole("button", { name: "Confirmar registro" }));
-    fireEvent.click(await screen.findByRole("button", { name: /Registrar firma/ }));
+    const confirmSend = await screen.findByRole("button", { name: "Confirmar registro" });
+    await act(async () => {
+        fireEvent.click(confirmSend);
+        await Promise.resolve();
+    });
+    const sign = await screen.findByRole("button", { name: "Registrar firma" });
+    await waitFor(() => {
+        expect(sign).not.toHaveClass("ant-btn-loading");
+    });
+    fireEvent.click(sign);
     const signatureDialog = await screen.findByRole("dialog", { name: "¿Confirmar finiquito firmado?" });
     fireEvent.click(within(signatureDialog).getByRole("button", { name: "Confirmar registro" }));
     expect(await screen.findByText("Proceso de finiquito completado")).toBeVisible();

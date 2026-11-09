@@ -247,7 +247,7 @@ it("maps articles, reservation and payment without mixing distinct amounts or in
     fireEvent.click(screen.getByRole("tab", { name: "Detalle de pago" }));
     expect(screen.getByRole("tabpanel", { name: "Detalle de pago" })).toHaveTextContent("54,752.00");
     fireEvent.click(screen.getByRole("tab", { name: "OneDrive" }));
-    expect(screen.getByRole("heading", { level: 1, name: "AQUI VA EL ONEDRIVE" })).toBeInTheDocument();
+    expect(within(screen.getByRole("tabpanel", { name: "OneDrive" })).getByText("No tienes permiso para consultar los documentos de la orden.")).toBeVisible();
     expect(screen.queryByRole("region", { name: "Información del sistema" })).not.toBeInTheDocument();
 });
 it("keeps unknown reservation methods and pre-additional-chapter snapshots safe", () => {

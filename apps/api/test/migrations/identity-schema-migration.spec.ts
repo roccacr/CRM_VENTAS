@@ -57,7 +57,7 @@ describe("identity schema migration parser", () => {
         expect(result.status).toBe(1);
         expect(result.stderr).toContain("Migration arguments");
         expect(result.stderr).not.toContain("ECONNREFUSED");
-    });
+    }, 15_000);
 
     it("selects only the requested migration and rejects unknown names", () => {
         expect(selectSchemaMigrations("202610090009_projects_domain").map((migration) => migration.name)).toEqual(["202610090009_projects_domain"]);

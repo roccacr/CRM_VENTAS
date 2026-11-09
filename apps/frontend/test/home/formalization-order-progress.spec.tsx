@@ -166,7 +166,7 @@ it("bounds the confirmed approval flag to the same order and exact provider proj
     expect(
         vi
             .mocked(apiRequest)
-            .mock.calls.filter(([path]) => !path.endsWith("/database") && path !== "/identity/me")
+            .mock.calls.filter(([path]) => !path.endsWith("/database") && !path.endsWith("/netsuite/context") && path !== "/identity/me")
             .map(([path, options]) => [path, options?.method ?? "GET"]),
     ).toEqual([
         ["/formalization/orders/approve", "POST"],

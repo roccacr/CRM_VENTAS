@@ -187,16 +187,14 @@ it("keeps unauthorized follow-up disabled and an empty recent-activity surface",
     expect(screen.getByText("Los movimientos recientes aún no están disponibles.")).toBeTruthy();
 });
 
-it("keeps follow-up disabled without the effective role even with approval permission", () => {
+it("opens follow-up for an effective approvals grant without a named role", () => {
     installBrowserApiDoubles();
     const { rerender } = render(<FormalizationHomePage />);
     expect(screen.queryByRole("combobox", { name: "Bandeja de seguimiento" })).toBeNull();
     const permission = { code: "formalizacion.home.approvals.read", effect: "allow" as const };
     rerender(<FormalizationHomePage effectivePermissions={[permission]} />);
-    expect(screen.queryByRole("combobox", { name: "Bandeja de seguimiento" })).toBeNull();
-    expect(screen.getByText("El seguimiento de órdenes aún no está disponible.")).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: /^Ver seguimiento de/ })).toHaveLength(0);
-    expect(screen.queryByRole("option", { name: "Todas (0)" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Bandeja de seguimiento" })).toBeTruthy();
+    expect(screen.queryByText("El seguimiento de órdenes aún no está disponible.")).toBeNull();
 });
 
 it.each(["role", "override"] as const)("keeps approvals unmounted until an effective %s permission arrives", (source) => {
@@ -334,11 +332,11 @@ it("revoking one category discards its mounted queue and pending data", async ()
     expect(screen.queryByRole("option", { name: /Gestión bancaria/ })).toBeNull();
 });
 
-it("does not request approvals without the active effective role", () => {
+it("requests approvals with the effective grant and no named role", () => {
     installBrowserApiDoubles();
     render(<FormalizationHomePage effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
-    expect(screen.queryByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeNull();
-    expect(getApprovalCount).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeTruthy();
+    expect(getApprovalCount).toHaveBeenCalledOnce();
 });
 
 it("shows independently verified banking counts and no invented zero after summary failure", async () => {

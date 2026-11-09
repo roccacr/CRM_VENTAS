@@ -17,16 +17,15 @@ const profile = (codes: readonly string[]): IdentityProfile => ({
 
 describe("Formalization Home-only access", () => {
     const homeOnly = profile([]);
-    it("shows Inicio and the visual management option and selects a valid login destination", () => {
+    it("shows only Inicio and selects a valid login destination for a Home-only profile", () => {
         const workspaces = getVisibleNavigationWorkspaces(homeOnly.permissions, homeOnly.orgUnits);
         expect(workspaces.map(({ code }) => code)).toEqual(["formalization"]);
-        expect(workspaces[0]?.menuItems.map(({ label }) => label)).toEqual(["Inicio", "Gestión de formalizaciones"]);
+        expect(workspaces[0]?.menuItems.map(({ label }) => label)).toEqual(["Inicio"]);
         expect(getDefaultAuthenticatedPath(homeOnly)).toBe("/home/formalization");
         expect(resolveRouteState(homeOnly, "/home/formalization").status).toBe("authenticated");
-        expect(resolveRouteState(homeOnly, "/home/formalization/orders").status).toBe("authenticated");
+        expect(resolveRouteState(homeOnly, "/home/formalization/orders").status).toBe("forbidden");
         expect(resolveRouteState(homeOnly, "/home/formalization/calendar").status).toBe("forbidden");
         expect(resolveRouteState(profile([]), "/home/formalization/calendar").status).toBe("forbidden");
-        expect(resolveRouteState(profile([]), "/home/formalization/orders").status).toBe("authenticated");
     });
     it.each(["projects", "campaigns", "classes", "locations", "subsidiaries", "brokers", "files"])("denies the %s catalog URL", (catalog) => {
         expect(resolveRouteState(homeOnly, `/home/formalization/catalogs/${catalog}`).status).toBe("forbidden");

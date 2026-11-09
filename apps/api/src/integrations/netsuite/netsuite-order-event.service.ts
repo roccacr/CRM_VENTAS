@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { ConflictException, HttpException, Inject, Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, HttpException, Inject, Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 import { isNetsuiteEventReceiverEnabled } from "../../common/security/local-service-token.guard.js";
@@ -23,6 +23,15 @@ function canonical(value: unknown): string {
     return JSON.stringify(value);
 }
 const digest = (value: unknown): string => createHash("sha256").update(canonical(value)).digest("hex");
+const MAX_EVENT_CLOCK_SKEW_MS = 60_000;
+
+/** A future revision or read window can make subsequent legitimate observations appear stale. */
+function assertCursorTimestamps(event: PersistedOrderEvent["event"]): void {
+    const latest = Date.now() + MAX_EVENT_CLOCK_SKEW_MS;
+    const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt } = event;
+    const timestamps = [sourceModifiedAt, ...(snapshotReadStartedAt === undefined ? [] : [snapshotReadStartedAt]), ...(snapshotReadCompletedAt === undefined ? [] : [snapshotReadCompletedAt])];
+    if (!timestamps.every((value) => Date.parse(value) <= latest)) throw new BadRequestException("Fecha de revisión o lectura NetSuite inválida o adelantada.");
+}
 
 /** Orquesta el contrato durable; la respuesta positiva siempre ocurre despues del COMMIT. */
 @Injectable()
@@ -37,6 +46,7 @@ export class NetsuiteOrderEventService {
     /** Los eventos fallidos se pueden reenviar con el mismo UUID y payload. */
     async receive(event: PersistedOrderEvent, manual?: ManualOrderSynchronization) {
         this.assertPersistenceEnabled(event);
+        assertCursorTimestamps(event.event);
         const identity = { payloadHash: digest(event), snapshotHash: "" };
         try {
             const fields = event.snapshot.data.fields;

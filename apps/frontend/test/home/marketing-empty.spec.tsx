@@ -32,7 +32,7 @@ describe("Marketing home pending real data", () => {
         }
         expect(screen.queryByText(/Datos de demostración|ficticios/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Proyecto Norte|Proyecto Parque|Proyecto Centro|Dayan|Marlon|Gabriel|Valeria/)).not.toBeInTheDocument();
-        expect(screen.getByRole("combobox", { name: "Vendedor" })).toBeDisabled();
+        expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
         expect(screen.getByRole("combobox", { name: "Proyecto" })).toBeDisabled();
         expect(request).not.toHaveBeenCalled();
     });

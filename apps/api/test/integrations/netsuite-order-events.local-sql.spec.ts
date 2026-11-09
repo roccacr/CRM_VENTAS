@@ -318,6 +318,31 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         return (await sql<{ result: string; destination: string | null; changes: unknown; payload: unknown }>`SELECT result,destination,changes,payload FROM audit_netsuite_order_event ORDER BY id`.execute(db)).rows.map((row) => ({ ...row, changes: typeof row.changes === "string" ? (JSON.parse(row.changes) as unknown) : row.changes, payload: typeof row.payload === "string" ? (JSON.parse(row.payload) as unknown) : row.payload }));
     }
 
+    it("rejects future revisions and read windows without blocking historical v2 deliveries", async () => {
+        await native();
+        const receive = (payload: PersistedOrderEvent) => app.inject({ method: "POST", url: "/integrations/netsuite/local/order-events", headers: { authorization: "Bearer " + secret }, payload });
+        const future = new Date(Date.now() + 3_600_000).toISOString();
+        const revision = event();
+        revision.event.sourceModifiedAt = future;
+        const window = event();
+        window.event.snapshotReadStartedAt = future;
+        window.event.snapshotReadCompletedAt = future;
+        expect((await receive(revision)).statusCode).toBe(400);
+        expect((await receive(window)).statusCode).toBe(400);
+        expect((await flags("native"))?.contract_signed_sales_order).toBe("unknown");
+        expect((await sql`SELECT * FROM int_netsuite_order_cursor`.execute(db)).rows).toHaveLength(0);
+        expect(await audit()).toHaveLength(0);
+        expect((await sql`SELECT * FROM audit_record_event`.execute(db)).rows).toHaveLength(0);
+
+        const historical = event();
+        delete historical.event.snapshotReadStartedAt;
+        delete historical.event.snapshotReadCompletedAt;
+        const accepted = await receive(historical);
+        expect(accepted.statusCode).toBe(200);
+        expect(accepted.json()).toMatchObject({ persisted: true, result: "applied" });
+        expect((await flags("native"))?.contract_signed_sales_order).toBe("yes");
+    });
+
     function paddedEvent(bytes: number, checked: boolean): string {
         const payload = event(checked);
         const fields = payload.snapshot.data.fields;

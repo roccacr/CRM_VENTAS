@@ -225,14 +225,14 @@ it("shows a successful empty result with zero rather than an error", async () =>
     expect(screen.getByText("0 órdenes")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
 });
-it("gates Home reads by active role and allow without deny, and removes revoked rows", async () => {
+it("gates Home reads by effective allow without deny, and removes revoked rows", async () => {
     const { rerender } = render(<FormalizationHomePage />);
     expect(reads()).toHaveLength(0);
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[detail, allow, { ...allow, effect: "deny" }]} />);
     expect(reads()).toHaveLength(0);
-    rerender(<FormalizationHomePage roles={[{ ...role, status: "inactive" }]} effectivePermissions={[detail, allow]} />);
+    rerender(<FormalizationHomePage roles={[{ ...role, status: "inactive" }]} effectivePermissions={[]} />);
     expect(reads()).toHaveLength(0);
-    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[detail, allow]} />);
+    rerender(<FormalizationHomePage roles={[]} effectivePermissions={[detail, allow]} />);
     await screen.findByText("OV-REAL");
     expect(reads()).toHaveLength(1);
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[]} />);

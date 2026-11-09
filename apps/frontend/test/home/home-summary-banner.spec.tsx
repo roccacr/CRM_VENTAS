@@ -91,37 +91,38 @@ it("discards the read subtree on direct deny and refreshes remaining approvals",
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
 });
 
-it("refreshes all authorized banners without navigation or duplicate requests", async () => {
+it("refreshes authorized banners and ignores an approval response superseded by a second refresh", async () => {
     const onNavigate = vi.fn();
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, { code: "formalizacion.home.approvals.read", effect: "allow" }]} onNavigate={onNavigate} />);
     await screen.findByLabelText("Valor: Por enviar, 6");
     await screen.findByLabelText("Órdenes pendientes de aprobación: 2");
     let resolveStages!: (value: typeof summary) => void;
-    let resolveApprovals!: (value: number) => void;
+    const approvalResponses: ((value: number) => void)[] = [];
     vi.mocked(getHomeSummary).mockReturnValueOnce(
         new Promise((resolve) => {
             resolveStages = resolve;
         }),
     );
-    vi.mocked(getApprovalCount).mockReturnValueOnce(
-        new Promise((resolve) => {
-            resolveApprovals = resolve;
-        }),
-    );
+    vi.mocked(getApprovalCount).mockImplementation(() => new Promise((resolve) => approvalResponses.push(resolve)));
     const refresh = screen.getByRole("button", { name: "Recargar banners" });
     fireEvent.click(refresh);
     fireEvent.click(refresh);
     for (const label of labels) expect(screen.getByRole("status", { name: `Cargando ${label}` })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Cargando pendientes de aprobación" })).toBeTruthy();
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
-    expect(getApprovalCount).toHaveBeenCalledTimes(2);
+    expect(getApprovalCount).toHaveBeenCalledTimes(3);
     await act(async () => {
         resolveStages({ ...summary, counts: { ...counts, contracts: { toSend: 5, pendingSignature: 4 } } });
-        resolveApprovals(1);
+        approvalResponses[1]?.(1);
         await Promise.resolve();
     });
     await screen.findByLabelText("Valor: Por enviar, 5");
     expect(screen.getByLabelText("Órdenes pendientes de aprobación: 1")).toBeTruthy();
+    await act(async () => {
+        approvalResponses[0]?.(9);
+        await Promise.resolve();
+    });
+    expect(screen.queryByLabelText("Órdenes pendientes de aprobación: 9")).toBeNull();
     expect(onNavigate).not.toHaveBeenCalled();
 });
 
@@ -176,7 +177,7 @@ it("shares one StrictMode request and preloads all eight numbers", async () => {
 });
 
 it("refreshes on visible focus, deduplicates, clears in queues and refetches on Home return", async () => {
-    render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
+    const { rerender } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await screen.findByLabelText("Valor: Por enviar, 6");
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
     fireEvent.focus(window);
@@ -193,14 +194,14 @@ it("refreshes on visible focus, deduplicates, clears in queues and refetches on 
     fireEvent.focus(window);
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Ver todas las órdenes" }));
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} initialView="orders" />);
     fireEvent.focus(window);
     await act(async () => {
         resolve(summary);
         await Promise.resolve();
     });
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
-    fireEvent.click(screen.getByRole("button", { name: "Volver a Inicio" }));
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await screen.findByLabelText("Valor: Por enviar, 6");
     expect(getHomeSummary).toHaveBeenCalledTimes(3);
 });
@@ -295,9 +296,9 @@ it("does not let a disabled request overwrite a new Home read or release its fli
                 newResolve = done;
             }),
         );
-    render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
-    fireEvent.click(screen.getByRole("button", { name: "Ver todas las órdenes" }));
-    fireEvent.click(screen.getByRole("button", { name: "Volver a Inicio" }));
+    const { rerender } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} initialView="orders" />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await act(async () => {
         oldResolve(summary);
         await Promise.resolve();

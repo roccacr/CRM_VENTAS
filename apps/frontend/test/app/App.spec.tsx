@@ -856,7 +856,8 @@ describe("App", () => {
         view.rerender(<AppRouteContent {...props} path="/home/formalization" />);
         expect(screen.queryByRole("heading", { name: "Acceso no autorizado" })).not.toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
-        expect(fetchMock).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/identity/session"), expect.anything());
+        expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/identity/me"), expect.anything());
     });
     it("keeps a valid profile without grants inside the shell at login", () => {
         render(<AppRouteContent authState={{ status: "forbidden", profile: { ...authenticatedProfile, permissions: [] } }} authRetryFeedback={null} isAuthRetryDisabled={false} isMicrosoftSessionPending={false} isSubmittingLogin={false} loginError={null} onLocalLogin={vi.fn()} onLogout={vi.fn()} onMicrosoftLogin={vi.fn()} onNavigate={vi.fn()} onRetryAuthCheck={vi.fn()} path="/auth/login" />);
@@ -1376,7 +1377,7 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
-        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Gestión de formalizaciones" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         // El refresh propio invalida el primer bootstrap: se permite una relectura segura.
@@ -1442,7 +1443,7 @@ describe("App", () => {
         expect(window.location.pathname).toBe("/home/formalization");
         expect(screen.getByRole("banner", { name: "Barra superior global CRM TINK" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
-        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Gestión de formalizaciones" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/session")).toHaveLength(previousSessionReads + 2);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input) === "/identity/refresh")).toBe(false);
@@ -1522,7 +1523,7 @@ describe("App", () => {
         expect(screen.queryByRole("button", { name: "Ingresar" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Inicio" })).not.toHaveAttribute("data-permission");
-        expect(screen.getByRole("button", { name: "Gestión de formalizaciones" })).not.toHaveAttribute("data-permission");
+        expect(screen.queryByRole("button", { name: "Gestión de formalizaciones" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Resumen" })).not.toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([input]) => getRequestPath(input) === "/identity/refresh")).toHaveLength(1);
         expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).includes("/catalogs/"))).toBe(false);
@@ -1550,7 +1551,7 @@ describe("App", () => {
             within(within(mobileDrawer).getByRole("group", { name: "Opciones de Catálogos" }))
                 .getAllByRole("button")
                 .map((button) => button.textContent),
-        ).toEqual(["Proyectos", "Campañas", "Clases", "Corredores", "Expedientes", "Subsidiarias", "Ubicaciones"]);
+        ).toEqual(["Proyectos", "Bancos", "Campañas", "Clases", "Corredores", "Expedientes", "Subsidiarias", "Ubicaciones"]);
     });
 
     it("cierra sesion desde el menu movil y vuelve al login", async () => {
