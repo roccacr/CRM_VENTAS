@@ -249,6 +249,7 @@ it("maps articles, reservation and payment without mixing distinct amounts or in
     fireEvent.click(screen.getByRole("tab", { name: "OneDrive" }));
     // La pestaña OneDrive ya muestra el explorador de documentos real, no el marcador provisional.
     expect(screen.queryByRole("heading", { level: 1, name: "AQUI VA EL ONEDRIVE" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("tabpanel", { name: "OneDrive" })).getByText("No tienes permiso para consultar los documentos de la orden.")).toBeVisible();
     expect(screen.queryByRole("region", { name: "Información del sistema" })).not.toBeInTheDocument();
 });
 it("keeps unknown reservation methods and pre-additional-chapter snapshots safe", () => {

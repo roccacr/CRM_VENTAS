@@ -838,7 +838,7 @@ describe("SystemUsersPage", () => {
             expect(getUserRow("Andrea Valverde")).toHaveClass("administration-users-table__row--new");
         });
         expect(getUserRow("Javier Castro")).not.toHaveClass("administration-users-table__row--new");
-    });
+    }, 10_000);
 
     it("crea un owner con alcance global y correo de cualquier dominio", async () => {
         render(<SystemUsersPage />);

@@ -1,6 +1,7 @@
 import "reflect-metadata";
 
 import { ConfigService } from "@nestjs/config";
+import fc from "fast-check";
 import { describe, expect, it, vi } from "vitest";
 
 import { persistedOrderEvent, productionOrderEvent } from "../../src/integrations/netsuite/netsuite-order-event.contract.js";
@@ -32,6 +33,36 @@ describe("production event isolation", () => {
         const service = new NetsuiteOrderEventService(repository as never, new ConfigService(config));
         expect((await service.receive(productionOrderEvent.parse(payload))).persisted).toBe(true);
         expect(repository.apply).toHaveBeenCalledOnce();
+    });
+    it.each(["sourceModifiedAt", "snapshotReadCompletedAt"] as const)("rejects generated future %s before touching persistence", async (field) => {
+        const repository = { apply: vi.fn().mockResolvedValue({ result: "applied", destination: "native", duplicate: false }), recordError: vi.fn() };
+        const service = new NetsuiteOrderEventService(repository as never, new ConfigService(config));
+        await fc.assert(
+            fc.asyncProperty(fc.integer({ min: 61_000, max: field === "sourceModifiedAt" ? 365 * 86_400_000 : 120_000 }), async (offset) => {
+                const future = new Date(Date.now() + offset).toISOString();
+                const timestamps = field === "sourceModifiedAt" ? { sourceModifiedAt: future } : { snapshotReadStartedAt: new Date(Date.parse(future) - 60_000).toISOString(), snapshotReadCompletedAt: future };
+                const event = productionOrderEvent.parse({ ...payload, event: { ...payload.event, ...timestamps } });
+                await expect(service.receive(event)).rejects.toMatchObject({ status: 400 });
+            }),
+            { numRuns: 40 },
+        );
+        expect(repository.apply).not.toHaveBeenCalled();
+        expect(repository.recordError).not.toHaveBeenCalled();
+    });
+
+    it("accepts old v2 events without a window and a 60-second clock skew", async () => {
+        const repository = { apply: vi.fn().mockResolvedValue({ result: "applied", destination: "native", duplicate: false }) };
+        const service = new NetsuiteOrderEventService(repository as never, new ConfigService(config));
+        const clock = vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 10, 9));
+        try {
+            await expect(service.receive(productionOrderEvent.parse(payload))).resolves.toMatchObject({ persisted: true });
+            const timestamp = new Date(Date.now() + 60_000).toISOString();
+            const event = productionOrderEvent.parse({ ...payload, event: { ...payload.event, sourceModifiedAt: timestamp, snapshotReadStartedAt: timestamp, snapshotReadCompletedAt: timestamp } });
+            await expect(service.receive(event)).resolves.toMatchObject({ persisted: true });
+            expect(repository.apply).toHaveBeenCalledTimes(2);
+        } finally {
+            clock.mockRestore();
+        }
     });
 });
 

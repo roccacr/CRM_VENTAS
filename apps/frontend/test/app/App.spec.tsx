@@ -860,6 +860,8 @@ describe("App", () => {
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
         // El shell consulta las notificaciones del calendario; sin grants no debe pedir datos de Formalización.
         expect(fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => !url.endsWith("/calendar/notifications"))).toEqual([]);
+        expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/identity/session"), expect.anything());
+        expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/identity/me"), expect.anything());
     });
     it("keeps a valid profile without grants inside the shell at login", () => {
         render(<AppRouteContent authState={{ status: "forbidden", profile: { ...authenticatedProfile, permissions: [] } }} authRetryFeedback={null} isAuthRetryDisabled={false} isMicrosoftSessionPending={false} isSubmittingLogin={false} loginError={null} onLocalLogin={vi.fn()} onLogout={vi.fn()} onMicrosoftLogin={vi.fn()} onNavigate={vi.fn()} onRetryAuthCheck={vi.fn()} path="/auth/login" />);

@@ -360,51 +360,51 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
 
                         <div id="login-local-panel" className={`login-local-panel${isLocalEntered ? " login-local-panel--open" : ""}`} hidden={!isLocalMounted}>
                             <div className="login-local-panel__inner">
-                            <p className="login-local-help">{LOGIN_COPY.localHelp}</p>
-                            {lastMethod === "local" ? authErrorView : null}
-                            {renderStatus(statusMessage, "info")}
+                                <p className="login-local-help">{LOGIN_COPY.localHelp}</p>
+                                {lastMethod === "local" ? authErrorView : null}
+                                {renderStatus(statusMessage, "info")}
 
-                        <Form<LoginFormValues> form={form} className="login-form" layout="vertical" requiredMark={false} initialValues={{}} onValuesChange={clearResolvedFieldError}>
-                            <Form.Item label={LOGIN_COPY.emailLabel} name="email" validateStatus={fieldErrors.email ? "error" : ""} help={fieldErrors.email ? renderFieldError(fieldErrors.email, LOGIN_ERROR_IDS.email) : null}>
-                                <Input
-                                    aria-describedby={fieldErrors.email ? LOGIN_ERROR_IDS.email : undefined}
-                                    aria-invalid={Boolean(fieldErrors.email)}
-                                    aria-label="Correo electrónico"
-                                    prefix={<MailOutlined aria-hidden="true" />}
-                                    placeholder={LOGIN_COPY.emailPlaceholder}
-                                    type="email"
-                                    inputMode="email"
-                                    autoComplete="username"
-                                    autoCapitalize="off"
-                                    spellCheck={false}
-                                    disabled={isSubmitting}
-                                    onPressEnter={submitCredentials}
-                                    onBlur={() => {
-                                        handleCredentialBlur("email");
-                                    }}
-                                />
-                            </Form.Item>
+                                <Form<LoginFormValues> form={form} className="login-form" layout="vertical" requiredMark={false} initialValues={{}} onValuesChange={clearResolvedFieldError}>
+                                    <Form.Item label={LOGIN_COPY.emailLabel} name="email" validateStatus={fieldErrors.email ? "error" : ""} help={fieldErrors.email ? renderFieldError(fieldErrors.email, LOGIN_ERROR_IDS.email) : null}>
+                                        <Input
+                                            aria-describedby={fieldErrors.email ? LOGIN_ERROR_IDS.email : undefined}
+                                            aria-invalid={Boolean(fieldErrors.email)}
+                                            aria-label="Correo electrónico"
+                                            prefix={<MailOutlined aria-hidden="true" />}
+                                            placeholder={LOGIN_COPY.emailPlaceholder}
+                                            type="email"
+                                            inputMode="email"
+                                            autoComplete="username"
+                                            autoCapitalize="off"
+                                            spellCheck={false}
+                                            disabled={isSubmitting}
+                                            onPressEnter={submitCredentials}
+                                            onBlur={() => {
+                                                handleCredentialBlur("email");
+                                            }}
+                                        />
+                                    </Form.Item>
 
-                            <Form.Item label={LOGIN_COPY.passwordLabel} name="password" validateStatus={fieldErrors.password ? "error" : ""} help={fieldErrors.password ? renderFieldError(fieldErrors.password, LOGIN_ERROR_IDS.password) : null}>
-                                <Input.Password
-                                    aria-describedby={fieldErrors.password ? LOGIN_ERROR_IDS.password : undefined}
-                                    aria-invalid={Boolean(fieldErrors.password)}
-                                    aria-label="Contraseña"
-                                    prefix={<LockOutlined aria-hidden="true" />}
-                                    placeholder={LOGIN_COPY.passwordPlaceholder}
-                                    autoComplete="current-password"
-                                    disabled={isSubmitting}
-                                    onPressEnter={submitCredentials}
-                                    onBlur={() => {
-                                        handleCredentialBlur("password");
-                                    }}
-                                />
-                            </Form.Item>
+                                    <Form.Item label={LOGIN_COPY.passwordLabel} name="password" validateStatus={fieldErrors.password ? "error" : ""} help={fieldErrors.password ? renderFieldError(fieldErrors.password, LOGIN_ERROR_IDS.password) : null}>
+                                        <Input.Password
+                                            aria-describedby={fieldErrors.password ? LOGIN_ERROR_IDS.password : undefined}
+                                            aria-invalid={Boolean(fieldErrors.password)}
+                                            aria-label="Contraseña"
+                                            prefix={<LockOutlined aria-hidden="true" />}
+                                            placeholder={LOGIN_COPY.passwordPlaceholder}
+                                            autoComplete="current-password"
+                                            disabled={isSubmitting}
+                                            onPressEnter={submitCredentials}
+                                            onBlur={() => {
+                                                handleCredentialBlur("password");
+                                            }}
+                                        />
+                                    </Form.Item>
 
-                            <Button className="login-submit" htmlType="button" loading={isSubmitting} onClick={submitCredentials} block>
-                                {LOGIN_COPY.signIn}
-                            </Button>
-                        </Form>
+                                    <Button className="login-submit" htmlType="button" loading={isSubmitting} onClick={submitCredentials} block>
+                                        {LOGIN_COPY.signIn}
+                                    </Button>
+                                </Form>
                             </div>
                         </div>
                     </div>

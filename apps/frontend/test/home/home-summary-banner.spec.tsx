@@ -91,38 +91,38 @@ it("discards the read subtree on direct deny and refreshes remaining approvals",
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
 });
 
-it("refreshes all authorized banners without navigation or duplicate requests", async () => {
+it("refreshes authorized banners and ignores an approval response superseded by a second refresh", async () => {
     const onNavigate = vi.fn();
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, { code: "formalizacion.home.approvals.read", effect: "allow" }]} onNavigate={onNavigate} />);
     await screen.findByLabelText("Valor: Por enviar, 6");
     await screen.findByLabelText("Órdenes pendientes de aprobación: 2");
     let resolveStages!: (value: typeof summary) => void;
-    let resolveApprovals!: (value: number) => void;
+    const approvalResponses: ((value: number) => void)[] = [];
     vi.mocked(getHomeSummary).mockReturnValueOnce(
         new Promise((resolve) => {
             resolveStages = resolve;
         }),
     );
-    const approvalsRead = new Promise<number>((resolve) => {
-        resolveApprovals = resolve;
-    });
-    // Cada clic de recarga pide una lectura nueva de aprobaciones; ambas comparten el mismo resultado pendiente.
-    vi.mocked(getApprovalCount).mockReturnValueOnce(approvalsRead).mockReturnValueOnce(approvalsRead);
+    vi.mocked(getApprovalCount).mockImplementation(() => new Promise((resolve) => approvalResponses.push(resolve)));
     const refresh = screen.getByRole("button", { name: "Recargar banners" });
     fireEvent.click(refresh);
     fireEvent.click(refresh);
     for (const label of labels) expect(screen.getByRole("status", { name: `Cargando ${label}` })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Cargando pendientes de aprobación" })).toBeTruthy();
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
-    // Aprobaciones pide una lectura nueva por cada recarga (lo fija formalization-banners); solo el resumen de etapas comparte la peticion en curso.
     expect(getApprovalCount).toHaveBeenCalledTimes(3);
     await act(async () => {
         resolveStages({ ...summary, counts: { ...counts, contracts: { toSend: 5, pendingSignature: 4 } } });
-        resolveApprovals(1);
+        approvalResponses[1]?.(1);
         await Promise.resolve();
     });
     await screen.findByLabelText("Valor: Por enviar, 5");
     expect(screen.getByLabelText("Órdenes pendientes de aprobación: 1")).toBeTruthy();
+    await act(async () => {
+        approvalResponses[0]?.(9);
+        await Promise.resolve();
+    });
+    expect(screen.queryByLabelText("Órdenes pendientes de aprobación: 9")).toBeNull();
     expect(onNavigate).not.toHaveBeenCalled();
 });
 
@@ -177,7 +177,7 @@ it("shares one StrictMode request and preloads all eight numbers", async () => {
 });
 
 it("refreshes on visible focus, deduplicates, clears in queues and refetches on Home return", async () => {
-    const view = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
+    const { rerender } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await screen.findByLabelText("Valor: Por enviar, 6");
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
     fireEvent.focus(window);
@@ -194,15 +194,14 @@ it("refreshes on visible focus, deduplicates, clears in queues and refetches on 
     fireEvent.focus(window);
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeTruthy();
-    // Inicio ya no trae el boton "Ver todas las ordenes"; la vista de ordenes es la ruta con initialView="orders".
-    view.rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} initialView="orders" />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} initialView="orders" />);
     fireEvent.focus(window);
     await act(async () => {
         resolve(summary);
         await Promise.resolve();
     });
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
-    view.rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await screen.findByLabelText("Valor: Por enviar, 6");
     expect(getHomeSummary).toHaveBeenCalledTimes(3);
 });
@@ -297,9 +296,9 @@ it("does not let a disabled request overwrite a new Home read or release its fli
                 newResolve = done;
             }),
         );
-    const view = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
-    view.rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} initialView="orders" />);
-    view.rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
+    const { rerender } = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} initialView="orders" />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await act(async () => {
         oldResolve(summary);
         await Promise.resolve();

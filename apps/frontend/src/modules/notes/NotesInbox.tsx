@@ -140,13 +140,14 @@ export function NotesInbox({ kind, status, query, refreshVersion, onOpenNote }: 
         setData((current) => (current ? { ...current, items: current.items.filter((note) => note.id !== event?.noteId) } : null));
     });
     const visible = background.value;
+    const activeFilterCount = [moduleCode, authorUserId].filter(Boolean).length;
     return (
         <section className="note-inbox" aria-label="Bandeja de notas">
             <WorkflowOverview refreshVersion={refreshVersion} />
             <details className="note-inbox-filtercard">
                 <summary>
                     <span>Filtros</span>
-                    <em>{(moduleCode ? 1 : 0) + (authorUserId ? 1 : 0)}</em>
+                    <em>{activeFilterCount}</em>
                 </summary>
                 <div className="note-inbox-filters">
                     <label>

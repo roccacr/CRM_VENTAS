@@ -125,6 +125,7 @@ jobs:
               pnpm test --maxWorkers=1 \
                 test/integrations/netsuite-order-event-window.spec.ts \
                 test/integrations/netsuite-production-events.http.spec.ts \
+                test/integrations/netsuite-production-events.spec.ts \
                 test/security/finiquito.http.spec.ts \
                 test/sales-orders/formalization-approval.spec.ts
               exit 0

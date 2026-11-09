@@ -6,6 +6,7 @@ import { FormalizationHomePage } from "../../src/modules/home/FormalizationHomeP
 import { AppRouteContent, type AppRouteContentProps } from "../../src/routes/AppRouteContent";
 import type { IdentityProfile, IdentityRole } from "../../src/services/auth/identity-contracts";
 import type * as FollowUpService from "../../src/services/formalization/follow-up-service";
+import { getFollowUp } from "../../src/services/formalization/follow-up-service";
 import { getHomeSummary } from "../../src/services/formalization/home-summary-service";
 import { installBrowserApiDoubles } from "../support/browser";
 
@@ -26,18 +27,23 @@ beforeEach(() => {
 afterEach(cleanup);
 
 it.each([
-    ["Por enviar", "Contratos por enviar"],
-    ["Pendientes de firma", "Contratos pendientes de firma"],
-])("keeps the %s queue read-only without command requests", async (label, title) => {
+    ["Por enviar", "send"],
+    ["Pendientes de firma", "signature"],
+] as const)("filters the %s queue in Home without command requests", async (label, filter) => {
     const fetchMock = vi.fn().mockRejectedValue(new Error("Unexpected operational request"));
     vi.stubGlobal("fetch", fetchMock);
     try {
         render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, { code: "formalizacion.contracts.send", effect: "allow" }, { code: "formalizacion.contracts.revert", effect: "allow" }]} />);
         fireEvent.click(await screen.findByRole("button", { name: `Abrir ${label}` }));
         // La bandeja se aplica sobre el seguimiento embebido en Inicio; ya no abre una pagina de cola con encabezado propio.
-        expect(screen.queryByRole("heading", { name: title, level: 1 })).toBeNull();
-        expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
         expect(screen.getByRole("combobox", { name: "Bandeja de seguimiento" })).toBeTruthy();
+        expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
+        await waitFor(() => {
+            expect(getFollowUp).toHaveBeenLastCalledWith(expect.objectContaining({ queues: [filter] }));
+        });
+        const queue = await screen.findByRole("region", { name: "Órdenes filtradas" });
+        expect(within(queue).getByText("No hay órdenes para estos filtros.")).toBeTruthy();
+        expect(within(queue).getAllByRole("row")).toHaveLength(2);
         expect(screen.queryByRole("table", { name: "Contratos" })).toBeNull();
         expect(screen.queryAllByRole("button", { name: /Registrar envío|Revertir envío|Ver seguimiento de/ })).toHaveLength(0);
         expect(screen.queryByText(/órdenes cargadas|DEMO-OV-/)).toBeNull();
