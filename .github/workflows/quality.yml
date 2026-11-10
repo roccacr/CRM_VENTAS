@@ -7,14 +7,40 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'push' || github.ref_name != vars.HABITA_RELEASE_BRANCH }}
 
 jobs:
+  changes:
+    name: Detect changed apps
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      apps: ${{ steps.detect.outputs.apps }}
+      api: ${{ steps.detect.outputs.api }}
+      frontend: ${{ steps.detect.outputs.frontend }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+      baseline_run: ${{ steps.detect.outputs.baseline_run }}
+      baseline_sha: ${{ steps.detect.outputs.baseline_sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify change classification
+        run: python3 -m unittest discover -s deploy/habita -p 'test_detect_ci_changes.py'
+      - id: detect
+        run: python3 deploy/habita/detect-ci-changes.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ vars.HABITA_RELEASE_BRANCH }}
+
   quality:
     name: Quality / ${{ matrix.app }}
+    needs: changes
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -29,26 +55,32 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        if: needs.changes.outputs[matrix.app] == 'true'
         with:
           version: 10.28.2
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        if: needs.changes.outputs[matrix.app] == 'true'
         with:
           node-version: "22"
           cache: pnpm
           cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+        if: needs.changes.outputs[matrix.app] == 'true'
       - name: Reject embedded NetSuite webhook credentials
-        if: matrix.app == 'api'
+        if: matrix.app == 'api' && needs.changes.outputs.api == 'true'
         run: node --input-type=module -e "import { inspectSuiteScripts } from './scripts/package-netsuite.mjs'; inspectSuiteScripts();"
 
       - run: pnpm format:check && pnpm lint && pnpm typecheck
+        if: needs.changes.outputs[matrix.app] == 'true'
       - run: pnpm test:coverage
+        if: needs.changes.outputs[matrix.app] == 'true'
       - run: pnpm build
+        if: needs.changes.outputs[matrix.app] == 'true'
         env:
           VITE_API_ORIGIN: same-origin
           VITE_HABITA_RELEASE: ${{ github.sha }}
       - name: Upload measured source coverage
-        if: always() && hashFiles(format('apps/{0}/coverage/**/*', matrix.app)) != ''
+        if: always() && needs.changes.outputs[matrix.app] == 'true' && hashFiles(format('apps/{0}/coverage/**/*', matrix.app)) != ''
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: coverage-${{ matrix.app }}
@@ -56,7 +88,16 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Reuse the unchanged app from successful ancestor CI
+        if: needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && needs.changes.outputs[matrix.app] != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: habita-build-${{ matrix.app }}
+          path: apps/${{ matrix.app }}/dist
+          run-id: ${{ needs.changes.outputs.baseline_run }}
+          github-token: ${{ github.token }}
       - name: Check build files before publishing artifacts
+        if: needs.changes.outputs[matrix.app] == 'true' || (needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH)
         shell: bash
         run: |
           set -euo pipefail
@@ -67,7 +108,7 @@ jobs:
           fi
 
       - name: Preserve the build verified by CI
-        if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH
+        if: needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: habita-build-${{ matrix.app }}
@@ -76,8 +117,13 @@ jobs:
           retention-days: 7
 
   package-habita:
-    if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH
-    needs: [quality, dependency-audit, habita-netsuite]
+    if: >-
+      ${{ !cancelled() && github.event_name == 'push' && github.ref_protected &&
+      github.ref_name == vars.HABITA_RELEASE_BRANCH &&
+      needs.changes.outputs.has_changes == 'true' &&
+      needs.quality.result == 'success' && needs.dependency-audit.result == 'success' &&
+      (needs.habita-netsuite.result == 'success' || needs.habita-netsuite.result == 'skipped') }}
+    needs: [changes, quality, dependency-audit, habita-netsuite]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -94,6 +140,10 @@ jobs:
           path: apps/frontend/dist
       - name: Package and record commit and SHA-256
         run: python3 deploy/habita/package-ci-release.py release-package
+        env:
+          HABITA_CHANGED_APPS: ${{ needs.changes.outputs.apps }}
+          HABITA_BASELINE_RUN: ${{ needs.changes.outputs.baseline_run }}
+          HABITA_BASELINE_SHA: ${{ needs.changes.outputs.baseline_sha }}
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: habita-release
@@ -124,6 +174,7 @@ jobs:
 
   dependency-audit:
     name: Dependencies / ${{ matrix.app }}
+    needs: changes
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
@@ -138,17 +189,23 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        if: needs.changes.outputs[matrix.app] == 'true'
         with:
           version: 10.28.2
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        if: needs.changes.outputs[matrix.app] == 'true'
         with:
           node-version: "22"
       - run: pnpm install --frozen-lockfile
+        if: needs.changes.outputs[matrix.app] == 'true'
       - name: Audit production and development dependencies without modifying lockfiles (blocks on high/critical)
+        if: needs.changes.outputs[matrix.app] == 'true'
         run: pnpm audit --audit-level=high
 
   habita-netsuite:
     name: Habita / NetSuite properties and fuzzing
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
@@ -211,6 +268,8 @@ jobs:
 
   mysql-availability:
     name: MySQL / infrastructure (informational)
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -229,8 +288,8 @@ jobs:
   mysql:
     name: MySQL / persistence (informational)
     continue-on-error: true
-    needs: mysql-availability
-    if: vars.CRM_MYSQL_TESTS_READY == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    needs: [changes, mysql-availability]
+    if: needs.changes.outputs.api == 'true' && vars.CRM_MYSQL_TESTS_READY == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: crm-mysql-tests

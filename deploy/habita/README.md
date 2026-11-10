@@ -1,5 +1,30 @@
 # Habita: despliegue en Ubuntu / Apache
 
+## Verificación y build por aplicación
+
+El workflow `quality.yml` detecta los cambios antes de ejecutar las suites.
+Un cambio dentro de `apps/api/` ejecuta lint, tipos, cobertura, build, auditoría
+de dependencias y pruebas NetSuite del API. Dentro de `apps/frontend/` ejecuta
+las comprobaciones del frontend. Los cambios en ambas apps, workflows,
+despliegue o configuración compartida verifican ambas. Un despacho manual
+también verifica ambas. La documentación global por sí sola omite el release.
+
+En la rama de release, la comparación parte de un CI exitoso ancestro con los
+dos builds todavía disponibles. Así se incluyen también cambios de pushes
+anteriores que fallaron. La app sin cambios reutiliza ese artefacto verificado,
+sin instalar dependencias ni ejecutar su suite o build. Si falta una base
+válida o expiraron los artefactos, se reconstruyen ambas. La selección requiere
+`actions: read` y descarga artefactos únicamente del mismo repositorio.
+
+La publicación sigue usando un único paquete con los dos builds, SHA-256,
+activación atómica, comprobaciones de salud y rollback. El manifiesto conserva
+las apps reconstruidas y el commit/run de reutilización. El identificador
+mostrado por un frontend reutilizado corresponde al build original de esa app.
+Los archivos privados de configuración permanecen en `shared/api.env`.
+
+Validación local del detector y de las reglas de reutilización
+`python -B -m unittest discover -s deploy/habita -p test_detect_ci_changes.py`.
+
 ## Corte operativo del 10/11/2026
 
 El último despliegue de Habita confirmado en el registro de ejecución fue el

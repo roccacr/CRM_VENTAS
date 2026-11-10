@@ -55,7 +55,16 @@ with tempfile.TemporaryDirectory() as scratch:
                 with target.open("rb") as file:
                     artifacts[name] = hashlib.file_digest(file, "sha256").hexdigest()
     (payload / "deployment-manifest.json").write_text(
-        json.dumps({"baseCommit": commit, "sourceFiles": sources, "artifactFiles": artifacts}, indent=2),
+        json.dumps({
+            "baseCommit": commit,
+            "sourceFiles": sources,
+            "artifactFiles": artifacts,
+            "changedApps": json.loads(os.environ.get("HABITA_CHANGED_APPS", '["api","frontend"]')),
+            "reusedBuild": {
+                "run": os.environ.get("HABITA_BASELINE_RUN", ""),
+                "commit": os.environ.get("HABITA_BASELINE_SHA", ""),
+            },
+        }, indent=2),
         encoding="utf-8",
     )
     archive = output / f"{release}.tar.gz"
