@@ -1,3 +1,4 @@
+import { HttpException } from "@nestjs/common";
 import { SELF_DECLARED_DEPS_METADATA } from "@nestjs/common/constants.js";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult } from "kysely";
 import { describe, expect, it, vi } from "vitest";
@@ -7,6 +8,7 @@ import type { CrmDatabase } from "../../src/database/database.types.js";
 import { RecordAuditService } from "../../src/modules/crm/audit/record-audit.service.js";
 import { CONTRACT_TRANSITION_LEGACY } from "../../src/modules/crm/sales/sales-orders/contract-transition.port.js";
 import { ContractTransitionRepository } from "../../src/modules/crm/sales/sales-orders/contract-transition.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const request = { source: "native" as const, id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", action: "send" as const, ownOnly: false, actorPublicId: "actor", reason: "", operationId: "550e8400-e29b-41d4-a716-446655440000", correlationId: "trace", expectedSequence: 0 };
 function paidFixture(paid: "yes" | "no" | "unknown" = "yes") {
@@ -184,17 +186,17 @@ describe("contract transitions on one transaction with doubles only", () => {
     it.each([{ funds: "bank_financing" as const }, { state: "pending_balance" }, { owner: "someone-else" }])("rejects stale or unauthorized funds edits %j", async (options) => {
         const f = setup(options);
         try {
-            await expect(f.repo.updatePurchaseFunds({ ...request, ownOnly: true, expectedAuditSequence: 0, purchaseFundsOrigin: "own_funds", expectedPurchaseFundsOrigin: null })).rejects.toThrow();
+            await expect(f.repo.updatePurchaseFunds({ ...request, ownOnly: true, expectedAuditSequence: 0, purchaseFundsOrigin: "own_funds", expectedPurchaseFundsOrigin: null })).rejects.toThrow(anyOf("La orden cambió. Actualiza antes de guardar.", "No tiene alcance sobre el responsable del lead de esta orden"));
             expect(f.audit.append).not.toHaveBeenCalled();
             expect(f.queries.some((q) => q.sql.startsWith("update "))).toBe(false);
         } finally {
             await f.db.destroy();
         }
     });
-    it.each(["own_funds", "bank_financing"] as const)("does not let exceptional capability bypass the %s exit route", async (purchaseFundsOrigin) => {
+    it.each(["own_funds", "bank_financing"] as const)("rejects skipping straight to banking in progress even with exceptional permission (%s)", async (purchaseFundsOrigin) => {
         const f = setup({ state: "contract_pending_signature" });
         try {
-            await expect(f.repo.transition({ ...request, action: "set", targetState: "closed", expectedSequence: 1, canSkipStages: true, reason: "Exception", purchaseFundsOrigin })).rejects.toMatchObject({ response: { code: "PURCHASE_FUNDS_ROUTE_REQUIRED" } });
+            await expect(f.repo.transition({ ...request, action: "set", targetState: "bank_management_in_progress", expectedSequence: 1, canSkipStages: true, reason: "Exception", purchaseFundsOrigin })).rejects.toMatchObject({ response: { code: "PURCHASE_FUNDS_ROUTE_REQUIRED" } });
             expect(f.audit.append).not.toHaveBeenCalled();
         } finally {
             await f.db.destroy();
@@ -202,9 +204,9 @@ describe("contract transitions on one transaction with doubles only", () => {
     });
     it.each([
         [true, "own_funds", "pending_balance"],
-        [true, "bank_financing", "bank_management_in_progress"],
+        [true, "bank_financing", "bank_management"],
         [false, "own_funds", "pending_balance"],
-        [false, "bank_financing", "bank_management_in_progress"],
+        [false, "bank_financing", "bank_management"],
     ] as const)("branches and audits explicit funds atomically (native %s, %s)", async (native, origin, targetState) => {
         const f = setup({ native, state: "contract_pending_signature" });
         try {
@@ -318,13 +320,13 @@ describe("contract transitions on one transaction with doubles only", () => {
             await f.db.destroy();
         }
     });
-    it.each([true, false])("selects any postapproval stage atomically (native %s)", async (native) => {
+    it.each([true, false])("enters banking without starting it atomically (native %s)", async (native) => {
         const f = setup({ native, state: "contract_pending_signature" });
         try {
-            const command = { ...request, expectedSequence: 1, action: "set", targetState: "bank_management_in_progress", purchaseFundsOrigin: "bank_financing", source: native ? "native" : "legacy", id: native ? request.id : "901" };
-            await expect(f.repo.transition(command as never)).resolves.toMatchObject({ state: "bank_management_in_progress", sequence: 2 });
-            expect(f.audit.append.mock.calls[0]?.[1]).toMatchObject({ after: { state: "bank_management_in_progress" } });
-            if (!native) expect(f.legacy.append).toHaveBeenCalledWith(expect.anything(), "901", expect.objectContaining({ state: "bank_management_in_progress" }));
+            const command = { ...request, expectedSequence: 1, action: "set", targetState: "bank_management", purchaseFundsOrigin: "bank_financing", source: native ? "native" : "legacy", id: native ? request.id : "901" };
+            await expect(f.repo.transition(command as never)).resolves.toMatchObject({ state: "bank_management", sequence: 2 });
+            expect(f.audit.append.mock.calls[0]?.[1]).toMatchObject({ after: { state: "bank_management" } });
+            if (!native) expect(f.legacy.append).toHaveBeenCalledWith(expect.anything(), "901", expect.objectContaining({ state: "bank_management" }));
         } finally {
             await f.db.destroy();
         }
@@ -445,7 +447,7 @@ describe("contract transitions on one transaction with doubles only", () => {
     });
     it.each(["bank_management", "pending_balance", "pending_transfer", "transfer_signed", "closed", "contract_pending_signature"])("blocks send from stored %s", async (state) => {
         const f = setup({ state });
-        await expect(f.repo.transition({ ...request, expectedSequence: 1 })).rejects.toThrow();
+        await expect(f.repo.transition({ ...request, expectedSequence: 1 })).rejects.toThrow("Contract stage does not permit this action");
         expect(f.audit.append).not.toHaveBeenCalled();
         await f.db.destroy();
     });
@@ -457,7 +459,7 @@ describe("contract transitions on one transaction with doubles only", () => {
     });
     it.each([{ inactive: true }, { approved: false }, { enabled: false }])("fails closed %j", async (options) => {
         const f = setup(options);
-        await expect(f.repo.transition(request)).rejects.toThrow();
+        await expect(f.repo.transition(request)).rejects.toBeInstanceOf(HttpException);
         expect(f.audit.append).not.toHaveBeenCalled();
         await f.db.destroy();
     });
@@ -479,7 +481,7 @@ describe("contract transitions on one transaction with doubles only", () => {
     });
     it.each([{ inactive: true }, { deleted: true }, { inactive: true, replay: true }])("legacy pointer locks the legacy parent then rejects native shadow %j", async (options) => {
         const f = setup({ ...options, migrated: true, probeMiss: true });
-        await expect(f.repo.transition({ ...request, source: "legacy", id: "901" })).rejects.toThrow();
+        await expect(f.repo.transition({ ...request, source: "legacy", id: "901" })).rejects.toThrow("Order is inactive, deleted or cancelled");
         expect(f.legacy.lock).toHaveBeenCalled();
         expect(f.legacy.append).not.toHaveBeenCalled();
         expect(f.steps.indexOf("legacy-lock")).toBeLessThan(f.steps.indexOf("native-lock"));
@@ -566,7 +568,7 @@ it.each([true, false])("protects exceptional jumps under the locked native/legac
     const f = setup({ native, signed: "yes", transferred: true, state: "bank_management_in_progress" });
     const cmd = { ...request, source: native ? "native" : "legacy", id: native ? request.id : "901", action: "set", targetState: "transfer_signed", expectedSequence: 1, purchaseFundsOrigin: "bank_financing", reason: "Excepción autorizada" };
     try {
-        await expect(f.repo.transition(cmd as never)).rejects.toThrow();
+        await expect(f.repo.transition(cmd as never)).rejects.toThrow("Se requiere permiso para saltar etapas de Formalización");
         expect(f.audit.append).not.toHaveBeenCalled();
         await expect(f.repo.transition({ ...cmd, canSkipStages: true, reason: "" } as never)).rejects.toThrow("motivo");
         await expect(f.repo.transition({ ...cmd, canSkipStages: true } as never)).resolves.toMatchObject({ state: "transfer_signed" });
@@ -611,7 +613,7 @@ describe("completion truth table manual commands", () => {
             try {
                 const result = f.repo.transition({ ...request, ...commandIdentity(native), action: "set", targetState, expectedSequence: 1, canSkipStages: true, reason: "Validación" });
                 if (targetState === target) await expect(result).resolves.toMatchObject({ state: targetState });
-                else await expect(result).rejects.toThrow();
+                else await expect(result).rejects.toThrow("Avance bloqueado: revisar cuotas, unidad traspasada, llaves entregadas y unidad entregada en NetSuit");
             } finally {
                 await f.db.destroy();
             }
@@ -620,7 +622,7 @@ describe("completion truth table manual commands", () => {
     it.each([true, false])("rejects unknown unchecked flags %s", async (native) => {
         const f = setup({ native, state: "pending_balance", transferred: null });
         try {
-            await expect(f.repo.transition({ ...request, source: native ? "native" : "legacy", id: native ? request.id : "901", action: "set", targetState: "pending_transfer", expectedSequence: 1 })).rejects.toThrow();
+            await expect(f.repo.transition({ ...request, source: native ? "native" : "legacy", id: native ? request.id : "901", action: "set", targetState: "pending_transfer", expectedSequence: 1 })).rejects.toThrow("Avance bloqueado: revisar cuotas, unidad traspasada, llaves entregadas y unidad entregada en NetSuit");
         } finally {
             await f.db.destroy();
         }
@@ -631,6 +633,16 @@ it.each([true, false].flatMap((native) => ["pending_balance", "pending_transfer"
     const f = setup({ native, state, paid: "no", delivered: true });
     try {
         await expect(f.repo.transition({ ...request, source: native ? "native" : "legacy", id: native ? request.id : "901", action: "set", targetState: "closed", expectedSequence: 1 })).resolves.toMatchObject({ state: "closed" });
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it.each([true, false])("allows manual signature registration before NetSuite confirms the transfer (native=%s)", async (native) => {
+    const f = setup({ native, state: "pending_transfer", paid: "yes", transferred: false, keys: false, delivered: false });
+    try {
+        await expect(f.repo.transition({ ...request, ...commandIdentity(native), action: "set", targetState: "transfer_signed", expectedSequence: 1 })).resolves.toMatchObject({ state: "transfer_signed" });
+        expect(f.audit.append).toHaveBeenCalledTimes(1);
     } finally {
         await f.db.destroy();
     }

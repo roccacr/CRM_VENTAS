@@ -7,31 +7,28 @@ import { APPROVED_DATABASE_NAME } from "../config/product.constants.js";
 import type { CrmDatabase } from "./database.types.js";
 import { buildMysqlPoolOptions } from "./mysql-pool-options.js";
 
-// ============================================================================
-// Servicio de acceso a datos: expone una unica instancia de Kysely tipada sobre
-// un pool de mysql2 y gestiona su ciclo de vida junto con Nest.
-//
-// Regla SRP: esta clase no debe mezclar lectura de config, validacion de base,
-// armado del pool e inicializacion de Kysely en un bloque anonimo. Cada concern
-// queda nombrado en una funcion privada de modulo; el provider queda como wiring
-// y ciclo de vida, que es exactamente lo que Nest espera aqui.
-// ============================================================================
+/**
+ * Unico cliente Kysely del proceso HTTP y el ciclo de vida de su pool.
+ *
+ * No lee negocio y no elige otra base. La configuracion ya paso por Zod; esta
+ * clase vuelve a exigir el nombre aprobado porque un `ConfigService` de prueba
+ * puede existir sin esa validacion. El pool no se abre si el nombre no coincide.
+ */
 
-/** Limite de conexiones simultaneas del pool hacia MySQL. */
+/** Conexiones simultaneas de este proceso. No sale de una variable: subirlo es un cambio de codigo. */
 const MYSQL_CONNECTION_LIMIT = 10;
 
 /**
- * Maximo de peticiones esperando conexion. Al superarlo mysql2 falla rapido en
- * lugar de acumular trabajo sin limite bajo saturacion.
+ * Peticiones que pueden esperar una conexion. Al llegar a 200, mysql2 falla la
+ * nueva en lugar de crecer sin tope. El default de la libreria, si no se envia,
+ * es cola ilimitada.
  */
 const MYSQL_QUEUE_LIMIT = 200;
 
 /**
- * Valida que el runtime apunte a la base CRM nueva.
- *
- * Se declara como assertion function para que TypeScript reduzca el tipo de
- * `database` a `string` despues de llamarla, sin casts manuales en el
- * constructor.
+ * Segunda compuerta despues de Zod. El tipo queda reducido a `string` para no
+ * castear el nombre en el constructor. El error nombra la base recibida; no
+ * incluye usuario ni clave.
  */
 function assertAllowedDatabase(database: string | undefined): asserts database is string {
     if (database !== APPROVED_DATABASE_NAME) {
@@ -40,11 +37,9 @@ function assertAllowedDatabase(database: string | undefined): asserts database i
 }
 
 /**
- * Traduce `ConfigService` al contrato de `mysql2.createPool`.
- *
- * Las variables pasan por `getOrThrow` porque Zod ya aplico defaults seguros y
- * la conexion no debe inventar fallback propio. `DB_PASSWORD` puede ser string
- * vacio si Zod lo definio asi, pero nunca se loguea ni se documenta su valor.
+ * Pasa la configuracion ya validada al pool comun. `getOrThrow` no inventa host,
+ * puerto ni clave. La CA solo viaja si existe: sin ella, TLS sigue verificando
+ * contra las CA del proceso.
  */
 const buildPoolOptions = (config: ConfigService, database: string): PoolOptions => {
     const sslCaPath = config.get<string>("DB_SSL_CA");
@@ -63,30 +58,21 @@ const buildPoolOptions = (config: ConfigService, database: string): PoolOptions 
 };
 
 /**
- * Crea la instancia tipada de Kysely a partir del pool aprobado.
- *
- * Mantener esto como funcion separada hace explicito que Kysely no decide
- * configuracion ni seguridad; solo recibe un pool ya validado.
+ * Kysely recibe un pool ya cerrado. No interpreta variables de entorno ni
+ * decide TLS.
  */
 const createKyselyDatabase = (poolOptions: PoolOptions): Kysely<CrmDatabase> =>
     new Kysely<CrmDatabase>({
         dialect: new MysqlDialect({ pool: createPool(poolOptions) }),
     });
 
-/**
- * Provider global de acceso a datos para el runtime de identidad.
- *
- * Expone una unica instancia Kysely tipada contra `CrmDatabase`. No contiene
- * queries de negocio: esas viven en repositories por modulo.
- */
+/** Cliente de `CRM_THINK_V2` para los repositorios. Una instancia por proceso. */
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
-    /** Instancia unica de Kysely usada por repositories del API. */
+    /** Unico Kysely. Los repositorios lo usan; no crean otro pool. */
     readonly db: Kysely<CrmDatabase>;
 
-    /**
-     * Inicializa Kysely despues de validar que el runtime apunta a CRM_THINK_V2.
-     */
+    /** No asigna `db` si el nombre de la base no es el aprobado. */
     constructor(@Inject(ConfigService) config: ConfigService) {
         const database = config.get<string>("DB_NAME");
         assertAllowedDatabase(database);
@@ -94,10 +80,8 @@ export class DatabaseService implements OnModuleDestroy {
     }
 
     /**
-     * Cierra el pool cuando Nest destruye el modulo.
-     *
-     * Esto evita conexiones huerfanas que mantengan vivo el proceso o agoten
-     * conexiones MySQL en reinicios sucesivos.
+     * Cierra el pool al destruir el modulo. Sin esto, un reinicio deja
+     * conexiones abiertas y el proceso puede no terminar.
      */
     async onModuleDestroy(): Promise<void> {
         await this.db.destroy();

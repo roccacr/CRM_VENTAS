@@ -98,9 +98,9 @@ describe.skipIf(process.env.FORMALIZATION_LOCAL_SQL_TESTS !== "1")("Formalizatio
 
     it.each([
         ["native", "own_funds", "pending_balance"],
-        ["native", "bank_financing", "bank_management_in_progress"],
+        ["native", "bank_financing", "bank_management"],
         ["legacy", "own_funds", "pending_balance"],
-        ["legacy", "bank_financing", "bank_management_in_progress"],
+        ["legacy", "bank_financing", "bank_management"],
     ] as const)("persists route/history/audit and rejects altered retries (%s, %s)", async (source, purchaseFundsOrigin, targetState) => {
         const id = randomInt(1500000000, 2000000000);
         const actor = ulid();

@@ -1,5 +1,9 @@
 # AGENTS.md - CRM Enterprise Frontend
 
+## Corte de referencia del 10 de noviembre de 2026
+
+Consultar [33 — Reconciliación del frontend](Arquitectura/33-Reconciliacion-Frontend-20261110.md) para separar el release verificado, HEAD y la copia de trabajo. En Catálogos conserva una sola paginación del API y distingue filtros locales por lote de los filtros server-side de Expedientes. Conserva los controles de acceso por grants efectivos y denegaciones. Documenta la evidencia con su fecha, alcance y versión.
+
 ## Corte local vigente — 2026-11-03
 
 Consultar [30 — Estado](Arquitectura/30-Estado-Frontend-Verificado.md), [32 — Orden y cliente](Arquitectura/32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Arquitectura/Calendario-Global-Frontend.md) antes de los snapshots inferiores. HEAD `4d446ed` más cambios locales no acredita despliegue. Ya existen `modules/leads`/`services/leads` para el perfil de consulta en `/home/formalization/perfil` (alias `/perfil`), con workspace Formalización y `lead.profile.read`; eso no habilita CRUD general de Leads.

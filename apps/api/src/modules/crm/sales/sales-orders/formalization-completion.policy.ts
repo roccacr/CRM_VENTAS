@@ -17,3 +17,10 @@ export function formalizationCompletionTarget(flags: CompletionFlags): Completio
     if (flags.unitTransferred === true && flags.keysDelivered === false) return "transfer_signed";
     return null;
 }
+
+/** La observacion ERP acredita pasos ya completados; el avance manual conserva su propia validacion. */
+export function netsuiteFormalizationTarget(flags: Omit<CompletionFlags, "keysDelivered"> & { purchaseFundsOrigin: unknown }) {
+    if (flags.unitTransferred === true || flags.unitDelivered === true) return "closed";
+    if (flags.installmentsFullyPaid === true) return "pending_transfer";
+    return flags.purchaseFundsOrigin === "own_funds" ? "pending_balance" : "bank_management";
+}

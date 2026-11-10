@@ -1,4 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
+export const NETSUITE_DELIVERY_DATE_FIELD = "custbody_fecha_unidad_entregada";
 export const orderFlagMappings = [
     {
         netsuite: "custbody90",
@@ -53,11 +54,12 @@ export const orderFlagMappings = [
 ] as const;
 export type OrderEventDestination = "native" | "legacy";
 export type OrderFlagChange = { field: string; column: string; before: unknown; after: "yes" | "no" | 0 | 1 };
+/** Solo `true`, `false`, `T` o `F`. `F` no se evalua con truthiness. Un valor ausente no es falso: se rechaza. */
 function checked(value: unknown, field: string): boolean {
     if (![true, false, "T", "F"].includes(value as boolean | string)) throw new BadRequestException("Checkbox requerido invalido: " + field);
     return value === true || value === "T";
 }
-/** No usar truthiness: la cadena F es verdadera en JavaScript. Un dato ausente no significa falso. */
+/** Nativo guarda `yes` o `no`. Legado guarda 1 o 0. Si el valor no cambio, no hay diff. Los nombres fisicos se conservan, incluido `contrado_frima_ov`. */
 export function mapOrderFlags(fields: Record<string, unknown>, destination: OrderEventDestination, before: Record<string, unknown>): OrderFlagChange[] {
     return orderFlagMappings.flatMap((mapping) => {
         const value = fields[mapping.netsuite];
@@ -89,7 +91,7 @@ export const orderApprovalMappings = [
     { netsuite: "custbodyid_firma_rc", native: "approval_formalization", legacy: "aprobacion_forma_ov", approval: "formalization" },
 ] as const;
 export const orderNumberMapping = { netsuite: "initialtranid", native: "transaction_number_sales_order_external_reference", legacy: "id_ov_tranid" } as const;
-/** Los IDs ERP nunca se copian a una FK nativa: requieren conciliacion de referencia existente. */
+/** El id de NetSuite no se copia a una llave nativa. Tiene que existir ya una referencia activa y unica. */
 export const orderRelationMappings = [
     { netsuite: "entity", native: "lead_id_sales_order", legacy: "id_ov_lead", domain: "lead" },
     { netsuite: "custbody38", native: "unit_file_id_sales_order", legacy: "idExpediente_ov", domain: "unit_file" },
@@ -97,7 +99,7 @@ export const orderRelationMappings = [
     { netsuite: "crm_owner_employee", native: "owner_user_id_sales_order", legacy: "id_ov_admin", domain: "user" },
     { netsuite: "opportunity", native: null, legacy: "id_ov_opt", domain: null },
 ] as const;
-/** Columnas reales de los crosswalks; nunca derivar nombres de tabla desde entrada HTTP. */
+/** Nombres de tabla cerrados. La entrada HTTP no elige la tabla. */
 export const nativeRelationReferences = {
     lead: { table: "crm_lead_external_reference", owner: "lead_id_lead_external_reference", external: "external_id_lead_external_reference", system: "external_system_id_lead_external_reference", status: "status_lead_external_reference", deleted: null },
     unit_file: { table: "crm_unit_file_external_reference", owner: "unit_file_id_unit_file_external_reference", external: "external_id_unit_file_external_reference", system: "external_system_id_unit_file_external_reference", status: "status_unit_file_external_reference", deleted: null },
@@ -105,7 +107,7 @@ export const nativeRelationReferences = {
     user: { table: "int_user_external_identity", owner: "user_id_user_external_identity", external: "external_user_id_user_external_identity", system: "external_system_id_user_external_identity", status: "status_user_external_identity", deleted: "deleted_at_user_external_identity" },
 } as const;
 
-/** null explicito significa relacion vacia; ausente o ambiguo nunca equivale a borrar una FK. */
+/** Solo corre con `crm_sync_projection=1`. Nulo o vacio limpian. Un id que no es entero positivo se rechaza y no borra la relacion. Sin la proyeccion, no se toca nada. */
 export function readOrderRelationValues(fields: Record<string, unknown>): Record<string, string | null> {
     if (fields.crm_sync_projection !== 1) return {};
     return Object.fromEntries(
@@ -118,7 +120,7 @@ export function readOrderRelationValues(fields: Record<string, unknown>): Record
     );
 }
 
-/** Evita redondeos binarios, separadores regionales y truncamiento silencioso de DECIMAL(19,4). */
+/** El monto queda como texto de cuatro decimales. No hay float ni separador regional. Un formato ambiguo se rechaza. */
 function money(value: unknown): string | null {
     if (value === null || value === "") return null;
     if (typeof value !== "string" && typeof value !== "number") throw new BadRequestException("Monto NetSuite ausente o invalido.");
@@ -129,14 +131,15 @@ function money(value: unknown): string | null {
     return `${String(match[1])}${integer}.${fraction}`.replace(/^-0\.0000$/, "0.0000");
 }
 
-function calendarDate(value: unknown): string | null {
+/** Una fecha que llega como `Date` usa su calendario local, no se convierte a UTC. Un texto tiene que ser un dia ISO real. */
+export function calendarDate(value: unknown): string | null {
     if (value === null || value === "") return null;
     if (value instanceof Date) return [value.getFullYear(), String(value.getMonth() + 1).padStart(2, "0"), String(value.getDate()).padStart(2, "0")].join("-");
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value) throw new BadRequestException("Fecha NetSuite requiere calendario ISO YYYY-MM-DD.");
     return value;
 }
 
-/** Confirmed NetSuite list IDs; labels are display-only and never guessed as identifiers. */
+/** Ids de lista confirmados: 1 es fondos propios y 2 es financiamiento. La etiqueta no se adivina. Vacio es nulo. */
 function purchaseFunds(value: unknown): "own_funds" | "bank_financing" | null {
     if (value === null || value === "") return null;
     if (value === 1 || value === "1") return "own_funds";
@@ -154,7 +157,7 @@ function fieldValue(mapping: (typeof orderFieldMappings)[number], value: unknown
 }
 
 function historicalValue(mapping: (typeof orderFieldMappings)[number], value: unknown): unknown {
-    // No dejar que un VARCHAR historico invalido impida corregirlo desde un valor ERP valido.
+    // Un texto viejo invalido no impide guardar el valor bueno que acaba de llegar del ERP.
     try {
         if (mapping.type === "decimal") return money(value);
         if (mapping.type === "date") return calendarDate(value);
@@ -182,12 +185,12 @@ function mapNumber(fields: Record<string, unknown>, destination: OrderEventDesti
     return previousNumber === number ? [] : [{ field: orderNumberMapping.netsuite, column: numberColumn, before: previousNumber, after: number }];
 }
 
-/** El productor declara la version para no interpretar textos regionales de los eventos v2 anteriores. */
+/** Sin `crm_sync_projection` no hay campos ampliados: es un evento anterior. Un valor distinto de 1 se rechaza. El numero nativo admite 180 caracteres y el legado 50. */
 export function mapOrderFields(fields: Record<string, unknown>, destination: OrderEventDestination, before: Record<string, unknown>): OrderEventChange[] {
     if (fields.crm_sync_projection === undefined) return [];
     if (fields.crm_sync_projection !== 1) throw new BadRequestException("Proyeccion NetSuite no soportada.");
     const direct = orderFieldMappings.flatMap((mapping) => {
-        // Earlier producers did not send the raw list ID; absence must not erase stored funds.
+        // Si el productor viejo no mando el id de la lista, no se borra el origen de fondos guardado.
         if (mapping.type === "funds" && !Object.hasOwn(fields, mapping.netsuite)) return [];
         const after = fieldValue(mapping, fields[mapping.netsuite], destination);
         const column = mapping[destination];

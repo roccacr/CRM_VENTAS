@@ -1,5 +1,11 @@
 # 00 - Ley de Producto CRM TINK y P0 Frontend
 
+## Alcance contrastado al 10 de noviembre de 2026
+
+Leer el [corte 33](33-Reconciliacion-Frontend-20261110.md) antes de aplicar los antecedentes. La marca oficial y el shell Habita conservan la autoridad de autenticación y permisos del BFF. Los listados de la copia local leen lotes de hasta 500 en Catálogos, Bancos y Expedientes, con semánticas distintas de filtros. [Continuidad administrativa](25-Continuidad-Administracion.md).
+
+Las acciones de Formalización se habilitan con grants efectivos, alcance y denegaciones. Los checks de NetSuite son de lectura y un dato ausente sigue siendo desconocido. Los requisitos de entrega, traspaso y cierre corresponden al contrato del API. La UI presenta sus confirmaciones con el contexto de la orden. La extracción explícita desde seguimiento y los cambios locales de etapa no certifican que la integración o el esquema estén activos en producción.
+
 ## Contrato visual vigente — 2026-11-03
 
 La [reconciliación85](../../api/Arquitectura/85-Reconciliacion-Documental-20261103.md), el [mapa30](30-Estado-Frontend-Verificado.md) y el [detalle32](32-Detalle-Orden-y-Cliente-Basico.md) registran el árbol actual. Sustituyen las restricciones históricas de maqueta/recepción/Graph pendiente para las funciones expresamente ampliadas.

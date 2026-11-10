@@ -5,7 +5,7 @@ import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-va
 import { CATALOG_DEFINITIONS } from "../catalogs/catalogs.constants.js";
 
 const catalogs = { code: "catalogs", name: "Catálogos" };
-/** Scope choices describe existing CRM navigation, not synthetic audit records. */
+/** Modulos y secciones que ya existen en la navegacion. No se inventan registros de auditoria para rellenar el menu. Catalogos aparece en cada modulo. */
 export const AUDIT_MODULES = [
     { code: "administration", name: "Administración", sections: [{ code: "users", name: "Usuarios" }, { code: "roles", name: "Roles y seguridad" }, { code: "audit", name: "Auditoría y sistema" }, catalogs] },
     { code: "ventas", name: "Ventas", sections: [{ code: "estimates", name: "Estimaciones" }, { code: "leads", name: "Leads" }, { code: "opportunities", name: "Oportunidades" }, catalogs] },
@@ -14,7 +14,7 @@ export const AUDIT_MODULES = [
     { code: "contabilidad", name: "Contabilidad", sections: [{ code: "billing", name: "Cobros" }, catalogs] },
 ] as const;
 
-/** Required scope and a bounded batch; no unfiltered log endpoint exists. */
+/** Alcance obligatorio y pagina acotada. No hay un listado sin modulo ni seccion. */
 export class AuditQueryDto {
     @IsIn(AUDIT_MODULES.map((module) => module.code))
     moduleCode!: string;
@@ -39,16 +39,16 @@ export class AuditQueryDto {
     cursor?: string;
 }
 const scope = (query: AuditQueryDto) => JSON.stringify([query.moduleCode, query.sectionCode, query.catalogCode ?? "", query.search?.trim() ?? ""]);
-/** The cursor is a scope-bound primary-key seek, never a SQL offset. */
+/** El cursor busca por llave dentro del mismo alcance. No es un offset y no sirve para otro modulo, seccion, catalogo o busqueda. */
 export const encodeAuditCursor = (query: AuditQueryDto, before: number): string => Buffer.from(JSON.stringify({ scope: scope(query), before })).toString("base64url");
-/** Reject malformed or cross-scope cursors before opening a database query. */
+/** Un cursor mal formado o de otro alcance es 400, antes de abrir la consulta. */
 export function decodeAuditCursor(query: AuditQueryDto): number | undefined {
     if (!query.cursor) return undefined;
     try {
         const parsed = JSON.parse(Buffer.from(query.cursor, "base64url").toString("utf8")) as { scope?: unknown; before?: unknown };
         if (parsed.scope === scope(query) && typeof parsed.before === "number" && Number.isSafeInteger(parsed.before) && parsed.before > 0) return parsed.before;
     } catch {
-        /* A malformed token is a client error, not a database error. */
+        /* El token mal formado es error del cliente, no de la base. */
     }
     throw new BadRequestException("Cursor de auditoría inválido.");
 }

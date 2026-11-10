@@ -1,15 +1,22 @@
 /**
- * Traduce una fila de `proyectos` al contrato canónico de catálogo.
+ * Fila de `proyectos` al contrato de catalogo.
  *
- * No inventa ids de NetSuite: si la columna viene nula, la referencia no
- * existe. El id viejo se conserva en `id_old_produccion` para no volver a
- * importar el mismo registro. El estado `1` es activo; `0` y `null` son inactivos.
+ * El id de NetSuite se conserva tal como viene. Si la columna es nula, no se
+ * fabrica una referencia: la lectura tolera un nulo que ya esta en la tabla.
+ * El id de produccion queda en `id_old_produccion` para que la lectura
+ * posterior lo excluya. Solo el estado `1` se publica como activo; `0` y
+ * `null` quedan inactivos. La tabla vieja no tiene detalle, asi que `detail`
+ * sale nulo.
+ *
+ * El parseo no inventa un proyecto. La lectura convierte ese fallo en 503; la
+ * escritura lo deja salir para que la transaccion nativa no promueva una fila
+ * que este contrato no acepta.
  */
 import { z } from "zod";
 
 import type { CatalogItem } from "../../../modules/crm/catalogs/catalogs.types.js";
 
-/** Forma mínima que esta tabla puede entregar. Otra forma rechaza la fila. */
+/** Forma minima de la fila. Otro tipo no se convierte en un valor del catalogo. */
 const legacyRow = z.object({
     legacyId: z.number().int().positive(),
     externalId: z.number().int().nullable(),
@@ -18,13 +25,15 @@ const legacyRow = z.object({
 });
 
 /**
- * Mapea una fila desconocida a un valor de catálogo.
+ * Traduce una fila desconocida.
  *
- * `publicId` lleva el prefijo `legacy:` para no chocar con un `publicId` del CRM nuevo.
- * La tabla no tiene fecha de cambio, así que `updatedAt` queda vacío y la UI lo muestra como no asignado.
+ * `legacy:` en el id publico evita que se confunda con uno nativo. No hay
+ * columna de actualizacion, asi que `updatedAt` va vacio. Un nombre nulo o en
+ * blanco se publica como "Sin asignar": el contrato nuevo exige nombre y la
+ * tabla vieja no.
  *
- * @param input - Fila cruda de la consulta
- * @throws {ZodError} Si la fila no trae id, nombre o estado en la forma esperada
+ * El estado de la referencia NetSuite no copia el del proyecto. La referencia
+ * existe, o no existe; el proyecto puede estar inactivo y conservar su id.
  */
 export function mapLegacyProject(input: unknown): CatalogItem {
     const row = legacyRow.parse(input);

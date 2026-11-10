@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { SELF_DECLARED_DEPS_METADATA } from "@nestjs/common/constants.js";
 import { describe, expect, it, vi } from "vitest";
 
@@ -96,7 +97,7 @@ describe("contract transition authorization and internal input", () => {
     });
     it.each([undefined, "pending_approval", "unclassified", "made_up"])("rejects a missing or nonoperational selected target %s", async (targetState) => {
         const f = setup(undefined, [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }]);
-        await expect(f.service.transition("session", "set", { ...input, targetState } as never)).rejects.toThrow();
+        await expect(f.service.transition("session", "set", { ...input, targetState } as never)).rejects.toThrow(BadRequestException);
         expect(f.transition).not.toHaveBeenCalled();
     });
     it("denies selected changes even when send is granted", async () => {
@@ -104,7 +105,7 @@ describe("contract transition authorization and internal input", () => {
             { code: "formalizacion.contracts.send", effect: "allow", scope: "all_areas" },
             { code: "formalizacion.orders.stage.update", effect: "deny", scope: "all_areas" },
         ]);
-        await expect(f.service.transition("session", "set", { ...input, targetState: "closed" } as never)).rejects.toThrow();
+        await expect(f.service.transition("session", "set", { ...input, targetState: "closed" } as never)).rejects.toThrow("No tiene permiso para esta transicion");
         expect(f.transition).not.toHaveBeenCalled();
     });
     it("declares explicit injection tokens for internal use without reflected parameter metadata", () => {
@@ -128,7 +129,7 @@ describe("contract transition authorization and internal input", () => {
     });
     it.each([undefined, "unknown"])("rejects unrecognized or missing grant scope %s", async (scope) => {
         const f = setup(undefined, [{ code: "formalizacion.contracts.send", effect: "allow", ...(scope ? { scope } : {}) }]);
-        await expect(f.service.transition("session", "send", input)).rejects.toThrow();
+        await expect(f.service.transition("session", "send", input)).rejects.toThrow("Alcance de Formalizacion no reconocido.");
         expect(f.transition).not.toHaveBeenCalled();
     });
     it("uses the authenticated actor and delegates a valid send", async () => {
@@ -145,29 +146,29 @@ describe("contract transition authorization and internal input", () => {
     it.each([{ roles: [] }, { roles: [{ code: "formalizacion", status: "inactive" }] }, { roles: [{ code: "jefe_formalizaciones", status: "inactive" }] }, { roles: [{ code: "owner", status: "active" }] }])("honors the exact grant without a named base role (%j)", async ({ roles }) => {
         const f = setup(roles);
         await f.service.transition("session", "send", input);
-        expect(f.transition).toHaveBeenCalled();
+        expect(f.transition).toHaveBeenCalledTimes(1);
     });
     it("deny wins over allow", async () => {
         const f = setup(undefined, [
             { code: "formalizacion.contracts.send", effect: "allow" },
             { code: "formalizacion.contracts.send", effect: "deny" },
         ]);
-        await expect(f.service.transition("session", "send", input)).rejects.toThrow();
+        await expect(f.service.transition("session", "send", input)).rejects.toThrow("No tiene permiso para esta transicion");
         expect(f.transition).not.toHaveBeenCalled();
     });
     it("send permission does not grant revert", async () => {
         const f = setup();
-        await expect(f.service.transition("session", "revert", { ...input, reason: "Correction" })).rejects.toThrow();
+        await expect(f.service.transition("session", "revert", { ...input, reason: "Correction" })).rejects.toThrow("No tiene permiso para esta transicion");
         expect(f.transition).not.toHaveBeenCalled();
     });
     it.each([{ id: "1" }, { source: "legacy", id: "01ARZ3NDEKTSV4RRFFQ69G5FAV" }, { expectedSequence: -1 }, { expectedSequence: 0.1 }, { operationId: "arbitrary" }, { operationId: "x".repeat(101) }, { source: "unknown" }, { id: "0" }, { source: "legacy", id: "2147483648" }])("rejects invalid internal input %j without lookup", async (change) => {
         const f = setup();
-        await expect(f.service.transition("session", "send", { ...input, ...change } as typeof input)).rejects.toThrow();
+        await expect(f.service.transition("session", "send", { ...input, ...change } as typeof input)).rejects.toThrow(BadRequestException);
         expect(f.transition).not.toHaveBeenCalled();
     });
     it.each([undefined, "", "  ", "x".repeat(501)])("requires a bounded revert reason", async (reason) => {
         const f = setup(undefined, [{ code: "formalizacion.contracts.revert", effect: "allow", scope: "all_areas" }]);
-        await expect(f.service.transition("session", "revert", { ...input, ...(reason === undefined ? {} : { reason }) })).rejects.toThrow();
+        await expect(f.service.transition("session", "revert", { ...input, ...(reason === undefined ? {} : { reason }) })).rejects.toThrow(BadRequestException);
         expect(f.transition).not.toHaveBeenCalled();
     });
 });
@@ -177,12 +178,12 @@ it.each(["contract_pending_send", "contract_pending_signature", "bank_management
     const target = { code: `formalizacion.orders.stage.${targetState}`, effect: "allow", scope: "all_areas" };
     const dto = { ...input, targetState, reason: "Corrección autorizada" };
     const missing = setup(undefined, [general]);
-    await expect(missing.service.transition("session", "set", dto)).rejects.toThrow();
+    await expect(missing.service.transition("session", "set", dto)).rejects.toThrow("No tiene permiso para pasar a esta etapa");
     expect(missing.transition).not.toHaveBeenCalled();
     const allowed = setup(undefined, [general, target]);
     await expect(allowed.service.transition("session", "set", dto)).resolves.toEqual({ sequence: 1 });
     const denied = setup(undefined, [general, target, { ...target, effect: "deny" }]);
-    await expect(denied.service.transition("session", "set", dto)).rejects.toThrow();
+    await expect(denied.service.transition("session", "set", dto)).rejects.toThrow("No tiene permiso para pasar a esta etapa");
     expect(denied.transition).not.toHaveBeenCalled();
 });
 
@@ -199,7 +200,7 @@ it("derives skip capability from the live profile and never accepts a request ca
     await denied.service.transition("session", "set", cmd);
     expect(denied.transition).toHaveBeenCalledWith(expect.objectContaining({ canSkipStages: false }));
     const forged = setup(undefined, base);
-    await expect(forged.service.transition("session", "set", { ...cmd, canSkipStages: true } as never)).rejects.toThrow();
+    await expect(forged.service.transition("session", "set", { ...cmd, canSkipStages: true } as never)).rejects.toThrow("Invalid contract transition");
     expect(forged.transition).not.toHaveBeenCalled();
 });
 

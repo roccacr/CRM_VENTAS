@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { confirmAction } from "../../components/feedback/confirm-action";
 import { getIdentityProfile, startMicrosoftLogin } from "../../services/auth/auth-service";
 import { closePopupIfOpen, openMicrosoftPopup, waitForMicrosoftPopupSession } from "../../services/auth/microsoft-popup-login";
 import { type CalendarModule, getCalendarAvailability, getCalendarRooms, type OutlookAvailability, type OutlookResult, type OutlookRoom } from "../../services/calendar/calendar-service";
@@ -80,7 +81,7 @@ export function useCalendarOutlook(fields: CalendarFields, moduleCode: CalendarM
     const connect = async () => {
         if (connecting) return;
         const popup = openMicrosoftPopup();
-        if (!popup && !window.confirm("Para conectar Microsoft se abrirá el inicio de sesión. El borrador no guardado se perderá. ¿Continuar?")) return;
+        if (!popup && !(await confirmAction({ title: "Conectar Microsoft", content: "Para conectar Microsoft se abrirá el inicio de sesión. El borrador no guardado se perderá." }))) return;
         setConnecting(true);
         setConnectionError("");
         try {

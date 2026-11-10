@@ -6,16 +6,24 @@ import type { CalendarRow } from "../../modules/crm/calendar/calendar.contract.j
 import type { CalendarLegacyReader, CalendarReadScope } from "../../modules/crm/calendar/calendar-legacy.port.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
-/** Unclassified historical events remain untouched; only explicitly owned/module-tagged legacy events can be shown. */
+/**
+ * Eventos del calendario viejo que ya tienen modulo explicito.
+ *
+ * Un evento sin `module_code` dentro del alcance no se muestra: no se le
+ * inventa dueno ni modulo. Los modulos amplios ven todo ese modulo; el resto
+ * solo ve lo del actor. `FALSE` evita que un alcance vacio se vuelva verdadero.
+ * Si ya existe el evento nativo con el mismo id viejo, este no se repite.
+ * La hora publicada es la columna, con sufijo Z. No se convierte de zona.
+ */
 @Injectable()
 export class LegacyCalendarReader implements CalendarLegacyReader {
-    /** Injects the existing identity, persistence or audit dependencies. */
+    /** Pool compartido. No abre otra conexion. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly legacy: LegacyCrmDatabaseService) {}
-    /** Checks whether the optional legacy source is configured. */
+    /** El pool existe. No enciende escrituras. */
     enabled(): boolean {
         return this.legacy.isConfigured();
     }
-    /** Reads bounded, authorized events without inventing historical module ownership. */
+    /** Sin modulos o sin pool, la lista es vacia. El tipo tiene que existir en el modulo activo. */
     async list(tx: Transaction<CrmDatabase>, scope: CalendarReadScope): Promise<CalendarRow[]> {
         if (!scope.modules.length || !this.enabled()) return [];
         const broad = scope.broadModules.length ? sql`c.module_code IN (${sql.join(scope.broadModules)})` : sql`FALSE`;

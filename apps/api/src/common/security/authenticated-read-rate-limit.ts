@@ -6,23 +6,37 @@ type ReadLimiter = ReturnType<FastifyInstance["createRateLimit"]>;
 type ReadLimiterPair = { byUser: ReadLimiter; byIp: ReadLimiter };
 
 /**
- * S09 process-local quotas. S10 distributed enforcement remains pending.
- * The auth guard supplies a verified user ID only for protected GET/HEAD routes.
+ * Cupo de lecturas autenticadas, local al proceso. El reparto entre nodos no
+ * existe todavia: dos instancias no comparten el conteo.
+ *
+ * El guard solo llama aqui despues de un perfil verificado, y solo en GET/HEAD.
+ * Este servicio no decide quien esta autenticado. La llave de usuario es el
+ * `publicId` que le pasan, nunca un campo del cliente.
  */
 @Injectable()
 export class AuthenticatedReadRateLimit {
+    /** Un par de contadores por instancia de Fastify. No registra el plugin otra vez. */
     private readonly limiters = new WeakMap<FastifyInstance, ReadLimiterPair>();
+    /**
+     * El generador de llave no recibe el id por argumento. Se guarda en el
+     * request durante la llamada y se borra en `finally`, tambien si el conteo
+     * falla: el objeto no se queda marcado para una peticion posterior.
+     */
     private readonly verifiedUsers = new WeakMap<FastifyRequest, string>();
 
-    /** Uses validated runtime limits without registering or changing the Fastify plugin. */
+    /** Limites ya validados al arranque. No altera el plugin global de identidad. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
-    /** Returns false after sending 429; authentication/authorization must remain in the caller. */
+    /**
+     * Incrementa usuario e IP aunque el otro cupo ya haya rechazado. Saltarse
+     * el segundo conteo dejaria un canal sin agotar. `false` significa que la
+     * respuesta 429 ya se envio; el guard no debe seguir.
+     */
     async enforceAuthenticatedReadLimit(request: FastifyRequest, reply: FastifyReply, verifiedUserPublicId: string): Promise<boolean> {
         const pair = this.limiters.get(request.server) ?? this.createLimiters(request.server);
         this.verifiedUsers.set(request, verifiedUserPublicId);
         try {
-            // Increment both counters, including requests blocked by the other quota.
+            // Los dos contadores avanzan, tambien cuando el otro cupo ya rechazo.
             const user = await pair.byUser(request);
             const ip = await pair.byIp(request);
             const userRetry = !user.isAllowed && user.isExceeded ? Math.max(1, user.ttlInSeconds) : 0;
@@ -42,14 +56,20 @@ export class AuthenticatedReadRateLimit {
         }
     }
 
+    /**
+     * `createRateLimit` hereda el plugin ya registrado. Un segundo `register`
+     * instalaria otra politica encima de la de identidad. `skipOnError: false`
+     * niega la lectura si el contador falla, en lugar de dejarla pasar.
+     */
     private createLimiters(server: FastifyInstance): ReadLimiterPair {
-        // createRateLimit inherits the already registered plugin; never register it twice.
-        // Explicit cache applies to each child store, independently of identity limits.
+        // createRateLimit hereda el plugin ya registrado; no se vuelve a registrar.
+        // La cache explicita aplica a cada contador hijo, aparte de los limites de identidad.
         const options = { cache: this.config.getOrThrow<number>("AUTH_READ_CACHE"), timeWindow: this.config.getOrThrow<number>("AUTH_READ_WINDOW_MS"), skipOnError: false };
         const pair = {
             byUser: server.createRateLimit({
                 ...options,
                 max: this.config.getOrThrow<number>("AUTH_READ_USER_MAX"),
+                // La cadena vacia solo cubre el tipo. La llamada publica el id antes de contar.
                 keyGenerator: (request) => `authenticated-read:user:${this.verifiedUsers.get(request) ?? ""}`,
             }),
             byIp: server.createRateLimit({

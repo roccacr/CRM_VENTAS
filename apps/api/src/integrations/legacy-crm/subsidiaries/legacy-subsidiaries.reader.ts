@@ -1,9 +1,12 @@
 /**
- * Lectura de solo lectura de `crmdatabase-api.subsidiarias`.
+ * Lectura de `crmdatabase-api.subsidiarias` por el pool legado, no por la
+ * transaccion del CRM nuevo.
  *
- * Los identificadores de tabla y columna están fijos. El texto de búsqueda,
- * el estado y la página son parámetros. Se omiten las subsidiarias cuyo id viejo
- * ya quedó registrado en el catálogo nuevo.
+ * Los nombres de tabla y columna estan fijos, con su grafia: el id es
+ * `id_subsidaria`, no el plural de la tabla, y el externo es `id_NetsuiteSub`.
+ * Corregirlos en el SQL buscaria columnas que no existen. Busqueda, estado y
+ * pagina viajan como parametros. Se omiten los ids de produccion que el
+ * catalogo nuevo ya registro, para no listar dos veces la misma subsidiaria.
  */
 import { Inject, Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -16,36 +19,34 @@ import { isLegacyCrmEnabled } from "../legacy-crm-access.js";
 import { LegacyCrmDatabaseService } from "../legacy-crm-database.service.js";
 import { mapLegacySubsidiary } from "./legacy-subsidiaries.mapper.js";
 
-/** Nombres reales de la tabla vieja. El usuario no puede cambiarlos. */
+/** Nombres reales de la tabla vieja. El request no puede cambiarlos. */
 const source = { table: "subsidiarias", id: "id_subsidaria", external: "id_NetsuiteSub", name: "Nombre_Subsidiaria", status: "Estado_Subsidiaria" } as const;
 
-/** Reads Subsidiaries through the isolated, read-only legacy connection. */
+/**
+ * Fallback de solo lectura. Apagado responde 503: no se disfraza de catalogo
+ * vacio. La escritura no pasa por esta clase ni por este pool.
+ */
 @Injectable()
 export class LegacySubsidiariesReader implements CatalogFallbackReader {
     private readonly logger = new Logger(LegacySubsidiariesReader.name);
 
-    /**
-     * @param config - Bandera booleana del fallback
-     * @param database - Pool legacy compartido con el resto de readers
-     */
+    /** La bandera es la de lectura. El pool es el legado compartido, distinto del de `CRM_THINK_V2`. */
     constructor(
         @Inject(ConfigService) private readonly config: ConfigService,
         @Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService,
     ) {}
 
-    /** Solo el booleano `true` habilita la consulta. Un string no se interpreta como encendido. */
+    /** Solo el booleano `true` enciende la consulta. Un texto no cuenta como encendido. */
     enabled(): boolean {
         return isLegacyCrmEnabled(this.config);
     }
 
     /**
-     * Lista subsidiarias en el contrato del CRM nuevo.
+     * Lista subsidiarias ya traducidas al contrato nuevo.
      *
-     * Un fallo de conexión o de mapeo responde 503 sin el SQL ni la clave.
-     * El código del driver se registra ya saneado.
-     *
-     * @param input - Filtros y ids de producción ya importados
-     * @throws {ServiceUnavailableException} Si el fallback está apagado, el código no es `subsidiaries` o la lectura falla
+     * Un fallo de conexion o de mapeo sale como 503 generico. El log solo guarda
+     * el codigo del driver, y solo si son letras, digitos o guion bajo: no el
+     * SQL, no la clave y no el texto de la fila.
      */
     async list(input: CatalogReadInput & { excludedLegacyIds?: readonly number[] }): Promise<CatalogItemsResponse> {
         if (!this.enabled()) throw new ServiceUnavailableException("Legacy fallback is disabled.");
@@ -60,10 +61,12 @@ export class LegacySubsidiariesReader implements CatalogFallbackReader {
     }
 
     /**
-     * Una sola transacción de lectura para el total y la página.
+     * Total y pagina en la misma transaccion de lectura, para que el conteo y
+     * las filas vean el mismo corte.
      *
-     * Un estado nulo cuenta como inactivo. El esquema `crmdatabase-api` está
-     * calificado a propósito: no es la base del CRM nuevo.
+     * Un estado nulo cuenta como inactivo. El esquema va calificado: aunque la
+     * conexion tuviera otra base por defecto, esta consulta no lee el CRM nuevo.
+     * `LIKE` recibe el texto como parametro; no abre la sentencia.
      */
     private async read(input: CatalogReadInput & { excludedLegacyIds?: readonly number[] }): Promise<CatalogItemsResponse> {
         const code = "subsidiaries";

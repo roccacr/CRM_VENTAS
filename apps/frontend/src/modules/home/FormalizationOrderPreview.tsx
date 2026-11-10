@@ -1,6 +1,7 @@
 import ArrowLeftOutlined from "@ant-design/icons/ArrowLeftOutlined";
 import CalendarOutlined from "@ant-design/icons/CalendarOutlined";
 import InfoCircleOutlined from "@ant-design/icons/InfoCircleOutlined";
+import CloseCircleFilled from "@ant-design/icons/CloseCircleFilled";
 import ReloadOutlined from "@ant-design/icons/ReloadOutlined";
 import UndoOutlined from "@ant-design/icons/UndoOutlined";
 import Button from "antd/es/button";
@@ -412,8 +413,9 @@ export function FormalizationOrderRecord({
     // Adendum and purchase funds sit with the contract and the key facts in one compact grid instead of stacking full-width cards.
     const overview = (
         <>
-            <FormalizationOrderAddendum item={item} permissions={stagePermissions} refreshVersion={addendumRevision} onChanged={handleAddendumChanged} />
+            <FormalizationOrderAddendum marker item={item} permissions={stagePermissions} refreshVersion={addendumRevision} onChanged={handleAddendumChanged} />
             <FormalizationPurchaseFunds
+                marker
                 key={`funds:${item.source}:${item.id}:${String(item.stateVersion)}:${String(item.purchaseFundsOrigin)}`}
                 item={item}
                 allowed={canUpdateStage}
@@ -460,8 +462,17 @@ export function FormalizationOrderRecord({
                     <RecordRefreshAction onRefresh={onRefresh} />
                 </div>
             </header>
+            {(item.saleLostCheck === true || item.saleLost === true) && (
+                <div className="formalization-sale-lost-alert" role="alert">
+                    <CloseCircleFilled aria-hidden="true" />
+                    <div>
+                        <strong>Venta caída</strong>
+                        <span>Esta orden está marcada como venta caída en NetSuite.</span>
+                    </div>
+                </div>
+            )}
             <FormalizationFiniquito item={item} allowed={canUpdateStage} />
-            <FormalizationRecordProgress state={item.state.code} />
+            <FormalizationRecordProgress item={item} />
             <RecordStageActions
                 key={item.source + ":" + item.id}
                 item={item}
@@ -478,7 +489,7 @@ export function FormalizationOrderRecord({
                 <FormalizationRecordSummary item={item} primary={displayedPrimary} effectivePermissions={stagePermissions} onNavigate={onNavigate} onAddendumChanged={handleAddendumChanged} overview={overview} />
             ) : (
                 <>
-                    <div className="record-overview__cards">{overview}</div>
+                    <div className="record-summary-card__markers">{overview}</div>
                     <section className="formalization-card formalization-record-loading" role="status">
                         {recordLoadMessage(netsuiteStatus, netsuiteErrorMessage)}
                     </section>

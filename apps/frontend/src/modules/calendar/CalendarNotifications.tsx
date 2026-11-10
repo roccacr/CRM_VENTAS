@@ -3,11 +3,11 @@ import { utcToLocal } from "./calendar-time";
 import type { useCalendarNotifications } from "./useCalendarNotifications";
 /** El enlace abre el detalle existente y el servidor vuelve a validar acceso y autoría. */
 export function CalendarNotificationList({ model, onOpen }: { readonly model: ReturnType<typeof useCalendarNotifications>; readonly onOpen: () => void }) {
+    if (model.items.length === 0) return model.failure ? <p role="status">{model.failure}</p> : null;
     return (
         <section aria-label="Avisos del calendario">
             <h3>Calendario</h3>
             {model.failure && <p role="status">{model.failure}</p>}
-            {!model.items.length && !model.failure && <p>No tienes avisos de eventos.</p>}
             <ul className="note-notification-list">
                 {model.items.map((item) => (
                     <li key={item.id} data-unread={item.readAt === null}>

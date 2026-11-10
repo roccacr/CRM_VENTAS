@@ -7,25 +7,43 @@ import type { BrokerLegacyPayload, BrokersLegacyAccess } from "../../../modules/
 import { isLegacyCrmWriteEnabled } from "../legacy-crm-access.js";
 import { mapLegacyBroker } from "./legacy-brokers.mapper.js";
 
-/** Broker-only DML on the native transaction: both schemas commit or roll back together. */
+/**
+ * Escritura de `corredores` dentro de la transaccion nativa.
+ *
+ * No abre el pool legado. El SQL cruza a `crmdatabase-api` por la misma
+ * conexion del CRM nuevo: las dos bases confirman o revierten juntas. Con la
+ * compuerta apagada no se copia nada y el corredor queda solo en `crm_broker`.
+ * Desarrollo no escribe: la compuerta exige produccion, ademas del opt-in.
+ */
 @Injectable()
 export class LegacyBrokersWriter implements BrokersLegacyAccess {
-    /** Uses the shared gate without opening a writable legacy pool. */
+    /** Solo lee la compuerta. No guarda un pool ni un flag capturado al arrancar. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
-    /** Rechecked before every operation, including reads needed by mutations. */
+    /**
+     * Se vuelve a leer en cada operacion, tambien en la lectura que hace falta
+     * para actualizar. Un cambio de configuracion no sigue autorizado por una
+     * decision anterior.
+     */
     enabled(): boolean {
         return isLegacyCrmWriteEnabled(this.config);
     }
 
-    /** Locks the source row until its native promotion and audit finish. */
+    /**
+     * Bloquea la fila vieja hasta que terminen el alta nativa y su auditoria.
+     * Apagado devuelve `null`: no es un corredor inexistente, es ausencia de copia.
+     */
     async find(transaction: Transaction<CrmDatabase>, id: number) {
         if (!this.enabled()) return null;
         const result = await sql`SELECT id_corredor AS legacyId, id_netsuiteCorredor AS externalId, nombre_corredor AS name, estado_corredor AS status FROM \`crmdatabase-api\`.corredores WHERE id_corredor=${id} FOR UPDATE`.execute(transaction);
         return result.rows[0] ? mapLegacyBroker(result.rows[0]) : null;
     }
 
-    /** Returns the generated legacy link; never adopts a conflicting existing row. */
+    /**
+     * Inserta y devuelve el id generado. No adopta una fila que ya exista con
+     * el mismo nombre o el mismo id de NetSuite: hay que editar esa, no enlazarla
+     * en silencio a un corredor nuevo. El bloqueo cubre la comprobacion y el alta.
+     */
     async create(transaction: Transaction<CrmDatabase>, payload: BrokerLegacyPayload): Promise<number | null> {
         if (!this.enabled()) return null;
         if (payload.name.length > 250) throw new BadRequestException("Legacy broker name exceeds 250 characters.");
@@ -38,7 +56,11 @@ export class LegacyBrokersWriter implements BrokersLegacyAccess {
         return id;
     }
 
-    /** Synchronizes only fields present in the legacy schema, without deleting records. */
+    /**
+     * Copia solo nombre, id de NetSuite y estado. No borra la fila vieja. Si el
+     * vinculo ya no existe, o si ese id de NetSuite pertenece a otro corredor,
+     * la transaccion nativa no sigue con una copia a medias.
+     */
     async update(transaction: Transaction<CrmDatabase>, id: number, payload: BrokerLegacyPayload): Promise<void> {
         if (!this.enabled()) return;
         if (payload.name.length > 250) throw new BadRequestException("Legacy broker name exceeds 250 characters.");
@@ -49,6 +71,13 @@ export class LegacyBrokersWriter implements BrokersLegacyAccess {
         await sql`UPDATE \`crmdatabase-api\`.corredores SET nombre_corredor=${payload.name},id_netsuiteCorredor=${externalId},estado_corredor=${payload.status === "active" ? 1 : 0} WHERE id_corredor=${id}`.execute(transaction);
     }
 
+    /**
+     * Columna `id_netsuiteCorredor`, que es un INT con signo y admite nulo.
+     *
+     * Sin id en la primera referencia NetSuite, se guarda nulo. Si hay valor,
+     * tiene que ser la unica referencia de ese sistema y un entero dentro de
+     * INT. Mas de una, o un texto que no sea entero, no se recorta ni se concatena.
+     */
     private externalId(payload: BrokerLegacyPayload): number | null {
         const references = payload.externalReferences.filter((reference) => reference.systemCode === "netsuite");
         const value = references[0]?.externalId;

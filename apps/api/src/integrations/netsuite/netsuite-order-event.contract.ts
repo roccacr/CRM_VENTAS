@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const scalar = z.union([z.string().max(16000), z.number(), z.boolean(), z.null()]);
 const values = z.record(z.string().max(150), scalar).refine((value) => Object.keys(value).length <= 300);
+/** Sobre v1 de Sandbox, cuenta `4552704_SB1`. El id del snapshot tiene que ser el de la orden. No admite campos extra. */
 export const receiptOrderEvent = z
     .strictObject({
         schemaVersion: z.literal(1),
@@ -11,8 +12,9 @@ export const receiptOrderEvent = z
     })
     .refine((value) => value.snapshot.data.id === value.event.netsuiteId);
 
-/** La version 2 exige identidad estable para distinguir reenvios de nuevas ediciones. */
+/** v2 agrega `eventId`, la hora de modificacion y una ventana de lectura opcional. Las dos marcas van juntas o no van. */
 const persistedEnvelope = z.strictObject({ ...receiptOrderEvent.shape, schemaVersion: z.literal(2), event: z.strictObject({ recordType: z.literal("salesorder"), netsuiteId: z.string().regex(/^[1-9][0-9]{0,14}$/), eventType: z.enum(["create", "edit", "xedit", "approve", "cancel", "reject"]), observedAt: z.iso.datetime(), eventId: z.uuid(), sourceModifiedAt: z.iso.datetime(), snapshotReadStartedAt: z.iso.datetime().optional(), snapshotReadCompletedAt: z.iso.datetime().optional() }) });
+/** La ventana, si viene, dura entre 0 y 60 segundos. Una sola marca no alcanza. */
 function validWindow(event: z.infer<typeof persistedEnvelope>["event"]): boolean {
     if (event.snapshotReadStartedAt === undefined) return event.snapshotReadCompletedAt === undefined;
     if (event.snapshotReadCompletedAt === undefined) return false;
@@ -23,7 +25,7 @@ export const persistedOrderEvent = persistedEnvelope
     .refine((value) => value.snapshot.data.id === value.event.netsuiteId)
     .refine((value) => validWindow(value.event), { message: "Ventana de lectura invalida." })
     .refine((value) => value.snapshot.data.fields.crm_sync_projection !== 1 || value.event.snapshotReadStartedAt !== undefined, { message: "La proyeccion ampliada requiere ventana de lectura verificada." });
-/** Production keeps all v2 ordering/window checks and binds its own account. */
+/** Produccion repite las reglas de v2 y ata la cuenta `4552704`. No acepta el sobre de Sandbox. */
 export const productionOrderEvent = persistedEnvelope
     .extend({ source: z.strictObject({ system: z.literal("netsuite"), accountId: z.literal("4552704"), environment: z.literal("production") }) })
     .refine((value) => value.snapshot.data.id === value.event.netsuiteId)

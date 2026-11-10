@@ -1,9 +1,12 @@
 /**
- * Lectura de solo lectura de `crmdatabase-api.proyectos`.
+ * Lectura de `crmdatabase-api.proyectos` por el pool legado, no por la
+ * transaccion del CRM nuevo.
  *
- * Tabla y columnas salen de una lista fija. Búsqueda, estado y paginación
- * viajan como valores enlazados. Los ids que el CRM nuevo ya guardó se
- * excluyen para no mostrar el mismo proyecto dos veces.
+ * Los nombres de tabla y columna estan fijos, con su grafia: `id_ProNetsuite`
+ * y `Nombre_proyecto`. Normalizar mayusculas buscaria columnas que no existen.
+ * Busqueda, estado y pagina viajan como parametros. Se omiten los ids de
+ * produccion que el catalogo nuevo ya registro, para no listar dos veces el
+ * mismo proyecto.
  */
 import { Inject, Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -16,26 +19,24 @@ import { isLegacyCrmEnabled } from "../legacy-crm-access.js";
 import { LegacyCrmDatabaseService } from "../legacy-crm-database.service.js";
 import { mapLegacyProject } from "./legacy-projects.mapper.js";
 
-/** Nombres reales de la tabla vieja. No se arman con texto del usuario. */
+/** Nombres reales de la tabla vieja. El request no puede cambiarlos. */
 const source = { table: "proyectos", id: "id_proyecto", external: "id_ProNetsuite", name: "Nombre_proyecto", status: "estado_proyecto" } as const;
 
 /**
- *
+ * Fallback de solo lectura. Apagado responde 503: no se disfraza de catalogo
+ * vacio. La escritura no pasa por esta clase ni por este pool.
  */
 @Injectable()
 export class LegacyProjectsReader implements CatalogFallbackReader {
     private readonly logger = new Logger(LegacyProjectsReader.name);
 
-    /**
-     * @param config - Bandera booleana del fallback
-     * @param database - Pool legacy; este reader no abre otra conexión
-     */
+    /** La bandera es la de lectura. El pool es el legado compartido, distinto del de `CRM_THINK_V2`. */
     constructor(
         @Inject(ConfigService) private readonly config: ConfigService,
         @Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService,
     ) {}
 
-    /** `"false"` como texto no cuenta. Solo el booleano `true` enciende la lectura. */
+    /** Solo el booleano `true` enciende la consulta. Un texto no cuenta como encendido. */
     enabled(): boolean {
         return isLegacyCrmEnabled(this.config);
     }
@@ -43,11 +44,9 @@ export class LegacyProjectsReader implements CatalogFallbackReader {
     /**
      * Lista proyectos ya traducidos al contrato nuevo.
      *
-     * El error HTTP no incluye SQL ni credenciales. El código de MySQL se
-     * deja en el log, ya filtrado a letras, números y guion bajo.
-     *
-     * @param input - Filtros y ids de producción que ya viven en el CRM nuevo
-     * @throws {ServiceUnavailableException} Si el fallback está apagado, el código no es `projects` o la base no responde
+     * Un fallo de conexion o de mapeo sale como 503 generico. El log solo guarda
+     * el codigo del driver, y solo si son letras, digitos o guion bajo: no el
+     * SQL, no la clave y no el texto de la fila.
      */
     async list(input: CatalogReadInput & { excludedLegacyIds?: readonly number[] }): Promise<CatalogItemsResponse> {
         if (!this.enabled()) throw new ServiceUnavailableException("Legacy fallback is disabled.");
@@ -62,10 +61,12 @@ export class LegacyProjectsReader implements CatalogFallbackReader {
     }
 
     /**
-     * Cuenta y página dentro de la misma transacción de solo lectura.
+     * Total y pagina en la misma transaccion de lectura, para que el conteo y
+     * las filas vean el mismo corte.
      *
-     * Así el total no cambia respecto de las filas devueltas. `COALESCE` trata
-     * un estado nulo como inactivo, igual que el mapper.
+     * Un estado nulo cuenta como inactivo. El esquema va calificado: aunque la
+     * conexion tuviera otra base por defecto, esta consulta no lee el CRM nuevo.
+     * `LIKE` recibe el texto como parametro; no abre la sentencia.
      */
     private async read(input: CatalogReadInput & { excludedLegacyIds?: readonly number[] }): Promise<CatalogItemsResponse> {
         const code = "projects";

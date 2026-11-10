@@ -1,4 +1,15 @@
-## Corte vigente — 2026-11-03
+## Corte de implementación — 2026-11-10
+
+[90 — Reconciliación del API](Arquitectura/90-Reconciliacion-API-20261110.md)
+contrasta `06a489c..4ad7a59`, el release Habita de `63139a8` y las modificaciones
+locales. Para validar el estado vigente, separar el commit, los cambios sin
+commit, el despliegue del BFF, el paquete SuiteScript instalado y el ledger
+MySQL. La entrega 074, la extracción manual por número y las páginas de
+hasta 500 se describen como cambios locales. Se conserva la autorización por
+recurso, las denegaciones efectivas y la verificación adversarial, generativa
+y de fuzzing para cambios críticos.
+
+## Corte histórico — 2026-11-03
 
 Revisión documental del árbol de trabajo de `temp/crm-tink-api-frontend-inicial`,
 con base en HEAD `4d446ed`. Incluye cambios locales; no acredita publicación.

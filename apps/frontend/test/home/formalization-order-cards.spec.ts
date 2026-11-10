@@ -13,7 +13,7 @@ const counts = { all: 189, approvals: 3, contracts: 186, send: 185, signature: 1
 it("explains each order card on focus using the same conditions as Home", async () => {
     const cards = buildOrderCards(counts);
     render(createElement(CatalogBanners, { cards, label: "Resumen de órdenes" }));
-    for (const card of cards) expect(screen.getByRole("button", { name: `Condiciones de ${card.title}` })).toBeTruthy();
+    for (const card of cards) expect(screen.getByRole("button", { name: `Condiciones de ${card.title}` })).toBeInTheDocument();
     fireEvent.focus(screen.getByRole("button", { name: "Condiciones de Formalizaciones cerradas este año" }));
     const tooltip = await screen.findByRole("tooltip");
     expect(tooltip.textContent).toContain("Unidad entregada y contrato firmado: sí");

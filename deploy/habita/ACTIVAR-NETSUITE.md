@@ -1,10 +1,33 @@
 # Completar la conexión de NetSuite
 
+## Corte del 10/11/2026
+
+El release de Habita `20261109185625-63139a8-local` se confirmó el
+09/11/2026. Su repositorio incluye SuiteScript `2026.11.03.7`. Publicar
+Habita y actualizar archivos o parámetros de NetSuite son operaciones
+separadas. El release del API no acredita qué versión está instalada en
+el Archivador ni una prueba completa de eventos en Producción.
+
+La biblioteca `2026.11.10.4` y el RESTlet que resuelve
+`GET ?module=salesOrders&action=findByTranId&tranid=<numero>` son
+cambios del árbol local. El RESTlet rechaza números inválidos, inexistentes
+o ambiguos. La biblioteca proyecta `custbody_fecha_unidad_entregada`
+cuando el campo está disponible. La persistencia de la proyección requiere
+la [migración de esquema 074](../../apps/api/migrations/schema-only/202611100074_netsuite_order_delivery.ts)
+en el CRM nativo, que registra el destino `native` o `legacy` sin
+alterar el esquema legado. Revisar esa migración por separado antes de
+habilitar el código que lee o escribe la proyección. El activador de
+Habita no ejecuta migraciones.
+
 ## Archivos que debes subir
 
-Paquete: [tres scripts unificados](../../apps/api/dist/netsuite/CRM_v2_2026.11.03.4_1793729769815.zip).
+Desde `apps/api` y sobre el corte aprobado, ejecutar `pnpm netsuite:package:test`
+y luego `pnpm netsuite:package`. Usar el ZIP generado en `dist/netsuite/` y
+verificar en el manifiesto la versión y los SHA-256. El paquete de una revisión
+anterior no acredita compatibilidad con un backend posterior.
 
-En **Producción y Sandbox**, sobrescribe estos tres archivos en `SuiteScripts/`:
+El paquete unificado se importa desde la raíz del Archivador. Para la revisión
+aprobada de cada entorno, conserva estos destinos dentro de `SuiteScripts/`:
 
 - `SS2_1_LIB_CRM_habita.js`
 - `SS2_1_RL_CRM_Habita.js`
@@ -30,10 +53,10 @@ subida sea la de `/SuiteScripts/SS2_1_LIB_CRM_habita.js`.
 
 ## Envío de eventos de Producción hacia Habita
 
-1. Crea en NetSuite un **API Secret** con ID `custsecret_crm_habita_production`.
-   Como valor utiliza el contenido de este
-   [archivo privado](C:/codex-data/private/habita-netsuite-20261103/production-event-secret.txt).
-   No envíes ese contenido por chat ni lo guardes en un archivo del proyecto.
+1. Usa el **API Secret** autorizado `custsecret_crm_habita_production`.
+   Si hay que configurarlo, obtén el valor por el canal privado del operador
+   y comprueba que corresponda al receptor de Producción. Mantén el valor
+   fuera del repositorio, del paquete y de los logs.
 2. Concede al User Event de Producción acceso al secreto y al dominio
    `api-habita.rdghub.com`.
 3. En el deployment de Orden de venta del User Event `3740`, configura:
@@ -60,8 +83,10 @@ configurarse una base de pruebas aislada; no activar ese flag sobre la BD real.
 
 ## Verificación después de subir los archivos
 
-Avísame cuando termines. Primero comprobaré mediante GET que Producción y Sandbox
-devuelvan la orden y `fields.custbody37` (`1` Propios / `2` Financiado). Para
+Primero comprobar mediante GET que Producción y Sandbox devuelvan HTTP 200 y
+`status:200` de aplicación, la orden y `fields.custbody37` (`1` Propios /
+`2` Financiado). En el corte local nuevo, comprobar también la búsqueda por
+número visible y la fecha de entrega cuando el campo esté disponible. Para
 confirmar el envío del User Event hace falta observar un cambio legítimo en una
 orden elegida para esa verificación; una consulta GET no dispara el evento.
 
@@ -70,6 +95,9 @@ cuerpo inválido verifican autenticación y disponibilidad, sin escribir órdene
 no equivalen a una prueba real de sincronización desde NetSuite.
 
 
-## Boton de sincronizacion manual (cambio local posterior)
+## Antecedente de sincronización manual del 03/11/2026
 
-La libreria2026.11.03.4 incorpora GET action=syncSnapshot; para esta ampliacion solo se reemplaza la libreria, no los wrappers RESTlet/UserEvent. El boton requiere tambien publicar el backend/frontend actuales. El despliegue del sistema anterior no incluia esta nueva funcion. No habilitar persistenciaSandbox contra una BD productiva compartida para probar el boton.
+La biblioteca `2026.11.03.4` incorporó `GET action=syncSnapshot`. La
+indicación de reemplazar solo la biblioteca correspondía a ese cambio
+puntual. El corte local posterior también cambia el RESTlet. Para probar
+persistencia de Sandbox, utilizar una base de pruebas aislada.

@@ -51,7 +51,7 @@ import { NotesRealtimeProvider } from "../notes/NotesRealtimeProvider";
 import { NotesButton, NotesNotificationsButton, PersonalNotesProvider } from "../notes/PersonalNotes";
 import { FormalizationCalendarQuickCreate } from "./FormalizationCalendarQuickCreate";
 
-const HABITA_VERSION = "v2.0.0";
+const HABITA_VERSION = "v2.0.1";
 
 /**
  * Anchos heurísticos del menú de escritorio, en píxeles.
@@ -822,8 +822,9 @@ function UserAvatarContent({ user }: { readonly user: GlobalHomeCurrentUser | un
 }
 
 function HabitaVersion() {
-    const release = import.meta.env.VITE_HABITA_RELEASE;
-    const revision = release?.match(/^\d{14}-([a-f0-9]{7})-local$/u)?.[1];
+    const release = import.meta.env.VITE_HABITA_RELEASE ?? "";
+    const match = release.match(/^(?:\d{14}-([a-f0-9]{7})-local|([a-f0-9]{7})[a-f0-9]{33})$/u);
+    const revision = match?.[1] ?? match?.[2];
     return (
         <span className="global-home-brand-version" title={revision ? `Habita ${HABITA_VERSION} · Release ${release}` : `Habita ${HABITA_VERSION} · Compilación sin identificador de release`}>
             <span>{HABITA_VERSION}</span>

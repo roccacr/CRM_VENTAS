@@ -1,5 +1,29 @@
 # Changelog
 
+## Reconciliación documental — 2026-11-10
+
+Rango `06a489c..4ad7a59`. La publicación verificada del 9 de noviembre
+corresponde a `63139a8`, release `20261109185625-63139a8-local`.
+Los tres commits posteriores y el árbol sin commit se documentan por separado
+en el [estado del proyecto](README.md#estado-documental-vigente--2026-11-10).
+
+| Commit | Cambio comprobado en el historial |
+| --- | --- |
+| `72c2d52` | Regla de revisión adversarial, pruebas por propiedades y fuzzing. Ajustes SuiteScript, permisos y pruebas de NetSuite, Calendario y Formalización. |
+| `5a667e7` | Rechazo de fechas futuras en el cursor de NetSuite, con regresiones de orden temporal. Ajustes de lint en Notas y de expectativas frontend. |
+| `4c7af0a` | Espera de validaciones del drawer de Usuarios antes de desmontar jsdom en cobertura. |
+| `48b7707` | Espera de callbacks del drawer de Catálogos antes de desmontar jsdom en cobertura. |
+| `874518e` | Marca oficial, versión y revisión visible, fondos del login y encabezado, banners de Formalización y ajustes de calidad. |
+| `63139a8` | Integración de la rama local con las correcciones remotas de NetSuite y frontend y reconciliación de pruebas. |
+| `3f2537c` | Rechazo de caracteres invisibles en identificadores de correo y manejo de snapshots de tiempos malformados. |
+| `6d38014` | Pruebas de fronteras, permisos y ordenamiento, aserciones más precisas y aviso de persistencia SQL omitida. |
+| `4ad7a59` | fast-check en frontend para rangos de captación y teléfonos de WhatsApp, setup de jest-dom y timeout de 20 segundos para pruebas. |
+
+El árbol local incorpora también la paginación de Catálogos hasta 500, el menú
+de acciones bajo demanda, el trabajo sobre entregas y cierre de Formalización
+y la promoción de artefactos entre ambientes. Estos cambios quedan fuera de la
+publicación verificada indicada arriba.
+
 ## Asignación bancaria en Formalización — 2026-11-03
 
 - Panel contextual para banco y ejecutivo activos, alta de ejecutivo desde la orden y guardado explícito versionado con bitácora transaccional.
@@ -10,7 +34,7 @@
 - Revisados en paralelo backend/integraciones, frontend y seguridad/BD contra el inventario Git y toda la documentación propia, sin paquetes de skills ni dependencias.
 - Actualizados contratos de sincronización completa de órdenes, caída y fecha, etapas/fondos/cierre, perfil/contacto/Outlook/WhatsApp, agenda contextual y cabecera, Adéndum en ambas fuentes y permisos065–067.
 - Documentadas las capacidades Graph implementadas, separadas de su aceptación externa; corregidos pendientes obsoletos y precedencia de snapshots.
-- [85 — Inventario y cobertura](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) sustituye72 como cierre vigente y conserva su evidencia histórica. Solo documentación; sin aplicar DDL, publicar ni modificar código.
+- [85 — Inventario y cobertura](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) sustituyó al72 en ese corte y conserva su evidencia histórica. La revisión se limitó a documentación.
 
 ## Reconciliación documental integral — 2026-11-02
 

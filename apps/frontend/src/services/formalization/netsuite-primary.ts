@@ -132,6 +132,7 @@ function payment(fields: Record<string, unknown>) {
 }
 const flags: Readonly<Record<string, string>> = {
     "Contrato firmado": "custbody90",
+    "Cuotas pagadas por completo": "custbody_cuotas_pagadas",
     "Cierre firmado": "custbody51",
     "Unidad entregada": "custbody91",
     "Unidad traspasada": "custbody105",

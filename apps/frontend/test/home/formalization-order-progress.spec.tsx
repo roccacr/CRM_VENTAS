@@ -7,6 +7,8 @@ import { type FollowUpItem, getFollowUp } from "../../src/services/formalization
 import type { NetsuitePrimary } from "../../src/services/formalization/netsuite-primary";
 import { installBrowserApiDoubles } from "../support/browser";
 
+// Static toasts mount a separate React root; these tests cover the order and catalog behavior.
+vi.mock("antd/es/notification", () => ({ default: { success: vi.fn() } }));
 afterEach(cleanup);
 const order: FollowUpItem = { id: "legacy:208", source: "legacy", number: "RDR673", nativeCode: null, client: null, project: null, unit: null, responsible: null, state: { code: "pending_approval", label: "Pendientes de aprobación", since: null, days: null }, nextStep: "", completedThisYear: false };
 it.each([
@@ -25,6 +27,16 @@ it.each([
     expect(screen.getByRole("progressbar", { name: "Avance de Formalización" }).getAttribute("aria-valuenow")).toBe(String(step));
     expect(within(screen.getByRole("region", { name: "Etapas de Formalización" })).queryByText(/\d+ ?%/)).toBeNull();
     expect(within(screen.getByRole("list", { name: "Recorrido de etapas" })).getAllByRole("listitem")).toHaveLength(8);
+});
+it("shows the ten NetSuite checks with explicit marked, unmarked and unknown values", () => {
+    installBrowserApiDoubles();
+    render(<FormalizationOrderRecord item={{ ...order, salesManagementApproved: true, developerApproved: null, formalizationApproved: false, installmentsFullyPaid: true }} onBack={() => {}} />);
+    const checks = within(screen.getByRole("region", { name: "Checks de NetSuite" }));
+    expect(checks.getAllByRole("term")).toHaveLength(10);
+    expect(checks.getByText("Cuotas pagadas por completo").nextElementSibling).toHaveTextContent(/^Marcado$/);
+    const approvals = within(checks.getByRole("group", { name: "Aprobaciones" }));
+    expect(approvals.getByText("Formalización").nextElementSibling).toHaveTextContent(/^Desmarcado$/);
+    expect(approvals.getByText("Desarrolladora").nextElementSibling).toHaveTextContent(/^Sin dato$/);
 });
 it("marks earlier positions neutrally without inventing visits after a stage skip", () => {
     installBrowserApiDoubles();
@@ -56,7 +68,7 @@ it("does not invent a percentage for an unknown stage", () => {
     installBrowserApiDoubles();
     render(<FormalizationOrderRecord item={{ ...order, state: { ...order.state, code: "unclassified" } }} onBack={() => {}} />);
     expect(screen.queryByRole("progressbar")).toBeNull();
-    expect(screen.getByText("Etapa sin identificar")).toBeTruthy();
+    expect(screen.getByText("Etapa sin identificar")).toBeInTheDocument();
 });
 
 it("hides example values while the provider request is pending", () => {
@@ -122,7 +134,7 @@ it("uses one loading boundary for identity, timeline and record data, then revea
     expect(screen.queryByText("RDR673")).toBeNull();
     const refreshed = { ...order, number: "BD-ACTUAL", state: { ...order.state, code: "contract_pending_signature", label: "Pendiente de firma" } };
     view.rerender(<FormalizationOrderRecord item={refreshed} onBack={() => {}} netsuiteStatus="success" />);
-    expect(screen.getByRole("heading", { name: "Orden de venta BD-ACTUAL" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Orden de venta BD-ACTUAL" })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Ruta de la orden" }).textContent).toContain("BD-ACTUAL");
     expect(screen.getByRole("region", { name: "Etapas de Formalización" }).textContent).toContain("Pendiente de firma");
 });
@@ -131,7 +143,7 @@ it("offers approval in the full order independently of stage update permission",
     render(<FormalizationOrderRecord item={{ ...order, stateVersion: 0, state: { ...order.state, code: "pending_approval" } }} onBack={() => {}} canUpdateStage={false} stagePermissions={[{ code: "formalizacion.orders.approve", effect: "allow" }]} />);
     expect(screen.getByRole("button", { name: "Aprobar Formalización" }).hasAttribute("disabled")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Aprobar Formalización" }));
-    expect(await screen.findByRole("dialog", { name: "Confirmar aprobación de Formalización" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Confirmar aprobación de Formalización" })).toBeInTheDocument();
 });
 
 vi.mock("../../src/services/api/api-client", async (original) => ({ ...(await original<object>()), apiRequest: vi.fn() }));

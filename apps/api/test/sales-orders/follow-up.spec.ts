@@ -88,7 +88,30 @@ describe("Formalization follow-up", () => {
         expect(legacy.projection).toHaveBeenCalledTimes(2);
     });
     it("does not invent stage age for missing evidence and supplies a read-only next step", () => {
-        const row = { installmentsFullyPaid: null, unitTransferred: null, keysDelivered: null, unitDelivered: null, id: "legacy:1", source: "legacy" as const, number: "OV-1", nativeCode: null, client: null, clientEmail: null, project: null, unit: null, responsible: null, stateCode: "contract_pending_send" as const, stateSince: null, completedThisYear: false };
+        const row = {
+            salesManagementApproved: null,
+            developerApproved: null,
+            formalizationApproved: null,
+            commercialClosureSigned: null,
+            contractSignedCheck: null,
+            saleLostCheck: null,
+            installmentsFullyPaid: null,
+            unitTransferred: null,
+            keysDelivered: null,
+            unitDelivered: null,
+            id: "legacy:1",
+            source: "legacy" as const,
+            number: "OV-1",
+            nativeCode: null,
+            client: null,
+            clientEmail: null,
+            project: null,
+            unit: null,
+            responsible: null,
+            stateCode: "contract_pending_send" as const,
+            stateSince: null,
+            completedThisYear: false,
+        };
         const presented = presentFollowUpRow(row, new Date("2026-10-26T12:00:00Z"));
         expect(presented.state).toMatchObject({ code: "contract_pending_send", label: "Por enviar", since: null, days: null });
         expect(presented.nextStep).toBe("Registrar el envío del contrato");
@@ -100,7 +123,7 @@ it("passes module-wide contracts-only union access to both sources and rejects f
     const f = setup(["formalizacion.home.contracts.read"]);
     for (const grant of f.profile.permissions) grant.scope = "self";
     await f.service.list("session", {});
-    expect(f.native.readCombined).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ access: { ownOnly: false, approvalOwnOnly: false, approvals: false, actorId: "actor", finiquito: false, queues: { approvals: false, contracts: true, bank: false, balance: false, transfer: false, signed: false, closed: false, addendum: false } }, legacy: "legacy-projection" }));
+    expect(f.native.readCombined).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ access: { ownOnly: false, approvalOwnOnly: false, approvals: false, actorId: "actor", finiquito: false, exactOrderSearch: false, queues: { approvals: false, contracts: true, bank: false, balance: false, transfer: false, signed: false, closed: false, addendum: false } }, legacy: "legacy-projection" }));
     f.native.readCombined.mockClear();
     await expect(f.service.list("session", { queue: "bank" })).rejects.toMatchObject({ status: 403 });
     expect(f.native.readCombined).not.toHaveBeenCalled();
@@ -138,8 +161,8 @@ it("validates bounded arrays and passes the same selections to both source reade
     const { service, native, legacy } = setup();
     const result = await service.list("session", { projectIds: "legacy-project:7,legacy-project:8", queues: "send,bank", bankStages: "bank_management_in_progress" });
     expect(result.filters.projectIds).toEqual(["legacy-project:7", "legacy-project:8"]);
-    expect(native.readCombined).toHaveBeenCalled();
-    expect(legacy.projection).toHaveBeenCalled();
+    expect(native.readCombined).toHaveBeenCalledTimes(1);
+    expect(legacy.projection).toHaveBeenCalledTimes(1);
     await expect(service.list("session", { projectIds: Array(51).fill("legacy-project:7") })).rejects.toMatchObject({ status: 400 });
 });
 it("omits the disabled legacy projection while preserving the bounded native global read", async () => {

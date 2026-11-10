@@ -36,8 +36,8 @@ it.each([
         render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission, { code: "formalizacion.contracts.send", effect: "allow" }, { code: "formalizacion.contracts.revert", effect: "allow" }]} />);
         fireEvent.click(await screen.findByRole("button", { name: `Abrir ${label}` }));
         // La bandeja se aplica sobre el seguimiento embebido en Inicio; ya no abre una pagina de cola con encabezado propio.
-        expect(screen.getByRole("combobox", { name: "Bandeja de seguimiento" })).toBeTruthy();
-        expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
+        expect(screen.getByRole("combobox", { name: "Bandeja de seguimiento" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeInTheDocument();
         await waitFor(() => {
             expect(getFollowUp).toHaveBeenLastCalledWith(expect.objectContaining({ queues: [filter] }));
         });
@@ -63,9 +63,9 @@ it.each([undefined, [], [{ ...role, code: "owner" }], [{ ...role, code: "jefe" }
 it("loads real counts only with an effective grant, then unmounts on revocation", async () => {
     const { rerender } = render(<FormalizationHomePage />);
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
-    expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeInTheDocument();
     await screen.findByLabelText("Valor: Por enviar, 6");
-    expect(screen.getByLabelText("Valor: Pendientes de firma, 3")).toBeTruthy();
+    expect(screen.getByLabelText("Valor: Pendientes de firma, 3")).toBeInTheDocument();
     rerender(<FormalizationHomePage roles={[{ ...role, status: "inactive" }]} effectivePermissions={[]} />);
     expect(screen.queryByRole("heading", { name: "Contratos pendientes" })).toBeNull();
     expect(getHomeSummary).toHaveBeenCalledTimes(1);
@@ -79,8 +79,8 @@ it("shows unknown slots with an explicit error", async () => {
     expect(screen.getByLabelText("Pendientes de firma: sin verificar").textContent).toBe("—");
     expect(screen.queryByText("Contratos no disponibles")).toBeNull();
     expect(screen.queryByLabelText("Valor: Por enviar, 0")).toBeNull();
-    expect(screen.getByText("Por enviar", { selector: ".formalization-banner__caption" })).toBeTruthy();
-    expect(screen.getByText("Pendientes de firma", { selector: ".formalization-banner__caption" })).toBeTruthy();
+    expect(screen.getByText("Por enviar", { selector: ".formalization-banner__caption" })).toBeInTheDocument();
+    expect(screen.getByText("Pendientes de firma", { selector: ".formalization-banner__caption" })).toBeInTheDocument();
     expect(screen.queryByText(/No se pudieron verificar/)).toBeNull();
     fireEvent.mouseOver(screen.getByRole("button", { name: "Reintentar conteos de contratos" }));
     expect((await screen.findByRole("tooltip")).textContent).toBe("No se pudieron verificar los conteos de contratos. Reintentar consulta.");
@@ -104,12 +104,12 @@ it("replaces each count with its own preload while loading and shares the Strict
         expect(within(metric).queryByText("0")).toBeNull();
     }
     expect(screen.queryByText(/Sin verificar/)).toBeNull();
-    expect(screen.getByText("Por enviar", { selector: ".formalization-banner__caption" })).toBeTruthy();
-    expect(screen.getByText("Pendientes de firma", { selector: ".formalization-banner__caption" })).toBeTruthy();
+    expect(screen.getByText("Por enviar", { selector: ".formalization-banner__caption" })).toBeInTheDocument();
+    expect(screen.getByText("Pendientes de firma", { selector: ".formalization-banner__caption" })).toBeInTheDocument();
     expect(getHomeSummary).toHaveBeenCalledTimes(1);
     resolve(summary);
     await screen.findByLabelText("Valor: Por enviar, 6");
-    expect(screen.getByLabelText("Valor: Pendientes de firma, 3")).toBeTruthy();
+    expect(screen.getByLabelText("Valor: Pendientes de firma, 3")).toBeInTheDocument();
 });
 
 it("does not request a hidden contracts banner on direct Orders entry", () => {
@@ -121,7 +121,7 @@ it("marks successful zero counts as verified", async () => {
     vi.mocked(getHomeSummary).mockResolvedValue({ ...summary, counts: { ...counts, contracts: { toSend: 0, pendingSignature: 0 } } });
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await screen.findByLabelText("Valor: Por enviar, 0");
-    expect(screen.getByLabelText("Valor: Pendientes de firma, 0")).toBeTruthy();
+    expect(screen.getByLabelText("Valor: Pendientes de firma, 0")).toBeInTheDocument();
     expect(screen.queryByText(/Sin verificar/)).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
 });
@@ -133,7 +133,7 @@ it("retries failed contracts and displays the successful source counts", async (
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     fireEvent.click(await screen.findByRole("button", { name: "Reintentar conteos de contratos" }));
     await screen.findByLabelText("Valor: Por enviar, 186");
-    expect(screen.getByLabelText("Valor: Pendientes de firma, 0")).toBeTruthy();
+    expect(screen.getByLabelText("Valor: Pendientes de firma, 0")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
 });

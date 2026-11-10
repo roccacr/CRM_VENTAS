@@ -1,5 +1,11 @@
 # 00 - Indice de Arquitectura API
 
+## Reconciliación vigente — 2026-11-10
+
+[90 — Reconciliación del API](90-Reconciliacion-API-20261110.md) actualiza
+el corte 85. Distingue commits recientes, evidencia de publicación y cambios
+locales de entrega NetSuite, seguimiento, catálogos e identidad.
+
 ## Bancos - 2026-11-03
 
 [86 - Bancos y ejecutivos](86-Bancos-Ejecutivos-Plan-y-Migracion-068.md): catalogo/API/UI implementados, esquema068/legacy aplicado y verificado por SELECT;20 grants Owner y20 Jefe General,0 filas comerciales. Visual real Owner confirmada; sin deploy ni mutaciones UI sobre RDS. QA y bloqueos globales en86.

@@ -1,17 +1,20 @@
 import "reflect-metadata";
 
+import { readFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 
 import { ConfigService } from "@nestjs/config";
+import { ConflictException } from "@nestjs/common";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
 import fc from "fast-check";
 import { Kysely, MysqlDialect, sql } from "kysely";
 import { createPool } from "mysql2";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { loadRecordAuditStatements } from "../../migrations/schema-only/202610220023_record_audit.js";
 import { netsuiteOrderEventsMigration } from "../../migrations/schema-only/202611020058_netsuite_order_events.js";
+import { netsuiteOrderDeliveryMigration } from "../../migrations/schema-only/202611100074_netsuite_order_delivery.js";
 import { LocalServiceTokenGuard } from "../../src/common/security/local-service-token.guard.js";
 import type { DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
@@ -19,8 +22,11 @@ import { NetsuiteLocalEventsController } from "../../src/integrations/netsuite/n
 import type { PersistedOrderEvent } from "../../src/integrations/netsuite/netsuite-order-event.contract.js";
 import { orderFieldMappings, orderFlagMappings } from "../../src/integrations/netsuite/netsuite-order-event.mapper.js";
 import { NetsuiteOrderEventRepository } from "../../src/integrations/netsuite/netsuite-order-event.repository.js";
+import { NetsuiteOrderImportQueue } from "../../src/integrations/netsuite/netsuite-order-import.queue.js";
 import { NetsuiteOrderEventService } from "../../src/integrations/netsuite/netsuite-order-event.service.js";
+import { captureIntegrationAuditActor } from "../../src/modules/crm/audit/audit-actor.js";
 import { RecordAuditService } from "../../src/modules/crm/audit/record-audit.service.js";
+import { formalizationClosedThisYear } from "../../src/modules/crm/sales/sales-orders/formalization-closure.query.js";
 import { displayOrderHistory } from "../../src/modules/crm/sales/sales-orders/order-history.query.js";
 
 // Solo instancia efimera propia en loopback: nunca lee .env ni conecta al RDS compartido.
@@ -86,11 +92,13 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await sql`CREATE DATABASE IF NOT EXISTS ${sql.id("crmdatabase-api")}`.execute(admin);
         db = new Kysely<CrmDatabase>({ dialect: new MysqlDialect({ pool: createPool({ host: "127.0.0.1", port: 3309, user: "root", database: "CRM_THINK_V2", connectionLimit: 8 }) }) });
         await netsuiteOrderEventsMigration.up(db as unknown as Kysely<unknown>);
+        await netsuiteOrderDeliveryMigration.up(db as unknown as Kysely<unknown>);
         await sql`CREATE TABLE IF NOT EXISTS crm_sales_order (id_sales_order INT PRIMARY KEY, id_old_produccion_sales_order INT NULL UNIQUE,deleted_at_sales_order DATETIME NULL,updated_at_sales_order DATETIME(3) NULL,${sql.join(orderFlagMappings.map((mapping) => sql`${sql.id(mapping.native)} ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown'`))}) ENGINE=InnoDB`.execute(db);
         await sql`CREATE TABLE IF NOT EXISTS int_external_system (id_external_system INT PRIMARY KEY,code_external_system VARCHAR(32),status_external_system VARCHAR(16)) ENGINE=InnoDB`.execute(db);
         // Indices reales de identidad, sin dependencias de otras tablas del CRM.
         await sql`CREATE TABLE IF NOT EXISTS crm_sales_order_external_reference (sales_order_id_sales_order_external_reference INT,external_system_id_sales_order_external_reference INT,external_id_sales_order_external_reference VARCHAR(15),status_sales_order_external_reference VARCHAR(16),UNIQUE KEY ix_reference(external_system_id_sales_order_external_reference,external_id_sales_order_external_reference)) ENGINE=InnoDB`.execute(db);
         await sql`CREATE TABLE IF NOT EXISTS ${sql.table("crmdatabase-api.ordenventa")} (id_ov INT PRIMARY KEY,id_ov_netsuite BIGINT NOT NULL UNIQUE,${sql.join(orderFlagMappings.map((mapping) => sql`${sql.id(mapping.legacy)} INT NULL`))}) ENGINE=InnoDB`.execute(db);
+        await sql`ALTER TABLE crm_sales_order MODIFY id_sales_order INT NOT NULL AUTO_INCREMENT, ADD COLUMN IF NOT EXISTS public_id_sales_order CHAR(26) NULL UNIQUE, ADD COLUMN IF NOT EXISTS native_code_sales_order VARCHAR(140) NULL UNIQUE`.execute(db);
         await extendFixture();
         for (const statement of await loadRecordAuditStatements()) await sql.raw(statement).execute(db);
         await sql`CREATE TABLE IF NOT EXISTS conf_schema_migration (migration_name_schema_migration VARCHAR(100) PRIMARY KEY) ENGINE=InnoDB`.execute(db);
@@ -103,6 +111,48 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await app.init();
         await app.getHttpAdapter().getInstance().ready();
     });
+    it("returns queued, deduplicates requests and publishes private success and failure results", async () => {
+        const schema = await readFile(new URL("../../Arquitectura/SQL/040_notes_commands.sql", import.meta.url), "utf8");
+        const outbox = schema.slice(schema.indexOf("CREATE TABLE int_event_outbox")).trim().replace("CREATE TABLE int_event_outbox", "CREATE TABLE IF NOT EXISTS int_event_outbox");
+        await sql.raw(outbox).execute(db);
+        await sql`DELETE FROM int_event_outbox WHERE aggregate_type_event_outbox='netsuite_order_import'`.execute(db);
+        await sql`INSERT INTO ${sql.table("crmdatabase-api.ordenventa")} (id_ov,id_ov_netsuite,id_ov_tranid) VALUES (77,8906821,'BC448')`.execute(db);
+        const identity = { getCurrentUser: (session: string) => Promise.resolve({ user: { publicId: session, permissionVersion: 1 }, session: { publicId: "session-id" } }) };
+        const authorization = Promise.withResolvers<object>();
+        const repository = { captureSynchronizationActor: vi.fn().mockResolvedValue({}).mockReturnValueOnce(authorization.promise) };
+        const orders = { executeQueuedImport: vi.fn().mockRejectedValue(new Error("must not read NetSuite")) };
+        const queue = new NetsuiteOrderImportQueue({ db } as DatabaseService, identity as never, repository as never, orders as never);
+        await expect(queue.enqueue("requester", { tranid: "BC448" })).resolves.toEqual({ queued: true, tranid: "BC448" });
+        await queue.enqueue("requester", { tranid: "bc448" });
+        try {
+            await vi.waitFor(async () => {
+                expect(await queue.notices("requester")).toMatchObject([{ tranid: "BC448", status: "processing", orderId: null }]);
+            });
+        } finally {
+            authorization.resolve({});
+        }
+        await vi.waitFor(async () => {
+            const notices = await queue.notices("requester");
+            expect(notices).toHaveLength(1);
+            expect(notices[0]).toMatchObject({ tranid: "BC448", status: "delivered", orderId: "77", orderSource: "legacy", read: false });
+        });
+        expect(orders.executeQueuedImport).not.toHaveBeenCalled();
+        expect(await queue.notices("other-user")).toEqual([]);
+        const [notice] = await queue.notices("requester");
+        if (!notice) throw new Error("Missing import result");
+        await queue.markRead("other-user", notice.id);
+        expect((await queue.notices("requester"))[0]?.read).toBe(false);
+        await queue.markRead("requester", notice.id);
+        expect((await queue.notices("requester"))[0]?.read).toBe(true);
+        orders.executeQueuedImport.mockRejectedValueOnce(new ConflictException("Falta conciliar la campaña del cliente."));
+        await queue.enqueue("requester", { tranid: "NEW-1" });
+        await vi.waitFor(async () => {
+            expect(await queue.notices("requester")).toContainEqual(expect.objectContaining({
+                tranid: "NEW-1", status: "failed", reason: "Falta conciliar la campaña del cliente.", orderId: null,
+            }));
+        });
+
+    });
     afterAll(async () => {
         await app.close();
         await db.destroy();
@@ -113,7 +163,7 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         config.set("NETSUITE_ORDER_CANCELLATION_EFFECTS_ENABLED", false);
         await sql`DROP TRIGGER IF EXISTS fail_order_update`.execute(db);
         await sql`DROP TRIGGER IF EXISTS fail_success_audit`.execute(db);
-        for (const table of ["audit_sales_order_state_event", "crmdatabase-api.audit_sales_order_state_event", "audit_sales_order_approval_event", "crm_sales_order_approval", "audit_record_event", "audit_record", "crm_sales_order_external_reference", "crm_sales_order", "int_external_system", "audit_netsuite_order_event", "int_netsuite_order_cursor", "crmdatabase-api.ordenventa"]) await sql`DELETE FROM ${sql.table(table)}`.execute(db);
+        for (const table of ["audit_sales_order_state_event", "crmdatabase-api.audit_sales_order_state_event", "audit_sales_order_approval_event", "crm_sales_order_approval", "audit_record_event", "audit_record", "crm_sales_order_external_reference", "crm_sales_order", "int_external_system", "audit_netsuite_order_event", "int_netsuite_order_cursor", "int_netsuite_order_delivery", "crmdatabase-api.ordenventa"]) await sql`DELETE FROM ${sql.table(table)}`.execute(db);
         await sql`INSERT INTO int_external_system VALUES (1,'netsuite','active')`.execute(db);
         for (const table of ["crm_lead_external_reference", "crm_unit_file_external_reference", "crm_subsidiary_external_reference", "int_user_external_identity"]) await sql`DELETE FROM ${sql.id(table)}`.execute(db);
     }
@@ -125,6 +175,36 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
             snapshot: { status: 200, data: { type: "salesorder", id: "123", fields: Object.fromEntries(orderFlagMappings.map((field) => [field.netsuite, checked])), sublists: { item: [] } } },
         };
     }
+    function importSnapshot() {
+        const payload = event(false);
+        Object.assign(payload.snapshot.data.fields, { crm_sync_projection: 1, custbody13: null, custbody17: null, custbody_ix_total_amount: null, custbody21: null, initialtranid: "BC448", entity: "300", custbody38: null, subsidiary: null, crm_owner_employee: null, opportunity: null, createdfrom: null, crm_currency_iso: "USD", crm_transaction_date: "2026-11-02", custbody74: false, custbody73: false, custbody_aprueba_jefe_ventas: false, custbodyid_firma_rocca: false, custbodyid_firma_rc: false });
+        return payload;
+    }
+
+    it("imports once into the native database, keeps the customer link and records the receipt", async () => {
+        await sql`INSERT INTO crm_lead_external_reference VALUES (8,1,'300','active',NULL)`.execute(db);
+        const importOrder = () => {
+            return service.receive(importSnapshot(), { importTranid: "BC448", authorize: () => Promise.resolve(captureIntegrationAuditActor({ publicId: "import-test", name: "Import test" })) });
+        };
+        const results = await Promise.allSettled([importOrder(), importOrder()]);
+        expect(results.filter((result) => result.status === "fulfilled")).toMatchObject([{ value: { result: "applied", destination: "native" } }]);
+        expect(results.filter((result) => result.status === "rejected")).toMatchObject([{ reason: { status: 409 } }]);
+        const rows = await sql`SELECT o.lead_id_sales_order AS client, x.transaction_number_sales_order_external_reference AS number FROM crm_sales_order o JOIN crm_sales_order_external_reference x ON x.sales_order_id_sales_order_external_reference=o.id_sales_order`.execute(db);
+        expect(rows.rows).toEqual([{ client: 8, number: "BC448" }]);
+        const audit = await sql`SELECT origin FROM audit_netsuite_order_event WHERE result='applied' AND destination='native'`.execute(db);
+        expect(audit.rows).toEqual([{ origin: "NetSuite import import-test" }]);
+    });
+
+    it("does not create a native row for an existing legacy number or an unmapped customer", async () => {
+        await sql`INSERT INTO ${sql.table("crmdatabase-api.ordenventa")} (id_ov,id_ov_netsuite,id_ov_tranid) VALUES (9,999,'BC448')`.execute(db);
+        const payload = importSnapshot();
+        const command = { importTranid: "BC448", authorize: () => Promise.resolve(captureIntegrationAuditActor({ publicId: "import-test", name: "Import test" })) };
+        await expect(service.receive(payload, command)).rejects.toThrow("La orden ya existe en Habita");
+        await sql`DELETE FROM ${sql.table("crmdatabase-api.ordenventa")} WHERE id_ov=9`.execute(db);
+        await expect(service.receive(payload, command)).rejects.toThrow("Relacion ERP nativa ausente o ambigua: entity");
+        expect((await sql`SELECT id_sales_order FROM crm_sales_order`.execute(db)).rows).toEqual([]);
+        expect((await sql`SELECT external_id_sales_order_external_reference FROM crm_sales_order_external_reference`.execute(db)).rows).toEqual([]);
+    });
     function observedEvent(checked: boolean, second: number): PersistedOrderEvent {
         const payload = event(checked);
         Object.assign(payload.event, { snapshotReadStartedAt: `2026-11-02T20:00:${String(second).padStart(2, "0")}.000Z`, snapshotReadCompletedAt: `2026-11-02T20:00:${String(second).padStart(2, "0")}.100Z` });
@@ -280,10 +360,34 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         const visits = (await sql<{ state: string; previous: string | null }>`SELECT to_state_code_sales_order_state_event AS state,from_state_code_sales_order_state_event AS previous FROM ${sql.table(table)} ORDER BY sequence_sales_order_state_event`.execute(db)).rows;
         expect(visits).toEqual([
             { state: "pending_balance", previous: null },
-            { state: "transfer_signed", previous: "pending_balance" },
-            { state: "closed", previous: "transfer_signed" },
+            { state: "closed", previous: "pending_balance" },
         ]);
-        expect((await sql`SELECT * FROM audit_record_event WHERE action_record_event='state_change'`.execute(db)).rows).toHaveLength(2);
+        expect((await sql`SELECT * FROM audit_record_event WHERE action_record_event='state_change'`.execute(db)).rows).toHaveLength(1);
+    });
+    it.each(["native", "legacy"] as const)("reconciles early orders and persists the ERP calendar date in %s", async (destination) => {
+        const table = await paidBalanceFixture(destination);
+        if (destination === "native") await sql`DELETE FROM ${sql.table(table)}`.execute(db);
+        else await sql`UPDATE ${sql.table(table)} SET to_state_code_sales_order_state_event='contract_pending_signature'`.execute(db);
+        const paid = paidEvent();
+        expect(await service.receive(paid)).toMatchObject({ result: "applied" });
+        const transferred = paidEvent(true, 2);
+        transferred.snapshot.data.fields.custbody105 = true;
+        transferred.snapshot.data.fields.custbody_fecha_unidad_entregada = "2025-12-31";
+        expect(await service.receive(transferred)).toMatchObject({ result: "applied" });
+        const visits = (await sql<{ state: string }>`SELECT to_state_code_sales_order_state_event AS state FROM ${sql.table(table)} ORDER BY sequence_sales_order_state_event`.execute(db)).rows;
+        expect(visits.map(({ state }) => state).slice(-2)).toEqual(["pending_transfer", "closed"]);
+        const date = await sql<{ deliveredOn: string }>`SELECT DATE_FORMAT(delivered_on,'%Y-%m-%d') AS deliveredOn FROM int_netsuite_order_delivery WHERE destination=${destination}`.execute(db);
+        expect(date.rows).toEqual([{ deliveredOn: "2025-12-31" }]);
+        await sql`UPDATE ${sql.table(table)} SET effective_at_sales_order_state_event='2026-11-02 20:00:00' WHERE to_state_code_sales_order_state_event='closed'`.execute(db);
+        const orders = destination === "native" ? "crm_sales_order" : "crmdatabase-api.ordenventa";
+        const period = { start: "2026-01-01T06:00:00.000Z", endExclusive: "2027-01-01T06:00:00.000Z" };
+        const closedThisYear = async () => (await sql<{ annual: number }>`SELECT ${formalizationClosedThisYear(destination, period)} AS annual FROM ${sql.table(orders)} o`.execute(db)).rows[0]?.annual;
+        expect(await closedThisYear()).toBe(0);
+        const clearDate = paidEvent(true, 3);
+        clearDate.snapshot.data.fields.custbody105 = true;
+        clearDate.snapshot.data.fields.custbody_fecha_unidad_entregada = null;
+        await service.receive(clearDate);
+        expect(await closedThisYear()).toBe(1);
     });
     it.each(["native", "legacy"] as const)("advances an already paid balance on accepted edit in %s", async (destination) => {
         await paidBalanceFixture(destination, true);

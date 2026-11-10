@@ -75,6 +75,7 @@ import { orderDocumentsPermissionsMigration } from "../migrations/schema-only/20
 import { salesOrderBankAssignmentUnlinkMigration } from "../migrations/schema-only/202611030071_sales_order_bank_assignment_unlink.js";
 import { formalizationAddendumSentMigration } from "../migrations/schema-only/202611030072_formalization_addendum_sent.js";
 import { leadQualificationMigration } from "../migrations/schema-only/202611030073_lead_qualification.js";
+import { netsuiteOrderDeliveryMigration } from "../migrations/schema-only/202611100074_netsuite_order_delivery.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -179,6 +180,7 @@ export const schemaMigrations: Migration[] = [
     salesOrderBankAssignmentUnlinkMigration,
     formalizationAddendumSentMigration,
     leadQualificationMigration,
+    netsuiteOrderDeliveryMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */

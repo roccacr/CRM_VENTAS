@@ -75,12 +75,12 @@ it("renders real calendar views and defaults to the current authorized module on
     expect(screen.getByRole("checkbox", { name: "Ventas" })).not.toBeChecked();
     expect(screen.queryByRole("checkbox", { name: "Mercadeo" })).toBeNull();
     expect(screen.queryByRole("checkbox", { name: "Contabilidad" })).toBeNull();
-    for (const view of ["Mes", "Semana", "Día", "Agenda"]) expect(screen.getByText(view, { selector: "button" })).toBeTruthy();
+    for (const view of ["Mes", "Semana", "Día", "Agenda"]) expect(screen.getByText(view, { selector: "button" })).toBeInTheDocument();
     await waitFor(() => {
         expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("moduleCodes=formalizacion"));
     });
     fireEvent.click(screen.getByText("Agenda", { selector: "button" }));
-    expect(await screen.findByText("No hay eventos para mostrar")).toBeTruthy();
+    expect(await screen.findByText("No hay eventos para mostrar")).toBeInTheDocument();
 });
 it("has no Owner bypass and makes no requests without the current module read grant", () => {
     render(<SharedCalendarPage moduleCode="contabilidad" effectivePermissions={permissions} />);

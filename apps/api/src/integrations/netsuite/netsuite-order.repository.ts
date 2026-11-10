@@ -11,23 +11,21 @@ import { readOrderRecord } from "../../modules/crm/sales/sales-orders/order-reco
 import type { TimingOrder } from "../../modules/crm/sales/sales-orders/order-timing.contract.js";
 import { ORDER_TIMING_LEGACY_READER, type OrderTimingLegacyReader } from "../../modules/crm/sales/sales-orders/order-timing.port.js";
 import { OrderTimingRepository } from "../../modules/crm/sales/sales-orders/order-timing.repository.js";
+import { missingImportRelation } from "./netsuite-order-import.relations.js";
 
 /**
- *
+ * Resuelve la orden en la base antes de cualquier llamada al proveedor.
+ * Nativo primero. Una orden inactiva no cae a legado. La foto de lectura no escribe.
  */
 @Injectable()
 export class NetsuiteOrderRepository {
-    /**
-     *
-     */
+    /** La foto de lectura y el reloj de la orden vienen de los repositorios que ya tiene el CRM. */
     constructor(
         @Inject(OrderTimingRepository) private readonly native: OrderTimingRepository,
         @Inject(ORDER_TIMING_LEGACY_READER) private readonly legacy: OrderTimingLegacyReader,
         @Inject(HomeSummaryRepository) private readonly snapshot: HomeSummaryRepository,
     ) {}
-    /**
-     *
-     */
+    /** La referencia tiene que ser una sola y un entero positivo. Dos filas son ambiguas, no se elige la primera. */
     async resolve(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void) {
         return this.resolveSafely(async (tx) => {
             const { source, order } = await this.authoritative(tx, target, checkAccess);
@@ -35,7 +33,7 @@ export class NetsuiteOrderRepository {
             return { source, id: order.publicId, netsuiteId };
         });
     }
-    /** Database read is independent of provider configuration and never creates a native record. */
+    /** La ficha de base no usa credenciales del proveedor y no crea una orden nativa. */
     async readDatabase(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string) {
         return this.resolveSafely(async (tx) => {
             const { source, order } = await this.authoritative(tx, target, checkAccess);
@@ -44,22 +42,22 @@ export class NetsuiteOrderRepository {
             return { ...data, lead: data.lead ? { ...data.lead, status: client.status, followUpReason: client.followUpReason } : null, clientHistory: client.history };
         });
     }
-    /** History resolves authority and resource scope before querying either source. */
+    /** La bitacora sale despues de la misma autoridad y el mismo alcance. El adendum se lee solo si el perfil lo permite. */
     async readHistory(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string, canReadAddendum = false) {
         return this.resolveSafely(async (tx) => {
             const { source, order } = await this.authoritative(tx, target, checkAccess);
             return readOrderHistory(tx, source, order.id, { legacyEnabled: this.legacy.enabled(), canReadAddendum, ...(cursor ? { cursor } : {}) });
         });
     }
-    /** Revalidate authority/reference while the writer holds the destination row lock. */
+    /** Vuelve a mirar autoridad, destino e id de NetSuite con la fila ya bloqueada. Si algo cambio, hay que recargar. */
     async authorizeSynchronization(tx: Transaction<CrmDatabase>, command: { target: { source: "native" | "legacy"; id: string }; netsuiteId: string; destination: { destination: "native" | "legacy"; id: string }; check: (order: TimingOrder) => void; profile: IdentityProfile }) {
         const { target, netsuiteId, destination, check, profile } = command;
         const current = await this.authoritative(tx, target, check);
         if (current.source !== destination.destination || current.order.id !== destination.id || (await this.reference(tx, current.source, current.order.id)) !== netsuiteId) throw new ConflictException("La identidad de la orden cambio; recarga antes de sincronizar.");
         return this.captureSynchronizationActor(tx, profile);
     }
-    /** Locks the live user/session version until the commercial transaction commits. */
-    private async captureSynchronizationActor(tx: Transaction<CrmDatabase>, profile: IdentityProfile) {
+    /** Bloquea usuario y sesion hasta el commit. Si la version de permisos o la sesion ya no coinciden, no se escribe. */
+    async captureSynchronizationActor(tx: Transaction<CrmDatabase>, profile: { user: Pick<IdentityProfile["user"], "publicId" | "permissionVersion">; session: Pick<IdentityProfile["session"], "publicId"> }) {
         const user = await tx.selectFrom("sec_user").select(["id_user", "permission_version_user"]).where("public_id_user", "=", profile.user.publicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
         if (!user || user.permission_version_user !== profile.user.permissionVersion) throw new ForbiddenException("Los permisos del usuario cambiaron durante la sincronizacion.");
         const session = await tx.selectFrom("sec_auth_session").select("id_auth_session").where("public_id_auth_session", "=", profile.session.publicId).where("user_id_auth_session", "=", user.id_user).where("status_auth_session", "=", "active").where("expires_at_auth_session", ">", new Date()).where("permission_version_auth_session", "=", user.permission_version_user).forUpdate().executeTakeFirst();
@@ -68,6 +66,12 @@ export class NetsuiteOrderRepository {
         if (!actor) throw new ForbiddenException("El usuario solicitante ya no esta activo.");
         return actor;
     }
+    /** Sin la base anterior no se declara que una relacion falta. Podria existir solo ahi. */
+    async importNeedsRelation(domain: "lead" | "subsidiary" | "user" | "unit_file", id: string) {
+        if (!this.legacy.enabled()) throw new ServiceUnavailableException("La base anterior no está disponible para conciliar al cliente.");
+        return this.resolveSafely((tx) => missingImportRelation(tx, domain, id));
+    }
+
     private async authoritative(tx: Transaction<CrmDatabase>, target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void) {
         let source: "native" | "legacy" = "native";
         let order = await this.native.find(tx, target.source, target.id);
@@ -80,6 +84,7 @@ export class NetsuiteOrderRepository {
         checkAccess(order);
         return { source, order };
     }
+    /** Un error de base que no es HTTP se vuelve 503. No se publica el SQL. */
     private async resolveSafely<T>(read: (tx: Transaction<CrmDatabase>) => Promise<T>): Promise<T> {
         try {
             return await this.snapshot.readSnapshot(read);

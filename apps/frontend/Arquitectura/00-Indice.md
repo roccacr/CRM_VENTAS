@@ -1,5 +1,9 @@
 # 00 - Indice de Arquitectura Frontend
 
+## Corte documental del 10 de noviembre de 2026
+
+[33 - Reconciliación del frontend de Habita](33-Reconciliacion-Frontend-20261110.md) distingue el release publicado, los commits posteriores y la copia de trabajo. Incluye marca, login, Formalización, Calendario, paginación de 500 y rendimiento de los catálogos.
+
 ## Bancos - 2026-11-03
 
 [86 - Bancos y ejecutivos](../../api/Arquitectura/86-Bancos-Ejecutivos-Plan-y-Migracion-068.md): catalogo/API/UI implementados, esquema068/legacy aplicado y verificado por SELECT;20 grants Owner y20 Jefe General,0 filas comerciales. Visual real Owner confirmada; sin deploy ni mutaciones UI sobre RDS. QA y bloqueos globales en86.

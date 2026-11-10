@@ -1,9 +1,12 @@
 /**
- * Lectura de solo lectura de `crmdatabase-api.ubicaciones`.
+ * Lectura de `crmdatabase-api.ubicaciones` por el pool legado, no por la
+ * transaccion del CRM nuevo.
  *
- * Los identificadores de tabla y columna están fijos. El texto de búsqueda,
- * el estado y la página son parámetros. Se omiten las ubicaciones cuyo id viejo
- * ya quedó registrado en el catálogo nuevo.
+ * Los nombres de tabla y columna estan fijos y van en plural, incluido
+ * `idNetsuite_ubicaciones`. Pasarlos a singular o a otro formato buscaria
+ * columnas que no existen. Busqueda, estado y pagina viajan como parametros.
+ * Se omiten los ids de produccion que el catalogo nuevo ya registro, para no
+ * listar dos veces la misma ubicacion.
  */
 import { Inject, Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -16,36 +19,34 @@ import { isLegacyCrmEnabled } from "../legacy-crm-access.js";
 import { LegacyCrmDatabaseService } from "../legacy-crm-database.service.js";
 import { mapLegacyLocation } from "./legacy-locations.mapper.js";
 
-/** Nombres reales de la tabla vieja. El usuario no puede cambiarlos. */
+/** Nombres reales de la tabla vieja. El request no puede cambiarlos. */
 const source = { table: "ubicaciones", id: "id_ubicaciones", external: "idNetsuite_ubicaciones", name: "nombre_ubicaciones", status: "estado_ubicaciones" } as const;
 
-/** Reads Locations through the isolated, read-only legacy connection. */
+/**
+ * Fallback de solo lectura. Apagado responde 503: no se disfraza de catalogo
+ * vacio. La escritura no pasa por esta clase ni por este pool.
+ */
 @Injectable()
 export class LegacyLocationsReader implements CatalogFallbackReader {
     private readonly logger = new Logger(LegacyLocationsReader.name);
 
-    /**
-     * @param config - Bandera booleana del fallback
-     * @param database - Pool legacy compartido con el resto de readers
-     */
+    /** La bandera es la de lectura. El pool es el legado compartido, distinto del de `CRM_THINK_V2`. */
     constructor(
         @Inject(ConfigService) private readonly config: ConfigService,
         @Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService,
     ) {}
 
-    /** Solo el booleano `true` habilita la consulta. Un string no se interpreta como encendido. */
+    /** Solo el booleano `true` enciende la consulta. Un texto no cuenta como encendido. */
     enabled(): boolean {
         return isLegacyCrmEnabled(this.config);
     }
 
     /**
-     * Lista ubicaciones en el contrato del CRM nuevo.
+     * Lista ubicaciones ya traducidas al contrato nuevo.
      *
-     * Un fallo de conexión o de mapeo responde 503 sin el SQL ni la clave.
-     * El código del driver se registra ya saneado.
-     *
-     * @param input - Filtros y ids de producción ya importados
-     * @throws {ServiceUnavailableException} Si el fallback está apagado, el código no es `locations` o la lectura falla
+     * Un fallo de conexion o de mapeo sale como 503 generico. El log solo guarda
+     * el codigo del driver, y solo si son letras, digitos o guion bajo: no el
+     * SQL, no la clave y no el texto de la fila.
      */
     async list(input: CatalogReadInput & { excludedLegacyIds?: readonly number[] }): Promise<CatalogItemsResponse> {
         if (!this.enabled()) throw new ServiceUnavailableException("Legacy fallback is disabled.");
@@ -60,10 +61,12 @@ export class LegacyLocationsReader implements CatalogFallbackReader {
     }
 
     /**
-     * Una sola transacción de lectura para el total y la página.
+     * Total y pagina en la misma transaccion de lectura, para que el conteo y
+     * las filas vean el mismo corte.
      *
-     * Un estado nulo cuenta como inactivo. El esquema `crmdatabase-api` está
-     * calificado a propósito: no es la base del CRM nuevo.
+     * Un estado nulo cuenta como inactivo. El esquema va calificado: aunque la
+     * conexion tuviera otra base por defecto, esta consulta no lee el CRM nuevo.
+     * `LIKE` recibe el texto como parametro; no abre la sentencia.
      */
     private async read(input: CatalogReadInput & { excludedLegacyIds?: readonly number[] }): Promise<CatalogItemsResponse> {
         const code = "locations";

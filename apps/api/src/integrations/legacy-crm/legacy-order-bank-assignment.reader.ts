@@ -4,10 +4,17 @@ import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
 import type { BankAssignmentLegacy, BankAssignmentOrder } from "../../modules/crm/sales/sales-orders/order-bank-assignment.port.js";
-/** Read-only legacy order authority; assignment writes always stay in the native CRM. */
+/**
+ * Lectura de la orden para asignar banco. La escritura se queda en el CRM nuevo.
+ *
+ * Exige fallback encendido y el nombre exacto `crmdatabase-api`. No pide
+ * `ENABLE_LEGACY_WRITES` ni `NODE_ENV`. Corre en la transaccion del llamador,
+ * con `FOR UPDATE` solo si el llamador va a decidir despues. Activa es status 1
+ * y caida 0. No toca la orden ni su bitacora.
+ */
 @Injectable()
 export class LegacyOrderBankAssignmentReader implements BankAssignmentLegacy {
-    /** Usa servicios inyectados para conservar los límites de identidad, catálogo y auditoría. */
+    /** Solo la configuracion. No abre el pool de lectura. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
     /** Consulta la asignación sin escribir en la orden ni en su bitácora. */
     async read(tx: Transaction<CrmDatabase>, id: string, lock: boolean): Promise<BankAssignmentOrder | undefined> {

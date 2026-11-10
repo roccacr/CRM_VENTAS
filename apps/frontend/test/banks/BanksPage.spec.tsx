@@ -20,7 +20,7 @@ const profile = (role = "owner", actions = ["read", "create", "update", "inactiv
 beforeEach(() => {
     installBrowserApiDoubles();
     vi.mocked(getIdentityProfile).mockResolvedValue(profile());
-    vi.mocked(service.listBanks).mockResolvedValue({ items: [bank], total: 51 });
+    vi.mocked(service.listBanks).mockResolvedValue({ items: [bank], total: 501 });
     vi.mocked(service.getBank).mockResolvedValue(bank);
     vi.mocked(service.listBankAdvisors).mockResolvedValue({ items: [advisor], total: 1 });
 });
@@ -80,7 +80,7 @@ describe("BanksPage", () => {
         await screen.findByRole("button", { name: "Banco Centro" });
         fireEvent.click(screen.getByTitle("2"));
         await waitFor(() => {
-            expect(service.listBanks).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 25, limit: 25 }));
+            expect(service.listBanks).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 500, limit: 500 }));
         });
     });
     it("retains uncertain creation draft without replay", async () => {

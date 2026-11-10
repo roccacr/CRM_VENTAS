@@ -359,7 +359,9 @@ export class ContractTransitionRepository {
 
     private assertCompletionRoute(order: ContractOrder, before: number, target: string): void {
         const transferIndex = FORMALIZATION_STAGE_CODES.indexOf("pending_transfer");
-        if (["pending_transfer", "transfer_signed", "closed"].includes(target) && formalizationCompletionTarget(order) !== target) throw new ConflictException({ code: "FORMALIZATION_COMPLETION_FLAGS_REQUIRED", message: "Avance bloqueado: revisar cuotas, unidad traspasada, llaves entregadas y unidad entregada en NetSuite para la etapa seleccionada." });
+        // El operador puede registrar la firma antes de que NetSuite confirme el traspaso.
+        const manualSignature = [before === transferIndex, target === "transfer_signed", order.installmentsFullyPaid === true, order.keysDelivered === false, order.unitDelivered === false].every(Boolean);
+        if (!manualSignature && ["pending_transfer", "transfer_signed", "closed"].includes(target) && formalizationCompletionTarget(order) !== target) throw new ConflictException({ code: "FORMALIZATION_COMPLETION_FLAGS_REQUIRED", message: "Avance bloqueado: revisar cuotas, unidad traspasada, llaves entregadas y unidad entregada en NetSuite para la etapa seleccionada." });
         if (before >= transferIndex && target === "pending_balance") throw new ConflictException({ code: "PENDING_BALANCE_RETURN_FORBIDDEN", message: "No se permite volver a Pendiente de saldo despues de iniciar el traspaso." });
     }
 
@@ -368,7 +370,7 @@ export class ContractTransitionRepository {
         if (before >= 2 || after < 2) return;
         const origin = command.purchaseFundsOrigin ?? order.purchaseFundsOrigin;
         if (!origin) throw new ConflictException({ code: "PURCHASE_FUNDS_ORIGIN_REQUIRED", message: "Selecciona el origen de fondos de la compra para salir de Contratos." });
-        if (contractTarget(command) !== (origin === "own_funds" ? "pending_balance" : "bank_management_in_progress")) throw new ConflictException({ code: "PURCHASE_FUNDS_ROUTE_REQUIRED", message: "La etapa de salida de Contratos debe corresponder al origen de fondos seleccionado." });
+        if (contractTarget(command) !== this.contractExitStage(origin)) throw new ConflictException({ code: "PURCHASE_FUNDS_ROUTE_REQUIRED", message: "La etapa de salida de Contratos debe corresponder al origen de fondos seleccionado." });
     }
 
     /** ERP evidence may advance directly to a later completion target; stored stages change only on explicit commands. */
@@ -377,8 +379,13 @@ export class ContractTransitionRepository {
             const completion = formalizationCompletionTarget(order);
             if (completion && FORMALIZATION_STAGE_CODES.indexOf(completion) > FORMALIZATION_STAGE_CODES.findIndex((code) => code === current)) return completion;
         }
-        if (current === SIGNATURE) return origin === "own_funds" ? "pending_balance" : "bank_management_in_progress";
+        if (current === SIGNATURE) return this.contractExitStage(origin);
         return FORMALIZATION_STAGE_CODES[FORMALIZATION_STAGE_CODES.findIndex((code) => code === current) + 1];
+    }
+
+    /** Financed orders enter the queue before an operator starts banking. */
+    private contractExitStage(origin: ContractOrder["purchaseFundsOrigin"]): string {
+        return origin === "own_funds" ? "pending_balance" : "bank_management";
     }
 
     private assertExceptionalStage(command: ContractTransitionCommand): void {

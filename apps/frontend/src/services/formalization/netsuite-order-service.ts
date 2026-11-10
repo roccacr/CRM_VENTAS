@@ -51,3 +51,12 @@ export async function synchronizeNetsuiteOrder(identity: NetsuiteOrderIdentity) 
     if (result.persisted !== true || !["applied", "unchanged"].includes(String(result.result)) || !["native", "legacy"].includes(String(result.destination)) || !["production", "sandbox"].includes(String(result.environment)) || !Number.isSafeInteger(result.changes) || Number(result.changes) < 0) throw new Error("No se confirmo la sincronizacion");
     return { result: String(result.result), changes: Number(result.changes), environment: result.environment as "production" | "sandbox", destination: result.destination as "native" | "legacy" };
 }
+
+/** Extrae una orden por su número visible; el servidor resuelve la identidad ERP. */
+export const NETSUITE_IMPORT_QUEUED = "habita:netsuite-import-queued";
+
+export async function importNetsuiteOrder(tranid: string): Promise<void> {
+    const result = object(await apiRequest<unknown>("/formalization/orders/netsuite/import", { method: "POST", body: { tranid }, retryOnUnauthorized: false }));
+    if (result.queued !== true || result.tranid !== tranid) throw new Error("Habita no confirmó la solicitud de importación.");
+    window.dispatchEvent(new Event(NETSUITE_IMPORT_QUEUED));
+}

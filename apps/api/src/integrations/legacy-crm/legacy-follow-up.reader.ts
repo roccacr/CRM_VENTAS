@@ -5,29 +5,38 @@ import type { CrmDatabase } from "../../database/database.types.js";
 import type { FollowUpAccess, FollowUpPeriod, FollowUpRead } from "../../modules/crm/sales/sales-orders/follow-up.contract.js";
 import type { FollowUpLegacyReader } from "../../modules/crm/sales/sales-orders/follow-up.port.js";
 import { followUpSourceQuery, readFollowUpRecord, readFollowUpSource } from "../../modules/crm/sales/sales-orders/follow-up.query.js";
+import { formalizationClosedThisYear } from "../../modules/crm/sales/sales-orders/formalization-closure.query.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
-/** Read-only legacy projection. Ambiguous provider relationships remain null instead of duplicating orders. */
+/**
+ * Proyeccion de seguimiento, solo lectura, sobre la transaccion del llamador.
+ *
+ * Un lead, admin, correo, proyecto o expediente repetido no se une: el `NOT EXISTS`
+ * deja ese lado en nulo en vez de duplicar la orden. Un alias nativo, activo o
+ * borrado, oculta la orden vieja. El flag 1 o 0 se conserva; cualquier otro valor
+ * queda nulo y no cuenta como verdadero.
+ */
 @Injectable()
 export class LegacyFollowUpReader implements FollowUpLegacyReader {
-    /** Reuses the configured legacy switch while executing on the caller's shared snapshot. */
+    /** Usa el interruptor del pool. La consulta corre en la foto que ya abrio el llamador. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
-    /** Uses the existing integration switch; never opens a new request-scoped pool. */
+    /** El pool existe. No abre otro por peticion. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
-    /** Alias shadowing includes inactive/deleted native orders: authority never falls back implicitly. */
+    /** El alias nativo tapa la orden vieja aunque el nativo este inactivo o borrado. */
     read(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, access: FollowUpAccess) {
         return readFollowUpSource(tx, followUpSourceQuery(this.base(period), query, access));
     }
-    /** Bounds the source projection to the requested identity before classification. */
+    /** Recorta la misma proyeccion a una orden antes de clasificarla. */
     readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
         return readFollowUpRecord(tx, this.base(period, id));
     }
-    /** Exposes the read-only source projection for global portfolio pagination. */
+    /** La misma proyeccion, sin filtro de id, para paginar el portafolio. */
     projection(period: FollowUpPeriod) {
         return this.base(period);
     }
+    /** Activa, o caida pero con contrato firmado. El correo nativo solo entra si un solo admin lo tiene. */
     private base(period: FollowUpPeriod, id?: string) {
         return sql`
             SELECT o.id_ov AS sortId,CONCAT('legacy:',o.id_ov) COLLATE utf8mb4_unicode_ci AS id,'legacy' AS source,
@@ -48,12 +57,17 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
                 CASE o.unidad_traspasada_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS unitTransferred,
                 CASE o.entrega_llaves_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS keysDelivered,
                 CASE o.unidad_entregada_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS unitDelivered,
+                CASE o.chekJefeVenta WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS salesManagementApproved,
+                CASE o.aprobacion__rdr_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS developerApproved,
+                CASE o.aprobacion_forma_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS formalizationApproved,
+                CASE o.cierre_firmado_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS commercialClosureSigned,
+                CASE o.contrado_frima_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS contractSignedCheck,
+                CASE o.caida_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS saleLostCheck,
                 COALESCE(o.caida_ov=1,0) AS saleLost,
                 COALESCE(o.contrado_frima_ov=1,0) AS contractSigned,
                 COALESCE(o.aprobacion_forma_ov=1,0) AS approved,
                 COALESCE(o.chekJefeVenta=1 AND o.aprobacion__rdr_ov=1 AND o.aprobacion_forma_ov=0,0) AS approvalPending,
-                EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} ce WHERE ce.legacy_order_id_sales_order_state_event=o.id_ov
-                    AND ce.to_state_code_sales_order_state_event='closed' AND ce.effective_at_sales_order_state_event>=${period.start} AND ce.effective_at_sales_order_state_event<${period.endExclusive}) AS completedThisYear
+                ${formalizationClosedThisYear("legacy", period)} AS completedThisYear
             FROM ${sql.table("crmdatabase-api.ordenventa")} o
             LEFT JOIN ${sql.table("crmdatabase-api.leads")} l ON l.idinterno_lead=o.id_ov_lead
                 AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.leads")} sibling WHERE sibling.idinterno_lead=l.idinterno_lead AND sibling.id_lead<>l.id_lead)

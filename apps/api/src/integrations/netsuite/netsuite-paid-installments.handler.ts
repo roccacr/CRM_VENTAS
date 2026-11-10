@@ -7,26 +7,40 @@ import { ulid } from "ulid";
 import type { CrmDatabase } from "../../database/database.types.js";
 import { captureIntegrationAuditActor } from "../../modules/crm/audit/audit-actor.js";
 import type { RecordAuditService } from "../../modules/crm/audit/record-audit.service.js";
-import { formalizationCompletionTarget } from "../../modules/crm/sales/sales-orders/formalization-completion.policy.js";
+import { netsuiteFormalizationTarget } from "../../modules/crm/sales/sales-orders/formalization-completion.policy.js";
 import type { PersistedOrderEvent } from "./netsuite-order-event.contract.js";
-import type { OrderEventChange, OrderEventDestination } from "./netsuite-order-event.mapper.js";
+import { calendarDate, NETSUITE_DELIVERY_DATE_FIELD, type OrderEventChange, type OrderEventDestination } from "./netsuite-order-event.mapper.js";
 
 export const PAID_INSTALLMENTS_STAGE_FIELD = "formalization_state";
 type EventTransaction = Transaction<CrmDatabase>;
-type StageVisit = { sequence: number; state: string; responsible: number | string | null; responsibleSnapshot: string | object | null };
+type StageVisit = { sequence: number; state: string | null; responsible: number | string | null; responsibleSnapshot: string | object | null };
 type AdvanceContext = { event: PersistedOrderEvent; target: Target; changes: OrderEventChange[] };
 type Target = { destination: OrderEventDestination; id: string; row: Record<string, unknown> };
 
-/** Los indicadores observados solo avanzan visitas de finalizacion existentes; no inventan ni revierten etapas. */
+/** Ausencia en productores anteriores conserva la fecha; un null explicito la limpia. */
+export async function syncOrderDeliveryDate(tx: EventTransaction, event: PersistedOrderEvent, target: Target): Promise<OrderEventChange | null> {
+    const field = NETSUITE_DELIVERY_DATE_FIELD;
+    const fields = event.snapshot.data.fields;
+    if (!Object.hasOwn(fields, field)) return null;
+    const after = calendarDate(fields[field]);
+    const { destination, id } = target;
+    const { rows } = await sql<{ value: string | null }>`SELECT DATE_FORMAT(delivered_on,'%Y-%m-%d') AS value FROM int_netsuite_order_delivery WHERE destination=${destination} AND order_id=${id}`.execute(tx);
+    const before = rows[0]?.value ?? null;
+    if (before === after) return null;
+    await sql`INSERT INTO int_netsuite_order_delivery (destination,order_id,delivered_on) VALUES (${destination},${id},${after}) ON DUPLICATE KEY UPDATE delivered_on=${after}`.execute(tx);
+    return { field, column: "delivered_on", before, after };
+}
+
+/** Registra la etapa respaldada por NetSuite sin inventar visitas intermedias ni retroceder. */
 export async function advancePaidInstallments(tx: Transaction<CrmDatabase>, audit: RecordAuditService, { event, target, changes }: AdvanceContext): Promise<OrderEventChange | null> {
     if (!["edit", "xedit"].includes(event.event.eventType)) return null;
     const row = { ...target.row, ...Object.fromEntries(changes.map((change) => [change.column, change.after])) };
     const next = completionTarget(target.destination, row);
-    if (!next) return null;
     if (!(await eligibleOrder(tx, target, row))) return null;
-    const previous = await latestVisit(tx, target);
-    const stages = ["pending_balance", "pending_transfer", "transfer_signed", "closed"];
-    if (!previous || !stages.slice(0, stages.indexOf(next)).includes(previous.state) || previous.sequence >= 4294967295) return null;
+    const previous = (await latestVisit(tx, target)) ?? { sequence: 0, state: null, responsible: null, responsibleSnapshot: null };
+    const stages = ["unclassified", "pending_approval", "contract_pending_send", "contract_pending_signature", "bank_management", "bank_management_in_progress", "pending_balance", "pending_transfer", "transfer_signed", "closed"];
+    const current = previous.state ?? "contract_pending_send";
+    if (!stages.slice(0, stages.indexOf(next)).includes(current) || previous.sequence >= 4294967295) return null;
     if (!audit.enabled) throw new ServiceUnavailableException("Automatic contract transitions require enabled central record audit");
     const actor = captureIntegrationAuditActor({ publicId: "integration:netsuite:" + event.source.accountId, name: { production: "NetSuite Production UE", sandbox: "NetSuite Sandbox UE" }[event.source.environment] });
     const operationId = "netsuite:" + event.source.accountId + ":" + event.event.eventId + ":paid";
@@ -37,7 +51,7 @@ export async function advancePaidInstallments(tx: Transaction<CrmDatabase>, audi
         actor,
         action: "state_change",
         module: "formalizacion",
-        before: { state: previous.state, version: previous.sequence },
+        before: { state: current, version: previous.sequence },
         after: { state: next, version: previous.sequence + 1 },
         allowedFields: ["state", "version"],
         operationId: createHash("sha256")
@@ -47,14 +61,19 @@ export async function advancePaidInstallments(tx: Transaction<CrmDatabase>, audi
         reason,
         snapshotScope: "partial",
     });
-    return { field: PAID_INSTALLMENTS_STAGE_FIELD, column: "state", before: previous.state, after: next };
+    return { field: PAID_INSTALLMENTS_STAGE_FIELD, column: "state", before: current, after: next };
 }
 
 /** Traduce enums nativos y enteros legacy sin convertir valores desconocidos en falsos. */
 function completionTarget(destination: OrderEventDestination, row: Record<string, unknown>) {
     const native = destination === "native";
     const flag = (column: string): boolean | null => (row[column] === (native ? "yes" : 1) ? true : row[column] === (native ? "no" : 0) ? false : null);
-    return formalizationCompletionTarget({ installmentsFullyPaid: flag(native ? "installments_fully_paid_sales_order" : "cuotas_pagadas_completo_ov"), unitTransferred: flag(native ? "unit_transferred_sales_order" : "unidad_traspasada_ov"), keysDelivered: flag(native ? "keys_delivered_sales_order" : "entrega_llaves_ov"), unitDelivered: flag(native ? "unit_delivered_sales_order" : "unidad_entregada_ov") });
+    return netsuiteFormalizationTarget({
+        installmentsFullyPaid: flag(native ? "installments_fully_paid_sales_order" : "cuotas_pagadas_completo_ov"),
+        unitTransferred: flag(native ? "unit_transferred_sales_order" : "unidad_traspasada_ov"),
+        unitDelivered: flag(native ? "unit_delivered_sales_order" : "unidad_entregada_ov"),
+        purchaseFundsOrigin: row[native ? "purchase_funds_origin_sales_order" : "origen_fondos_compra_ov"],
+    });
 }
 
 /** Evalua la fila sincronizada; requisitos incompletos conservan la visita actual. */
@@ -83,7 +102,7 @@ async function appendVisit(tx: EventTransaction, context: { target: Target; prev
     const publicIdColumn = native ? sql`public_id_sales_order_state_event,` : sql``;
     const publicIdValue = native ? sql`${ulid()},` : sql``;
     const responsibleSnapshot = snapshotJson(previous.responsibleSnapshot);
-    await sql`INSERT INTO ${sql.table(table)} (${publicIdColumn}${sql.ref(key)},sequence_sales_order_state_event,from_state_code_sales_order_state_event,to_state_code_sales_order_state_event,event_kind_sales_order_state_event,effective_at_sales_order_state_event,${sql.ref(responsibleColumn)},responsible_snapshot_sales_order_state_event,${sql.ref(actorColumn)},actor_snapshot_sales_order_state_event,origin_sales_order_state_event,reason_sales_order_state_event,operation_id_sales_order_state_event,correlation_id_sales_order_state_event) VALUES (${publicIdValue}${target.id},${previous.sequence + 1},${previous.state},${next},'transition',UTC_TIMESTAMP(3),${previous.responsible ?? null},${responsibleSnapshot ?? null},${native ? null : actor.publicId},${JSON.stringify(actor)},'integration',${reason},${operationId},${correlationId})`.execute(
+    await sql`INSERT INTO ${sql.table(table)} (${publicIdColumn}${sql.ref(key)},sequence_sales_order_state_event,from_state_code_sales_order_state_event,to_state_code_sales_order_state_event,event_kind_sales_order_state_event,effective_at_sales_order_state_event,${sql.ref(responsibleColumn)},responsible_snapshot_sales_order_state_event,${sql.ref(actorColumn)},actor_snapshot_sales_order_state_event,origin_sales_order_state_event,reason_sales_order_state_event,operation_id_sales_order_state_event,correlation_id_sales_order_state_event) VALUES (${publicIdValue}${target.id},${previous.sequence + 1},${previous.state},${next},${previous.sequence ? "transition" : "import_snapshot"},UTC_TIMESTAMP(3),${previous.responsible},${responsibleSnapshot ?? null},${native ? null : actor.publicId},${JSON.stringify(actor)},'integration',${reason},${operationId},${correlationId})`.execute(
         tx,
     );
 }

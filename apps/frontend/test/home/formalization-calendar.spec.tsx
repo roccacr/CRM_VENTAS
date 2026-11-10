@@ -14,11 +14,11 @@ afterEach(cleanup);
 it("keeps the Formalization wrapper and real calendar views without sample data", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ schemaVersion: 1, calendars: [] });
     render(<FormalizationCalendarPage effectivePermissions={[{ code: "formalizacion.calendar.read", effect: "allow" }]} />);
-    expect(screen.getByRole("heading", { name: "Calendario", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Calendario", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Ruta" }).textContent).toBe("Formalización/Calendario");
-    for (const view of ["Mes", "Semana", "Día", "Agenda"]) expect(screen.getByText(view, { selector: "button" })).toBeTruthy();
+    for (const view of ["Mes", "Semana", "Día", "Agenda"]) expect(screen.getByText(view, { selector: "button" })).toBeInTheDocument();
     fireEvent.click(screen.getByText("Agenda", { selector: "button" }));
-    expect(await screen.findByText("No hay eventos para mostrar")).toBeTruthy();
+    expect(await screen.findByText("No hay eventos para mostrar")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Nuevo evento" })).toBeNull();
 });
 it.each([

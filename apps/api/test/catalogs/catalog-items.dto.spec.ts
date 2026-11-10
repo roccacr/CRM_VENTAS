@@ -3,7 +3,13 @@ import { plainToInstance } from "class-transformer";
 import { validateSync } from "class-validator";
 import { describe, expect, it, vi } from "vitest";
 
-import { CreateCatalogItemDto, UpdateCatalogItemDto } from "../../src/modules/crm/catalogs/dto/catalog-items.dto.js";
+import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto } from "../../src/modules/crm/catalogs/dto/catalog-items.dto.js";
+
+it("accepts batches of 500 rows and rejects a larger catalog page", () => {
+    const query = { moduleCode: "administration", offset: 500 };
+    expect(validateSync(plainToInstance(ListCatalogItemsQueryDto, { ...query, limit: 500 }))).toEqual([]);
+    expect(validateSync(plainToInstance(ListCatalogItemsQueryDto, { ...query, limit: 501 })).map((error) => error.property)).toContain("limit");
+});
 
 describe.each([CreateCatalogItemDto, UpdateCatalogItemDto])("catalog detail validation: %s", (Dto) => {
     const body = { moduleCode: "administration", name: "Catalog item", reason: "Approved change" };

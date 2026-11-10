@@ -39,12 +39,14 @@ flowchart TD
   C --> D{Firma y selección explícita}
   D -->|Sin origen| E[Avance bloqueado]
   D -->|Fondos propios| G[Pendiente de saldo]
-  D -->|Financiamiento bancario| F[Gestión bancaria en proceso]
+  D -->|Financiamiento bancario| H[Gestión bancaria · Sin iniciar]
+  H -->|Iniciar gestión bancaria| F[Gestión bancaria en proceso]
   F --> G
-  H[Gestión bancaria existente] --> F
 ```
 
-Gestión bancaria permanece para órdenes existentes; no se inventan movimientos.
+Las órdenes financiadas entran en Sin iniciar. Desde En proceso, Paso anterior
+regresa a Sin iniciar con el permiso y motivo correspondientes. Las órdenes
+existentes conservan su estado hasta que se registre una transición.
 Las órdenes en etapas posteriores sin origen conservan su etapa. Si vuelven a
 Contratos pendientes, deben elegir origen antes de salir nuevamente.
 
@@ -261,6 +263,8 @@ se evalúa con valores confirmados; NULL/desconocido no equivale a desmarcado.
 | Traspasos pendientes | Sí | No | Cualquiera | No |
 | Traspaso firmado | Sí | Sí | No | No |
 | Formalización cerrada | Cualquiera | Cualquiera | Cualquiera | Sí |
+
+Desde Traspaso pendiente se puede registrar la firma manualmente si NetSuite aún no confirma Unidad traspasada. La interfaz muestra una advertencia y la orden aparece en la bandeja Traspaso firmado. Esta excepción conserva los requisitos de cuotas, llaves y entrega de unidad y aplica a ambas bases.
 
 Correspondencias de origen:
 
@@ -486,3 +490,20 @@ normalizarlo a escalar; no lo convierte en vacio. El hash temporal distingue la
 propiedad ausente (preservar) del NULL explicito (borrar), y conserva equivalencia
 entre ID numerico/cadena y entre null/cadena vacia. Pruebas focalizadas: 66 aprobadas
 con VM del productor y repositorio/driver sustituidos; no acreditan entrega real.
+
+
+### Conciliación automática desde NetSuite
+
+La edición recibida y la sincronización manual aplican la misma regla sobre
+la orden aprobada, activa y con contrato firmado. Si falta una etapa guardada,
+se registra una observación inicial. Contrato firmado acredita envío y firma.
+Fondos propios pasa a Pendiente de saldo y el resto a Gestión bancaria sin
+iniciar. Cuotas pagadas acredita gestión y saldo y pasa a Traspaso pendiente.
+Unidad traspasada o entregada permite el cierre automático. Solo se avanza.
+
+La migración 074 agrega la tabla auxiliar int_netsuite_order_delivery en
+CRM_THINK_V2, con fecha DATE y clave primaria por destino e ID, sin modificar
+el legado. La fecha de entrega de NetSuite prevalece para el conteo anual.
+Si está ausente se usa el evento de cierre de Habita. Las cerradas de años
+previos pueden aparecer en Todas según permisos. Para revertir, restaurar primero
+el código anterior, respaldar las fechas y eliminar la tabla auxiliar.

@@ -23,7 +23,7 @@ describe("Unit Files view", () => {
         vi.resetAllMocks();
         vi.mocked(listUnitProjects).mockResolvedValue([{ id, name: "Amara" }]);
         vi.mocked(listUnitFacets).mockImplementation((_filter, kind) => Promise.resolve({ items: [{ value: kind === "housingType" ? "Modelo A" : kind === "projectIds" ? id : kind === "status" ? item.sourceStatus : "AM-101", count: 1 }], nextAfter: null }));
-        vi.mocked(listUnitFiles).mockResolvedValue({ items: [item], pagination: { limit: 50, returned: 1, hasNext: false, nextCursor: null } });
+        vi.mocked(listUnitFiles).mockResolvedValue({ items: [item], pagination: { limit: 500, returned: 1, hasNext: false, nextCursor: null } });
     });
     it("does not load inventory until a project and Search are selected", async () => {
         render(<UnitFilesPage />);
@@ -41,10 +41,10 @@ describe("Unit Files view", () => {
         expect(screen.queryByRole("combobox", { name: "Unidad" })).not.toBeInTheDocument();
         expect(screen.queryByRole("searchbox", { name: "Buscar" })).not.toBeInTheDocument();
         expect(document.querySelector('[data-filter-engine="searchpanes"]')).toBeInTheDocument();
-        expect(listUnitFiles).toHaveBeenCalledWith(expect.objectContaining({ projectIds: [id], limit: 50 }), "administration");
+        expect(listUnitFiles).toHaveBeenCalledWith(expect.objectContaining({ projectIds: [id], limit: 500 }), "administration");
     });
     it("keeps rows visible while fetching next, and serves Back from its bounded cache", async () => {
-        vi.mocked(listUnitFiles).mockResolvedValueOnce({ items: [item], pagination: { limit: 50, returned: 1, hasNext: true, nextCursor: "cursor-2" } });
+        vi.mocked(listUnitFiles).mockResolvedValueOnce({ items: [item], pagination: { limit: 500, returned: 1, hasNext: true, nextCursor: "cursor-2" } });
         let finish: (value: Awaited<ReturnType<typeof listUnitFiles>>) => void = () => {};
         vi.mocked(listUnitFiles).mockImplementationOnce(
             () =>
@@ -66,7 +66,7 @@ describe("Unit Files view", () => {
         fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
         expect(screen.getByText("AM-101")).toBeInTheDocument();
         expect(screen.getByRole("status")).toHaveTextContent("Cargando expedientes");
-        finish({ items: [{ ...item, id: "legacy:unit-files:2", code: "AM-102" }], pagination: { limit: 50, returned: 1, hasNext: false, nextCursor: null } });
+        finish({ items: [{ ...item, id: "legacy:unit-files:2", code: "AM-102" }], pagination: { limit: 500, returned: 1, hasNext: false, nextCursor: null } });
         await screen.findByText("AM-102");
         fireEvent.click(screen.getByRole("checkbox", { name: "Comparar AM-102" }));
         expect(screen.getByText("2 / 8 seleccionados").closest(".unit-files-selection")).toBe(selectionBar);
@@ -101,7 +101,7 @@ describe("Unit Files view", () => {
     });
     it("filters the complete scope through the API, including options outside the loaded page", async () => {
         vi.mocked(listUnitFacets).mockResolvedValue({ items: [{ value: "Modelo fuera de página", count: 1 }], nextAfter: null });
-        vi.mocked(listUnitFiles).mockResolvedValue({ items: [item, { ...item, id: "legacy:unit-files:2", code: "AM-102", housingType: "Modelo B" }], pagination: { limit: 50, returned: 2, hasNext: false, nextCursor: null } });
+        vi.mocked(listUnitFiles).mockResolvedValue({ items: [item, { ...item, id: "legacy:unit-files:2", code: "AM-102", housingType: "Modelo B" }], pagination: { limit: 500, returned: 2, hasNext: false, nextCursor: null } });
         render(<UnitFilesPage />);
         expect(screen.queryByRole("combobox", { name: "Unidad" })).not.toBeInTheDocument();
         expect(screen.queryByRole("combobox", { name: "Tipo de vivienda" })).not.toBeInTheDocument();

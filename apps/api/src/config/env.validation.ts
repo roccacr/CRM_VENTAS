@@ -6,15 +6,17 @@ import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "./databas
 import { isNetsuiteRestletUrl, resolveNetsuiteEnvironment } from "./netsuite-environment.js";
 import { APPROVED_DATABASE_NAME } from "./product.constants.js";
 
-// ============================================================================
-// Contrato de variables de entorno para el runtime minimo de identidad.
-//
-// Este archivo es una frontera de seguridad: cualquier config critica debe
-// fallar durante bootstrap, no durante el primer request. No se agregan defaults
-// silenciosos para secretos, origenes CORS ni nombre de base de datos.
-// ============================================================================
+/**
+ * Frontera de configuracion del runtime. Lo que es secreto, origen o nombre de
+ * base falla aqui, durante el arranque, no en el primer request.
+ *
+ * No hay default para `COOKIE_SECRET`, los HMAC, `FRONTEND_ORIGIN` ni `DB_NAME`.
+ * Los defaults que si existen son de cierre: escuchar en loopback, compuertas
+ * en falso, cupos positivos y `NODE_ENV=development`. Un proceso sin `NODE_ENV`
+ * no queda en produccion y por eso tampoco enciende el receptor de produccion.
+ */
 
-/** Exact server deployment URL: reject normalization, credentials and extra query parameters. */
+/** Atajo del RESTlet de sandbox. La regla completa vive en `isNetsuiteRestletUrl`: cuenta fija, sin credenciales y sin query extra. */
 export function isNetsuiteSandboxRestletUrl(value: unknown): value is string {
     return isNetsuiteRestletUrl(value, "sandbox");
 }
@@ -34,7 +36,7 @@ const IPV4_MAPPED_SPACE = new BlockList();
 IPV4_MAPPED_SPACE.addSubnet("::ffff:0:0", IPV4_MAPPED_PREFIX_OFFSET, "ipv6");
 const REQUIRED_MICROSOFT_OIDC_KEYS = ["MICROSOFT_TENANT_ID", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_REDIRECT_URI", "MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY"] as const;
 
-/** Subset of settings that must all be present to enable Microsoft sign-in. */
+/** Campos que tienen que venir juntos para encender Microsoft. Un subconjunto no es una configuracion a medias aceptable. */
 type MicrosoftOidcConfig = {
     ENABLE_ORDER_DOCUMENTS?: boolean | undefined;
     AUDIT_HASH_SECRET: string;
@@ -48,16 +50,19 @@ type MicrosoftOidcConfig = {
 };
 
 /**
- * Entero positivo para limites operativos configurables.
+ * Cupo operativo. Tiene que ser un entero mayor que cero: un `0` o un negativo
+ * apagaria el limitador en lugar de configurarlo.
  */
 const positiveIntegerSchema = z.coerce.number().int().positive();
 
 /**
- * Valida claves base64 que se convierten exactamente en 32 bytes.
+ * Llave AES-256 del cache MSAL, opcional hasta que Microsoft se encienda.
  *
- * La cache MSAL puede contener refresh tokens Microsoft. Aunque MSAL no expone
- * esos tokens a nuestra app, el blob serializado debe persistirse cifrado con
- * una llave de servidor fuerte y distinta de los secretos de cookies/HMAC.
+ * El blob puede contener el refresh token aunque la aplicacion no lo lea. Por
+ * eso la llave tiene que ser base64 de exactamente 32 bytes. Se vuelve a
+ * codificar y se compara con el texto original: un padding distinto o caracteres
+ * ignorados por el decoder no pasan como la misma llave. Que sea distinta de
+ * los secretos BFF se exige mas abajo.
  */
 const microsoftCacheEncryptionKeySchema = z
     .string()
@@ -78,7 +83,9 @@ const microsoftCacheEncryptionKeySchema = z
     });
 
 /**
- * Microsoft debe configurarse completo o no configurarse.
+ * Microsoft entra completo o no entra. Basta una pieza, o
+ * `ENABLE_ORDER_DOCUMENTS`, para exigir tenant, cliente, secreto, redirect y
+ * la llave del cache: los documentos usan la misma app registration.
  */
 const addMicrosoftOidcIssues = (config: MicrosoftOidcConfig, context: z.RefinementCtx): void => {
     const microsoftValues = [config.MICROSOFT_TENANT_ID, config.MICROSOFT_CLIENT_ID, config.MICROSOFT_CLIENT_SECRET, config.MICROSOFT_REDIRECT_URI];
@@ -90,9 +97,7 @@ const addMicrosoftOidcIssues = (config: MicrosoftOidcConfig, context: z.Refineme
     addMicrosoftSecretSeparationIssue(config, context);
 };
 
-/**
- * Evita arrancar con una app registration a medias.
- */
+/** Cada clave ausente es un error propio. El arranque no elige un valor por la que falte. */
 const addMissingMicrosoftConfigIssues = (config: MicrosoftOidcConfig, context: z.RefinementCtx): void => {
     for (const key of REQUIRED_MICROSOFT_OIDC_KEYS) {
         if (!config[key]) {
@@ -106,7 +111,8 @@ const addMissingMicrosoftConfigIssues = (config: MicrosoftOidcConfig, context: z
 };
 
 /**
- * La llave que cifra cache MSAL no puede reutilizar secretos BFF/HMAC.
+ * La llave del cache no puede ser `COOKIE_SECRET` ni uno de los HMAC. Rotar o
+ * filtrar un secreto de sesion no debe descifrar tambien los tokens de Microsoft.
  */
 const addMicrosoftSecretSeparationIssue = (config: MicrosoftOidcConfig, context: z.RefinementCtx): void => {
     if (config.MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY && [config.COOKIE_SECRET, config.AUDIT_HASH_SECRET, config.AUTH_TOKEN_HASH_SECRET].includes(config.MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY)) {
@@ -119,7 +125,9 @@ const addMicrosoftSecretSeparationIssue = (config: MicrosoftOidcConfig, context:
 };
 
 /**
- * Valida que FRONTEND_ORIGIN sea un origin puro, sin path, query ni slash final.
+ * Origin exacto. `URL.origin` no incluye usuario, path, query ni slash final;
+ * si el texto configurado no es identico a eso, CORS y las cookies quedarian
+ * atados a una URL distinta de la que el navegador envia.
  */
 const frontendOriginSchema = z.url().superRefine((value, context) => {
     const parsed = new URL(value);
@@ -133,11 +141,9 @@ const frontendOriginSchema = z.url().superRefine((value, context) => {
 });
 
 /**
- * Allowlist extra de origins, separada por comas.
- *
- * Cada origen pasa por la misma regla que `FRONTEND_ORIGIN`: sin path, query
- * ni slash final. Un valor inválido rechaza toda la variable. Un hueco entre
- * comas se ignora. No admite `*`.
+ * Origins extra, separados por coma. Cada uno pasa por la misma regla que
+ * `FRONTEND_ORIGIN`. Un valor invalido rechaza la variable entera; un hueco
+ * entre comas se ignora. No hay comodin: `*` no es un origin y no se acepta.
  */
 const frontendAllowedOriginsSchema = z.string().superRefine((value, context) => {
     for (const origin of value.split(",")) {
@@ -160,7 +166,9 @@ const frontendAllowedOriginsSchema = z.string().superRefine((value, context) => 
 });
 
 /**
- * Divide TRUSTED_PROXY_IPS preservando una sola regla para Zod y main.ts.
+ * Parte `TRUSTED_PROXY_IPS` una sola vez. Zod y `main.ts` tienen que ver las
+ * mismas entradas; recortar en un lado y no en el otro cambiaria de quien se
+ * acepta `X-Forwarded-For`.
  */
 const splitTrustedProxyEntries = (value: string): string[] =>
     value
@@ -169,7 +177,8 @@ const splitTrustedProxyEntries = (value: string): string[] =>
         .filter(Boolean);
 
 /**
- * Separa una entrada de proxy entre IP y prefijo CIDR opcional.
+ * IP sola o IP/prefijo. Mas de una barra, un prefijo que no es decimal o una
+ * direccion vacia no son una entrada: se rechazan en vez de interpretarse.
  */
 const splitProxyCidrEntry = (entry: string): { address: string; prefix: number | null } | null => {
     const parts = entry.split("/");
@@ -196,17 +205,13 @@ const splitProxyCidrEntry = (entry: string): { address: string; prefix: number |
 };
 
 /**
- * Indica si una direccion IPv6 usa notacion IPv4-mapped.
- *
- * Fastify/proxy-addr puede tratar `::ffff:x.x.x.x/96+` como rango IPv4. Por
- * eso no basta con aplicar reglas IPv6 normales: el prefijo debe convertirse a
- * su equivalente IPv4 para evitar trust-all encubierto.
+ * `::ffff:0:0/96` es todo el espacio IPv4 escrito como IPv6. `proxy-addr` trata
+ * un prefijo de 96 o mas sobre esa notacion como un rango IPv4, asi que un /96
+ * seria confiar en cualquier cliente. El prefijo se juzga como IPv4, no como IPv6.
  */
 const isIpv4MappedAddress = (address: string): boolean => IPV4_MAPPED_SPACE.check(address, "ipv6");
 
-/**
- * Valida el prefijo efectivo de una subred IPv4-mapped.
- */
+/** Una direccion mapeada suelta es valida. Un prefijo tiene que quedar entre /8 y /32 ya restados los 96 bits del mapeo. */
 const hasValidIpv4MappedPrefix = (prefix: number | null): boolean => {
     if (prefix === null) {
         return true;
@@ -217,7 +222,8 @@ const hasValidIpv4MappedPrefix = (prefix: number | null): boolean => {
 };
 
 /**
- * Valida que el prefijo CIDR sea coherente con IPv4/IPv6 y no demasiado amplio.
+ * IPv4 no baja de /8 y IPv6 no baja de /32. Una red mas ancha convierte el
+ * encabezado reenviado en una identidad que el cliente puede elegir.
  */
 const hasValidTrustedProxyPrefix = (ipVersion: number, prefix: number | null): boolean => {
     if (prefix === null) {
@@ -236,7 +242,8 @@ const hasValidTrustedProxyPrefix = (ipVersion: number, prefix: number | null): b
 };
 
 /**
- * Indica si una entrada de proxy es concreta y no equivale a trust-all.
+ * Rechaza `*`, `0.0.0.0/0` y `::/0` antes de mirar el CIDR. El resto tiene que
+ * ser una IP concreta o una subred dentro de los prefijos minimos.
  */
 const isValidTrustedProxyEntry = (entry: string): boolean => {
     if (TRUST_ALL_PROXY_VALUES.has(entry)) {
@@ -258,9 +265,7 @@ const isValidTrustedProxyEntry = (entry: string): boolean => {
     return ipVersion !== 0 && hasValidTrustedProxyPrefix(ipVersion, parsed.prefix);
 };
 
-/**
- * Retorna la razon de invalidez para proxies confiables, si existe.
- */
+/** Lista vacia no es un error: significa no confiar en ningun proxy. La primera entrada invalida corta con un solo mensaje. */
 const readTrustedProxyValidationError = (entries: string[]): string | null => {
     if (entries.length === 0) {
         return null;
@@ -275,9 +280,7 @@ const readTrustedProxyValidationError = (entries: string[]): string | null => {
     return null;
 };
 
-/**
- * Valida entradas de proxies confiables sin permitir configuraciones trust-all.
- */
+/** Vuelca el error de proxy al contexto de Zod. La misma funcion la reutiliza el parseo de `main.ts`. */
 const validateTrustedProxyEntries = (value: string, context: z.RefinementCtx): void => {
     const validationError = readTrustedProxyValidationError(splitTrustedProxyEntries(value));
 
@@ -290,10 +293,10 @@ const validateTrustedProxyEntries = (value: string, context: z.RefinementCtx): v
 };
 
 /**
- * Contrato de configuracion del runtime de identidad aprobado.
- *
- * Zod es la frontera unica para validar variables de entorno. Los valores
- * criticos de seguridad fallan durante arranque, no en el primer request.
+ * Redis de notas en tiempo real. `single` no exige URL. `redis-streams` solo
+ * acepta `rediss` con host, usuario y clave, sin query ni fragmento: ahi
+ * viajaria otro secreto o una opcion que cambie el destino. Una URL ausente o
+ * rota no se interpreta; cae al error de abajo.
  */
 const addNotesRealtimeIssues = (config: { NOTES_REALTIME_TOPOLOGY: string; NOTES_REALTIME_REDIS_URL?: string | undefined }, context: z.RefinementCtx): void => {
     if (config.NOTES_REALTIME_TOPOLOGY === "redis-streams") {
@@ -302,12 +305,20 @@ const addNotesRealtimeIssues = (config: { NOTES_REALTIME_TOPOLOGY: string; NOTES
             const redis = new URL(config.NOTES_REALTIME_REDIS_URL ?? "");
             safeRedis = [redis.protocol === "rediss:", Boolean(redis.hostname), Boolean(redis.username), Boolean(redis.password), !redis.search, !redis.hash].every(Boolean);
         } catch {
-            /* Invalid or absent Redis URL fails closed below. */
+            /* Una URL ausente o invalida queda rechazada abajo. No se sustituye por un Redis local. */
         }
         if (!safeRedis) context.addIssue({ code: "custom", path: ["NOTES_REALTIME_REDIS_URL"], message: "Redis Streams requires an authenticated private TLS endpoint." });
     }
 };
-/** Explicit/partial Sandbox configuration must be complete for the effective local environment. */
+/**
+ * Sandbox de NetSuite, solo cuando el entorno efectivo es sandbox y hay alguna
+ * intencion de usarlo: la variable en `sandbox` o cualquier credencial cargada.
+ *
+ * Un local sin ninguna de esas piezas puede arrancar; el cliente rechaza la
+ * llamada incompleta. Si la intencion existe, faltan consumidor, secreto o
+ * token, el realm no es `4552704_SB1` o el RESTlet no es el de esa cuenta, no
+ * arranca. Habita no entra aqui: su entorno efectivo es produccion.
+ */
 const addNetsuiteSandboxIssues = (config: { FRONTEND_ORIGIN: string; NETSUITE_ENVIRONMENT: string; NETSUITE_SANDBOX_CONSUMER_KEY?: string | undefined; NETSUITE_SANDBOX_CONSUMER_SECRET?: string | undefined; NETSUITE_SANDBOX_TOKEN_ID?: string | undefined; NETSUITE_SANDBOX_TOKEN_SECRET?: string | undefined; NETSUITE_SANDBOX_REALM?: string | undefined; NETSUITE_SANDBOX_RESTLET_URL?: string | undefined }, context: z.RefinementCtx): void => {
     const keys = ["NETSUITE_SANDBOX_CONSUMER_KEY", "NETSUITE_SANDBOX_CONSUMER_SECRET", "NETSUITE_SANDBOX_TOKEN_ID", "NETSUITE_SANDBOX_TOKEN_SECRET", "NETSUITE_SANDBOX_REALM", "NETSUITE_SANDBOX_RESTLET_URL"] as const;
     const configured = [config.NETSUITE_ENVIRONMENT === "sandbox", ...keys.map((key) => config[key]?.trim())].some(Boolean);
@@ -319,14 +330,23 @@ const addNetsuiteSandboxIssues = (config: { FRONTEND_ORIGIN: string; NETSUITE_EN
         if (!isNetsuiteSandboxRestletUrl(config.NETSUITE_SANDBOX_RESTLET_URL)) context.addIssue({ code: "custom", path: ["NETSUITE_SANDBOX_RESTLET_URL"], message: "URL NetSuite sandbox incompatible." });
     }
 };
-/** Production reception is restricted to Habita and isolated from all other secrets. */
+/**
+ * Receptor de produccion. Persistir exige tenerlo habilitado. Habilitarlo exige
+ * `NODE_ENV=production`, el origen de Habita, `NETSUITE_ENVIRONMENT=production`
+ * y un secreto propio. Ese secreto no puede repetir los del BFF ni el del
+ * receptor local: filtrar uno no abre el otro.
+ */
 const addNetsuiteProductionEventsIssues = (config: { NETSUITE_PRODUCTION_EVENTS_ENABLED: boolean; NETSUITE_PRODUCTION_EVENTS_PERSIST: boolean; NETSUITE_PRODUCTION_EVENTS_SECRET?: string | undefined; NODE_ENV: string; FRONTEND_ORIGIN: string; NETSUITE_ENVIRONMENT: string; COOKIE_SECRET: string; AUTH_TOKEN_HASH_SECRET: string; AUDIT_HASH_SECRET: string; NETSUITE_LOCAL_EVENTS_SECRET?: string | undefined }, context: z.RefinementCtx): void => {
     if (config.NETSUITE_PRODUCTION_EVENTS_PERSIST && !config.NETSUITE_PRODUCTION_EVENTS_ENABLED) context.addIssue({ code: "custom", path: ["NETSUITE_PRODUCTION_EVENTS_PERSIST"], message: "Persistencia requiere el receptor production habilitado." });
     if (config.NETSUITE_PRODUCTION_EVENTS_ENABLED && ![config.NODE_ENV === "production", config.FRONTEND_ORIGIN === "https://habita.roccacr.com", config.NETSUITE_ENVIRONMENT === "production", Boolean(config.NETSUITE_PRODUCTION_EVENTS_SECRET)].every(Boolean)) context.addIssue({ code: "custom", path: ["NETSUITE_PRODUCTION_EVENTS_ENABLED"], message: "El receptor production requiere Habita, modo production y un secreto exclusivo." });
     if (config.NETSUITE_PRODUCTION_EVENTS_SECRET && [config.COOKIE_SECRET, config.AUTH_TOKEN_HASH_SECRET, config.AUDIT_HASH_SECRET, config.NETSUITE_LOCAL_EVENTS_SECRET].includes(config.NETSUITE_PRODUCTION_EVENTS_SECRET)) context.addIssue({ code: "custom", path: ["NETSUITE_PRODUCTION_EVENTS_SECRET"], message: "El secreto production debe ser exclusivo de la integracion." });
 };
 
-/** Local reception remains development-only and independent from production. */
+/**
+ * Receptor local. Persistir exige tenerlo habilitado, y habilitarlo solo vale
+ * en `development` con su secreto de 64 hex. El secreto no se reutiliza como
+ * cookie ni como HMAC. En produccion esta compuerta no abre.
+ */
 const addNetsuiteLocalEventsIssues = (config: { NETSUITE_LOCAL_EVENTS_PERSIST: boolean; NETSUITE_LOCAL_EVENTS_ENABLED: boolean; NODE_ENV: string; NETSUITE_LOCAL_EVENTS_SECRET?: string | undefined; COOKIE_SECRET: string; AUTH_TOKEN_HASH_SECRET: string; AUDIT_HASH_SECRET: string }, context: z.RefinementCtx): void => {
     if (config.NETSUITE_LOCAL_EVENTS_PERSIST && !config.NETSUITE_LOCAL_EVENTS_ENABLED) context.addIssue({ code: "custom", path: ["NETSUITE_LOCAL_EVENTS_PERSIST"], message: "Persistencia requiere el receptor Sandbox habilitado." });
     if (config.NETSUITE_LOCAL_EVENTS_ENABLED && (config.NODE_ENV !== "development" || !config.NETSUITE_LOCAL_EVENTS_SECRET)) context.addIssue({ code: "custom", path: ["NETSUITE_LOCAL_EVENTS_ENABLED"], message: "El receptor local requiere development y un secreto exclusivo de 64 caracteres hexadecimales." });
@@ -335,6 +355,7 @@ const addNetsuiteLocalEventsIssues = (config: { NETSUITE_LOCAL_EVENTS_PERSIST: b
 const envSchema = z
     .object({
         NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+        // Sin valor, el proceso solo escucha en loopback. Publicar en todas las interfaces tiene que ser explicito.
         API_BIND_HOST: z.string().min(1).default("127.0.0.1"),
         PORT: tcpPortSchema.default(3000),
         LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
@@ -347,6 +368,7 @@ const envSchema = z
         AUDIT_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         AUTH_TOKEN_HASH_SECRET: z.string().min(MIN_RUNTIME_SECRET_LENGTH),
         OPENAPI_ENABLED: booleanEnvSchema("false"),
+        // Escritura y lectura legacy apagadas salvo opt-in. El nombre, si se da, solo puede ser la base vieja: no sirve para redirigir el runtime.
         ENABLE_LEGACY_FALLBACK: booleanEnvSchema("false"),
         ENABLE_LEGACY_WRITES: booleanEnvSchema("false"),
         ENABLE_RECORD_AUDIT: booleanEnvSchema("false"),
@@ -385,11 +407,13 @@ const envSchema = z
         DB_HOST: z.string().min(1),
         DB_PORT: tcpPortSchema.default(3306),
         DB_USER: z.string().min(1),
+        // Vacio solo cubre una base local sin clave. No se inventa un secreto.
         DB_PASSWORD: z.string().default(""),
+        // Unico nombre aceptado. Otra base, incluida la legacy, no arranca este proceso.
         DB_NAME: z.literal(APPROVED_DATABASE_NAME),
         DB_SSL: booleanEnvSchema("false"),
         DB_SSL_CA: z.string().min(1).optional(),
-        // Optional adapter settings stay server-side; the GET client rejects incomplete credentials.
+        // Credenciales del adaptador, solo en el servidor. Un conjunto incompleto no se rellena: el cliente de lectura lo rechaza.
         NETSUITE_ORDER_CANCELLATION_EFFECTS_ENABLED: booleanEnvSchema("false"),
         NETSUITE_PRODUCTION_EVENTS_ENABLED: booleanEnvSchema("false"),
         NETSUITE_PRODUCTION_EVENTS_PERSIST: booleanEnvSchema("false"),
@@ -440,6 +464,7 @@ const envSchema = z
         addNetsuiteProductionEventsIssues(config, context);
         addNetsuiteSandboxIssues(config, context);
         addNotesRealtimeIssues(config, context);
+        // Cookie, auditoria y hash de token son tres secretos. Comprometer uno no debe servir para recomputar los otros.
         if (config.AUDIT_HASH_SECRET === config.COOKIE_SECRET) {
             context.addIssue({
                 code: "custom",
@@ -460,11 +485,13 @@ const envSchema = z
         addDatabaseTlsIssues(config, context);
     });
 
-/** Validated environment shape, inferred from the schema. */
+/** Forma ya validada. Una variable no declarada en el schema se descarta y no aparece en este tipo. */
 export type EnvConfig = z.infer<typeof envSchema>;
 
 /**
- * Traduce TRUSTED_PROXY_IPS validado por Zod al formato que Fastify espera.
+ * Lista que Fastify usa como `trustProxy`. Vacia o ausente devuelve `false`:
+ * no se confia en `X-Forwarded-For`. Se vuelve a validar porque `main.ts` puede
+ * llamarla con el texto crudo, fuera del `safeParse`.
  */
 export const parseTrustedProxyIps = (value: string | undefined): string[] | false => {
     if (!value) {
@@ -482,11 +509,8 @@ export const parseTrustedProxyIps = (value: string | undefined): string[] | fals
 };
 
 /**
- * Valida `process.env` para Nest ConfigModule.
- *
- * El error detiene el bootstrap a proposito. Ejecutar identidad sin cookies,
- * base o CORS configurados seria menos seguro que fallar rapido con un mensaje
- * claro de configuracion.
+ * Entrada de `ConfigModule`. Un fallo lanza y el proceso no escucha: seguir sin
+ * cookie, base o CORS dejaria la identidad a medio configurar.
  */
 export const validateEnv = (config: Record<string, unknown>): EnvConfig => {
     const result = envSchema.safeParse(config);

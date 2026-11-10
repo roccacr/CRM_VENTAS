@@ -1,5 +1,9 @@
 # 26 - Enterprise UX Rules: Projects Reference and Replication Guide
 
+## Catalog rendering and pagination — working tree, 2026-11-10
+
+The shared catalog table keeps one API pager and the existing desktop and mobile layout. It renders static cell values as escaped text or markup, mounts the row-action menu on demand and defers rebuilding closed, unused SearchPanes until the next interaction. For batches over 200 rows without an active or previously requested filter, «Cargar filtros» initializes the filter toolbar on demand. This keeps the ordinary first draw independent of the filter panels. [Frontend reconciliation](33-Reconciliacion-Frontend-20261110.md) records measured scenarios and release scope.
+
 ## Alcance documental vigente — 03/11/2026
 
 La paleta y reglas propias de Proyectos se conservan. `CatalogSummary` acepta ayuda opcional `helpText` y `FormHelp` permite nombre accesible separado del contenido, activado por hover/foco; las tarjetas sin ayuda mantienen su anatomía anterior. La extensión se reutiliza en Formalización sin convertir Proyectos en un dashboard nuevo ni cambiar sus consultas/filtros. El inventario actual y las diferencias del recorrido de Formalización respecto a la adopción DEMO inferior están en [30](30-Estado-Frontend-Verificado.md), [32](32-Detalle-Orden-y-Cliente-Basico.md) y [Calendario global](Calendario-Global-Frontend.md). No se ejecutan nuevas mediciones visuales o de contraste en esta conciliación.
@@ -358,7 +362,7 @@ Resolved hierarchy, in order:
 3. One framed work surface: unified toolbar (search + three filters + commands),
    then the independently bounded grid, then the pagination/info row.
 4. One API-backed pagination footer; no accumulated-record count or `Cargar más`.
-   Default page size is 100; available sizes are 10, 50, 100 and 200.
+   Default page size is 500. Available sizes are 10, 50, 100, 200 and 500.
    Page requests retain outgoing rows, disable navigation and show the loading
    overlay plus a reserved 16px footer spinner slot without moving controls.
    The bounded desktop table uses layout/paint containment so vendor row overflow
@@ -387,8 +391,10 @@ Three filters: `Proyecto`, `Integraciones`, `Estado`. SearchPanes options:
 `min-width:0`, a shared baseline and no independent top margin; the vendor
 magnifier is hidden and the pane clear `×` appears only while a value is selected.
 
-Reuse `useDataTableSearchPanes`: collapsed initial panes, cascading options,
-visible totals, columns 0/2/3 enabled and Description/actions excluded. The active
+Reuse `useDataTableSearchPanes` with the catalog-specific overrides: collapsed
+initial panes and counts for the current batch, with cross-filter count
+recalculation disabled. Columns 0/2/3 participate, with Description and
+Actions excluded. The active
 counter is SearchPanes' selected-filter count, not a hardcoded number, open-pane
 count or necessarily a count of global-search terms. Preserve clear/expand/collapse
 semantics and disabled states. Counter announcements use `aria-live="polite"`
@@ -443,7 +449,8 @@ focused or selected (or the button itself is hovered); below 768px they keep the
 500 outline and 44px target. The row action menu is a portal: it opts into the
 scale with `rootClassName="catalog-items-dropdown--projects"`.
 
-Default sort: project ascending. API page size: 100; choices: 10/50/100/200.
+Default sort is project ascending. API page size defaults to 500 with choices
+10/50/100/200/500.
 Request exactly `limit=pageSize` and `offset=(page-1)*pageSize` on navigation;
 replace the current batch rather than append it. A size change resets to page 1.
 DataTables paging and its footer are disabled: the shared page owns the only
@@ -454,14 +461,17 @@ Failed page requests retain the previous page and allow retry; stale responses
 must never overwrite a later page/context. Refresh reloads the current API page.
 Fetched pages live in a component-local, in-memory cache keyed by catalog,
 module, page size and page. Returning to a retained page makes no request and
-does not start a loader. Keep at most 20 batches (4,000 records maximum); oldest
+does not start a loader. Keep at most eight batches (4,000 records maximum). Oldest
 batches may be fetched again after eviction. Nothing is written to localStorage.
 Explicit refresh, successful create/edit/status changes and a changed API total
 invalidate cached batches. External edits become visible on explicit refresh;
 there is no background polling. Unmounting the view discards its cache.
-Keep the DataTable instance mounted across batch changes. Update its data through
-the installed React wrapper and rebuild SearchPanes without destroying the grid,
-so headers, toolbar and rows cannot disappear during teardown/reinitialization.
+When table options remain stable, update a new batch through the DataTables API
+on the mounted grid. Refresh open or active SearchPanes with the replacement data.
+If the panes are closed and unused, draw the new rows and rebuild the panels when
+the user interacts with the filter toolbar. Switching whether the filter engine
+is mounted may reinitialize the table. Its saved search and sort preferences
+remain scoped by catalog and module.
 
 ## Responsive Mobile Cards
 
@@ -1072,7 +1082,7 @@ the verified 100-character name limit. Provider sections remain independent.
 Legacy routing keys stay internal; native identity is pending until promotion.
 Keep scoped permissions, validation and audit; never expose deletion.
 
-Server pagination defaults to 100 with 10/50/100/200 choices. Reuse the existing
+Use the shared server pagination defined above. Reuse the existing
 bounded in-memory page cache: revisiting a cached batch avoids another request;
 refresh and mutations invalidate it. This is a page-instance cache, not permanent
 storage or a guarantee of cross-system freshness. Unknown pages show the shared
@@ -1090,8 +1100,8 @@ All palette, typography, density, horizontal-filter, mobile-card, provider,
 loading-transition and action-spacing rules above apply unchanged. Native and
 legacy items can be edited or activated/inactivated with scoped permission and
 audit; deletion is unavailable. Legacy CRM IDs display pending migration.
-Use the same default-100 server pagination, 10/50/100/200 choices, bounded
-page-instance cache and explicit refresh/mutation invalidation as Classes.
+Use the shared server pagination, bounded page-instance cache and explicit
+refresh and mutation invalidation as Classes.
 The frontend never selects a database or performs dual writes itself.
 
 ### Subsidiaries Parity (2026-10-12)
@@ -1105,9 +1115,9 @@ Editar subsidiaria. Names support 250 characters, matching the verified schema.
 Apply the same tokens, compact typography, horizontal filters, centered loader,
 mobile cards, separate provider sections and spaced edit/status actions.
 Legacy identities display pending migration and remain editable with existing
-permissions. No deletion. Default server page size is 100 with 10/50/100/200
-choices; use the same bounded page-instance cache and refresh/mutation
-invalidation. Database selection and synchronization belong exclusively to API.
+permissions. Deletion is unavailable. Use the shared server pagination and
+bounded page-instance cache with refresh and mutation invalidation. Database
+selection and synchronization belong exclusively to API.
 
 ### Brokers Parity (2026-10-12)
 
@@ -1117,7 +1127,7 @@ Its own `administration/brokers` folder owns domain copy and configuration while
 reusing the approved components. Use Corredor/Corredores labels and a 250-character
 name limit. Do not expose obsolete legacy contact/company/category fields.
 Provider references remain separate; legacy routing identities remain internal.
-Default page size is 100 (10/50/100/200 options). The existing bounded page cache
+Use the shared server pagination. The existing bounded page cache
 avoids requests when returning to a loaded page; refresh and mutations invalidate
 cached data. Authentication, permissions and no-delete behavior are unchanged.
 
@@ -1229,7 +1239,7 @@ Code uses exact code; primary code matching uses a separate codeMatch substring.
 
 This high-volume domain intentionally differs from small catalogs: require
 resolved CRM project IDs, without a selection cap, and explicit Search before any inventory request. Default
-50 rows, selectable 10/50/100, cursor Next/Back without total/last/load-all.
+500 rows, selectable 10/50/100/500, cursor Next/Back without total/last/load-all.
 All criteria apply server-side before keyset pagination, across the complete scope.
 Keep old rows visible under a centered slim spinner during uncached paging.
 The canvas retains a 400px minimum height with a bounded inner scroll area.

@@ -2,25 +2,33 @@ import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
+import { formalizationClosedThisYear } from "../../modules/crm/sales/sales-orders/formalization-closure.query.js";
 import type { HomeSummaryLegacyReader } from "../../modules/crm/sales/sales-orders/home-summary.port.js";
 import { aggregateNumber, type HomeSummaryPeriod, type StageAggregateRow, stageCountsFromRow } from "../../modules/crm/sales/sales-orders/home-summary.types.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
 /**
- * Legacy side of the Home counters. `shadowed` marks legacy orders that already have a native alias:
- * they are excluded from every counter and reported in `duplicatesExcluded`. Approvals are the legacy
- * flags (sales head, RDR, formalization). One bounded result, using the same native transaction for cross-schema snapshot consistency. */
+ * Contadores de inicio del lado viejo, un solo agregado en la misma transaccion.
+ *
+ * `shadowed` es la orden que ya tiene alias nativo. Sale de todos los conteos de
+ * etapa y entra en `duplicatesExcluded`. Si ese total no viene, el agregado se
+ * rechaza: no se publica cero por un hueco. Un flag distinto de 1 o 0 queda nulo
+ * y no suma. La etapa ausente cuenta como `contract_pending_send`.
+ */
 @Injectable()
 export class LegacyHomeSummaryReader implements HomeSummaryLegacyReader {
-    /** Reuses the configured fallback switch; no additional pool is opened. */
+    /** El pool solo responde `enabled`. El agregado no abre otra conexion. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
 
-    /** Disabled fallback contributes no rows and triggers no aggregate SELECT. */
+    /** Apagado devuelve vacio y no lanza el `SELECT`. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
 
-    /** Personal activity already selected its identities; resolve only those labels in one bounded SELECT. */
+    /**
+     * Etiquetas de ordenes que la actividad ya eligio. Como maximo seis ids, cada
+     * uno un entero positivo de hasta diez digitos. Fuera de eso, no se consulta.
+     */
     async orderLabels(tx: Transaction<CrmDatabase>, ids: readonly string[]) {
         if (!this.enabled() || !ids.length) return [];
         if (ids.length > 6 || !ids.every((id) => /^[1-9][0-9]{0,9}$/.test(id))) throw new Error("Invalid activity order IDs");
@@ -28,25 +36,22 @@ export class LegacyHomeSummaryReader implements HomeSummaryLegacyReader {
         return result.rows;
     }
 
-    /** Every native alias shadows legacy. Any effective closure this year credits an eligible order once, even after reopening. */
+    /** El cierre del anio acredita la orden una vez, aunque despues se reabra. El alias nativo no entra en las etapas. */
     async aggregate(tx: Transaction<CrmDatabase>, period: HomeSummaryPeriod) {
         const result = await sql<StageAggregateRow>`
             SELECT /*+ MAX_EXECUTION_TIME(1500) */
                 SUM(NOT shadowed AND approved AND COALESCE(stage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send')) AS toSend,
                 SUM(NOT shadowed AND approved AND stage='contract_pending_signature') AS pendingSignature,
                 SUM(NOT shadowed AND contract_signed AND stage='bank_management') AS banking, SUM(NOT shadowed AND contract_signed AND stage='bank_management_in_progress') AS bankingInProgress, SUM(NOT shadowed AND contract_signed AND stage='pending_balance') AS balance,
-                SUM(NOT shadowed AND contract_signed AND stage='pending_transfer' AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0) AS transferPending, SUM(NOT shadowed AND contract_signed AND stage='transfer_signed' AND installments_paid=1 AND unit_transferred=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned,
-                SUM(NOT shadowed AND contract_signed AND completed_this_year AND unit_delivered=1) AS closedThisYear,
+                SUM(NOT shadowed AND contract_signed AND stage='pending_transfer' AND installments_paid=1) AS transferPending, SUM(NOT shadowed AND contract_signed AND stage='transfer_signed' AND installments_paid=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned,
+                SUM(NOT shadowed AND contract_signed AND completed_this_year) AS closedThisYear,
                 SUM(shadowed) AS duplicatesExcluded
             FROM (
                 SELECT e.to_state_code_sales_order_state_event AS stage, COALESCE(o.contrado_frima_ov=1,0) AS contract_signed,
                     CASE o.cuotas_pagadas_completo_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS installments_paid,
-                    CASE o.unidad_traspasada_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS unit_transferred,
                     CASE o.entrega_llaves_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS keys_delivered,
                     CASE o.unidad_entregada_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS unit_delivered,
-                    EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} closed_event
-                        WHERE closed_event.legacy_order_id_sales_order_state_event=o.id_ov AND closed_event.to_state_code_sales_order_state_event='closed'
-                        AND closed_event.effective_at_sales_order_state_event >= ${period.start.slice(0, 23).replace("T", " ")} AND closed_event.effective_at_sales_order_state_event < ${period.endExclusive.slice(0, 23).replace("T", " ")}) AS completed_this_year,
+                    ${formalizationClosedThisYear("legacy", period)} AS completed_this_year,
                     (o.aprobacion_forma_ov=1) AS approved,
                     EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov) AS shadowed
                 FROM ${sql.table("crmdatabase-api.ordenventa")} o

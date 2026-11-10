@@ -8,6 +8,7 @@ import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { FormHelp } from "../../components/forms/FormHelp";
 import { type FollowUp, type FollowUpItem, type FollowUpQueue, getFollowUp, getFormalizationOrderRecord } from "../../services/formalization/follow-up-service";
+import { importNetsuiteOrder } from "../../services/formalization/netsuite-order-service";
 import { CatalogBanners } from "../administration/catalogs/CatalogSummary";
 import { type FollowUpFilterRequest, type FollowUpSelection, isFollowUpSelection, useFollowUpFilters } from "./formalization-filter-preferences";
 import { buildOrderCards } from "./formalization-order-cards";
@@ -164,12 +165,54 @@ function FollowUpHeading({ id, tableOnly, total }: { readonly id: string; readon
     );
 }
 
+function MissingOrderImport({ tranid }: { readonly tranid: string }) {
+    const [queued, setQueued] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const submit = async () => {
+        setBusy(true);
+        setError(null);
+        try {
+            await importNetsuiteOrder(tranid);
+            setQueued(true);
+        } catch (failure) {
+            setError(failure instanceof Error ? failure.message : "No se pudo extraer la orden. Intenta de nuevo.");
+        } finally {
+            setBusy(false);
+        }
+    };
+    return (
+        <div className="formalization-followup__message">
+            <span role="status">No se encontró {tranid} en el seguimiento. Puedes buscarla en NetSuite y agregarla a Habita.</span>
+            <Button
+                loading={busy}
+                disabled={busy || queued}
+                onClick={() => {
+                    void submit();
+                }}
+            >
+                Extraer de NetSuite
+            </Button>
+            {queued && <span role="status">La importación de {tranid} quedó en cola. Te avisaremos en la campanita cuando termine.</span>}
+            {error && <span role="alert">{error}</span>}
+        </div>
+    );
+}
+
+function missingTranid(model: ReturnType<typeof useFollowUp>, canRead: boolean, canUpdate: boolean | undefined): string | null {
+    if (!canRead || !canUpdate || model.value?.page.total !== 0 || model.projectIds.length || model.selectedSelections.length) return null;
+    const candidate = model.search.trim().toUpperCase();
+    return /^(?=[A-Z0-9_-]*[0-9])[A-Z0-9][A-Z0-9_-]{0,59}$/.test(candidate) ? candidate : null;
+}
+
 /** The table and its canonical side panel share which order is open; stage updates use a separate permission. */
 function FollowUpWorkspace({ canReadOrder, model, stagePermissions = [], canUpdateStage, onRefresh, onViewFull, onNavigate }: { readonly canReadOrder: boolean; readonly onViewFull: (item: FollowUpItem) => void; readonly onNavigate?: ((path: string) => void) | undefined; readonly model: ReturnType<typeof useFollowUp>; readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined; readonly canUpdateStage: boolean | undefined; readonly onRefresh: (() => void) | undefined }) {
     const items = model.value?.items ?? [];
     const open = useOpenOrder(items);
+    const tranid = missingTranid(model, canReadOrder, canUpdateStage);
     return (
         <>
+            {tranid && <MissingOrderImport key={tranid} tranid={tranid} />}
             <FollowUpBody model={model} onOpen={canReadOrder ? open.setOpenId : undefined} showAddendum={canReadOrderAddendum(stagePermissions)} />
             <FormalizationOrderDrawer
                 onNavigate={onNavigate}

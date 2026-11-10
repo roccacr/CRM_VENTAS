@@ -3,13 +3,18 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
-// ============================================================================
-// Cifrado de cache MSAL.
-//
-// MSAL Node mantiene tokens en su cache interna y no expone refresh tokens a la
-// aplicacion. Al persistir esa cache en MySQL, el blob completo se trata como
-// secreto de sesion de proveedor y se cifra con AES-256-GCM antes de guardar.
-// ============================================================================
+/**
+ * Cifrado del cache MSAL antes de guardarlo en MySQL.
+ *
+ * MSAL no entrega el refresh token a la aplicacion; lo conserva dentro del
+ * cache. El blob completo es un secreto de sesion del proveedor y se guarda
+ * como AES-256-GCM. Este servicio no cifra tokens sueltos ni los devuelve.
+ *
+ * Cada cifrado usa un IV nuevo de 12 bytes. El tag autentica el ciphertext: si
+ * el blob fue alterado, GCM falla y no hay cache a medio descifrar que se
+ * pueda seguir usando. `keyVersion` se persiste para una rotacion futura; aqui
+ * solo existe la version 1 y el descifrado usa siempre la llave vigente.
+ */
 
 const AES_256_GCM_ALGORITHM = "aes-256-gcm";
 const AES_256_GCM_IV_BYTES = 12;
@@ -25,19 +30,13 @@ export interface EncryptedMicrosoftCache {
     tag: string;
 }
 
-/**
- * Servicio pequeño y testeable para cifrar/descifrar cache MSAL.
- */
+/** Cifrado y descifrado del blob. No conoce usuarios ni sesiones. */
 @Injectable()
 export class MicrosoftMsalCacheCryptoService {
-    /**
-     * Inyecta ConfigService para leer la llave validada por Zod.
-     */
+    /** La llave llega validada por el esquema de entorno. El fallo local cubre un `ConfigService` parcial de prueba. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
-    /**
-     * Cifra un cache MSAL serializado. No acepta ni retorna tokens individuales.
-     */
+    /** Cifra el cache serializado. El llamador no recibe el IV ni el tag por separado del objeto persistible. */
     encrypt(serializedCache: string): EncryptedMicrosoftCache {
         const iv = randomBytes(AES_256_GCM_IV_BYTES);
         const cipher = createCipheriv(AES_256_GCM_ALGORITHM, this.readEncryptionKey(), iv);
@@ -52,8 +51,8 @@ export class MicrosoftMsalCacheCryptoService {
     }
 
     /**
-     * Descifra un blob persistido. Si el contenido fue alterado, GCM falla y no
-     * se intenta usar una cache posiblemente manipulada.
+     * Descifra un blob persistido. No hay intento de reparar un tag invalido:
+     * una cache manipulada no se entrega al cliente MSAL.
      */
     decrypt(cache: EncryptedMicrosoftCache): string {
         const decipher = createDecipheriv(AES_256_GCM_ALGORITHM, this.readEncryptionKey(), Buffer.from(cache.iv, CIPHERTEXT_ENCODING));
@@ -63,9 +62,8 @@ export class MicrosoftMsalCacheCryptoService {
     }
 
     /**
-     * Lee la llave configurada. `validateEnv` garantiza longitud y formato; esta
-     * comprobacion local conserva fail-fast si el servicio se instancia en tests
-     * con un ConfigService parcial.
+     * AES-256 exige 32 bytes. `validateEnv` ya lo garantiza en el arranque; esta
+     * comprobacion corta igual si el servicio se construye con configuracion incompleta.
      */
     private readEncryptionKey(): Buffer {
         const key = Buffer.from(this.config.getOrThrow<string>("MICROSOFT_MSAL_CACHE_ENCRYPTION_KEY"), KEY_ENCODING);

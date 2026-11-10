@@ -7,6 +7,10 @@ import type { LeadProfileLegacyReader } from "../../modules/crm/leads/lead-profi
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 import { readLegacyLeadCommercial } from "./legacy-lead-commercial.query.js";
 
+/**
+ * Columnas del perfil ampliado. Los nombres fisicos se conservan, incluidos
+ * `TelefonoAlternatovo_lead` y `info_extra_ZonaRecidencia`. `segimineto_lead` vive en el lead, no aqui.
+ */
 const extras = {
     extraId: "id_Info_lead",
     extraLeadReference: "id_lead_fk",
@@ -36,7 +40,13 @@ const extras = {
     buyerProfile: "info_extra_PerfilClienteComprador",
 } as const;
 
-/** Resuelve el perfil mediante lecturas autorizadas, sin importar datos entre bases. */
+/**
+ * Perfil del lead viejo, solo lectura, en la transaccion del llamador. No importa filas.
+ *
+ * `LIMIT 2` y mas de una fila es conflicto: no se elige con `MIN`. El nombre del
+ * dueno sale solo si hay exactamente un admin. El estado 1 es Activo, 0 es
+ * Inactivo y cualquier otro queda "Sin dato".
+ */
 @Injectable()
 export class LegacyLeadProfileReader implements LeadProfileLegacyReader {
     /** Inyección explícita compatible con el runtime tsx y las pruebas. */
@@ -46,7 +56,7 @@ export class LegacyLeadProfileReader implements LeadProfileLegacyReader {
         return this.database.isConfigured();
     }
 
-    /** La FK del perfil extra usa la referencia externa, por eso se exige unicidad antes de leerlo. */
+    /** El extra solo se lee si la referencia externa pertenece a un unico lead. */
     async find(tx: Transaction<CrmDatabase>, key: "id" | "reference", value: string): Promise<LeadProfileSource | null> {
         const { rows } = await sql<Record<string, string | null>>`SELECT /*+ MAX_EXECUTION_TIME(3000) */ CAST(l.id_lead AS CHAR) AS id,CAST(l.idinterno_lead AS CHAR) AS reference,
             CAST(l.id_lead AS CHAR) AS localId,CAST(l.idinterno_lead AS CHAR) AS externalReference,l.idnetsuite_lead AS netsuiteId,
@@ -69,6 +79,7 @@ export class LegacyLeadProfileReader implements LeadProfileLegacyReader {
         return { source: "legacy", id, internalId: id, reference, values: Object.fromEntries(Object.entries({ ...values, ...additional }).map(([key, value]) => [key, profileText(value)])) };
     }
 
+    /** Mas de un extra, o una referencia que no es unica, es conflicto. Los valores vacios no se publican. */
     private async extendedValues(tx: Transaction<CrmDatabase>, reference: string): Promise<Record<string, unknown>> {
         const matches = await sql<{ id: string }>`SELECT id_lead AS id FROM ${sql.table("crmdatabase-api.leads")} WHERE idinterno_lead=${reference} LIMIT 2`.execute(tx);
         if (matches.rows.length !== 1) throw new ConflictException("La referencia del lead antiguo no es única.");
@@ -77,7 +88,7 @@ export class LegacyLeadProfileReader implements LeadProfileLegacyReader {
         return Object.fromEntries(Object.entries(extra.rows[0] ?? {}).filter(([, value]) => profileText(value)?.trim()));
     }
 
-    /** Eventos del calendario antiguo del cliente; los ya migrados al calendario nuevo se leen allí y no se duplican. */
+    /** Citas del lead por `idinterno_lead`. La que ya tiene evento nativo no borrado no se repite. Se pide 51 para saber si hay otra pagina. */
     async events(tx: Transaction<CrmDatabase>, lead: LeadProfileSource, page: number) {
         if (!lead.reference) return { items: [], hasMore: false, page };
         const { rows } = await sql<LeadProfileEvent>`SELECT /*+ MAX_EXECUTION_TIME(3000) */ CAST(c.id_calendar AS CHAR) AS id,'legacy' AS source,c.nombre_calendar AS title,c.tipo_calendar AS type,c.accion_calendar AS status,
@@ -89,12 +100,16 @@ export class LegacyLeadProfileReader implements LeadProfileLegacyReader {
         return { items: rows.slice(0, 50), hasMore: rows.length > 50, page };
     }
 
-    /** Registros comerciales reales, separados de las observaciones de bitácora. */
+    /** Oportunidades y estimaciones reales. No mezcla la bitacora. */
     commercial(tx: Transaction<CrmDatabase>, lead: LeadProfileSource, kind: "opportunities" | "estimates", page: number) {
         return readLegacyLeadCommercial(tx, lead, kind, page);
     }
 
-    /** Órdenes relacionadas por referencia única; una orden ya nativa no se duplica como legacy. */
+    /**
+     * La orden ya ligada a este lead nativo no se repite. Si existe una nativa con
+     * el mismo id viejo, sin lead y no borrada, se publica como nativa. El resto
+     * sigue como legado.
+     */
     async orders(tx: Transaction<CrmDatabase>, lead: LeadProfileSource, page: number, nativeLeadId?: string) {
         if (!lead.reference) return { items: [], hasMore: false, page };
         const { rows } =
@@ -108,6 +123,7 @@ export class LegacyLeadProfileReader implements LeadProfileLegacyReader {
     }
 }
 
+/** Solo texto, numero o booleano. Un objeto no se vuelca a JSON. */
 function profileText(value: unknown): string | null {
     if (typeof value === "string") return value;
     return typeof value === "number" || typeof value === "boolean" ? String(value) : null;

@@ -51,7 +51,7 @@ export const RECORD_EXAMPLE = {
         {
             title: "Hitos de la orden",
             counted: true,
-            items: [mark("Contrato firmado", false), mark("Cierre firmado", true), mark("Validación de fideicomiso / prima", false), mark("Unidad traspasada", false), mark("Unidad entregada", false), mark("Entrega de llaves", false)],
+            items: [mark("Contrato firmado", false), mark("Cuotas pagadas por completo", false), mark("Cierre firmado", true), mark("Validación de fideicomiso / prima", false), mark("Unidad traspasada", false), mark("Unidad entregada", false), mark("Entrega de llaves", false)],
         },
         {
             title: "Aprobaciones",
@@ -68,22 +68,16 @@ export const RECORD_EXAMPLE = {
             label: "Información primaria",
             groups: [
                 {
-                    title: "",
-                    fields: [
-                        text("N.º de pedido", "OV-DEMO-001"),
-                        text("Cliente", "Cliente de ejemplo"),
-                        text("Fecha", "26/10/2026"),
-                        text("Firma de contrato", "28/10/2026"),
-                        text("Moneda", "Dólar estadounidense (USD)"),
-                        text("Estado de cuenta", null),
-                        text("Subsidiaria", "Desarrolladora de ejemplo"),
-                        text("Departamento", "Ventas"),
-                        text("Clase", "Residencial de ejemplo"),
-                        text("Ubicación", "Torre A · Ejemplo"),
-                        text("Traspaso / entrega de llaves", "30/06/2027"),
-                        text("Lectura del medidor de agua", "125 m³"),
-                        text("Nota", "Coordinar la firma con el cliente.", true),
-                    ],
+                    title: "Pedido",
+                    fields: [text("N.º de pedido", "OV-DEMO-001"), text("Fecha", "26/10/2026"), text("Firma de contrato", "28/10/2026"), text("Moneda", "Dólar estadounidense (USD)"), text("Nota", "Coordinar la firma con el cliente.", true)],
+                },
+                {
+                    title: "Cliente y empresa",
+                    fields: [text("Cliente", "Cliente de ejemplo"), text("Estado de cuenta", null), text("Subsidiaria", "Desarrolladora de ejemplo"), text("Departamento", "Ventas")],
+                },
+                {
+                    title: "Unidad y entrega",
+                    fields: [text("Clase", "Residencial de ejemplo"), text("Ubicación", "Torre A · Ejemplo"), text("Traspaso / entrega de llaves", "30/06/2027"), text("Lectura del medidor de agua", "125 m³")],
                 },
             ],
         },

@@ -15,16 +15,16 @@ describe("Unit Files criteria and cursor", () => {
     it("validates JSON multi-pane selections without splitting values containing commas", async () => {
         const pipe = new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true });
         await expect(pipe.transform({ moduleCode: "administration", projectIds, codes: '["FF,001","FF002"]' }, { type: "query", metatype: UnitFilesQueryDto })).resolves.toMatchObject({ codes: ["FF,001", "FF002"] });
-        await expect(pipe.transform({ moduleCode: "administration", projectIds, codes: '["FF",1]' }, { type: "query", metatype: UnitFilesQueryDto })).rejects.toThrow();
+        await expect(pipe.transform({ moduleCode: "administration", projectIds, codes: '["FF",1]' }, { type: "query", metatype: UnitFilesQueryDto })).rejects.toThrow("Bad Request Exception");
     });
     it("rejects an unfiltered request before querying", async () => {
         const pipe = new ValidationPipe({ transform: true, whitelist: true });
-        await expect(pipe.transform({ moduleCode: "administration" }, { type: "query", metatype: UnitFilesQueryDto })).rejects.toThrow();
+        await expect(pipe.transform({ moduleCode: "administration" }, { type: "query", metatype: UnitFilesQueryDto })).rejects.toThrow("Bad Request Exception");
     });
     it("accepts any selected canonical projects and rejects huge batches", async () => {
         const pipe = new ValidationPipe({ transform: true, whitelist: true });
-        await expect(pipe.transform({ moduleCode: "administration", projectIds: projectIds.join(","), limit: "50" }, { type: "query", metatype: UnitFilesQueryDto })).resolves.toMatchObject({ projectIds, limit: 50 });
-        await expect(pipe.transform({ moduleCode: "administration", projectIds, limit: 200 }, { type: "query", metatype: UnitFilesQueryDto })).rejects.toThrow();
+        await expect(pipe.transform({ moduleCode: "administration", projectIds: projectIds.join(","), limit: "500" }, { type: "query", metatype: UnitFilesQueryDto })).resolves.toMatchObject({ projectIds, limit: 500 });
+        await expect(pipe.transform({ moduleCode: "administration", projectIds, limit: 501 }, { type: "query", metatype: UnitFilesQueryDto })).rejects.toThrow("Bad Request Exception");
         const manyProjects = Array.from({ length: 10 }, (_, index) => "01M4RCK911NS2ZNCRYPBD40B9" + String(index));
         await expect(pipe.transform({ moduleCode: "administration", projectIds: manyProjects.join(",") }, { type: "query", metatype: UnitFilesQueryDto })).resolves.toMatchObject({ projectIds: manyProjects });
     });
@@ -32,9 +32,9 @@ describe("Unit Files criteria and cursor", () => {
         const key = unitFilterKey({ projectIds, moduleCode: "administration", limit: 50 });
         const cursor = encodeUnitCursor({ key, phase: "legacy", after: 40 });
         expect(decodeUnitCursor(cursor, key)).toEqual({ key, phase: "legacy", after: 40 });
-        expect(() => decodeUnitCursor(cursor, "other")).toThrow();
-        expect(() => decodeUnitCursor(cursor, unitFilterKey({ projectIds, moduleCode: "administration", limit: 50, codeMatch: "ff03" }))).toThrow();
-        expect(() => decodeUnitCursor("not-json", key)).toThrow();
+        expect(() => decodeUnitCursor(cursor, "other")).toThrow("Cursor de expedientes invalido o de otra busqueda.");
+        expect(() => decodeUnitCursor(cursor, unitFilterKey({ projectIds, moduleCode: "administration", limit: 50, codeMatch: "ff03" }))).toThrow("Cursor de expedientes invalido o de otra busqueda.");
+        expect(() => decodeUnitCursor("not-json", key)).toThrow("Cursor de expedientes invalido o de otra busqueda.");
     });
     it("retains all 27 source business fields separately from identities and relationship", () => {
         expect(Object.keys(UNIT_FIELDS)).toHaveLength(27);

@@ -1,4 +1,4 @@
-/** Versioned business snapshots. Credentials and arbitrary metadata are never accepted. */
+/** Snapshot de negocio versionado. No acepta credenciales ni metadata arbitraria. */
 export interface AuditChangeSet {
     version: 1;
     entity: string;
@@ -12,14 +12,14 @@ export interface AuditChangeSet {
 const SAFE_FIELDS = new Set(["name", "displayName", "email", "detail", "description", "status", "deleted", "roleCodes", "orgUnitCodes", "moduleCodes", "moduleScoped", "permissionInheritance", "accessMethods", "permissionCodes", "permissionOverrides", "externalReferences"]);
 const BANK_FIELDS = new Set(["phone", "area", "version", "bankPublicId"]);
 const RELATION_FIELDS = new Set(["systemCode", "externalId", "externalUserId", "externalUsername", "status", "permissionCode", "code", "effect"]);
-/** The part of a changeset the record-audit bridge reads. */
+/** Lo que el puente lee del cambio. El resto del objeto no se persiste por esta via. */
 type RecordAuditSourceChange = Readonly<Pick<AuditChangeSet, "entity" | "recordId" | "action" | "before" | "after">>;
-/** Server-built changesets are tracked here so client-made lookalikes are rejected. */
+/** Solo un objeto armado aqui queda registrado. Un JSON igual, venido del cliente, no. */
 const sourceChanges = new WeakMap<AuditChangeSet, RecordAuditSourceChange>();
-/** Scalars allowed in snapshots: null, string, boolean and finite number. */
+/** Nulo, texto, booleano o numero finito. Otro escalar se descarta al normalizar. */
 const isSafeScalar = (value: unknown): boolean => value === null || typeof value === "string" || typeof value === "boolean" || (typeof value === "number" && Number.isFinite(value));
 
-/** Reduces nested values to allowed relation fields and sorts arrays for stable comparison. */
+/** En un objeto anidado solo quedan campos de relacion. Los arreglos se ordenan para que el orden no parezca un cambio. */
 const normalizeValue = (value: unknown, sortArrays = true): unknown => {
     if (isSafeScalar(value)) return value;
     if (Array.isArray(value)) {
@@ -36,7 +36,7 @@ const normalizeValue = (value: unknown, sortArrays = true): unknown => {
     return null;
 };
 
-/** Keeps only allow-listed fields so secrets and unknown data never reach the audit. */
+/** Lista cerrada. Telefono, area y version solo entran en banco o asesor. Lo demas no llega a la bitacora. */
 const snapshot = (value: Record<string, unknown> | null, sortArrays = true, entity?: string): Record<string, unknown> | null =>
     value === null
         ? null
@@ -46,14 +46,14 @@ const snapshot = (value: Record<string, unknown> | null, sortArrays = true, enti
                   .map(([key, item]) => [key, normalizeValue(item, sortArrays)]),
           );
 
-/** Only server-built objects carry captured identity/action and partial safe evidence; serialized lookalikes do not. */
+/** Lee la copia registrada y no reordena arreglos: el puente conserva el orden de negocio. Un parecido serializado no esta en el mapa. */
 export const getRecordAuditSourceChange = (value: unknown): RecordAuditSourceChange | undefined => {
     if (value === null || typeof value !== "object") return undefined;
     const source = sourceChanges.get(value as AuditChangeSet);
     return source ? Object.freeze({ entity: source.entity, recordId: source.recordId, action: source.action, before: snapshot(source.before, false, source.entity), after: snapshot(source.after, false, source.entity) }) : undefined;
 };
 
-/** Compare detached safe snapshots while ignoring collection ordering. Call inside the mutation transaction. */
+/** Compara snapshots ya filtrados. El orden de una coleccion no cuenta como cambio. Tiene que correr dentro de la transaccion. */
 export const buildAuditChangeSet = (input: Omit<AuditChangeSet, "version" | "changes">): AuditChangeSet => {
     const before = snapshot(input.before, true, input.entity);
     const after = snapshot(input.after, true, input.entity);

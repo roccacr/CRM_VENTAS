@@ -1,5 +1,13 @@
 # Detalle de orden y cliente básico
 
+## Ajustes de la copia de trabajo al 10 de noviembre de 2026
+
+El encabezado del drawer integra los marcadores compactos de Adéndum y Fondos de compra. El primero conserva los permisos de lectura, modificación y envío. El segundo abre el editor solo con la autorización de etapa y relee la orden antes de guardar. El marcador de Adéndum mantiene su estado separado de la etapa y del evento del calendario.
+
+El recorrido añade checks de NetSuite agrupados en Aprobaciones, Contrato y pagos, Traspaso y entrega y Alerta. Cada check diferencia marcado, desmarcado y sin dato. «Traspaso firmado» puede mostrar una advertencia para registrar la firma manual desde «Traspasos pendientes» si NetSuite todavía no confirma el traspaso. La UI conserva las condiciones de cuotas, llaves y entrega que imponga el API y presenta el aviso al confirmar. El banner «Formalizaciones cerradas este año» se apoya en la fecha de entrega de NetSuite, con el cierre de Habita como alternativa cuando no hay fecha. El intervalo usa la hora de Costa Rica.
+
+Si el seguimiento no devuelve filas para un número de orden válido, sin filtros de proyecto o bandeja, «Extraer de NetSuite» se ofrece con lectura de orden y actualización de etapa efectivas. El usuario inicia la acción mediante el botón y el API resuelve `tranid`. En éxito se recarga el seguimiento. Este comportamiento y sus campos requieren el contrato del API de la misma revisión. Ver [corte 33](33-Reconciliacion-Frontend-20261110.md) para su estado de publicación.
+
 ## Adéndum: motivo y envío independientes de la etapa
 
 La marca manual exige motivo de3..2000 caracteres. «Marcar adéndum como enviado» requiere lectura efectiva de la orden y del adéndum; no necesita permiso de completar/cancelar. La ficha muestra Condición y Motivo; enviado sigue distinto de completado y no mueve etapas. Un evento nuevo/conversión de tipo Adéndum usa su descripción como motivo obligatorio. Contrato, esquema072 y evidencia en [88 API](../../api/Arquitectura/88-Adendum-Motivo-y-Envio.md).

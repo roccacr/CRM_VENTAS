@@ -63,6 +63,10 @@ export const getDevelopmentNetworkApiOrigin = (apiOrigin: string, currentHref: s
 const resolveApiOrigin = (): string => {
     const configuredOrigin = import.meta.env.VITE_API_ORIGIN?.trim();
 
+    if (configuredOrigin === "same-origin") {
+        return window.location.origin;
+    }
+
     if (configuredOrigin) {
         const apiOrigin = normalizeOrigin(configuredOrigin);
         return getDevelopmentNetworkApiOrigin(apiOrigin, readCurrentHref()) ?? apiOrigin;

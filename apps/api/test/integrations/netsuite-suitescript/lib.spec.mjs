@@ -361,6 +361,32 @@ describe("EnviarEvento.sendRecordEvent", () => {
         expect(read).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();
     });
+    it.each([
+        [null, "https://api-habita.rdghub.com/integrations/netsuite/production/order-events"],
+        ["  ", "https://api-habita.rdghub.com/integrations/netsuite/production/order-events"],
+        [GOOD_URL, GOOD_URL + "/order-events"],
+        ["http://example.test", null],
+    ])("resolves the production URL for parameter %j", (parameter, expectedUrl) => {
+        const { send, https } = setup({ runtime: runtimeMock({ envType: "PRODUCTION", accountId: "4552704", parameter }) });
+        const result = send(EVENT, snapshot);
+        if (expectedUrl === null) {
+            expect(result.status).toBe("destination_blocked");
+            expect(https.post).not.toHaveBeenCalled();
+        } else {
+            expect(https.post).toHaveBeenCalledOnce();
+            expect(https.post.mock.calls[0][0].url).toBe(expectedUrl);
+        }
+    });
+    it("uses the production secret ID only for the official receiver when the parameter is blank", () => {
+        const production = { envType: "PRODUCTION", accountId: "4552704", secretId: "" };
+        const fallback = setup({ runtime: runtimeMock({ ...production, parameter: null }) });
+        fallback.send(EVENT, snapshot);
+        expect(fallback.https.createSecureString).toHaveBeenCalledWith({ input: "Bearer {custsecret_crm_habita_production}" });
+        expect(fallback.https.post).toHaveBeenCalledOnce();
+        const other = setup({ runtime: runtimeMock({ ...production, parameter: GOOD_URL }) });
+        expect(other.send(EVENT, snapshot).status).toBe("configuration_missing");
+        expect(other.https.post).not.toHaveBeenCalled();
+    });
     it("delivers once with a secure-string reference, closed payload and the configured URL", () => {
         const first = setup();
         expect(first.send(EVENT, snapshot)).toEqual({ status: "received_local", delivered: true });

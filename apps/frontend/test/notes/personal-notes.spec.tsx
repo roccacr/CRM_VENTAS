@@ -173,7 +173,8 @@ it("keeps movement interactive and saves only the latest queued position with th
 it("keeps other notes movable and retries uncertain placement with its original operation", async () => {
     vi.mocked(saveNotePlacement).mockRejectedValueOnce(new ApiClientError("Unavailable", 503, null));
     const other = { ...note, id: "01K00000000000000000000001", title: "Segunda nota" };
-    vi.mocked(getNotes).mockResolvedValue({ items: [note, other], total: 2 });
+    const placement = { viewportClass: "tablet" as const, anchorMode: "context" as const, x: 40, y: 160, width: 300, height: 230, collapsed: false, hidden: false, layoutVersion: 0 };
+    vi.mocked(getNotes).mockResolvedValue({ items: [{ ...note, myPlacements: [placement] }, other], total: 2 });
     view();
     fireEvent.keyDown(await screen.findByRole("button", { name: "Mover nota Llamar al cliente" }), { key: "ArrowRight" });
     const retry = await screen.findByRole("button", { name: "Reintentar posición de nota Llamar al cliente" });

@@ -3,6 +3,7 @@ import { sql, type Transaction } from "kysely";
 
 import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
+import { formalizationClosedThisYear } from "./formalization-closure.query.js";
 import { type HomeSummaryPeriod, type RecentOrderActivity, type StageAggregateRow, stageCountsFromRow } from "./home-summary.types.js";
 
 /** Reads current stage truth and confirmed contract signature without cached counters. */
@@ -51,17 +52,14 @@ export class HomeSummaryRepository {
                 SUM(approved AND COALESCE(stage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send')) AS toSend,
                 SUM(approved AND stage='contract_pending_signature') AS pendingSignature,
                 SUM(contract_signed AND stage='bank_management') AS banking, SUM(contract_signed AND stage='bank_management_in_progress') AS bankingInProgress, SUM(contract_signed AND stage='pending_balance') AS balance,
-                SUM(contract_signed AND stage='pending_transfer' AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0) AS transferPending, SUM(contract_signed AND stage='transfer_signed' AND installments_paid=1 AND unit_transferred=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned,
-                SUM(contract_signed AND completed_this_year AND unit_delivered=1) AS closedThisYear
+                SUM(contract_signed AND stage='pending_transfer' AND installments_paid=1) AS transferPending, SUM(contract_signed AND stage='transfer_signed' AND installments_paid=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned,
+                SUM(contract_signed AND completed_this_year) AS closedThisYear
             FROM (
                 SELECT e.to_state_code_sales_order_state_event AS stage, COALESCE(o.contract_signed_sales_order='yes',0) AS contract_signed,
                     CASE o.installments_fully_paid_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS installments_paid,
-                    CASE o.unit_transferred_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS unit_transferred,
                     CASE o.keys_delivered_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS keys_delivered,
                     CASE o.unit_delivered_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS unit_delivered,
-                    EXISTS(SELECT 1 FROM audit_sales_order_state_event closed_event
-                        WHERE closed_event.sales_order_id_sales_order_state_event=o.id_sales_order AND closed_event.to_state_code_sales_order_state_event='closed'
-                        AND closed_event.effective_at_sales_order_state_event >= ${period.start.slice(0, 23).replace("T", " ")} AND closed_event.effective_at_sales_order_state_event < ${period.endExclusive.slice(0, 23).replace("T", " ")}) AS completed_this_year,
+                    ${formalizationClosedThisYear("native", period)} AS completed_this_year,
                     (SELECT COUNT(*) FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order
                      AND a.type_code_sales_order_approval='formalization' AND a.status_sales_order_approval='approved')=1 AS approved
                 FROM crm_sales_order o

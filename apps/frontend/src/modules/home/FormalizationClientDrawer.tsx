@@ -92,7 +92,7 @@ function ClientContent({ item, onRetry, effectivePermissions, onNavigate, onCale
             {data.groups
                 .filter((group) => !contactOnly || group.title === "Contacto")
                 .map((group) => (
-                    <Card key={group.title} size="small" title={group.title}>
+                    <Card key={group.title} size="small" title={group.title} className="formalization-compact-card formalization-compact-card--rows">
                         <Descriptions column={1} colon={false} size="small" items={group.fields.map((field) => ({ key: field.label, label: field.label, children: field.value === "Sin dato" ? <span className="client-detail__empty">Sin dato</span> : field.value }))} />
                     </Card>
                 ))}

@@ -11,13 +11,13 @@ import { Kysely } from "kysely";
 import { LEGACY_CRM_DATABASE } from "./legacy-crm.config.js";
 
 /**
- *
+ * El provider existe aunque la conexion sea `null`. Identidad puede arrancar
+ * sin la base vieja. El tipo es `unknown`: estas columnas no son el contrato
+ * del CRM nuevo.
  */
 @Injectable()
 export class LegacyCrmDatabaseService implements OnModuleDestroy {
-    /**
-     * @param legacyDatabase - Pool de solo lectura, o `null` si el fallback está apagado
-     */
+    /** Pool de solo lectura, o `null` si el fallback no se abrio. */
     constructor(@Inject(LEGACY_CRM_DATABASE) private readonly legacyDatabase: Kysely<unknown> | null) {}
 
     /** `true` solo cuando la fábrica llegó a abrir el pool. */

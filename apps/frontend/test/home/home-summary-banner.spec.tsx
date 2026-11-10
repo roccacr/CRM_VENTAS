@@ -45,7 +45,7 @@ it("shows keyboard-accessible condition help beside every banner without opening
     expect(tooltip.textContent).toContain("Aprobación Formalización marcada");
     expect(tooltip.textContent).toContain("Por enviar o Pendiente de firma");
     fireEvent.click(screen.getByRole("button", { name: "Condiciones de Pendientes de aprobación" }));
-    expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Formalización", level: 1 })).toBeInTheDocument();
 });
 
 it.each([undefined, [], [{ code: "formalizacion.home.approvals.read", effect: "deny" as const }], [{ ...stagePermission, effect: "deny" as const }], [stagePermission, { ...stagePermission, effect: "deny" as const }]])("requires the stages effective allow and honors deny before mount, query or refresh: %j", (permissions) => {
@@ -62,7 +62,7 @@ it.each([true, false])("uses effective grants regardless of Owner inherited role
     const owner = { ...role, code: "owner", name: "Owner" };
     render(<FormalizationHomePage roles={hasFormalization ? [owner, role] : [owner]} effectivePermissions={[stagePermission]} />);
     await screen.findByLabelText("Valor: Por enviar, 6");
-    expect(screen.getByRole("button", { name: "Recargar banners" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Recargar banners" })).toBeInTheDocument();
     expect(getHomeSummary).toHaveBeenCalledTimes(1);
 });
 
@@ -107,8 +107,8 @@ it("refreshes authorized banners and ignores an approval response superseded by 
     const refresh = screen.getByRole("button", { name: "Recargar banners" });
     fireEvent.click(refresh);
     fireEvent.click(refresh);
-    for (const label of labels) expect(screen.getByRole("status", { name: `Cargando ${label}` })).toBeTruthy();
-    expect(screen.getByRole("status", { name: "Cargando pendientes de aprobación" })).toBeTruthy();
+    for (const label of labels) expect(screen.getByRole("status", { name: `Cargando ${label}` })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Cargando pendientes de aprobación" })).toBeInTheDocument();
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
     expect(getApprovalCount).toHaveBeenCalledTimes(3);
     await act(async () => {
@@ -117,7 +117,7 @@ it("refreshes authorized banners and ignores an approval response superseded by 
         await Promise.resolve();
     });
     await screen.findByLabelText("Valor: Por enviar, 5");
-    expect(screen.getByLabelText("Órdenes pendientes de aprobación: 1")).toBeTruthy();
+    expect(screen.getByLabelText("Órdenes pendientes de aprobación: 1")).toBeInTheDocument();
     await act(async () => {
         approvalResponses[0]?.(9);
         await Promise.resolve();
@@ -167,7 +167,7 @@ it("shares one StrictMode request and preloads all eight numbers", async () => {
             <FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />
         </StrictMode>,
     );
-    for (const label of labels) expect(screen.getByRole("status", { name: `Cargando ${label}` })).toBeTruthy();
+    for (const label of labels) expect(screen.getByRole("status", { name: `Cargando ${label}` })).toBeInTheDocument();
     expect(getHomeSummary).toHaveBeenCalledTimes(1);
     await act(async () => {
         resolve(summary);
@@ -193,7 +193,7 @@ it("refreshes on visible focus, deduplicates, clears in queues and refetches on 
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
     fireEvent.focus(window);
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeInTheDocument();
     rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} initialView="orders" />);
     fireEvent.focus(window);
     await act(async () => {
@@ -243,7 +243,7 @@ it("marks every rejected source metric unverified and retries the common aggrega
         }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Reintentar Gestión bancaria" }));
-    for (const label of labels) expect(screen.getByRole("status", { name: `Cargando ${label}` })).toBeTruthy();
+    for (const label of labels) expect(screen.getByRole("status", { name: `Cargando ${label}` })).toBeInTheDocument();
     fireEvent.focus(window);
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
     await act(async () => {
@@ -303,7 +303,7 @@ it("does not let a disabled request overwrite a new Home read or release its fli
         oldResolve(summary);
         await Promise.resolve();
     });
-    expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Cargando Por enviar" })).toBeInTheDocument();
     fireEvent.focus(window);
     expect(getHomeSummary).toHaveBeenCalledTimes(2);
     await act(async () => {

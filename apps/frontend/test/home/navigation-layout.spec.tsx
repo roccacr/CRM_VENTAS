@@ -60,16 +60,19 @@ afterEach(() => {
     vi.unstubAllEnvs();
 });
 
-it("shows the Habita version and release revision next to both logos", () => {
-    vi.stubEnv("VITE_HABITA_RELEASE", "20261109180000-48b7707-local");
+it.each([
+    ["20261109180000-48b7707-local", "48b7707"],
+    ["a8cfa4a8d7349273f5587a52e4ad7a2a7ceb53f6", "a8cfa4a"],
+])("shows the Habita version and release revision next to both logos for %s", (release, revision) => {
+    vi.stubEnv("VITE_HABITA_RELEASE", release);
     installBrowserApiDoubles();
     render(<GlobalHomeShell initialWorkspaceCode="all">Content</GlobalHomeShell>);
 
-    const badges = screen.getAllByTitle("Habita v2.0.0 · Release 20261109180000-48b7707-local");
+    const badges = screen.getAllByTitle(`Habita v2.0.1 · Release ${release}`);
     expect(badges).toHaveLength(2);
     for (const badge of badges) {
         expect(badge.previousElementSibling?.tagName).toBe("IMG");
-        expect(badge.textContent).toBe("v2.0.048b7707");
+        expect(badge.textContent).toBe(`v2.0.1${revision}`);
     }
 });
 

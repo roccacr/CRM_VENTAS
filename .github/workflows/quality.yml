@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref_name != vars.HABITA_RELEASE_BRANCH }}
 
 jobs:
   quality:
@@ -37,16 +37,76 @@ jobs:
           cache: pnpm
           cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
+      - run: pnpm format:check && pnpm lint && pnpm typecheck
       - run: pnpm test:coverage
+      - run: pnpm build
+        env:
+          VITE_API_ORIGIN: same-origin
+          VITE_HABITA_RELEASE: ${{ github.sha }}
       - name: Upload measured source coverage
-        if: always()
+        if: always() && hashFiles(format('apps/{0}/coverage/**/*', matrix.app)) != ''
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: coverage-${{ matrix.app }}
           path: apps/${{ matrix.app }}/coverage
           if-no-files-found: error
           retention-days: 7
+
+      - name: Preserve the build verified by CI
+        if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && (vars.HABITA_QA_ENABLED == 'true' || vars.HABITA_PRODUCTION_ENABLED == 'true')
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: habita-build-${{ matrix.app }}
+          path: apps/${{ matrix.app }}/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  package-habita:
+    if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && (vars.HABITA_QA_ENABLED == 'true' || vars.HABITA_PRODUCTION_ENABLED == 'true')
+    needs: [quality, dependency-audit, habita-netsuite]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: habita-build-api
+          path: apps/api/dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: habita-build-frontend
+          path: apps/frontend/dist
+      - name: Package and record commit and SHA-256
+        run: python3 deploy/habita/package-ci-release.py release-package
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: habita-release
+          path: release-package/
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy-qa:
+    if: vars.HABITA_QA_ENABLED == 'true'
+    needs: package-habita
+    uses: ./.github/workflows/habita-promote.yml
+    with:
+      target: habita-qa
+
+  deploy-production:
+    if: >-
+      ${{ !cancelled() &&
+      vars.HABITA_PRODUCTION_ENABLED == 'true' &&
+      needs.package-habita.result == 'success' &&
+      (needs.deploy-qa.result == 'success' ||
+       (vars.HABITA_QA_ENABLED != 'true' && needs.deploy-qa.result == 'skipped')) }}
+    needs: [package-habita, deploy-qa]
+    uses: ./.github/workflows/habita-promote.yml
+    with:
+      target: production
+    secrets:
+      KAPSO_SSH_KEY: ${{ secrets.SCADMINAPIS }}
 
   dependency-audit:
     name: Dependencies / ${{ matrix.app }}

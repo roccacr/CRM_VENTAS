@@ -53,7 +53,7 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
 const MUTATIONS = new Set(["create", "update", "deactivate", "reactivate", "delete"]);
 const text = (value: unknown): string | null => (typeof value === "string" && value.length > 0 && value !== "null" ? value : null);
 
-/** Only recorded role code/name pairs are returned; current role memberships are never consulted. */
+/** Roles congelados en el evento. No se consulta la membresia actual. Un JSON roto deja los roles en nulo. */
 function historicalRoles(value: unknown) {
     try {
         const parsed = rolesSchema.safeParse(typeof value === "string" ? JSON.parse(value) : value);
@@ -100,7 +100,11 @@ function recordedAction(row: AuditContextRow, versioned: boolean) {
     return { action, actionLabel: ACTION_LABELS[action] ?? "Acción no registrada" };
 }
 
-/** Shared list/detail context from scalar projections, never guessed from filters or mutable record names. */
+/**
+ * El contexto sale de lo grabado. La version 1 con id usa el snapshot. Si no,
+ * catalogo, rol o usuario salen de los campos viejos. Una accion desconocida
+ * se rotula "Acción no registrada" y no se muestra el codigo crudo.
+ */
 export function buildAuditReadContext(row: AuditContextRow) {
     const versioned = row.recordVersion === 1 || row.recordVersion === "1";
     return { actorPublicId: text(row.actorPublicId), actorRoles: historicalRoles(row.actorRoles), ...locationContext(row), record: historicalRecord(row, versioned && Boolean(text(row.recordId))), ...recordedAction(row, versioned) };

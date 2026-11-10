@@ -1,9 +1,8 @@
-// ============================================================================
-// Catalogo de eventos de auditoria de seguridad.
-//
-// Mantener los codigos centralizados evita textos sueltos en servicios y hace
-// mas facil auditar cambios futuros de identidad.
-// ============================================================================
+/**
+ * Codigos cerrados de seguridad. Un servicio no inventa el texto del evento.
+ * El fallo de login no dice si el correo existe. El reuso de refresh y la
+ * interaccion de Microsoft revocan sesiones; eso queda en el resumen.
+ */
 
 /** Evento registrado cuando se recibe una solicitud neutral de reset local. */
 export const LOCAL_RESET_REQUESTED_EVENT = {

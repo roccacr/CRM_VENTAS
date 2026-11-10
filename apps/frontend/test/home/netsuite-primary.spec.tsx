@@ -12,7 +12,7 @@ const result: NetsuiteOrderResult = {
     order: { source: "legacy", id: "legacy:208", netsuiteId: "11998725" },
     data: {
         status: 200,
-        data: { id: "11998725", type: "salesorder", fields: { initialtranid: "RDR673", trandate: "31/01/2025", custbody68: "17/03/2025", currency: "1", currencyname: "US Dollar", memo: "--", custbody90: "T", custbody51: "T", custbody91: "F", custbody105: "F", custbody43: "F", custbody103: "F", custbody_ix_comision_pagada: "F", custbody_entrega_de_llaves: "F", custbody274: "F", shipdate: "31/01/2025", department: "15" } },
+        data: { id: "11998725", type: "salesorder", fields: { initialtranid: "RDR673", trandate: "31/01/2025", custbody68: "17/03/2025", currency: "1", currencyname: "US Dollar", memo: "--", custbody90: "T", custbody_cuotas_pagadas: "T", custbody51: "T", custbody91: "F", custbody105: "F", custbody43: "F", custbody103: "F", custbody_ix_comision_pagada: "F", custbody_entrega_de_llaves: "F", custbody274: "F", shipdate: "31/01/2025", department: "15" } },
         cli: JSON.stringify("112829 Francisco Yau Cheng"),
         Subsidaria: JSON.stringify("Rocca Desarrollos Residenciales"),
         Departamento: JSON.stringify("Ventas"),
@@ -30,16 +30,17 @@ it("projects the exact RESTlet nesting and decodes display strings without using
     expect(mapped.fields["Lectura del medidor de agua"]).toBeNull();
     expect(mapped.checks).toMatchObject({ "Contrato firmado": true, "Cierre firmado": true, "Unidad entregada": false, "Comisión aprobada": false, "Comisión cancelada": false });
 });
-it("keeps absent checks unknown instead of inventing unchecked answers", () => {
-    const mapped = readNetsuitePrimary({ ...result, data: { status: 200, data: { type: "salesorder", fields: { initialtranid: "RDR1", currency: "1" } } } });
+it("keeps absent checks unknown and decodes unchecked payments", () => {
+    const mapped = readNetsuitePrimary({ ...result, data: { status: 200, data: { type: "salesorder", fields: { initialtranid: "RDR1", currency: "1", custbody_cuotas_pagadas: "F" } } } });
     expect(mapped.fields.Moneda).toBeNull();
     expect(mapped.checks["Contrato firmado"]).toBeNull();
+    expect(mapped.checks["Cuotas pagadas por completo"]).toBe(false);
 });
 it("rejects a provider record for another transaction and malformed upstream data", () => {
     expect(() => readNetsuitePrimary({ ...result, order: { ...result.order, netsuiteId: "999" } })).toThrow();
     expect(() => readNetsuitePrimary({ ...result, data: { status: 500 } })).toThrow();
 });
-it("fills only primary information and the nine approved checks, keeping database highlights and other sections untouched", () => {
+it("fills primary information and the approved checks, keeping database highlights and other sections untouched", () => {
     render(<FormalizationRecordSummary item={order} primary={readNetsuitePrimary(result)} />);
     const section = screen.getByRole("region", { name: "Información primaria" });
     expect(within(section).getByText("112829 Francisco Yau Cheng")).toBeInTheDocument();
@@ -48,6 +49,7 @@ it("fills only primary information and the nine approved checks, keeping databas
     expect(screen.getByLabelText("Datos clave de la orden")).toHaveTextContent("Cliente según BD");
     const margin = screen.getByRole("complementary");
     expect(within(margin).getByRole("list", { name: "Hitos de la orden" })).toHaveTextContent("Contrato firmadoSí");
+    expect(within(margin).getByRole("list", { name: "Hitos de la orden" })).toHaveTextContent("Cuotas pagadas por completoSí");
     expect(within(margin).getByRole("list", { name: "Hitos de la orden" })).toHaveTextContent("Unidad entregadaNo");
     expect(within(margin).getByRole("list", { name: "Aprobaciones" })).toHaveTextContent("Aprobación jefe de ventasSin dato");
     for (const label of ["Autorización de venta"]) for (const value of screen.getByRole("region", { name: label }).querySelectorAll("dd")) expect(value).toHaveTextContent("Sin dato");

@@ -31,7 +31,7 @@ describe("Unit Files HTTP criteria validation without emitted decorator metadata
     it("rejects unfiltered and excessive requests before reaching the service", async () => {
         service.list.mockClear();
         expect((await app.inject({ method: "GET", url: "/unit-files?moduleCode=administration" })).statusCode).toBe(400);
-        expect((await app.inject({ method: "GET", url: "/unit-files?moduleCode=administration&projectIds=01M4RCK911NS2ZNCRYPBD40B9W&limit=200" })).statusCode).toBe(400);
+        expect((await app.inject({ method: "GET", url: "/unit-files?moduleCode=administration&projectIds=01M4RCK911NS2ZNCRYPBD40B9W&limit=501" })).statusCode).toBe(400);
         expect(service.list).not.toHaveBeenCalled();
     });
     it("retains code matching and exact unit criteria independently", async () => {

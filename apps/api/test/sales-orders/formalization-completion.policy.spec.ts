@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type CompletionFlags, formalizationCompletionTarget } from "../../src/modules/crm/sales/sales-orders/formalization-completion.policy.js";
+import { type CompletionFlags, formalizationCompletionTarget, netsuiteFormalizationTarget } from "../../src/modules/crm/sales/sales-orders/formalization-completion.policy.js";
 
 describe("combinaciones de cierre aprobadas por el propietario", () => {
     const combinations = [
@@ -39,4 +39,12 @@ describe("combinaciones de cierre aprobadas por el propietario", () => {
     it("Unidad entregada cierra aunque los demás valores sean desconocidos", () => {
         expect(formalizationCompletionTarget({ installmentsFullyPaid: null, unitTransferred: null, keysDelivered: null, unitDelivered: true })).toBe("closed");
     });
+});
+
+it.each([
+    ["own_funds", "pending_balance"],
+    ["bank_financing", "bank_management"],
+    [null, "bank_management"],
+] as const)("reconciles a signed order without payment evidence for %s", (purchaseFundsOrigin, expected) => {
+    expect(netsuiteFormalizationTarget({ installmentsFullyPaid: null, unitTransferred: null, unitDelivered: null, purchaseFundsOrigin })).toBe(expected);
 });

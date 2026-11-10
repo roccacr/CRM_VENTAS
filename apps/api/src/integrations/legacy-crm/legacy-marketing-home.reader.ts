@@ -7,22 +7,23 @@ import type { MarketingHomeLegacyReader } from "../../modules/crm/marketing/mark
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 import { readLegacyAppointments } from "./legacy-marketing-appointments.reader.js";
 
-/** Aggregates old lead rows without copying them. Calendar evidence is aggregate-only; no customer contact fields are read. */
+/**
+ * Agregado de marketing. No copia filas ni lee datos de contacto.
+ *
+ * Un lead sombreado con exactamente una coincidencia de proveedor es duplicado.
+ * Sombreado con mas de una coincidencia es ambiguo. El resto cuenta como lead,
+ * aunque su referencia no sea unica. El correo y el nombre del dueno salen solo
+ * si ese id de NetSuite tiene un solo correo distinto. Pasar de 50000 grupos lanza.
+ */
 @Injectable()
 export class LegacyMarketingHomeReader implements MarketingHomeLegacyReader {
-    /**
-     *
-     */
+    /** El pool solo responde `enabled`. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
-    /**
-     *
-     */
+    /** El pool existe. No enciende escrituras. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
-    /**
-     *
-     */
+    /** El dia vuelve de `dayNumber * 86400000` en UTC. El proveedor publicado es `netsuite`. */
     async read(tx: Transaction<CrmDatabase>, window: MarketingWindow): Promise<LegacyMarketingData> {
         const result = await sql<Omit<LegacyMarketingRow, "date"> & { dayNumber: number | string }>`
             SELECT /*+ MAX_EXECUTION_TIME(5000) */ dayNumber,sellerReference,projectReference,MAX(projectName) AS projectName,

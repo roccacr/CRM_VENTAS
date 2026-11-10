@@ -35,10 +35,10 @@ const columns = sql`id_campaign AS id, public_id_campaign AS publicId, native_co
 /**
  * Rechaza paginación que no quepa en un entero de MySQL.
  *
- * El tope de 200 evita traer el catálogo completo en una sola respuesta.
+ * El tope de 500 evita traer el catálogo completo en una sola respuesta.
  */
 const validatePagination = (limit: number, offset: number): void => {
-    if (!Number.isInteger(limit) || limit < 1 || limit > 200 || !Number.isInteger(offset) || offset < 0 || offset > 2147483647) throw new BadRequestException("Invalid campaign pagination.");
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500 || !Number.isInteger(offset) || offset < 0 || offset > 2147483647) throw new BadRequestException("Invalid campaign pagination.");
 };
 
 /** La clave única de la referencia choca cuando otra campaña ya posee ese id externo. */

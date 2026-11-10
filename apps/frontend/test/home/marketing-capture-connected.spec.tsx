@@ -178,59 +178,64 @@ it("keeps a period change in draft until Apply is pressed", async () => {
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
     expect(api.request).toHaveBeenLastCalledWith("/marketing/leads/report?period=week");
 });
-it('keeps the newest qualification response and preserves measure and depth', async () => {
-    const qualified = deferred(), unqualified = deferred();
+it("keeps the newest qualification response and preserves measure and depth", async () => {
+    const qualified = deferred(),
+        unqualified = deferred();
     api.request.mockResolvedValueOnce(captureResponse()).mockReturnValueOnce(qualified.promise).mockReturnValueOnce(unqualified.promise);
     open();
-    await screen.findByRole('button', { name: 'Ver desglose en tabla' });
-    fireEvent.click(screen.getByRole('button', { name: 'Leads con cita' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Proyecto › Campaña' }));
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    fireEvent.click(screen.getByRole("button", { name: "Leads con cita" }));
+    fireEvent.click(screen.getByRole("button", { name: "Proyecto › Campaña" }));
     const choose = async (name: string) => {
-        fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Filtrar por calificación' }));
-        fireEvent.click(await screen.findByRole('option', { name }));
+        fireEvent.mouseDown(screen.getByRole("combobox", { name: "Filtrar por calificación" }));
+        fireEvent.click(await screen.findByRole("option", { name }));
     };
-    await choose('Calificado');
-    expect(screen.queryByRole('figure')).not.toBeInTheDocument();
-    await choose('No calificado');
-    await act(async () => { unqualified.resolve({ ...captureResponse(), qualification: 'unqualified' }); await unqualified.promise; });
-    expect(await screen.findByRole('figure', { name: 'Leads con cita por proyecto y campaña · por mes' })).toBeInTheDocument();
-    await act(async () => { qualified.resolve({ ...captureResponse(), qualification: 'qualified' }); await qualified.promise; });
-    expect(screen.getByRole('combobox', { name: 'Filtrar por calificación' })).toBeInTheDocument();
-    expect(screen.getByRole('figure', { name: 'Leads con cita por proyecto y campaña · por mes' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Leads con cita' })).toHaveAttribute('aria-pressed', 'true');
+    await choose("Calificado");
+    expect(screen.queryByRole("figure")).not.toBeInTheDocument();
+    await choose("No calificado");
+    await act(async () => {
+        unqualified.resolve({ ...captureResponse(), qualification: "unqualified" });
+        await unqualified.promise;
+    });
+    expect(await screen.findByRole("figure", { name: "Leads con cita por proyecto y campaña · por mes" })).toBeInTheDocument();
+    await act(async () => {
+        qualified.resolve({ ...captureResponse(), qualification: "qualified" });
+        await qualified.promise;
+    });
+    expect(screen.getByRole("combobox", { name: "Filtrar por calificación" })).toBeInTheDocument();
+    expect(screen.getByRole("figure", { name: "Leads con cita por proyecto y campaña · por mes" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Leads con cita" })).toHaveAttribute("aria-pressed", "true");
 });
 
-
-
-it.each(['Leads con cita', 'Leads perdidos', 'Motivos de p\u00e9rdida'])('preserves projects and period when filtering %s', async (measure) => {
-    api.request.mockResolvedValueOnce(captureResponse()).mockResolvedValueOnce({ ...captureResponse(), qualification: 'qualified' });
+it.each(["Leads con cita", "Leads perdidos", "Motivos de p\u00e9rdida"])("preserves projects and period when filtering %s", async (measure) => {
+    api.request.mockResolvedValueOnce(captureResponse()).mockResolvedValueOnce({ ...captureResponse(), qualification: "qualified" });
     open();
-    fireEvent.click(await screen.findByRole('button', { name: 'Ver desglose en tabla' }));
-    const table = await screen.findByRole('table', { name: 'Leads por proyecto' });
-    fireEvent.click(within(table).getByRole('button', { name: 'Proyecto Roble' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    fireEvent.click(within(screen.getByRole('group', { name: 'Qu\u00e9 medir' })).getByRole('button', { name: measure }));
-    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Filtrar por calificaci\u00f3n' }));
-    fireEvent.click(await screen.findByRole('option', { name: 'Calificado' }));
-    await screen.findByRole('button', { name: 'Ver desglose en tabla' });
-    expect(screen.getByRole('combobox', { name: 'Periodo' })).toHaveValue('month');
-    expect(within(screen.getByRole('group', { name: 'Qu\u00e9 medir' })).getByRole('button', { name: measure })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('1 proyecto')).toBeInTheDocument();
-    expect(api.request).toHaveBeenLastCalledWith('/marketing/leads/report?period=month&qualification=qualified');
+    fireEvent.click(await screen.findByRole("button", { name: "Ver desglose en tabla" }));
+    const table = await screen.findByRole("table", { name: "Leads por proyecto" });
+    fireEvent.click(within(table).getByRole("button", { name: "Proyecto Roble" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Qu\u00e9 medir" })).getByRole("button", { name: measure }));
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Filtrar por calificaci\u00f3n" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Calificado" }));
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    expect(screen.getByRole("combobox", { name: "Periodo" })).toHaveValue("month");
+    expect(within(screen.getByRole("group", { name: "Qu\u00e9 medir" })).getByRole("button", { name: measure })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("1 proyecto")).toBeInTheDocument();
+    expect(api.request).toHaveBeenLastCalledWith("/marketing/leads/report?period=month&qualification=qualified");
 });
-it('keeps an empty project intersection instead of widening to other projects', async () => {
+it("keeps an empty project intersection instead of widening to other projects", async () => {
     const response = captureResponse();
-    const rows = response.rows.filter((row) => row.projectId !== 'roble');
-    api.request.mockResolvedValueOnce(response).mockResolvedValueOnce({ ...response, qualification: 'qualified', rows, sources: { ...response.sources, legacy: rows.reduce((sum, row) => sum + row.leads, 0) } });
+    const rows = response.rows.filter((row) => row.projectId !== "roble");
+    api.request.mockResolvedValueOnce(response).mockResolvedValueOnce({ ...response, qualification: "qualified", rows, sources: { ...response.sources, legacy: rows.reduce((sum, row) => sum + row.leads, 0) } });
     open();
-    fireEvent.click(await screen.findByRole('button', { name: 'Ver desglose en tabla' }));
-    fireEvent.click(within(await screen.findByRole('table', { name: 'Leads por proyecto' })).getByRole('button', { name: 'Proyecto Roble' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Filtrar por calificaci\u00f3n' }));
-    fireEvent.click(await screen.findByRole('option', { name: 'Calificado' }));
-    await screen.findByRole('button', { name: 'Ver desglose en tabla' });
-    expect(screen.getByText('1 proyecto')).toBeInTheDocument();
-    expect(document.querySelector('.capture-block__aside')).toHaveTextContent('0 leads');
-    fireEvent.click(screen.getByRole('button', { name: 'Quitar selecci\u00f3n' }));
-    expect(document.querySelector('.capture-block__aside')).not.toHaveTextContent(/^0 leads$/);
+    fireEvent.click(await screen.findByRole("button", { name: "Ver desglose en tabla" }));
+    fireEvent.click(within(await screen.findByRole("table", { name: "Leads por proyecto" })).getByRole("button", { name: "Proyecto Roble" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Filtrar por calificaci\u00f3n" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Calificado" }));
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    expect(screen.getByText("1 proyecto")).toBeInTheDocument();
+    expect(document.querySelector(".capture-block__aside")).toHaveTextContent("0 leads");
+    fireEvent.click(screen.getByRole("button", { name: "Quitar selecci\u00f3n" }));
+    expect(document.querySelector(".capture-block__aside")).not.toHaveTextContent(/^0 leads$/);
 });

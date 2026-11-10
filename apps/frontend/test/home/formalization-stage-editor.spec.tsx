@@ -94,26 +94,26 @@ it("allows the initial pending-send stage with three approvals and version zero"
 });
 it("explains a permission restriction without implying missing approvals", () => {
     show(item, false);
-    expect(screen.getByText("No tienes permiso para cambiar la etapa.")).toBeTruthy();
+    expect(screen.getByText("No tienes permiso para cambiar la etapa.")).toBeInTheDocument();
     expect(screen.queryByText(/Faltan aprobaciones/)).toBeNull();
 });
 it("distinguishes missing approval data from approvals actually pending and offers refresh", () => {
     const value = { ...item };
     delete value.approvalsComplete;
     show(value);
-    expect(screen.getByText("Actualiza la orden para verificar sus aprobaciones.")).toBeTruthy();
+    expect(screen.getByText("Actualiza la orden para verificar sus aprobaciones.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Actualizar orden" }));
     expect(refresh).toHaveBeenCalledOnce();
 });
 it("reports genuinely incomplete approvals", () => {
     show({ ...item, approvalsComplete: false });
-    expect(screen.getByText("Faltan aprobaciones para cambiar la etapa.")).toBeTruthy();
+    expect(screen.getByText("Faltan aprobaciones para cambiar la etapa.")).toBeInTheDocument();
 });
 it("asks to refresh when the state version was not received instead of requiring prior history", () => {
     const value = { ...item };
     delete value.stateVersion;
     show(value);
-    expect(screen.getByText("Actualiza la orden para cargar su estado actual.")).toBeTruthy();
+    expect(screen.getByText("Actualiza la orden para cargar su estado actual.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Actualizar orden" }));
     expect(refresh).toHaveBeenCalledOnce();
 });
@@ -136,7 +136,7 @@ it("keeps the one-click button disabled without permission", () => {
 it.each([false, undefined])("blocks banking and later destinations without confirmed signature %s", (contractSigned) => {
     show({ ...item, state: { ...item.state, code: "contract_pending_signature" }, contractSigned });
     expect(screen.getByRole("button", { name: "Registrar siguiente etapa" }).hasAttribute("disabled")).toBe(true);
-    expect(screen.getByText("Se requiere el contrato firmado para pasar a Gestión bancaria o etapas posteriores.")).toBeTruthy();
+    expect(screen.getByText("Se requiere el contrato firmado para pasar a Gestión bancaria o etapas posteriores.")).toBeInTheDocument();
     for (const name of ["Gestión bancaria", "Pendiente de saldo", "Traspaso pendiente", "Traspaso firmado", "Formalización cerrada"]) {
         expect(screen.getByRole("option", { name }).hasAttribute("disabled")).toBe(true);
     }
@@ -167,7 +167,7 @@ it("shows the API signature conflict without claiming the order version changed"
 it("shows only the next action without the exceptional permission", () => {
     render(<FormalizationStageEditor item={item} allowed permissions={[{ code: "formalizacion.orders.stage.pending_balance", effect: "allow" }]} onSaved={saved} onRefresh={refresh} />);
     expect(screen.queryByRole("combobox")).toBeNull();
-    expect(screen.getByRole("button", { name: "Marcar gestión bancaria lista" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Marcar gestión bancaria lista" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Guardar" })).toBeNull();
 });
 it("never offers the next action when its specific permission is denied", () => {
@@ -201,7 +201,7 @@ it("confirms the next step, saves once and shows the new next action after reloa
     });
     expect(requestBody(0)).toMatchObject({ targetState: "pending_balance", expectedSequence: 3 });
     view.rerender(<FormalizationStageEditor key="v4" item={{ ...item, stateVersion: 4, state: { ...item.state, code: "pending_balance", label: "Pendiente de saldo" } }} allowed permissions={permissions} onSaved={saved} onRefresh={refresh} />);
-    expect(screen.getByRole("button", { name: "Registrar paso a Pendiente de traspaso" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Registrar paso a Pendiente de traspaso" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Marcar gestión bancaria lista" })).toBeNull();
 });
 it("requires a reason to jump directly from pending send to transfer signed", () => {
@@ -233,7 +233,7 @@ it("keeps exceptional fields inside a centered dialog, above the order panel, op
     const wrapper = screen.getByRole("dialog").closest<HTMLElement>(".ant-modal-wrap");
     expect(wrapper?.classList.contains("ant-modal-centered")).toBe(true);
     expect(Number(wrapper?.style.zIndex)).toBeGreaterThan(1299);
-    expect(screen.getByRole("combobox", { name: "Etapa de Formalización" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Etapa de Formalización" })).toBeInTheDocument();
 });
 it("hides the move action when skip is explicitly denied", () => {
     render(
@@ -332,7 +332,7 @@ it.each([
     await confirmApproval();
     expect((await screen.findByRole("alert")).textContent).toBe(message);
     expect(screen.getByRole("button", { name: /Aprobar Formalización/ }).hasAttribute("disabled")).toBe(true);
-    expect(screen.getByRole("button", { name: "Actualizar orden" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Actualizar orden" })).toBeInTheDocument();
     expect(saved).not.toHaveBeenCalled();
 });
 it.each([401, 403])("shows denied approval without reporting success for %s", async (status) => {
@@ -547,7 +547,7 @@ it("prevents duplicate stage confirmation and retries an uncertain command with 
 
 it.each([
     ["own_funds", "pending_balance", "Pendiente de saldo"],
-    ["bank_financing", "bank_management_in_progress", "Gestión bancaria en proceso"],
+    ["bank_financing", "bank_management", "Gestión bancaria"],
 ])("requires a funds choice and routes %s", async (origin, target, label) => {
     vi.mocked(apiRequest).mockResolvedValue({ source: "legacy", id: "1", state: target, sequence: 4, replayed: false });
     render(<FormalizationStageEditor item={{ ...item, state: { ...item.state, code: "contract_pending_signature", label: "Pendiente de firma" } }} allowed permissions={ORDER_STAGES.map((stage) => ({ code: `formalizacion.orders.stage.${stage.code}`, effect: "allow" }))} onSaved={saved} onRefresh={refresh} />);
@@ -566,7 +566,7 @@ it.each([
 it.each([
     ["pending_balance", "own_funds", "contract_pending_signature", "Pendiente de firma"],
     ["pending_balance", "bank_financing", "bank_management_in_progress", "Gesti\u00f3n bancaria en proceso"],
-    ["bank_management_in_progress", "bank_financing", "contract_pending_signature", "Pendiente de firma"],
+    ["bank_management_in_progress", "bank_financing", "bank_management", "Gestión bancaria"],
     ["bank_management_in_progress", null, "bank_management", "Gesti\u00f3n bancaria"],
     ["contract_pending_signature", null, "contract_pending_send", "Por enviar"],
 ] as const)("offers a reason-gated previous destination from %s with %s", async (current, origin, previous, label) => {
@@ -601,7 +601,7 @@ it.each([false, null, undefined])("blocks transfer exceptions when paid installm
     for (const code of ["pending_transfer", "transfer_signed"]) {
         expect(screen.getByRole<HTMLOptionElement>("option", { name: ORDER_STAGES.find((stage) => stage.code === code)?.label ?? code }).disabled).toBe(true);
     }
-    expect(screen.getAllByText(/cuotas canceladas/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Cuotas pagadas por completo/i).length).toBeGreaterThan(0);
     expect(apiRequest).not.toHaveBeenCalled();
 });
 it("allows balance to transfer only with paid installments confirmed", () => {
@@ -611,12 +611,28 @@ it("allows balance to transfer only with paid installments confirmed", () => {
 it.each(["pending_transfer", "transfer_signed", "closed"])("never allows returning to balance from %s, even with exception permission", (code) => {
     show({ ...item, state: { ...item.state, code } });
     expect(screen.getByRole<HTMLOptionElement>("option", { name: "Pendiente de saldo" }).disabled).toBe(true);
+    if (code === "pending_transfer") expect(screen.getByText("No se permite volver a Pendiente de saldo desde traspaso o etapas posteriores.")).toBeInTheDocument();
 });
+it("warns and allows manual signature registration before NetSuite confirms the transfer", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({ source: "legacy", id: "1", state: "transfer_signed", sequence: 4, replayed: false });
+    render(<FormalizationStageEditor item={{ ...item, unitTransferred: false, state: { ...item.state, code: "pending_transfer" } }} allowed permissions={[{ code: "formalizacion.orders.stage.transfer_signed", effect: "allow" }]} onSaved={saved} onRefresh={refresh} />);
+    const next = screen.getByRole("button", { name: "Registrar etapa Traspaso firmado" });
+    expect(next).toBeEnabled();
+    fireEvent.click(next);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("NetSuite aún no confirma");
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar cambio" }));
+    await waitFor(() => {
+        expect(saved).toHaveBeenCalledOnce();
+    });
+    expect(requestBody(0)).toMatchObject({ targetState: "transfer_signed" });
+});
+
 it("unmarking installments retains transfer and blocks forward movement", () => {
     const value = { ...item, state: { ...item.state, code: "pending_transfer", label: "Pendiente de traspaso" } };
     const view = show(value);
     view.rerender(<FormalizationStageEditor item={{ ...value, installmentsFullyPaid: false }} allowed permissions={ORDER_STAGES.map((stage) => ({ code: `formalizacion.orders.stage.${stage.code}`, effect: "allow" }))} onSaved={saved} onRefresh={refresh} />);
-    expect(screen.getByText("Actual: Pendiente de traspaso")).toBeTruthy();
+    expect(screen.getByText("Actual: Pendiente de traspaso")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Registrar etapa Traspaso firmado" }).hasAttribute("disabled")).toBe(true);
     expect(apiRequest).not.toHaveBeenCalled();
 });

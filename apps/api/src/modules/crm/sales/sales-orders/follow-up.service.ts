@@ -94,7 +94,8 @@ export class FollowUpService {
         const query = parsed.data;
         const queues = formalizationReadAccess(profile);
         if (![...(query.queues ?? []), query.queue].every((queue) => canReadFormalizationQueue(profile, queue))) throw new ForbiddenException("No tiene permiso para consultar esta categoria.");
-        const access: FollowUpAccess = { finiquito: canReadFormalizationOrder(profile), queues, approvals: queues.approvals, actorId: profile.user.publicId, ownOnly: false, approvalOwnOnly: false };
+        const canReadOrder = canReadFormalizationOrder(profile);
+        const access: FollowUpAccess = { finiquito: canReadOrder, exactOrderSearch: canReadOrder, queues, approvals: queues.approvals, actorId: profile.user.publicId, ownOnly: false, approvalOwnOnly: false };
         const now = new Date();
         const year = Number(new Intl.DateTimeFormat("en", { timeZone: "America/Costa_Rica", year: "numeric" }).format(now));
         const period = { start: new Date(Date.UTC(year, 0, 1, 6)).toISOString().slice(0, 23).replace("T", " "), endExclusive: new Date(Date.UTC(year + 1, 0, 1, 6)).toISOString().slice(0, 23).replace("T", " ") };

@@ -11,7 +11,7 @@ export class BankContextDto {
 }
 /** Server pagination; no unbounded list route exists. */
 export class ListBanksQueryDto extends BankContextDto {
-    @ApiPropertyOptional({ default: 25, minimum: 1, maximum: 200 }) @Transform(({ value }: { value: unknown }) => Number(value)) @IsOptional() @IsInt() @Min(1) @Max(200) limit?: number;
+    @ApiPropertyOptional({ default: 25, minimum: 1, maximum: 500 }) @Transform(({ value }: { value: unknown }) => Number(value)) @IsOptional() @IsInt() @Min(1) @Max(500) limit?: number;
     @ApiPropertyOptional({ default: 0, minimum: 0, maximum: 2147483647 }) @Transform(({ value }: { value: unknown }) => Number(value)) @IsOptional() @IsInt() @Min(0) @Max(2147483647) offset?: number;
     @ApiPropertyOptional({ maxLength: 120 }) @Transform(trim) @IsOptional() @IsString() @MaxLength(120) search?: string;
     @ApiPropertyOptional({ enum: CATALOG_STATUSES }) @IsOptional() @IsIn(CATALOG_STATUSES) status?: CatalogStatus;

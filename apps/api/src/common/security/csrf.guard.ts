@@ -6,37 +6,30 @@ import { isValidSignedCsrfToken } from "./csrf-token.js";
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME_LOWERCASE, SESSION_COOKIE_NAME } from "./http-security.constants.js";
 import { assertLocalServiceToken, getServiceTokenEnvironment, hasLocalServiceToken } from "./local-service-token.guard.js";
 
-// ============================================================================
-// Guard CSRF para el patron BFF.
-//
-// SRP: el guard decide si deja pasar o bloquea. Las responsabilidades pequeñas
-// quedan separadas: detectar metodos mutables, leer header/cookie y validar la
-// firma CSRF ligada a la sesion.
-// ============================================================================
-
 /**
- * Solo metodos mutables requieren CSRF.
+ * CSRF de las mutaciones del BFF.
  *
- * `GET` debe permanecer legible para consultas como `/identity/session`, pero
- * cualquier mutacion debe probar que el request viene del navegador que recibio
- * la cookie CSRF emitida por el backend.
+ * No autentica ni autoriza. Solo exige que quien cambia estado presente el
+ * token que este servidor firmo, repetido en cookie y header, atado a la
+ * sesion cuando ya existe. GET permanece legible para consultas como
+ * `/identity/session`.
+ *
+ * Un handler con `LocalServiceToken` sustituye esta prueba por la credencial
+ * de maquina. Marcar la ruta `public` no la exime: sin esa metadata exacta,
+ * POST, PUT, PATCH y DELETE siguen entrando aqui.
  */
+
+/** Unicos metodos que cambian estado en este contrato. HEAD y OPTIONS no mutan. */
 const MUTABLE_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-/** Mensaje neutro para no filtrar detalles internos de seguridad. */
+/** Mismo texto para firma mala, cookie ausente o header distinto. El cuerpo no dice cual de las tres fallo. */
 const FORBIDDEN_CSRF_MESSAGE = "No se pudo completar la accion con los permisos actuales.";
 
-/**
- * Indica si un metodo HTTP puede cambiar estado.
- */
 const isMutableMethod = (method: string): boolean => MUTABLE_HTTP_METHODS.has(method.toUpperCase());
 
 /**
- * Lee el token CSRF enviado por header.
- *
- * Fastify puede entregar headers repetidos como arreglo. El contrato BFF solo
- * acepta un valor efectivo; si viene arreglo, tomamos el primero de forma
- * deterministica.
+ * Fastify entrega un header repetido como arreglo. Solo vale el primero.
+ * Aceptar "alguno coincide" permitiria colar un segundo valor detras del token real.
  */
 const readCsrfHeaderToken = (request: CookieRequest): string | undefined => {
     const header = request.headers[CSRF_HEADER_NAME_LOWERCASE];
@@ -44,7 +37,9 @@ const readCsrfHeaderToken = (request: CookieRequest): string | undefined => {
 };
 
 /**
- * Valida el par cookie/header del patron double-submit.
+ * Double-submit mas firma. Cookie y header tienen que ser el mismo string y,
+ * ademas, la firma de ese string tiene que cerrar con el secreto y la sesion
+ * actual. La igualdad de ambos lados sola no autoriza.
  */
 const hasValidCsrfProof = (request: CookieRequest, cookieSecret: string): boolean => {
     const cookieToken = request.cookies[CSRF_COOKIE_NAME];
@@ -62,23 +57,16 @@ const hasValidCsrfProof = (request: CookieRequest, cookieSecret: string): boolea
     return isValidSignedCsrfToken(cookieToken, cookieSecret, sessionToken);
 };
 
-/**
- * Guard global que protege mutaciones BFF contra CSRF.
- */
+/** Guard global. La identidad y los permisos viven en su propio guard. */
 @Injectable()
 export class CsrfGuard implements CanActivate {
-    /**
-     * Inyecta configuracion para validar firmas CSRF con el secreto de cookies.
-     */
+    /** El secreto sale de configuracion validada. El request no puede elegir la llave. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
     /**
-     * Aplica double-submit cookie para endpoints mutables.
-     *
-     * El guard no autentica usuarios; solo valida que un request que cambia
-     * estado incluya el token emitido por el BFF en cookie y header. La firma
-     * lo ata al secreto del servidor y, cuando existe sesion, al token de
-     * sesion actual. La autenticacion y permisos viven en identidad.
+     * La credencial de maquina se vuelve a comprobar aqui, no solo en su guard.
+     * Si el registro global de CSRF cambiara de orden, la ruta de integracion
+     * seguiria sin entrar con una cookie de navegador.
      */
     canActivate(context: ExecutionContext): boolean {
         const request = context.switchToHttp().getRequest<CookieRequest>();

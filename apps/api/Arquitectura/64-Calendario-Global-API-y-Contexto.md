@@ -1,5 +1,14 @@
 # Calendario global: API y contexto por módulo
 
+## Lectura efectiva y consultas relacionadas — 2026-11-10
+
+Mercadeo puede ampliar la población de lectura con `mercadeo.reports.read_all`;
+los roles activos de Formalización y Jefe de Formalizaciones pueden leer
+agenda de equipo con membresía y permiso efectivo. Las denegaciones siguen
+prevaleciendo. La ampliación no concede actualización de eventos ajenos.
+Al resolver opciones de órdenes, el API reutiliza la lectura autorizada del
+mismo lead dentro de una petición. [90 — Reconciliación](90-Reconciliacion-API-20261110.md).
+
 ## Precedencia del contrato vigente — 2026-11-03
 
 El formulario y la integración Microsoft365 descritos a continuación están

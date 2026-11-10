@@ -9,19 +9,26 @@ import type { ContractSummaryLegacyReader, LegacyContractRow } from "../../modul
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
 /**
- * Eligible = approved by the Formalization flag. `pending` feeds the banner totals and `orders` the paged
- * queues; the latter skips orders that already have a native alias. Both journal and order are read from legacy; the source order itself is never updated. */
+ * Lectura de ordenes ya aprobadas por formalizacion. No actualiza la orden ni su bitacora.
+ *
+ * Elegible es `aprobacion_forma_ov=1`, activa y no caida. `pending` alimenta el
+ * total. `orders` arma las colas y omite la orden que ya tiene alias nativo,
+ * sea cual sea el estado nativo. Ambas corren en la transaccion del llamador.
+ */
 @Injectable()
 export class LegacyContractSummaryReader implements ContractSummaryLegacyReader, ContractOrdersLegacyReader {
-    /** Shared legacy read-only connection. */
+    /** El pool solo responde `enabled`. La pagina no lo abre. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
 
-    /** Legacy is removable once migration finishes. */
+    /** El pool existe. No enciende escrituras. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
 
-    /** Bounded keyset page includes later stages to keep the cursor progressing. */
+    /**
+     * Devuelve tambien etapas posteriores. El cursor tiene que avanzar; el
+     * servicio descarta esas etapas. Sin evento, la etapa es `contract_pending_send`.
+     */
     async pending(after: number, transaction: Transaction<CrmDatabase>): Promise<LegacyContractRow[]> {
         const result = await sql<{ id: number; stage: string }>`
             SELECT /*+ MAX_EXECUTION_TIME(1500) */ id_ov AS id, COALESCE((SELECT e.to_state_code_sales_order_state_event FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e
@@ -31,11 +38,14 @@ export class LegacyContractSummaryReader implements ContractSummaryLegacyReader,
               AND aprobacion_forma_ov=1
             ORDER BY id_ov LIMIT ${sql.lit(SALES_ORDER_SUMMARY_PAGE_SIZE)}
         `.execute(transaction);
-        // Return all eligible IDs for keyset progress and native-shadow exclusion; later stages are ignored by the service.
         return result.rows.map((row) => ({ id: row.id, state: row.stage }));
     }
 
-    /** Native aliases shadow legacy irrespective of native status; keyset reads preserve integer precision. */
+    /**
+     * La cola de envio admite tambien `unclassified` y `pending_approval`, pero
+     * la fila publicada dice `contract_pending_send`. La de firma solo admite
+     * `contract_pending_signature`. El id de negocio es el tranid, o `LEGACY-OV-{id}`.
+     */
     async orders(tx: Transaction<CrmDatabase>, queue: ContractQueue, after: string, limit: number): Promise<ContractOrderPageRow[]> {
         const stage = queue === "send" ? sql`stage IN ('contract_pending_send','unclassified','pending_approval')` : sql`stage='contract_pending_signature'`;
         const result = await sql<{ sortId: string; id: string; businessId: string; sequence: number }>`

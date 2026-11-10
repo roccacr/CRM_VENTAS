@@ -1,30 +1,31 @@
 import { ConflictException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { sql, type Transaction } from "kysely";
+import { ulid } from "ulid";
 
 import { DatabaseService } from "../../database/database.service.js";
 import type { CrmDatabase } from "../../database/database.types.js";
 import { type AuditActorSnapshot, captureIntegrationAuditActor } from "../../modules/crm/audit/audit-actor.js";
 import { RecordAuditService } from "../../modules/crm/audit/record-audit.service.js";
 import type { PersistedOrderEvent } from "./netsuite-order-event.contract.js";
-import { mapOrderFields, mapOrderFlags, nativeRelationReferences, orderApprovalMappings, type OrderEventChange, type OrderEventDestination, orderFieldMappings, orderFlagMappings, orderNumberMapping, orderRelationMappings, readOrderRelationValues } from "./netsuite-order-event.mapper.js";
+import { mapOrderFields, mapOrderFlags, nativeRelationReferences, NETSUITE_DELIVERY_DATE_FIELD, orderApprovalMappings, type OrderEventChange, type OrderEventDestination, orderFieldMappings, orderFlagMappings, orderNumberMapping, orderRelationMappings, readOrderRelationValues } from "./netsuite-order-event.mapper.js";
 import { isStaleOrderObservation, type PreviousOrderObservation } from "./netsuite-order-event.ordering.js";
-import { advancePaidInstallments, PAID_INSTALLMENTS_STAGE_FIELD } from "./netsuite-paid-installments.handler.js";
+import { advancePaidInstallments, PAID_INSTALLMENTS_STAGE_FIELD, syncOrderDeliveryDate } from "./netsuite-paid-installments.handler.js";
 import { CANCELLATION_DATE_FIELD, CANCELLATION_DATE_NATIVE, planSalesOrderCancellation } from "./netsuite-sales-order-cancellation.handler.js";
 
 export type OrderEventResult = { result: "applied" | "unchanged" | "not_found" | "stale"; destination: OrderEventDestination | null; orderId: string | null; changes: OrderEventChange[]; duplicate: boolean };
-export type OrderEventIdentity = { payloadHash: string; snapshotHash: string; actor?: AuditActorSnapshot | undefined };
+export type OrderEventIdentity = { payloadHash: string; snapshotHash: string; actor?: AuditActorSnapshot | undefined; imported?: boolean | undefined };
 type Target = { destination: OrderEventDestination; id: string; row: Record<string, unknown> };
 type EventAudit = { destination: OrderEventDestination | null; orderId: string | null; changes: OrderEventChange[]; result: OrderEventResult["result"] | "error"; error?: string };
 type EventTransaction = Transaction<CrmDatabase>;
 export interface ManualOrderSynchronization {
+    importTranid?: string;
+    allowUnlinkedOwner?: boolean;
     authorize(tx: EventTransaction, target: { destination: OrderEventDestination; id: string }): Promise<AuditActorSnapshot>;
 }
 /** Conserva el destino y diff intentado aunque la transaccion comercial termine en rollback. */
 export class OrderEventPersistenceError extends Error {
-    /**
-     *
-     */
+    /** Guarda el destino y el diff intentado. El mensaje publico no incluye SQL. */
     constructor(
         readonly original: unknown,
         readonly context: EventAudit,
@@ -56,17 +57,17 @@ export class NetsuiteOrderEventRepository {
                 const previous = await this.previousObservation(tx, event);
                 const stale = isStaleOrderObservation({ event, cursor, hash: identity.snapshotHash, previous });
                 if (stale) return this.complete(tx, event, identity, { result: "stale", destination: null, orderId: null, changes: [], duplicate: false });
-                const target = await this.resolve(tx, event.event.netsuiteId);
+                const target = await this.resolveEventTarget(tx, event, manual);
                 const actor = await this.authorizeManual(tx, target, manual);
-                context = { result: "error", destination: target?.destination ?? null, orderId: target?.id ?? null, changes: [] };
                 if (target) {
+                    context = { result: "error", destination: target.destination, orderId: target.id, changes: [] };
                     context.changes = await this.planChanges(tx, event, target);
-                    // Si una relacion rechaza el evento, conservar el diff directo conocido en la evidencia de error.
-                    context.changes.push(...(await this.planRelations(tx, event, target)));
+                    // Si una relacion rechaza el evento, el diff directo ya calculado queda en la evidencia del error. Un dueno no vinculado solo se tolera en la extraccion manual.
+                    context.changes.push(...(await this.planRelations(tx, event, target, manual?.allowUnlinkedOwner)));
                 }
                 const result = await this.update(tx, target, context.changes, event);
                 await this.advanceInstallments(tx, event, target, result);
-                await this.complete(tx, event, { ...identity, actor }, result);
+                await this.complete(tx, event, { ...identity, actor, imported: Boolean(manual?.importTranid) }, result);
                 await sql`UPDATE int_netsuite_order_cursor SET source_modified_ms=${observed}, snapshot_hash=${identity.snapshotHash} WHERE account_id=${event.source.accountId} AND netsuite_id=${event.event.netsuiteId}`.execute(tx);
                 return result;
             })
@@ -75,7 +76,7 @@ export class NetsuiteOrderEventRepository {
             });
     }
 
-    /** Manual requests must still resolve a destination before any field update. */
+    /** La sincronizacion manual tambien tiene que encontrar destino. Sin fila, no se actualizan campos. */
     private async authorizeManual(tx: EventTransaction, target: Target | null, manual?: ManualOrderSynchronization) {
         if (!manual) return undefined;
         if (!target) throw new ConflictException("La orden ya no esta disponible para sincronizar.");
@@ -84,9 +85,11 @@ export class NetsuiteOrderEventRepository {
     /** Los flags y la etapa opcional comparten transaccion, cursor y recibo tecnico. */
     private async advanceInstallments(tx: EventTransaction, event: PersistedOrderEvent, target: Target | null, result: OrderEventResult): Promise<void> {
         if (!target) return;
+        const deliveryChange = await syncOrderDeliveryDate(tx, event, target);
         const stageChange = await advancePaidInstallments(tx, this.audit, { event, target, changes: result.changes });
-        if (!stageChange) return;
-        result.changes.push(stageChange);
+        const changes = [deliveryChange, stageChange].filter((change) => change !== null);
+        if (changes.length === 0) return;
+        result.changes.push(...changes);
         result.result = "applied";
     }
 
@@ -104,6 +107,7 @@ export class NetsuiteOrderEventRepository {
         return rows[0] ?? null;
     }
 
+    /** Inserta el cursor y lo bloquea. Dos entregas de la misma orden quedan en serie. */
     private async lockCursor(tx: EventTransaction, event: PersistedOrderEvent) {
         await sql`INSERT INTO int_netsuite_order_cursor (account_id,netsuite_id) VALUES (${event.source.accountId},${event.event.netsuiteId}) ON DUPLICATE KEY UPDATE netsuite_id=netsuite_id`.execute(tx);
         const { rows } = await sql<{ observed: string | number | null; hash: string | null }>`SELECT source_modified_ms AS observed,snapshot_hash AS hash FROM int_netsuite_order_cursor WHERE account_id=${event.source.accountId} AND netsuite_id=${event.event.netsuiteId} FOR UPDATE`.execute(tx);
@@ -111,6 +115,7 @@ export class NetsuiteOrderEventRepository {
         return rows[0];
     }
 
+    /** El mismo `eventId` con otro hash es conflicto. Con el mismo hash se devuelve el resultado anterior y no se reescribe. */
     private async replay(tx: EventTransaction, event: PersistedOrderEvent, hash: string): Promise<OrderEventResult | null> {
         const { rows } = await sql<{ hash: string; result: OrderEventResult["result"]; destination: OrderEventDestination | null; orderId: string | null; changes: string | OrderEventChange[] }>`SELECT payload_hash AS hash,result,destination,order_id AS orderId,changes FROM audit_netsuite_order_event WHERE account_id=${event.source.accountId} AND netsuite_id=${event.event.netsuiteId} AND event_id=${event.event.eventId} AND result<>'error' ORDER BY id LIMIT 1`.execute(tx);
         const prior = rows[0];
@@ -119,6 +124,7 @@ export class NetsuiteOrderEventRepository {
         return { result: prior.result, destination: prior.destination, orderId: prior.orderId, changes: typeof prior.changes === "string" ? (JSON.parse(prior.changes) as OrderEventChange[]) : prior.changes, duplicate: true };
     }
 
+    /** Nativo primero. Una referencia inactiva no cae a legado. Mas de una fila nativa es ambigua. Legado solo si el fallback esta encendido, y escribirlo exige `ENABLE_LEGACY_WRITES`. Una orden ya migrada sigue siendo nativa. */
     private async resolve(tx: EventTransaction, netsuiteId: string): Promise<Target | null> {
         const native = await sql<
             Record<string, unknown>
@@ -130,11 +136,41 @@ export class NetsuiteOrderEventRepository {
         if (legacy.rows.length > 1) throw new ConflictException("Orden legacy ambigua.");
         const row = legacy.rows[0];
         if (!row) return null;
-        // Una orden migrada sigue siendo nativa aunque aun falte completar su referencia ERP.
+        // Una orden ya migrada sigue en el CRM nuevo aunque todavia no tenga la referencia ERP completa.
         const migrated = await sql<Record<string, unknown>>`SELECT * FROM crm_sales_order WHERE id_old_produccion_sales_order=${row.id_ov} LIMIT 2 FOR UPDATE`.execute(tx);
         if (migrated.rows.length) return this.nativeTarget(migrated.rows);
         if (this.config.get<boolean>("ENABLE_LEGACY_WRITES") !== true) throw new ServiceUnavailableException("Escritura legacy deshabilitada.");
         return { destination: "legacy", id: String(row.id_ov), row };
+    }
+
+    /** El webhook no crea ordenes. La extraccion manual crea solo si el id y el numero no existen. */
+    private async resolveEventTarget(tx: EventTransaction, event: PersistedOrderEvent, manual?: ManualOrderSynchronization): Promise<Target | null> {
+        const existing = await this.resolve(tx, event.event.netsuiteId);
+        if (!manual?.importTranid) return existing;
+        if (existing) throw new ConflictException("La orden ya existe en Habita. Revisa los filtros de búsqueda.");
+        await this.assertTranidAvailable(tx, manual.importTranid);
+        return this.createImportedOrder(tx, event);
+    }
+
+    private async assertTranidAvailable(tx: EventTransaction, tranid: string): Promise<void> {
+        const native = await sql`SELECT 1 FROM crm_sales_order_external_reference x JOIN int_external_system s ON s.id_external_system=x.external_system_id_sales_order_external_reference WHERE s.code_external_system='netsuite' AND UPPER(TRIM(x.transaction_number_sales_order_external_reference))=${tranid} LIMIT 1`.execute(tx);
+        const legacy = await sql`SELECT 1 FROM ${sql.table("crmdatabase-api.ordenventa")} WHERE UPPER(TRIM(id_ov_tranid))=${tranid} LIMIT 1`.execute(tx);
+        if (native.rows.length || legacy.rows.length) throw new ConflictException("La orden ya existe en Habita. Revisa los filtros de búsqueda.");
+    }
+
+    private async createImportedOrder(tx: EventTransaction, event: PersistedOrderEvent): Promise<Target> {
+        const fields = event.snapshot.data.fields;
+        if (!readOrderRelationValues(fields).entity) throw new ConflictException("NetSuite no indicó un cliente para esta orden.");
+        const systems = await tx.selectFrom("int_external_system").select("id_external_system").where("code_external_system", "=", "netsuite").where("status_external_system", "=", "active").limit(2).execute();
+        const system = systems[0];
+        if (systems.length !== 1 || !system) throw new ServiceUnavailableException("No hay una integración activa de NetSuite.");
+        const netsuiteId = event.event.netsuiteId;
+        const insert = await sql`INSERT INTO crm_sales_order (public_id_sales_order,native_code_sales_order,status_sales_order) VALUES (${ulid()},${"NETSUITE-" + netsuiteId},'active')`.execute(tx);
+        if (!insert.insertId) throw new Error("No se obtuvo el ID de la orden importada.");
+        await sql`INSERT INTO crm_sales_order_external_reference (sales_order_id_sales_order_external_reference,external_system_id_sales_order_external_reference,external_id_sales_order_external_reference,status_sales_order_external_reference) VALUES (${insert.insertId.toString()},${system.id_external_system},${netsuiteId},'active')`.execute(tx);
+        const target = await this.resolve(tx, netsuiteId);
+        if (!target) throw new Error("No se pudo confirmar la referencia de la orden importada.");
+        return target;
     }
 
     private nativeTarget(rows: Record<string, unknown>[]): Target {
@@ -169,11 +205,17 @@ export class NetsuiteOrderEventRepository {
     }
 
     /** Solo cambia la relacion de la OV; no crea ni modifica lead, unidad, usuario o subsidiaria. */
-    private async planRelations(tx: EventTransaction, event: PersistedOrderEvent, target: Target): Promise<OrderEventChange[]> {
+    private async planRelations(tx: EventTransaction, event: PersistedOrderEvent, target: Target, allowUnlinkedOwner = false): Promise<OrderEventChange[]> {
         if (event.snapshot.data.fields.crm_sync_projection !== 1) return [];
         const values = readOrderRelationValues(event.snapshot.data.fields);
         const changes: OrderEventChange[] = [];
-        for (const mapping of orderRelationMappings) changes.push(...(await this.planRelation(tx, mapping, values[mapping.netsuite] ?? null, target)));
+        for (const mapping of orderRelationMappings) {
+            try {
+                changes.push(...(await this.planRelation(tx, mapping, values[mapping.netsuite] ?? null, target)));
+            } catch (error) {
+                if (!allowUnlinkedOwner || mapping.domain !== "user" || !(error instanceof ConflictException)) throw error;
+            }
+        }
         return changes;
     }
 
@@ -187,6 +229,7 @@ export class NetsuiteOrderEventRepository {
         return comparable === next ? [] : [{ field: mapping.netsuite, column, before, after }];
     }
 
+    /** Nulo limpia. En legado, un id mayor que INT se rechaza. En nativo se busca la referencia activa y unica; cero o dos filas no crean nada. */
     private async relationValue(tx: EventTransaction, mapping: (typeof orderRelationMappings)[number], external: string | null, destination: OrderEventDestination): Promise<string | number | null> {
         if (external === null) return null;
         if (destination === "native") return this.resolveNativeRelation(tx, mapping, external);
@@ -229,6 +272,7 @@ export class NetsuiteOrderEventRepository {
         }
     }
 
+    /** La razon deja explicito que el checkbox no mueve la etapa. El actor es la integracion, no un usuario. */
     private async updateApproval(tx: EventTransaction, target: Target, event: PersistedOrderEvent, change: OrderEventChange): Promise<void> {
         const mapping = orderApprovalMappings.find((candidate) => candidate.netsuite === change.field);
         if (!mapping) throw new Error("Aprobacion sin contrato.");
@@ -261,23 +305,24 @@ export class NetsuiteOrderEventRepository {
     }
 
     private async complete(tx: EventTransaction, event: PersistedOrderEvent, identity: OrderEventIdentity, result: OrderEventResult): Promise<OrderEventResult> {
-        await this.appendCentralAudit(tx, event, result, identity.actor);
+        await this.appendCentralAudit(tx, event, result, identity);
         await this.writeAudit(tx, event, identity, result);
         return result;
     }
 
-    private async appendCentralAudit(tx: EventTransaction, event: PersistedOrderEvent, result: OrderEventResult, manualActor?: AuditActorSnapshot): Promise<void> {
+    private async appendCentralAudit(tx: EventTransaction, event: PersistedOrderEvent, result: OrderEventResult, identity: OrderEventIdentity): Promise<void> {
         if (!result.destination || !result.orderId) return;
         const native = result.destination === "native";
         const canonicalChanges = result.changes
             .filter((change) => change.field !== PAID_INSTALLMENTS_STAGE_FIELD)
             .map((change) => {
+                if (change.field === NETSUITE_DELIVERY_DATE_FIELD) return { ...change, field: "delivered_on" };
                 if (change.field === CANCELLATION_DATE_FIELD) return { ...change, field: CANCELLATION_DATE_NATIVE };
                 const mapping = [...orderFlagMappings, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].find((candidate) => candidate.netsuite === change.field);
                 if (!mapping) throw new Error("Campo sin contrato de auditoria central.");
                 return { ...change, field: mapping.native ?? mapping.legacy };
             });
-        const actor = manualActor ?? captureIntegrationAuditActor({ publicId: "integration:netsuite:" + event.source.accountId, name: { production: "NetSuite Production UE", sandbox: "NetSuite Sandbox UE" }[event.source.environment] });
+        const actor = identity.actor ?? captureIntegrationAuditActor({ publicId: "integration:netsuite:" + event.source.accountId, name: { production: "NetSuite Production UE", sandbox: "NetSuite Sandbox UE" }[event.source.environment] });
         await this.audit.append(tx, {
             source: { schema: native ? "CRM_THINK_V2" : "crmdatabase-api", table: native ? "crm_sales_order" : "ordenventa", entity: "sales_order", id: result.orderId },
             actor,
@@ -285,17 +330,22 @@ export class NetsuiteOrderEventRepository {
             module: "formalizacion",
             before: Object.fromEntries(canonicalChanges.map((change) => [change.field, change.before])),
             after: Object.fromEntries(canonicalChanges.map((change) => [change.field, change.after])),
-            allowedFields: [...[...orderFlagMappings, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].map((mapping) => mapping.native ?? mapping.legacy), CANCELLATION_DATE_NATIVE],
+            allowedFields: [...[...orderFlagMappings, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].map((mapping) => mapping.native ?? mapping.legacy), CANCELLATION_DATE_NATIVE, "delivered_on"],
             operationId: "netsuite:" + event.source.accountId + ":" + event.event.eventId,
             correlationId: event.event.eventId,
-            reason: (manualActor ? "Sincronizacion manual NetSuite " : "NetSuite UE ") + event.event.eventType + "; " + event.source.environment + "; ID " + event.event.netsuiteId,
+            reason: orderEventOrigin(identity) + event.event.eventType + "; " + event.source.environment + "; ID " + event.event.netsuiteId,
             snapshotScope: "partial",
         });
     }
 
     private async writeAudit(tx: EventTransaction, event: PersistedOrderEvent, identity: OrderEventIdentity, audit: EventAudit): Promise<void> {
-        await sql`INSERT INTO audit_netsuite_order_event (account_id,netsuite_id,event_id,payload_hash,destination,order_id,result,error_message,origin,changes,payload) VALUES (${event.source.accountId},${event.event.netsuiteId},${event.event.eventId},${identity.payloadHash},${audit.destination},${audit.orderId},${audit.result},${audit.error ?? null},${identity.actor ? "NetSuite manual " + identity.actor.publicId : "NetSuite UE " + event.event.eventType},${JSON.stringify(audit.changes)},${JSON.stringify(event)})`.execute(
+        await sql`INSERT INTO audit_netsuite_order_event (account_id,netsuite_id,event_id,payload_hash,destination,order_id,result,error_message,origin,changes,payload) VALUES (${event.source.accountId},${event.event.netsuiteId},${event.event.eventId},${identity.payloadHash},${audit.destination},${audit.orderId},${audit.result},${audit.error ?? null},${identity.actor ? (identity.imported ? "NetSuite import " : "NetSuite manual ") + identity.actor.publicId : "NetSuite UE " + event.event.eventType},${JSON.stringify(audit.changes)},${JSON.stringify(event)})`.execute(
             tx,
         );
     }
+}
+
+function orderEventOrigin(identity: OrderEventIdentity): string {
+    if (identity.imported) return "Extraccion manual NetSuite ";
+    return identity.actor ? "Sincronizacion manual NetSuite " : "NetSuite UE ";
 }

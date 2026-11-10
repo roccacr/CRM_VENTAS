@@ -5,18 +5,28 @@ import type { CrmDatabase } from "../../database/database.types.js";
 import { type ApprovalLegacyReader, SALES_ORDER_SUMMARY_PAGE_SIZE } from "../../modules/crm/sales/sales-orders/approval-summary.port.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
-/** Reads existing production columns only, using the shared snapshot or fallback pool. */
+/**
+ * Ordenes pendientes de aprobacion de formalizacion, solo con lectura.
+ *
+ * Si el llamador trae transaccion, la pagina corre ahi. Si no, usa el pool
+ * legado. Los flags tienen que ser exactamente esos: un nulo o un valor
+ * distinto no cuenta como pendiente. Los nombres fisicos se conservan, incluidos
+ * `chekJefeVenta` y `aprobacion__rdr_ov`.
+ */
 @Injectable()
 export class LegacyApprovalReader implements ApprovalLegacyReader {
-    /** No independent connection or credentials. */
+    /** No abre otra conexion ni guarda credenciales. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
 
-    /** Configuration remains removable with the shared fallback. */
+    /** El pool existe. No enciende la escritura. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
 
-    /** Exact legacy eligibility; no assumptions for null or unknown flags. */
+    /**
+     * Cursor por `id_ov`. Activa, no caida, jefe y desarrollador en 1, y
+     * formalizacion en 0. El tope de 1500 ms es de la sentencia.
+     */
     async pendingIds(after: number, transaction?: Transaction<CrmDatabase>): Promise<number[]> {
         const result = await sql<{ id_ov: number }>`
             SELECT /*+ MAX_EXECUTION_TIME(1500) */ id_ov FROM ${sql.table("crmdatabase-api.ordenventa")}

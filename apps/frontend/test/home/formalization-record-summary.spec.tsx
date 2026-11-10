@@ -15,9 +15,9 @@ it.each(["native", "legacy"] as const)("adds the existing Outlook action after n
     const facts = screen.getByLabelText("Datos clave de la orden");
     expect(within(facts).getByText("Registrar el envío del contrato")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "Abrir Outlook" });
-    // The contract card leads the overview grid and the key-fact tiles follow it.
-    expect(facts.previousElementSibling).toBe(link.closest(".formalization-contract-send")?.parentElement);
-    expect(facts.previousElementSibling).toHaveClass("record-overview__cards");
+    const summary = screen.getByRole("region", { name: "Resumen de la orden" });
+    expect(summary).toContainElement(facts);
+    expect(summary.nextElementSibling).toContainElement(link);
     expect(screen.getByText("cliente+contrato@example.com")).toBeInTheDocument();
     expect(new URL(link.getAttribute("href") ?? "").searchParams.get("to")).toBe("cliente+contrato@example.com");
     expect(link).toHaveAttribute("target", "_blank");
@@ -33,20 +33,20 @@ it("does not offer composing without a client email or after the contract was se
     expect(screen.queryByRole("link", { name: "Abrir Outlook" })).not.toBeInTheDocument();
 });
 
-it("shows only the five approved database highlights and no sample notice", () => {
+it("shows the four database highlights and no sample notice", () => {
     render(<FormalizationRecordSummary item={order} />);
     const facts = screen.getByLabelText("Datos clave de la orden");
-    for (const text of ["Francisco Yau Cheng", "La Estefana · LE-N FF117", "Valeria Arriola Miranda", "Por enviar", "Registrar el envío del contrato"]) expect(within(facts).getByText(text)).toBeInTheDocument();
+    for (const text of ["Francisco Yau Cheng", "La Estefana · LE-N FF117", "Valeria Arriola Miranda", "Registrar el envío del contrato"]) expect(within(facts).getByText(text)).toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
     expect(screen.queryByText("RDR673", { selector: "dd" })).not.toBeInTheDocument();
-    expect(facts.querySelectorAll("dd")).toHaveLength(5);
+    expect(facts.querySelectorAll("dd")).toHaveLength(4);
     expect(screen.queryByText("OV-DEMO-001")).not.toBeInTheDocument();
     expect(screen.queryByText("Cliente de ejemplo")).not.toBeInTheDocument();
 });
 
 it("keeps facts in the page and money plus read-only answers in the margin, grouped by the question they answer", () => {
     render(<FormalizationRecordSummary item={order} />);
-    for (const name of ["Información primaria", "Información de ventas", "Autorización de venta", "Resumen"]) expect(screen.getByRole("heading", { name: new RegExp(name) })).toBeInTheDocument();
+    for (const name of ["Información primaria", "Información de ventas", "Autorización de venta", "Resumen"]) expect(screen.getByRole("heading", { name })).toBeInTheDocument();
     const margin = screen.getByRole("complementary");
     expect(within(margin).getByText("Total")).toBeInTheDocument();
     for (const group of ["Hitos de la orden", "Aprobaciones", "Cálculos de comisión", "Condiciones comerciales", "Excepciones"]) expect(within(margin).getByRole("list", { name: group })).toBeInTheDocument();

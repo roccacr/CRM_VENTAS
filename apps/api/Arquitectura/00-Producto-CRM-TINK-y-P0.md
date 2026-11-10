@@ -1,5 +1,14 @@
 # 00 - Ley de Producto CRM TINK y P0
 
+## Corte de implementación — 2026-11-10
+
+[90 — Reconciliación del API](90-Reconciliacion-API-20261110.md) es el índice
+de comportamiento versionado y cambios locales posteriores al corte 85.
+Para el árbol local, los contratos de cierre, entrega y extracción se leen
+junto con ese corte. El webhook se limita a actualizaciones y la extracción
+explícita está protegida por sesión, CSRF y permisos efectivos. Leer esta
+documentación no autoriza ejecutar la migración 074 ni desplegar SuiteScript.
+
 ## Precedencia vigente — 2026-11-03
 
 [85 — Reconciliación del árbol actual](85-Reconciliacion-Documental-20261103.md) sustituye72 como inventario. Las ampliaciones solicitadas posteriormente ya están implementadas dentro de sus contratos: [73–75, eventos y mapeo NetSuite](73-Sincronizacion-Estados-Ordenes-NetSuite.md), [77, perfil federado](77-Perfil-Completo-Lead.md), [78, fondos y banco](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), [52, cuotas](52-Etapas-Responsables-y-Tiempos.md), [78, cierre y ayudas](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), [83, agenda contextual](83-Adendum-Migracion-065-y-Rollback.md), [Detalle32, WhatsApp](../../frontend/Arquitectura/32-Detalle-Orden-y-Cliente-Basico.md), [83–84, Adéndum](84-Adendum-Manual-Migracion-066-y-Permisos.md) y [64, calendario/Graph](64-Calendario-Global-API-y-Contexto.md).

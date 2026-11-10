@@ -61,12 +61,12 @@ export class ListCatalogItemsQueryDto {
     @MaxLength(120)
     search?: string;
 
-    @ApiPropertyOptional({ description: "Cantidad máxima de filas.", minimum: 1, maximum: 200, default: 100 })
+    @ApiPropertyOptional({ description: "Cantidad máxima de filas.", minimum: 1, maximum: 500, default: 100 })
     @Transform(toInteger)
     @IsOptional()
     @IsInt()
     @Min(1)
-    @Max(200)
+    @Max(500)
     limit?: number;
 }
 

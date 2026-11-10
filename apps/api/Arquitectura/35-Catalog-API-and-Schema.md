@@ -32,7 +32,7 @@ projects is authorized by this implementation.
    with provider links and an Owner audit event. Never overwrite existing native
    names/references or guess mappings by project name/legacy project PK.
    Skip ambiguous/unresolved project groups and retain them in the report.
-4. Read API requires one or more canonical project IDs (the former three-project cap was removed). Default 50/max 100 rows, opaque
+4. Read API requires one or more canonical project IDs (the former three-project cap was removed). Default 50 rows, max 100 in release `63139a8` and max 500 in the local code, opaque
    filter-bound native/legacy keyset cursor, no per-page total, no growing NOT IN
    exclusion list. Legacy anti-join uses the indexed native legacy identity.
    Source-specific resolution is inside the optional legacy adapter. The single
@@ -99,11 +99,13 @@ previous route; do not drop tables or reverse project identities automatically.
 The dedicated view uses `/unit-files`, never generic catalog persistence.
 All endpoints require an authenticated session and the current scoped
 `{moduleCode}.catalog_file.read` permission (active Owner behavior unchanged).
+The shared query limit defaults to 50. The published `63139a8` release allows
+up to 100, and the local query DTO allows up to 500 for inventory, options and facets.
 
 - `GET /unit-files/projects?moduleCode=administration`: native canonical
   project options only; no inventory scan.
 - `GET /unit-files/options?moduleCode=administration&projectIds=<CRM-ID>&kind=housingType&limit=50`:
-  authenticated distinct choices, canonical projects required, default 50/max 100.
+  authenticated distinct choices, canonical projects required.
   `kind` is `housingType` or `code`; optional `search` (substring),
   `after` (last returned value), exact `status`, and `housingType` for
   unit choices. Returns `{items: string[], hasNext, nextAfter: string|null}`.
@@ -113,7 +115,7 @@ All endpoints require an authenticated session and the current scoped
   in a read-only transaction with the source timeout guard. Bounded output
   does not imply an indexed source DISTINCT; legacy tuning is still pending.
 - `GET /unit-files?moduleCode=administration&projectIds=<CRM-ID>[,<CRM-ID>]&limit=50`:
-  canonical projects required; default 50/max 100; optional exact source `status`,
+  canonical projects required, optional exact source `status`,
   `housingType`, `code`, code substring `codeMatch`, and opaque `cursor`.
   Secondary SearchPanes selections use JSON arrays `codes`, `housingTypes`,
   `statuses`, and `paneProjectIds`: OR within a pane, AND across panes and primary
@@ -184,7 +186,7 @@ Session cookies and existing mutation CSRF protections apply. Operations resolve
 
 Identity resolution uses active role grants and direct overrides, with explicit deny winning for every user, including Owner. Owner skips catalog module membership only and still needs the exact effective permission. Unit Files requires `{moduleCode}.catalog_file.read`; project filters/existence checks do not enforce user/project authorization scope, which remains pending. Access replacement increments the permission version with audited assignment changes atomically; permission-only changes retain session/refresh and require renewal to current grants. Blocking/inactivation, logout and refresh replay retain hard revocation. Shared role-permission rows remain available to other role holders; revoked user assignments are retained as history, not orphaned grants.
 
-`moduleCode` is required: `ventas`, `mercadeo`, `formalizacion`, `contabilidad` or `administration`. GET accepts optional `search` (max 120), `status` (`active`/`inactive`; omit for all), `limit` (1-200, default 100) and `offset` (0-2147483647, default 0). Response includes `catalog`, `items`, `total`; total counts matching non-deleted items before pagination. Ordering is name then internal ID. Count/list queries and offset pagination do not guarantee a concurrent-write snapshot.
+`moduleCode` is required: `ventas`, `mercadeo`, `formalizacion`, `contabilidad` or `administration`. GET accepts optional `search` (max 120), `status` (`active`/`inactive`, omitted for all), `limit` and `offset` (0–2147483647, default 0). The published `63139a8` release accepts 1–200 rows, with default 100. The current local code accepts 1–500 and preserves that API default. Banks also admits up to 500 locally with default 25. Unit Files accepts up to 500 locally with default 50 and retains keyset pagination. Response includes `catalog`, `items`, and `total` for ordinary catalogs. The total counts matching non-deleted items before pagination. Ordering is name then internal ID. Count/list queries and offset pagination do not guarantee a concurrent-write snapshot.
 
 Create/update requires `moduleCode`, trimmed `name` (2-180) and audit `reason` (5-255); optional `detail` is max 500. Optional `externalReferences` accepts at most 12 entries: `systemCode` (1-80) and optional `externalId` (1-180 when non-empty). Omitted/null/empty/whitespace identifiers are unassigned and do not trigger provider lookup. Non-empty IDs require an active provider. Update uses replacement semantics: include every desired reference, not only the edited one. Status changes require `moduleCode`, `status`, `reason`. No hard-delete endpoint is exposed.
 

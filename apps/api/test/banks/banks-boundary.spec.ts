@@ -18,7 +18,8 @@ describe("Banks boundary", () => {
         const dto = plainToInstance(CreateBankAdvisorDto, { moduleCode: "ventas", name: " Ejecutivo ", email: " TEST@EXAMPLE.COM ", phone: " 123 ", area: " Crédito ", reason: " Motivo requerido " });
         expect(dto.email).toBe("test@example.com");
         expect(await validate(dto)).toEqual([]);
-        expect((await validate(plainToInstance(ListBanksQueryDto, { moduleCode: "ventas", limit: 201 }))).map((e) => e.property)).toContain("limit");
+        expect(await validate(plainToInstance(ListBanksQueryDto, { moduleCode: "ventas", limit: 500, offset: 500 }))).toEqual([]);
+        expect((await validate(plainToInstance(ListBanksQueryDto, { moduleCode: "ventas", limit: 501 }))).map((e) => e.property)).toContain("limit");
     });
     it("matches physical contact widths before persistence", async () => {
         const input = { moduleCode: "ventas", name: "Ejecutivo", email: "a@example.test", phone: "1".repeat(40), area: "A".repeat(120), reason: "Motivo requerido" };
@@ -33,6 +34,6 @@ describe("Banks boundary", () => {
         const identity = { getCurrentUser: vi.fn().mockResolvedValue({ roles, orgUnits: [{ code: "ventas", status: "active" }], permissions: [{ code: "ventas.catalog_bank.read", effect: "allow" }], user: { publicId: "actor", status: "active" } }) };
         const service = new BanksService(identity as unknown as IdentityService, repository as unknown as BanksRepository);
         await expect(service.listBanks("session", { moduleCode: "ventas" })).resolves.toEqual({ items: [], total: 0 });
-        expect(repository.listBanks).toHaveBeenCalled();
+        expect(repository.listBanks).toHaveBeenCalledTimes(1);
     });
 });

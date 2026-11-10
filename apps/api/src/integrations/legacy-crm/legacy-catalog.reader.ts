@@ -1,9 +1,9 @@
 /**
- * Puente de catálogos del CRM viejo.
+ * Reparte cada codigo de catalogo a su reader. No consulta tablas.
  *
- * Implementa el puerto que el core ya conoce. No consulta tablas: reparte
- * cada código al reader de su dominio. Un catálogo sin reader se rechaza
- * para no inventar una consulta genérica sobre el esquema viejo.
+ * Un codigo sin reader responde 503. No hay una consulta generica sobre el
+ * esquema viejo. Los readers se arman aqui para que el nucleo no registre uno
+ * por uno. Solo el booleano `true` enciende el puente.
  */
 import { Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -19,9 +19,7 @@ import { LegacyLocationsReader } from "./locations/legacy-locations.reader.js";
 import { LegacyProjectsReader } from "./projects/legacy-projects.reader.js";
 import { LegacySubsidiariesReader } from "./subsidiaries/legacy-subsidiaries.reader.js";
 
-/**
- *
- */
+/** El nucleo ve un solo puerto. Cada reader falla al consultar si el pool no esta abierto. */
 @Injectable()
 export class LegacyCatalogReader implements CatalogFallbackReader {
     private readonly projects: LegacyProjectsReader;

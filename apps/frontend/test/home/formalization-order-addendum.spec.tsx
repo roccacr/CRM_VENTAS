@@ -37,7 +37,11 @@ it.each(["native", "legacy"] as const)("shows the order-level marker and actions
     expect(screen.getByRole("button", { name: "Cancelar adéndum" })).toBeInTheDocument();
     full.unmount();
     render(<FormalizationOrderDrawer item={order} position={1} total={2} onClose={vi.fn()} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} stagePermissions={permissions} />);
-    expect(await within(screen.getByLabelText("Adéndum de la orden")).findByText("Pendiente")).toBeInTheDocument();
+    await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Adéndum de la orden" })).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Adéndum de la orden" }));
+    expect(await screen.findByRole("button", { name: "Cancelar adéndum" })).toBeInTheDocument();
     expect(getOrderAddendum).toHaveBeenCalledWith({ source, id: order.id });
     expect(screen.getByRole("link", { name: "Abrir Outlook" })).toBeInTheDocument();
 });
@@ -47,7 +51,7 @@ it("keeps the complete order readable while hiding its marker without the new re
     expect(screen.queryByLabelText("Adéndum de la orden")).not.toBeInTheDocument();
     expect(getOrderAddendum).not.toHaveBeenCalled();
 });
-it("places a single state card directly below stage actions in both order views", async () => {
+it("places one addendum card in the full order and one marker in the drawer header", async () => {
     const full = render(<FormalizationOrderRecord item={item} stagePermissions={permissions} canUpdateStage onBack={vi.fn()} />);
     await within(screen.getByLabelText("Adéndum de la orden")).findByText("Pendiente");
     // The full page groups the state card with the other cards of the overview grid; it is still rendered once.
@@ -56,8 +60,11 @@ it("places a single state card directly below stage actions in both order views"
     expect(getOrderAddendum).toHaveBeenCalledTimes(1);
     full.unmount();
     render(<FormalizationOrderDrawer item={item} position={1} total={1} onClose={vi.fn()} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} stagePermissions={permissions} />);
-    await within(screen.getByLabelText("Adéndum de la orden")).findByText("Pendiente");
-    expect(screen.getByRole("region", { name: "Cambiar etapa" }).nextElementSibling).toBe(screen.getByLabelText("Adéndum de la orden"));
+    await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Adéndum de la orden" })).toHaveTextContent("Pendiente");
+    });
+    expect(screen.getAllByRole("button", { name: "Adéndum de la orden" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Adéndum de la orden" }).closest(".user-detail-drawer__identity")).not.toBeNull();
     expect(getOrderAddendum).toHaveBeenCalledTimes(2);
 });
 it.each([null, "completed", "cancelled"] as const)("does not expose pending-only actions for status %s", async (status) => {

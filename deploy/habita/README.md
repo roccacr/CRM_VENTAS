@@ -1,8 +1,23 @@
 # Habita: despliegue en Ubuntu / Apache
 
-Revisión documental03/11/2026: el inventario vigente está en [85](../../apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md). Los recibos, hashes, instalación o despliegue inferiores conservan su fecha; no se reejecutaron ni acreditan el árbol actual.
+## Corte operativo del 10/11/2026
 
-## Vigencia y límites — revisión 2026-11-02
+El último despliegue de Habita confirmado en el registro de ejecución fue el
+release `20261109185625-63139a8-local` del 09/11/2026, basado en `63139a8`.
+El activador verificó 1.410 archivos fuente y 773 artefactos. El enlace
+`current` apuntó al release, `habita-pm2` quedó activo y el login y
+`/health/ready` respondieron HTTP 200. También se comprobó el SVG oficial
+servido y se encontró `v2.0.0` con la revisión `63139a8` en el bundle
+público. Esta evidencia cubre una comprobación pública sin sesión.
+
+El corte Git revisado llega a `4ad7a59`, con tres commits adicionales sobre
+`63139a8`. La promoción CI/CD y otros cambios del árbol local se documentan
+como preparación. La revisión documental no volvió a consultar producción
+ni acredita un release posterior, la activación de SuiteScript o una migración.
+Los [registros del 29/10](DEPLOYMENT-20261029.md),
+[03/11](DEPLOYMENT-20261103.md) y [04/11](DEPLOYMENT-20261104.md) son históricos.
+
+## Alcance del runbook
 
 Este es el runbook del despliegue registrado en
 [DEPLOYMENT-20261029.md](DEPLOYMENT-20261029.md), no una autorización permanente
@@ -15,8 +30,9 @@ Cobertura global: [informe72](../../apps/api/Arquitectura/72-Reconciliacion-Docu
 | Artefacto | Responsabilidad y efecto al ejecutarlo |
 | --- | --- |
 | `publish.ps1` | Copia fija del código, builds, manifiesto/hash y transferencia/activación remota; tiene efectos, no es un diagnóstico read-only |
-| `activate-release.sh` | Prepara release, instala runtime, valida, cambia symlink/reinicia exclusivamente API y revierte ante fallo |
-| `verify-release.py` | Verifica paths y hashes del overlay; **también elimina archivos del clon** ausentes del manifiesto dentro del release validado; no consulta BD |
+| `activate-release.sh` | Prepara y activa el release. El cambio local admite overlay sobre un clon y artefacto CI sin clon. En ambos modos instala el runtime y recarga el API |
+| `verify-release.py` | Valida rutas y SHA-256. En modo overlay elimina del clon archivos ausentes del manifiesto. En modo artefacto exige coincidencia exacta del inventario y rechaza enlaces simbólicos |
+| `package-ci-release.py` | Cambio local que empaqueta los builds de CI y los archivos mínimos de runtime, con manifiesto y SHA-256 |
 | `apache-http.conf`, `apache-https.conf` | Plantillas de sitios/proxy SPA, API y WebSocket; no se aplican al compilar ni publicar un Markdown |
 | `ecosystem.config.cjs`, `habita-pm2.service` | Configuración del proceso y supervisor PM2 aislado; requiere instalación operativa |
 | `habita-api.service` | Alternativa histórica de servicio directo; no ejecutar a la vez que PM2 |
@@ -45,11 +61,10 @@ No se requiere commit/push para aplicar un overlay verificado sobre el clon.
 - API: `NODE_ENV=production`, `API_BIND_HOST=127.0.0.1`, `PORT=3100`,
   `FRONTEND_ORIGIN=https://habita.roccacr.com`, `TRUSTED_PROXY_IPS=127.0.0.1`.
 - Mantener destinos BD y claves criptográficas durante la transferencia.
-- NetSuite: FRONTEND_ORIGIN de Habita fija Producción; configurar previamente
-  NETSUITE_PRODUCTION_RESTLET_URL con script/deploy confirmados y NETSUITE_* de
-  cuenta 4552704. NETSUITE_PRODUCTION_READ_MODE elige legacy o modules según el
-  contrato del script. No publicar esta revisión con URL pendiente.
-  Sandbox usa NETSUITE_SANDBOX_* únicamente en el backend local.
+- NetSuite: el origen de producción de Habita selecciona ese entorno.
+  Verificar el RESTlet, el modo de lectura y los parámetros de cuenta
+  de acuerdo con [el runbook de NetSuite](ACTIVAR-NETSUITE.md).
+  Sandbox usa la configuración separada `NETSUITE_SANDBOX_*`.
 - CA RDS: ruta absoluta del certificado público dentro del release remoto.
 
 ## Secuencia
@@ -161,9 +176,9 @@ del API publico, con secreto dedicado y flags explicitos. Publicar el UE no
 configura automaticamente sus parametros ni demuestra la entrega real.
 
 
-## Activacion acotada verificada — 2026-11-03
+## Activación acotada histórica del 03/11/2026
 
-Release activo `20261103171020-netsuite`, basado en `20261103154247-4d446ed-local`.
+En ese corte quedó activo `20261103171020-netsuite`, basado en `20261103154247-4d446ed-local`.
 Overlay de 12 fuentes de integracion, con 637 artefactos API compilados. Se
 verificaron las 1286 fuentes y719 artefactos finales; frontend conservado.
 SHA256 del overlay: `a77f9bbcb6a4ecea59f4548cfb1130886126bd95765b2ade895d46a6acdd308d`.
@@ -181,3 +196,57 @@ No se probaron escrituras de negocio ni se acredita sincronizacion E2E.
 El local compartia la misma BD y PERSIST=true; se cambio a false para evitar que
 Sandbox sobrescriba datos reales. Worker local recargado despues de ese cambio.
 Las instrucciones y archivos concretos estan en [ACTIVAR-NETSUITE.md](ACTIVAR-NETSUITE.md).
+
+## Promoción CI/CD con GitHub Actions, preparada localmente
+
+La revisión está en el árbol local. Ver [CRM quality](../../.github/workflows/quality.yml)
+y [Habita promotion](../../.github/workflows/habita-promote.yml). El primero
+corre formato, lint, tipos, cobertura y build en push, PR y ejecución manual.
+La matriz ejecuta la suite de cobertura una vez por app y el job focalizado
+de NetSuite repite casos relevantes en MariaDB/InnoDB desechable. La
+persistencia MySQL general se informa por separado y no bloquea el empaquetado.
+
+La promoción solo aplica a un push en la rama protegida configurada en
+`HABITA_RELEASE_BRANCH` con `HABITA_QA_ENABLED=true` o `HABITA_PRODUCTION_ENABLED=true`. El empaquetado espera
+los controles de calidad de ambas apps, la auditoría de dependencias y
+NetSuite. El mismo archivo pasa de QA a producción cuando
+`HABITA_PRODUCTION_ENABLED=true` y QA ha terminado correctamente. Cada
+promoción comprueba que el SHA de la ejecución sigue siendo la punta de
+la rama, valida el SHA-256 y coteja el activador con la copia del paquete.
+
+El identificador del artefacto tiene formato
+`AAAAMMDDhhmmss-<sha-corto>-ci-<run-id>-<intento>`. El build de CI usa
+`VITE_API_ORIGIN=same-origin` y `VITE_HABITA_RELEASE` contiene el SHA
+completo. La etiqueta del encabezado muestra su revisión corta. El
+paquete incluye los builds y los archivos mínimos de runtime. La clave
+SSH y la lista de hosts conocidos vienen del entorno correspondiente
+y se usan en archivos temporales privados.
+
+### Habilitación
+
+1. Confirmar y proteger la rama de release en GitHub. Configurar las variables
+   de repositorio `HABITA_RELEASE_BRANCH`. Activar `HABITA_QA_ENABLED=true` solo si se usa QA.
+2. Configurar `production` y, si se usa QA, `habita-qa`, restringidos a esa rama.
+   Cada entorno requiere las variables `HABITA_SSH_TARGET` (usuario@host),
+   `HABITA_WEB_ORIGIN` y `HABITA_API_ORIGIN`, más los secretos
+   `HABITA_SSH_KEY` y `HABITA_SSH_KNOWN_HOSTS`. Usar credenciales dedicadas
+   por entorno y registrar la clave de host a partir de una fuente confiable.
+3. Si se usa QA, preparar una instancia independiente con el mismo layout de Habita,
+   configuración propia, API en puerto 3100 y proxy de mismo origen. En cada
+   servidor, crear `/var/www/habita-crm/shared/deploy-environment` con su nombre
+   exacto (`habita-qa` o `production`), propiedad de administración y solo lectura
+   para el usuario de despliegue. El activador valida esa identidad antes de
+   extraer el release. Se requiere un release inicial sano en cada host.
+4. Probar un fallo de CI, una promoción sana y un rollback en QA. Activar
+   `HABITA_PRODUCTION_ENABLED=true` solo después de esa validación y configurar
+   revisión del entorno si el plan de GitHub lo admite. Ante una activación
+   fallida, revisar el rollback y relanzar el workflow completo para generar un
+   nuevo identificador de release.
+
+El activador conserva `shared/api.env`, instala las dependencias de runtime
+desde el lockfile, cambia `current` de forma atómica y recarga `habita-pm2`.
+Comprueba readiness local y pública y compara el HTML de login con el
+artefacto. Si la activación falla, restaura el release anterior e intenta
+verificarlo. Las migraciones se ejecutan por separado. Antes de considerar
+habilitado este flujo, falta validar la configuración de GitHub y ejecutar
+la promoción y el rollback en QA.

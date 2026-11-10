@@ -119,7 +119,6 @@ function Highlights({ item, onOpenClient, onOpenUnit }: { readonly item: FollowU
         ["Cliente", item.client],
         ["Proyecto · Unidad", [item.project?.name, item.unit].filter(Boolean).join(" · ")],
         ["Vendedor", item.seller?.name],
-        ["Etapa", item.state.label],
         ["Siguiente paso", item.nextStep],
     ] as const;
     return (
@@ -467,31 +466,39 @@ export function FormalizationRecordSummary({ item, primary = null, effectivePerm
         <div className="record-page" data-order-id={item.id}>
             <NotesTarget source={item.source} id={item.id} label={`Orden de venta ${item.number}`} />
             <div className="record-overview">
+                <section className="record-summary-card" aria-label="Resumen de la orden">
+                    <header className="record-summary-card__head">
+                        <h2>Resumen de la orden</h2>
+                        <div className="record-summary-card__markers">{overview}</div>
+                    </header>
+                    <Highlights
+                        item={item}
+                        onOpenUnit={() => {
+                            setPanel("unit");
+                        }}
+                        onOpenClient={() => {
+                            setPanel("client");
+                        }}
+                    />
+                </section>
                 <div className="record-overview__cards">
-                    {overview}
                     <OutlookCompose item={item} />
                 </div>
-                <Highlights
-                    item={item}
-                    onOpenUnit={() => {
-                        setPanel("unit");
-                    }}
-                    onOpenClient={() => {
-                        setPanel("client");
-                    }}
-                />
             </div>
-            <div className="record-actions">
-                <FormAssignBank
-                    key={`bank:${item.source}:${item.id}`}
-                    item={item}
-                    onAssigned={() => {
-                        setBankRevision((value) => value + 1);
-                    }}
-                />
-                <FormalizationMarkAddendum item={item} permissions={effectivePermissions} onSaved={onAddendumChanged} />
-                <FormalizationScheduleEvent key={`${item.source}:${item.id}`} item={item} effectivePermissions={effectivePermissions} onClosed={refreshAfterCalendar} />
-            </div>
+            <section className="record-quick-actions" aria-label="Acciones rápidas">
+                <h2 className="formalization-section-title">Acciones rápidas</h2>
+                <div className="record-actions">
+                    <FormAssignBank
+                        key={`bank:${item.source}:${item.id}`}
+                        item={item}
+                        onAssigned={() => {
+                            setBankRevision((value) => value + 1);
+                        }}
+                    />
+                    <FormalizationMarkAddendum item={item} permissions={effectivePermissions} onSaved={onAddendumChanged} />
+                    <FormalizationScheduleEvent key={`${item.source}:${item.id}`} item={item} effectivePermissions={effectivePermissions} onClosed={refreshAfterCalendar} />
+                </div>
+            </section>
             <FormalizationClientDrawer
                 onCalendarClosed={refreshAfterCalendar}
                 onNavigate={onNavigate}

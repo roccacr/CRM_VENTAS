@@ -1,30 +1,41 @@
 import { z } from "zod";
 
 const legacyRecordSchema = z.record(z.string(), z.unknown());
+/** 1 o "1" es si, 0 o "0" es no. Cualquier otro valor es desconocido, y desconocido no es no. */
 const flag = (value: unknown): "yes" | "no" | "unknown" => {
     if (value === 1 || value === "1") return "yes";
     if (value === 0 || value === "0") return "no";
     return "unknown";
 };
 const approval = (value: unknown) => (({ yes: "approved", no: "not_approved", unknown: "unknown" }) as const)[flag(value)];
+/** El monto tiene que coincidir con el patron decimal. No se redondea ni se reformatea. */
 const money = (value: unknown): string | null => {
     if (typeof value !== "string" && typeof value !== "number") return null;
     const text = String(value).trim();
     return /^-?\d{1,15}(\.\d{1,4})?$/.test(text) ? text : null;
 };
+/** Solo un `YYYY-MM-DD` que exista como dia UTC. Una fecha imposible queda nula. */
 const dateOnly = (value: unknown): string | null => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
     const parsed = new Date(`${value}T00:00:00Z`);
     return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? value : null;
 };
 
+/** Referencia NetSuite solo con `id_ov_netsuite` entero, positivo y seguro. El tranid se adjunta si es texto. */
 const externalReferences = (row: Record<string, unknown>) => {
     const id = row.id_ov_netsuite;
     if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0) return [];
     return [{ systemCode: "netsuite", externalId: String(id), transactionNumber: typeof row.id_ov_tranid === "string" ? row.id_ov_tranid : null }];
 };
 
-/** Converts a legacy observation to one neutral JSON. No provider calls or inferred past events. */
+/**
+ * Observacion de una orden vieja a un JSON neutro. No llama proveedores ni
+ * inventa historia. `pending_approval` solo sale de la combinacion exacta:
+ * activa, no caida, jefe y desarrollador aprobados, formalizacion no aprobada.
+ * Si no, queda `unclassified`, con fecha y actor nulos. El codigo nativo es
+ * `LEGACY-OV-{id}`. Los nombres fisicos se conservan, incluidos
+ * `contrado_frima_ov`, `chekJefeVenta`, `prec_ventaneto_ov` y `comison_asesor_ov`.
+ */
 export function mapLegacySalesOrder(input: unknown, observedAt: string) {
     const row = legacyRecordSchema.parse(input);
     const legacyId = z.number().int().positive().parse(row.id_ov);

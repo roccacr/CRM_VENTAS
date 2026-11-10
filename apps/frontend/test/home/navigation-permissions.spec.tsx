@@ -231,7 +231,7 @@ describe("Marketing lead capture landing", () => {
         const Page = getAppRoute("/home/marketing/leads")?.Page;
         if (!Page) throw Error("Missing capture page");
         const page = render(<Page currentUser={profile.user} />);
-        expect(await screen.findByRole("heading", { level: 1, name: "Captación de leads" }, { timeout: 15000 })).toBeTruthy();
+        expect(await screen.findByRole("heading", { level: 1, name: "Captación de leads" }, { timeout: 15000 })).toBeInTheDocument();
         expect(page.container.textContent).toContain("De dónde vienen los leads y en qué terminan.");
         cleanup();
     });
