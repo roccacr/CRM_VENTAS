@@ -338,7 +338,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 ) {
                     return deliverObservation(
                         url,
-                        "Bearer 0247f2b0f157a2299fe33f262c31437703166fa6e20336b38580f1f81e3989b4",
+                        https.createSecureString({ input: "Bearer {custsecret_crm_habita_production}" }),
                         event,
                         readSnapshot,
                     );
