@@ -1,5 +1,15 @@
 # 03 - Base de Datos y Migracion
 
+## Incorporación local — 2026-11-10
+
+El runner local registra `202611100074_netsuite_order_delivery`. Crea en
+la base nativa `int_netsuite_order_delivery` con PK `(destination, order_id)`
+y `delivered_on DATE NULL`. Incluye órdenes de ambas fuentes mediante
+`destination` sin DDL en legacy. Las lecturas locales de cierre anual consultan
+esta tabla. El archivo y su registro en el runner no acreditan una aplicación.
+No se ejecutó ni verificó el ledger durante la revisión documental.
+[90 — Reconciliación](90-Reconciliacion-API-20261110.md).
+
 ## Inventario vigente del checkout — 2026-11-03
 
 El runner registra **66 migraciones**: 001,003–025 y 027–068. Los inventarios 55/37/36 inferiores son cortes históricos. 057–061 ya están versionadas en HEAD `4d446ed`; 060 tiene además una ampliación local y 062–068 son archivos locales del checkout. Registro en código, aplicación en ledger, conformidad del esquema y despliegue son verificaciones diferentes. Las aplicaciones 058,059,060,065,066 y 067 tienen evidencia fechada en sus contratos; esta reconciliación no abrió conexiones ni volvió a ejecutarlas. 065/066 constan aplicadas tanto en nativa como en legacy mediante herramientas separadas; 067 es solo nativa.

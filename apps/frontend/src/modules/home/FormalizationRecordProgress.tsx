@@ -138,7 +138,7 @@ export function FormalizationRecordProgress({ item, compact = false }: { readonl
                     </li>
                 ))}
             </ol>
-            <OrderChecks item={item} />
+            {compact && <OrderChecks item={item} />}
         </section>
     );
 }

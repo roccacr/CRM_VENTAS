@@ -34,6 +34,7 @@ export type FollowUpCounts = Record<Exclude<FollowUpQueue, "addendum">, number> 
 export interface FollowUpAccess {
     /** Independent order-read grant, never inferred from a queue grant. */
     finiquito?: boolean;
+    exactOrderSearch?: boolean;
     queues?: Partial<Record<FollowUpQueue, boolean>>;
     approvals: boolean;
     actorId: string;

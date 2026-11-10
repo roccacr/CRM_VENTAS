@@ -1,4 +1,20 @@
-# Version unificada vigente de Produccion y Sandbox — 2026-11-03
+# SuiteScript unificado de Producción y Sandbox
+
+## Corte local — 2026-11-10
+
+La librería local identifica `2026.11.10.4`. El RESTlet añade
+`GET module=salesOrders&action=findByTranId&tranid=<número>` para resolver
+el ID interno de una orden con coincidencia exacta. Se incorpora
+`custbody_fecha_unidad_entregada` a la proyección.
+La biblioteca local fija la URL base de producción en
+`https://api-habita.rdghub.com/integrations/netsuite/production`.
+El UE añade `/order-events`; el dominio autorizado del secreto en ese
+entorno debe corresponder al destino del API. Sandbox conserva sus valores
+propios. La URL del bloque histórico inferior describe el corte del 3 de
+noviembre. Este inventario no acredita que el archivo local se instaló en
+ninguna cuenta. [90 — Reconciliación](../../../../Arquitectura/90-Reconciliacion-API-20261110.md).
+
+## Antecedente de instalación — 2026-11-03
 
 Por indicacion del propietario, esta carpeta contiene la nueva version unificada
 para ambos entornos de NetSuite:

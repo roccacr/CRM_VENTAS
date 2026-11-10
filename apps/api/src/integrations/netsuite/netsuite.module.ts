@@ -1,3 +1,4 @@
+import { HttpCode } from "@nestjs/common";
 import { BadRequestException, Body, Controller, Get, Global, Header, Inject, Module, Param, Post, Query, Req } from "@nestjs/common";
 
 import type { CookieRequest } from "../../common/security/cookie-request.type.js";
@@ -14,6 +15,7 @@ import { NetsuiteLocalEventsController } from "./netsuite-local-events.controlle
 import { NetsuiteOrderRepository } from "./netsuite-order.repository.js";
 import { NetsuiteOrderEventRepository } from "./netsuite-order-event.repository.js";
 import { NetsuiteOrderEventService } from "./netsuite-order-event.service.js";
+import { NetsuiteOrderImportQueue } from "./netsuite-order-import.queue.js";
 import { NetsuiteProductionEventsController } from "./netsuite-production-events.controller.js";
 import { NetsuiteRestletClient } from "./netsuite-restlet.client.js";
 import { NetsuiteSalesOrderService } from "./netsuite-sales-order.service.js";
@@ -26,7 +28,10 @@ export class NetsuiteSalesOrderController {
     /**
      *
      */
-    constructor(@Inject(NetsuiteSalesOrderService) private readonly service: NetsuiteSalesOrderService) {}
+    constructor(
+        @Inject(NetsuiteSalesOrderService) private readonly service: NetsuiteSalesOrderService,
+        @Inject(NetsuiteOrderImportQueue) private readonly importQueue: NetsuiteOrderImportQueue,
+    ) {}
     /**
      *
      */
@@ -62,6 +67,34 @@ export class NetsuiteSalesOrderController {
         if (body !== undefined && (body === null || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length)) throw new BadRequestException("La sincronizacion no acepta datos del proveedor desde el navegador.");
         return this.service.synchronize(request.cookies[SESSION_COOKIE_NAME], { source, id });
     }
+    /** Explicit import is separate from the webhook and manual updates. */
+    @Post("netsuite/import")
+    @HttpCode(202)
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["formalizacion.orders.read", "formalizacion.orders.stage.update"] })
+    @Header("Cache-Control", "no-store")
+    importOrder(@Req() request: CookieRequest, @Body() body: unknown) {
+        return this.importQueue.enqueue(request.cookies[SESSION_COOKIE_NAME], body);
+    }
+    /**
+     *
+     */
+    @Get("netsuite/import/notices")
+    @RouteSecurity("authenticated")
+    @Header("Cache-Control", "no-store")
+    importNotices(@Req() request: CookieRequest) {
+        return this.importQueue.notices(request.cookies[SESSION_COOKIE_NAME]);
+    }
+
+    /**
+     *
+     */
+    @Post("netsuite/import/notices/:id/read")
+    @RouteSecurity("authenticated")
+    markImportNotice(@Req() request: CookieRequest, @Param("id") id: string) {
+        return this.importQueue.markRead(request.cookies[SESSION_COOKIE_NAME], id);
+    }
+
     /** Provider read stays separate from the canonical database snapshot. */
     @Get(":source/:id/netsuite")
     @RouteSecurity("permission")
@@ -79,6 +112,6 @@ export class NetsuiteSalesOrderController {
     exports: [FORMALIZATION_APPROVAL_ERP, NetsuiteOrderRepository],
     imports: [IdentityModule, AuditModule],
     controllers: [NetsuiteSalesOrderController, NetsuiteLocalEventsController, NetsuiteProductionEventsController],
-    providers: [NetsuiteOrderEventService, NetsuiteOrderEventRepository, LocalServiceTokenGuard, NetsuiteOrderRepository, NetsuiteRestletClient, { provide: FORMALIZATION_APPROVAL_ERP, useExisting: NetsuiteRestletClient }, NetsuiteSalesOrderService, OrderTimingRepository, HomeSummaryRepository],
+    providers: [NetsuiteOrderImportQueue, NetsuiteOrderEventService, NetsuiteOrderEventRepository, LocalServiceTokenGuard, NetsuiteOrderRepository, NetsuiteRestletClient, { provide: FORMALIZATION_APPROVAL_ERP, useExisting: NetsuiteRestletClient }, NetsuiteSalesOrderService, OrderTimingRepository, HomeSummaryRepository],
 })
 export class NetsuiteModule {}

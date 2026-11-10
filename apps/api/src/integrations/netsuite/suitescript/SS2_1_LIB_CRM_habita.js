@@ -1,6 +1,9 @@
 /**
+ * Versión: 2026.11.10.6 — Lectura del expediente y su proyecto principal.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
- * API publica: espacios de nombres; ver CRM TINK LIB - Guia.md.
+ * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
+ * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
+ * Cada consulta de importación define los campos que puede devolver.
  * Version unificada para Produccion y Sandbox; cuenta autorizada y custbody37 validados.
  * Uso de servidor; conserva las restricciones y configuracion originales.
  * @NApiVersion 2.1
@@ -304,6 +307,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         // Configurar cuenta autorizada, URL base y API Secret en cada deployment.
         const URL_PARAMETER = "custscript_crm_event_url";
         const SECRET_PARAMETER = "custscript_crm_event_secret_id";
+        const PRODUCTION_EVENT_BASE_URL = "https://api-habita.rdghub.com/integrations/netsuite/production";
         const ALLOWED_BASE_URL =
             /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?::\d{1,5})?(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*\/?$/i;
         const ENDPOINT_NAME = /^[a-z]+(?:-[a-z]+)*-events$/;
@@ -326,9 +330,25 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 // URL y secreto administrados en el deployment, nunca tomados del registro o del usuario.
                 const url = resolveUrl(endpoint);
                 if (url === null) return blocked("destination_blocked");
-                const secretId = runtime.getCurrentScript().getParameter({ name: SECRET_PARAMETER });
-                if (typeof secretId !== "string" || !SECRET_ID_PATTERN.test(secretId))
+                // Credencial directa limitada a la cuenta y al receptor oficial de Producción.
+                if (
+                    getEnvironmentName() === "production" &&
+                    runtime.accountId === "4552704" &&
+                    url === PRODUCTION_EVENT_BASE_URL + "/" + endpoint
+                ) {
+                    return deliverObservation(
+                        url,
+                        "Bearer 0247f2b0f157a2299fe33f262c31437703166fa6e20336b38580f1f81e3989b4",
+                        event,
+                        readSnapshot,
+                    );
+                }
+                const configuredSecretId = runtime.getCurrentScript().getParameter({ name: SECRET_PARAMETER });
+                const secretId =
+                    typeof configuredSecretId === "string" ? configuredSecretId.trim() : configuredSecretId;
+                if (typeof secretId !== "string" || !SECRET_ID_PATTERN.test(secretId)) {
                     return blocked("configuration_missing");
+                }
                 const authorization = https.createSecureString({ input: "Bearer {" + secretId + "}" });
                 return deliverObservation(url, authorization, event, readSnapshot);
             } catch (error) {
@@ -374,8 +394,17 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         function resolveUrl(endpoint) {
             if (typeof endpoint !== "string" || !ENDPOINT_NAME.test(endpoint)) return null;
             const configured = runtime.getCurrentScript().getParameter({ name: URL_PARAMETER });
-            if (typeof configured !== "string" || !ALLOWED_BASE_URL.test(configured)) return null;
-            return configured.replace(/\/+$/, "") + "/" + endpoint;
+            if (configured !== null && configured !== undefined && typeof configured !== "string") return null;
+            let baseUrl = configured?.trim() ?? "";
+            // Respaldo temporal para esta cuenta; el parámetro del despliegue tiene prioridad.
+            if (baseUrl === "" && getEnvironmentName() === "production" && runtime.accountId === "4552704") {
+                baseUrl = PRODUCTION_EVENT_BASE_URL;
+            }
+            if (!ALLOWED_BASE_URL.test(baseUrl)) return null;
+            const url = baseUrl.replace(/\/+$/, "");
+            // Si el despliegue ya incluye la ruta de este módulo, no volver a agregarla.
+            const suffix = "/" + endpoint;
+            return url.endsWith(suffix) && url.indexOf("/", "https://".length) !== -1 ? url : url + suffix;
         }
 
         /** Cuerpo JSON cerrado: nunca el record crudo ni el secreto. */
@@ -451,7 +480,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         "use strict";
 
         // Version unica del conjunto de scripts. Actualizar al preparar cada entrega: la lee el empaquetador.
-        const SCRIPT_VERSION = "2026.11.03.7";
+        const SCRIPT_VERSION = "2026.11.10.4";
 
         /**
          * Un fallo del logger no debe interrumpir una consulta ni cambiar su respuesta.
@@ -665,6 +694,94 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         });
     })(fields);
 
+    // Consultas puntuales del importador. El RESTlet delega en salesOrders.get o leads.get.
+    const importQueries = ((search, record, responses, validation) => {
+        const { fail } = responses;
+        const { isValidId } = validation;
+
+        /**
+         * Busca el número exacto en las cabeceras de órdenes de venta.
+         * mainline=T evita contar las líneas de una misma orden como coincidencias.
+         * Dos resultados bastan para detectar un número ambiguo.
+         * @param {*} value Número visible recibido en tranid.
+         * @returns {object} ID interno y número visible, o un error 400, 404 o 409.
+         */
+        function findSalesOrderByTranId(value) {
+            const tranid = typeof value === "string" ? value.trim() : "";
+            if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,59}$/.test(tranid)) {
+                return fail(400, "INVALID_TRANID", "Numero de orden invalido.");
+            }
+            const matches = search
+                .create({
+                    type: search.Type.SALES_ORDER,
+                    filters: [["mainline", "is", "T"], "and", ["tranid", "is", tranid]],
+                    columns: ["internalid", "tranid"],
+                })
+                .run()
+                .getRange({ start: 0, end: 2 });
+            if (matches.length === 0) return fail(404, "SALES_ORDER_NOT_FOUND", "La orden de venta no existe.");
+            if (matches.length > 1)
+                return fail(409, "SALES_ORDER_AMBIGUOUS", "El numero corresponde a mas de una orden.");
+            return responses.ok({ id: String(matches[0].id), tranid: matches[0].getValue({ name: "tranid" }) });
+        }
+
+        /**
+         * Lee solo los campos que Habita usa para conciliar al cliente.
+         * @param {object} request Solicitud con el ID interno de NetSuite.
+         * @returns {object} Ficha mínima del cliente o error de validación.
+         */
+        function importCustomer(request) {
+            if (!isValidId(request)) return fail(400, "INVALID_ID", "Se requiere el ID interno del cliente.");
+            const fields = search.lookupFields({
+                type: search.Type.CUSTOMER,
+                id: request.id,
+                columns: ["firstname", "lastname", "companyname", "email", "phone", "leadsource"],
+            });
+            // leadsource puede venir como un objeto o como el primer elemento de un arreglo.
+            const campaign = Array.isArray(fields.leadsource) ? fields.leadsource[0] : fields.leadsource;
+            return responses.ok({
+                id: String(request.id),
+                fullName: [fields.firstname, fields.lastname].filter(Boolean).join(" ") || fields.companyname || "",
+                company: fields.companyname || null,
+                email: fields.email || null,
+                phone: fields.phone || null,
+                campaign: campaign ? String(campaign.value) : null,
+            });
+        }
+
+        /**
+         * Resuelve una relación a partir de su ID interno. Cada tipo permite
+         * consultar solo los campos usados para conciliar la relación.
+         * @param {object} request Solicitud con id y kind.
+         * @returns {object} ID y valor consultado, o error de validación.
+         */
+        function importRelation(request) {
+            if (!isValidId(request)) return fail(400, "INVALID_ID", "Se requiere un ID interno válido.");
+            if (request.kind === "subsidiary") {
+                const fields = search.lookupFields({ type: search.Type.SUBSIDIARY, id: request.id, columns: ["name"] });
+                return responses.ok({ id: String(request.id), value: fields.name || null });
+            }
+            if (request.kind === "user") {
+                const fields = search.lookupFields({ type: search.Type.EMPLOYEE, id: request.id, columns: ["email"] });
+                return responses.ok({ id: String(request.id), value: fields.email || null });
+            }
+            if (request.kind === "unitFile") {
+                const unit = record.load({ type: "customrecord_ix_record_exp_unidades", id: request.id });
+                // getValue devuelve el ID del proyecto. getText devolvería su etiqueta.
+                const projectId = unit.getValue({ fieldId: "custrecord_163_csegix_proyectos" });
+                const code = unit.getValue({ fieldId: "name" });
+                return responses.ok({
+                    id: String(request.id),
+                    code: String(code || ""),
+                    projectId: String(projectId || ""),
+                });
+            }
+            return fail(400, "INVALID_RELATION", "Tipo de relación no permitido.");
+        }
+
+        return Object.freeze({ findSalesOrderByTranId, importCustomer, importRelation });
+    })(ns5, ns4, responses, validation);
+
     // Origen: modules/01_sales-orders/SS2_1_LIB_CRM_OrdenesVenta.js
     const salesOrders = ((responses, fields, records, providerErrors, readByIdFlow, runActionFlow, SCHEMA) => {
         "use strict";
@@ -731,8 +848,26 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                     order.getSublists().includes(team.sublist) && order.getLineCount({ sublistId: team.sublist }) > 0
                         ? order.getSublistValue({ sublistId: team.sublist, fieldId: team.field, line: 0 })
                         : null;
+                const deliveryField = "custbody_fecha_unidad_entregada";
+                const delivery =
+                    typeof order.getFields === "function" && order.getFields().includes(deliveryField)
+                        ? readValue(deliveryField)
+                        : undefined;
+                const deliveryProjection =
+                    delivery instanceof Date && Number.isFinite(delivery.getTime())
+                        ? {
+                              [deliveryField]: [
+                                  delivery.getFullYear(),
+                                  String(delivery.getMonth() + 1).padStart(2, "0"),
+                                  String(delivery.getDate()).padStart(2, "0"),
+                              ].join("-"),
+                          }
+                        : delivery === null || delivery === ""
+                          ? { [deliveryField]: null }
+                          : {};
                 projection = {
                     ...mapFields(SCHEMA.eventValues, readValue),
+                    ...deliveryProjection,
                     crm_owner_employee: owner === null ? null : String(owner),
                     crm_sync_projection: 1,
                     crm_transaction_date: [
@@ -851,14 +986,17 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         }
 
         return Object.freeze({
-            get: (request) =>
-                readById(
+            get: (request) => {
+                if (request?.action === "findByTranId") return importQueries.findSalesOrderByTranId(request.tranid);
+                if (request?.action === "importRelation") return importQueries.importRelation(request);
+                return readById(
                     request,
                     request?.action === "syncSnapshot"
                         ? (id) => salesOrderEvents.readEventSnapshot(id)
                         : getSalesOrderById,
                     ERRORS,
-                ),
+                );
+            },
             put: (request) => runAction(request, { approveFormalization }),
             // Lo consume NotificarCambio para construir el snapshot del evento.
             getSalesOrderById,
@@ -948,7 +1086,11 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
 
         const { notImplemented } = responses;
 
-        return Object.freeze({ get: notImplemented, put: notImplemented });
+        return Object.freeze({
+            get: (request) =>
+                request?.action === "importCustomer" ? importQueries.importCustomer(request) : notImplemented(),
+            put: notImplemented,
+        });
     })(responses);
 
     // Origen: modules/03_estimates/SS2_1_LIB_CRM_Estimaciones.js

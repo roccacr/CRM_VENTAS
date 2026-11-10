@@ -5,7 +5,7 @@ import { ConfigService } from "@nestjs/config";
 
 import { isNetsuiteEventReceiverEnabled } from "../../common/security/local-service-token.guard.js";
 import { type PersistedOrderEvent, persistedOrderEvent, productionOrderEvent } from "./netsuite-order-event.contract.js";
-import { mapOrderFields, mapOrderFlags, readOrderRelationValues } from "./netsuite-order-event.mapper.js";
+import { calendarDate, mapOrderFields, mapOrderFlags, NETSUITE_DELIVERY_DATE_FIELD, readOrderRelationValues } from "./netsuite-order-event.mapper.js";
 import { type ManualOrderSynchronization, NetsuiteOrderEventRepository, OrderEventPersistenceError } from "./netsuite-order-event.repository.js";
 
 /** Hash estable ante cambios en el orden de claves JSON, sin registrar datos personales en consola. */
@@ -49,12 +49,7 @@ export class NetsuiteOrderEventService {
         assertCursorTimestamps(event.event);
         const identity = { payloadHash: digest(event), snapshotHash: "" };
         try {
-            const fields = event.snapshot.data.fields;
-            const relations = readOrderRelationValues(fields);
-            const direct = [...mapOrderFlags(fields, "native", {}), ...mapOrderFields(fields, "native", {})].map(({ field, after }) => ({ field, after }));
-            // Omitted means preserve; explicit null means clear. They must never share a snapshot hash.
-            if (fields.crm_sync_projection === 1 && Object.hasOwn(fields, "custbody37") && !direct.some(({ field }) => field === "custbody37")) direct.push({ field: "custbody37", after: null });
-            identity.snapshotHash = digest(fields.crm_sync_projection === 1 ? { direct, relations } : direct);
+            identity.snapshotHash = orderSnapshotHash(event.snapshot.data.fields);
             const result = await this.repository.apply(event, identity, manual);
             if (result.result === "stale") throw new ConflictException("Evento anterior o ambiguo; consultar NetSuite antes de reenviar.");
             this.logger.log({ event: "netsuite_order_event_completed", eventId: event.event.eventId, netsuiteId: event.event.netsuiteId, result: result.result, destination: result.destination, duplicate: result.duplicate });
@@ -91,4 +86,14 @@ export class NetsuiteOrderEventService {
         if (original instanceof HttpException) throw original;
         throw new ServiceUnavailableException(message);
     }
+}
+
+function orderSnapshotHash(fields: PersistedOrderEvent["snapshot"]["data"]["fields"]): string {
+    const relations = readOrderRelationValues(fields);
+    const direct = [...mapOrderFlags(fields, "native", {}), ...mapOrderFields(fields, "native", {})].map(({ field, after }) => ({ field, after }));
+    // Omitted means preserve; explicit null means clear. They must never share a snapshot hash.
+    if (fields.crm_sync_projection === 1 && Object.hasOwn(fields, "custbody37") && !direct.some(({ field }) => field === "custbody37")) direct.push({ field: "custbody37", after: null });
+    const deliveryField = NETSUITE_DELIVERY_DATE_FIELD;
+    if (Object.hasOwn(fields, deliveryField)) direct.push({ field: deliveryField, after: calendarDate(fields[deliveryField]) });
+    return digest(fields.crm_sync_projection === 1 ? { direct, relations } : direct);
 }

@@ -13,7 +13,7 @@ function expectSourcePredicates(queries: CompiledQuery[]) {
     for (const [index, prefix] of ["", "NOT shadowed AND "].entries()) {
         const query = queries[index]?.sql ?? "";
         expect(query).toContain(index === 0 ? "o.contract_signed_sales_order='yes'" : "o.contrado_frima_ov=1");
-        const completionPredicates: Record<string, string> = { pending_transfer: " AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0", transfer_signed: " AND installments_paid=1 AND keys_delivered=0 AND unit_delivered=0" };
+        const completionPredicates: Record<string, string> = { pending_transfer: " AND installments_paid=1", transfer_signed: " AND installments_paid=1 AND keys_delivered=0 AND unit_delivered=0" };
         for (const [stage, alias] of [
             ["bank_management", "banking"],
             ["pending_balance", "balance"],
@@ -21,11 +21,12 @@ function expectSourcePredicates(queries: CompiledQuery[]) {
             ["transfer_signed", "transferSigned"],
         ] as const)
             expect(query).toContain(`SUM(${prefix}contract_signed AND stage='${stage}'${completionPredicates[stage] ?? ""}) AS ${alias}`);
-        expect(query).toContain(`SUM(${prefix}contract_signed AND completed_this_year AND unit_delivered=1) AS closedThisYear`);
-        const orderColumn = index === 0 ? "sales_order_id_sales_order_state_event=o.id_sales_order" : "legacy_order_id_sales_order_state_event=o.id_ov";
-        expect(query).toContain(`closed_event.${orderColumn}`);
+        expect(query).toContain(`SUM(${prefix}contract_signed AND completed_this_year) AS closedThisYear`);
+        const orderColumn = index === 0 ? "`sales_order_id_sales_order_state_event`=`o`.`id_sales_order`" : "`legacy_order_id_sales_order_state_event`=`o`.`id_ov`";
+        expect(query).toContain("`closed_event`." + orderColumn);
+        expect(query).toContain("(SELECT delivered_on >= ? AND delivered_on < ?");
         expect(query).toContain("closed_event.to_state_code_sales_order_state_event='closed'");
-        expect(query).toContain("closed_event.effective_at_sales_order_state_event >= ? AND closed_event.effective_at_sales_order_state_event < ?) AS completed_this_year");
+        expect(query).toMatch(/closed_event\.effective_at_sales_order_state_event >= \?\s+AND closed_event\.effective_at_sales_order_state_event < \?/u);
         expect(query).not.toContain("stage='closed' AND");
         expect(query).toContain(`SUM(${prefix}approved AND stage='contract_pending_signature') AS pendingSignature`);
     }
@@ -57,8 +58,8 @@ describe("Home aggregate SQL", () => {
             });
             expect(settings).toEqual([{ isolationLevel: "repeatable read", accessMode: "read only" }]);
             expect(queries).toHaveLength(2);
-            for (const query of queries) {
-                expect(query.parameters).toEqual(["2026-01-01 06:00:00.000", "2027-01-01 06:00:00.000"]);
+            for (const [index, query] of queries.entries()) {
+                expect(query.parameters).toEqual(["2026-01-01", "2027-01-01", ["native", "legacy"][index], "2026-01-01 06:00:00.000", "2027-01-01 06:00:00.000"]);
                 expect(query.sql).toContain("ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1");
                 expect(query.sql).toContain("stage='bank_management') AS banking");
                 expect(query.sql).not.toMatch(/UPDATE|INSERT|DELETE|FOR UPDATE|recorded_at|YEAR\(|commercial_closure/);

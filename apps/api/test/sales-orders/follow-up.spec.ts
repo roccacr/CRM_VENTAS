@@ -123,7 +123,7 @@ it("passes module-wide contracts-only union access to both sources and rejects f
     const f = setup(["formalizacion.home.contracts.read"]);
     for (const grant of f.profile.permissions) grant.scope = "self";
     await f.service.list("session", {});
-    expect(f.native.readCombined).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ access: { ownOnly: false, approvalOwnOnly: false, approvals: false, actorId: "actor", finiquito: false, queues: { approvals: false, contracts: true, bank: false, balance: false, transfer: false, signed: false, closed: false, addendum: false } }, legacy: "legacy-projection" }));
+    expect(f.native.readCombined).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ access: { ownOnly: false, approvalOwnOnly: false, approvals: false, actorId: "actor", finiquito: false, exactOrderSearch: false, queues: { approvals: false, contracts: true, bank: false, balance: false, transfer: false, signed: false, closed: false, addendum: false } }, legacy: "legacy-projection" }));
     f.native.readCombined.mockClear();
     await expect(f.service.list("session", { queue: "bank" })).rejects.toMatchObject({ status: 403 });
     expect(f.native.readCombined).not.toHaveBeenCalled();

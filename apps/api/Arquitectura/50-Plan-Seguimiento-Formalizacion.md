@@ -9,24 +9,29 @@
 - SQL compartido verificado exclusivamente con lectura:2 páginas de25, total331, sin duplicados y orden correcto entre páginas. En ese conjunto native0/legacy331; la mezcla de fuentes está cubierta por pruebas focales, no por filas nativas reales. Sin migraciones ni cambios de datos.
 - API56 pruebas focales, lint/typecheck/build aprobados; suite global7930 aprobadas,229 fallidas ajenas (NetSuite/rutas),266 omitidas. No se declara todo el repositorio verde.
 
-## Reglas vigentes de fondos y finalización — 2026-11-03
+## Reglas de fondos y finalización en el árbol local — 2026-11-10
 
 Las reglas actuales de [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md)
-prevalecen sobre los predicados históricos de este documento:
+y el corte [90](90-Reconciliacion-API-20261110.md) prevalecen sobre los
+predicados históricos de este documento. Estos cambios locales requieren
+verificación separada antes de considerarlos publicados.
 
 - Contratos exige la aprobación explícita de Formalización, actividad y ausencia
   de caída/borrado; no exige nuevamente las otras dos aprobaciones. Aprobar una
   orden mantiene sus prerrequisitos propios de Jefatura y Desarrolladora.
 - Las ocho etapas incluyen `bank_management_in_progress`. Al salir de Contratos,
   con firma confirmada, `own_funds` conduce a `pending_balance` y `bank_financing`
-  a `bank_management_in_progress`; sin origen no hay avance. Origen y etapa se
+  a `bank_management` (Sin iniciar). El inicio explícito pasa a
+  `bank_management_in_progress`; sin origen no hay avance. Origen y etapa se
   guardan con la misma transacción y auditoría; el replay compara su elección histórica.
-- Traspasos pendientes exige cuotas sí, unidad traspasada no y unidad entregada no.
-  Traspaso firmado exige cuotas sí, llaves no y entregada no. El avance automático requiere además Unidad traspasada. El registro manual desde Traspaso pendiente admite confirmación pendiente en NetSuite y muestra una advertencia.
+- La bandeja Traspasos pendientes exige contrato firmado, etapa
+  `pending_transfer` y cuotas pagadas. La transición manual a esa etapa
+  conserva sus comprobaciones de indicadores.
+  Para registrar Traspaso firmado manualmente se exigen cuotas pagadas, llaves y unidad aún sin entregar. La conciliación automática desde NetSuite aplica las reglas de [78](78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md#conciliación-automática-desde-netsuite). El registro manual desde Traspaso pendiente admite confirmación pendiente en NetSuite y muestra una advertencia.
   Unidad entregada sí habilita cierre aunque los otros tres sean desconocidos.
   NULL nunca sustituye un no confirmado. Se conservan firma, permisos y versión.
-- El cierre anual exige evidencia `closed` en el año de Costa Rica y unidad
-  entregada sí. Una combinación fuera de tabla mantiene la etapa guardada y
+- El cierre anual prioriza la fecha de entrega de NetSuite sobre el cierre
+  registrado en Habita, con el año de Costa Rica. La consulta conserva
   visibilidad autorizada en **Todas**; no se inventa un cambio durante GET.
 - `counts.bankingInProgress` distingue banca en proceso del agregado Home
   `banking`; el seguimiento devuelve `counts.bankInProgress` y `bank` reúne

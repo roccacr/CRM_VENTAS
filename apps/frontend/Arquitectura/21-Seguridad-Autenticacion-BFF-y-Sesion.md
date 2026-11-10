@@ -1,5 +1,9 @@
 # 21 - Seguridad de Autenticacion BFF y Sesion Frontend
 
+## Presentación del acceso al 10 de noviembre de 2026
+
+El login de Habita ofrece Microsoft como acción principal y credenciales locales autorizadas por TI en un panel plegable. Los estados de espera y error aparecen junto al método que se intentó. El BFF conserva sesión, renovación, CSRF y permisos. La copia local añade la opción de compilación `VITE_API_ORIGIN=same-origin` para un frontend y un BFF publicados bajo el mismo origen. El release verificado y la configuración local se distinguen en el [corte 33](33-Reconciliacion-Frontend-20261110.md).
+
 ## Actualización contrastada — 03/11/2026
 
 `startMicrosoftLogin(true)` solicita consentimiento de calendario por el BFF. `waitForMicrosoftPopupSession` exige sesión distinta de la anterior para no confundir una sesión existente con callback nuevo; después se relee el usuario y se recarga la aplicación si cambió. Popup bloqueado requiere confirmación de navegación con pérdida del borrador. El flujo de calendario conserva cookies/CSRF y sus capacidades CRM; consentimiento Microsoft no autoriza el recurso CRM ni entrega tokens al navegador. Detalle de disponibilidad, publicación, errores y versión remota: [Calendario global](Calendario-Global-Frontend.md).

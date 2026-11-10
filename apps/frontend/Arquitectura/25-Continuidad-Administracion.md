@@ -1,5 +1,11 @@
 # 25 - Continuidad de Administracion frontend
 
+## Catálogos en la copia de trabajo del 10 de noviembre de 2026
+
+Proyectos, Campañas, Clases, Ubicaciones, Subsidiarias y Corredores comparten la tabla y solicitan 500 filas por defecto. Los tamaños alternativos son 10, 50, 100 y 200. La búsqueda y el orden abarcan la página que devolvió el API. Los filtros de un lote grande se cargan bajo demanda y el menú de acciones se monta al abrirlo. La caché de páginas es local a la vista. El [diseño 26](26-Projects-Design-System.md) y el [corte 33](33-Reconciliacion-Frontend-20261110.md) describen la persistencia, las mediciones y las diferencias con el release publicado.
+
+Bancos pagina sus registros con Ant Design y su lista de ejecutivos es independiente. Expedientes requiere criterios y una búsqueda explícita. Usa cursores y filtros de servidor con un lote inicial de 500. Usuarios y Auditoría tienen sus propias tablas.
+
 ## Estado contrastado - 2026-10-27
 
 [30 - Estado frontend verificado](30-Estado-Frontend-Verificado.md) inventaría las rutas, contratos y límites actuales: Captación conectada, seguimiento y cambio protegido de etapa de Formalización. Los cortes fechados siguientes son antecedentes; sus cifras de QA no se reejecutaron en esta revisión documental.
@@ -191,7 +197,7 @@ Se conserva el filtro visual existente `campaign.read`, sin permisos nuevos ni
 cambios de autorizacion, API, datos o vistas. Esta propuesta no habilita los
 flujos futuros descritos aqui.
 
-## Lectura vigente - 2026-10-22, corte f2dc4f1
+## Antecedente - 2026-10-22, corte f2dc4f1
 
 Bitacora historica: fechas, inventarios de BD, pruebas y capturas conservan su corte original. No equivalen a consultas ni verificaciones nuevas. Inventario consolidado: [27](27-Entrega-Administracion-y-QA.md); navegacion, carga diferida y seguimiento: [29](29-Navegacion-Recuperacion-y-Seguimiento.md).
 
@@ -268,9 +274,9 @@ Runtime instalado: React, Vite, TypeScript, Ant Design y DataTables con SearchPa
 | Catalogo administrativo | /home/administration/catalogs/{codigo} |
 | Catalogos operativos | /home/{sales,marketing,formalization,accounting}/catalogs/{codigo} |
 
-Codigos: projects, campaigns, classes, brokers, files, subsidiaries, locations. Workspace -> modulo: sales -> ventas; marketing -> mercadeo; formalization -> formalizacion; accounting -> contabilidad; administration -> administration.
+Los códigos del listado compartido son `projects`, `campaigns`, `classes`, `brokers`, `subsidiaries` y `locations`. `banks` y `files` tienen sus propias vistas. Los workspaces `sales`, `marketing`, `formalization`, `accounting` y `administration` corresponden a los módulos `ventas`, `mercadeo`, `formalizacion`, `contabilidad` y `administration`.
 
-Each catalog page calls GET /catalogs/{code}/items with moduleCode, limit=pageSize and offset=(page-1)*pageSize. The initial size is 10; choices are 10/50/100/200. Next/previous/first/last fetch and replace a page; changing size resets to page 1. The API returns the authoritative total, not just the batch length. Create/edit/status retain moduleCode in the body. The frontend consumes only canonical BFF responses and cookie sessions, never direct ERP calls or stored tokens.
+El listado compartido consulta `GET /catalogs/{code}/items` con `moduleCode`, `limit=pageSize` y `offset=(page-1)*pageSize`. Cada navegación sustituye la página y cambiar el tamaño vuelve a la primera. El API devuelve el total del alcance solicitado. Alta, edición y cambio de estado conservan `moduleCode` en el cuerpo. El cliente usa respuestas canónicas y sesiones de cookie mediante el BFF.
 
 SecurityAuditPage usa GET /audit/options (sin leer eventos) y GET /audit.
 Modulo y seccion son obligatorios antes de consultar; Catalogos permite acotar

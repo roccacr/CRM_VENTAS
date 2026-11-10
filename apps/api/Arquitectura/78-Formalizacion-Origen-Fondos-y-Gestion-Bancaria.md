@@ -490,3 +490,20 @@ normalizarlo a escalar; no lo convierte en vacio. El hash temporal distingue la
 propiedad ausente (preservar) del NULL explicito (borrar), y conserva equivalencia
 entre ID numerico/cadena y entre null/cadena vacia. Pruebas focalizadas: 66 aprobadas
 con VM del productor y repositorio/driver sustituidos; no acreditan entrega real.
+
+
+### Conciliación automática desde NetSuite
+
+La edición recibida y la sincronización manual aplican la misma regla sobre
+la orden aprobada, activa y con contrato firmado. Si falta una etapa guardada,
+se registra una observación inicial. Contrato firmado acredita envío y firma.
+Fondos propios pasa a Pendiente de saldo y el resto a Gestión bancaria sin
+iniciar. Cuotas pagadas acredita gestión y saldo y pasa a Traspaso pendiente.
+Unidad traspasada o entregada permite el cierre automático. Solo se avanza.
+
+La migración 074 agrega la tabla auxiliar int_netsuite_order_delivery en
+CRM_THINK_V2, con fecha DATE y clave primaria por destino e ID, sin modificar
+el legado. La fecha de entrega de NetSuite prevalece para el conteo anual.
+Si está ausente se usa el evento de cierre de Habita. Las cerradas de años
+previos pueden aparecer en Todas según permisos. Para revertir, restaurar primero
+el código anterior, respaldar las fechas y eliminar la tabla auxiliar.

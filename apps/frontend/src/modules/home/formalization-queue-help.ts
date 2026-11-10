@@ -12,9 +12,9 @@ export const FORMALIZATION_QUEUE_HELP: Readonly<Record<FollowUpQueue, string>> =
     signature: eligible + "Aprobación Formalización marcada y etapa Pendiente de firma.",
     bank: eligible + "Contrato firmado y etapa Gestión bancaria (Sin iniciar) o Gestión bancaria en proceso. Las órdenes con Fondos propios pasan directo a Pendiente de saldo.",
     balance: eligible + "Contrato firmado y etapa Pendiente de saldo. Llega desde Contratos con Fondos propios o después de completar la gestión bancaria. Aquí se confirma el pago completo para continuar.",
-    transfer: eligible + "Cuotas pagadas: sí. Unidad traspasada: no. Unidad entregada: no. Llaves: cualquiera. Contrato firmado y etapa Traspasos pendientes.",
+    transfer: eligible + "Contrato firmado, cuotas pagadas y etapa Traspasos pendientes. La sincronización puede registrar el cierre al confirmar el traspaso o la entrega.",
     signed: eligible + "Cuotas pagadas: sí. Entrega de llaves y Unidad entregada: no. Contrato firmado y etapa Traspaso firmado. La firma manual puede quedar pendiente de confirmación en NetSuite.",
-    closed: eligible + "Unidad entregada y contrato firmado: sí. Cierre registrado este año, con horario de Costa Rica. Cuotas, traspaso y llaves no condicionan el cierre.",
+    closed: eligible + "Contrato firmado y fecha de entrega de NetSuite de este año. Si NetSuite no tiene fecha, se usa el cierre registrado en Habita, con horario de Costa Rica.",
 };
 
 export const FORMALIZATION_FOLLOW_UP_HELP = "Muestra las órdenes que puedes consultar. Selecciona varios proyectos y varias bandejas a la vez. Gestión bancaria distingue Sin iniciar y En proceso como subestados. La selección se guarda automáticamente por usuario y vista en este navegador. Sin selección se muestran todos los proyectos y las bandejas permitidas. La etapa guardada se conserva y los indicadores incompletos se señalan para revisión.";

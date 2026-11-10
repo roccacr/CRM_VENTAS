@@ -52,10 +52,10 @@ it("re-reads the current database stage on a transaction refresh", async () => {
     await waitFor(() => {
         expect(restore).toHaveBeenCalledTimes(1);
     });
-    vi.mocked(getFormalizationOrderRecord).mockResolvedValueOnce({ id: "legacy:208", state: { code: "contract_pending_signature" } } as never);
+    vi.mocked(getFormalizationOrderRecord).mockResolvedValueOnce({ id: "legacy:208", state: { code: "pending_transfer" }, contractSigned: true, installmentsFullyPaid: true } as never);
     view.rerender(<Harness refreshVersion={1} />);
     await waitFor(() => {
-        expect(restore).toHaveBeenLastCalledWith(expect.objectContaining({ state: { code: "contract_pending_signature" } }));
+        expect(restore).toHaveBeenLastCalledWith(expect.objectContaining({ state: { code: "pending_transfer" }, contractSigned: true, installmentsFullyPaid: true }));
     });
     expect(getFormalizationOrderRecord).toHaveBeenCalledTimes(2);
 });

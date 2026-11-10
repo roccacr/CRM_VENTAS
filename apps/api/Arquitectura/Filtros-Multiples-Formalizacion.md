@@ -14,3 +14,5 @@ Verificacion:46pruebasAPI y84frontend de los consumidores/serializacion/persiste
 Recarga real comprobada en localhost: los dos proyectos y las tres seleccionesde bandeja/subestado se restauran y vuelven a consultar14ordenes. Luego se limpiaron las selecciones de prueba. Se mantienen dimensiones de la vista y se amplian solo los controles dentro de la fila disponible; Selectborderless evita bordes anidados.
 
 Bloqueos globales concurrentes: typecheckAPI en doblecalendar-external sin cancel; buildfrontend global en prueba calendar-crm-detail por castingCalendarEvent; lintFollowUpRow por nueva etiquetaAdendum sent fuera de esta implementacion. Se verifican por separado fuentes y buildVite, sin modificar esos cambios ajenos.
+
+Con permiso de lectura de órdenes, si la búsqueda filtrada no devuelve resultados, el servidor busca el número exacto en ambas fuentes habilitadas, aunque no coincida con el proyecto o la bandeja seleccionados. Mantiene la prioridad de la orden nativa y los conteos normales de las bandejas.

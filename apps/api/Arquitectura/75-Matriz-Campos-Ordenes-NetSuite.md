@@ -172,3 +172,23 @@ La matriz inicial incluyo tres incorporaciones que el propietario descarta si no
 El asesor usa ahora salesteam[0].employee (crm_owner_employee en el evento), no salesrep. Evidencia: produccion/src/store/ordenVenta/thunkOrdenVenta.js:65–78 y CRM_VENTAS BACKEND/src/models/ordenVenta/ordenVenta.js:497–500. Numero, cliente, expediente, subsidiaria y oportunidad se manejaban en creacion; no se afirma que el viejo backend los actualizara en cada edicion. Los cuatro montos, fecha, calculo asesor y aprobaciones constan en la referencia Downloads/salesorders.js:140–180, sin afirmar despliegue vigente. Los10 checkbox y la fecha de caida conservan autorizacion explicita posterior del propietario.
 
 Control temporal actual: doble lectura completa identica + ventana UTC; hash de contenido no se usa como reloj. API serializa por orden, rechaza ventanas anteriores/solapadas y SuiteScript relee ante409 con un UUID de observacion nuevo. El reintento de red mantiene UUID y cuerpo. No agrega DDL. Pruebas SQL aisladas: dos ediciones distintas mismo minuto, duplicado, atraso y fecha de caida en ambos destinos. Falta verificacion real antes de certificar publicacion.
+
+## Extracción manual por número de orden
+
+En Formalización, una búsqueda exacta sin resultados y sin filtros de proyecto o
+bandeja ofrece **Extraer de NetSuite** al usuario con lectura y permiso de
+actualización de etapa. La acción llama a
+`POST /formalization/orders/netsuite/import` con `{ "tranid": "BC448" }`.
+Requiere sesión, CSRF y persistencia habilitada para la cuenta configurada.
+
+El RESTlet resuelve el número mediante `GET ?module=salesOrders&action=findByTranId&tranid=BC448`
+y luego la API lee el snapshot verificado por ID. Cero coincidencias es 404;
+ambigüedad, duplicado o relaciones sin conciliar bloquean la extracción. El cliente
+y las relaciones informadas deben existir en los cruces nativos; no se crean por
+inferencia. La orden, su referencia, los campos mapeados y la bitácora se guardan
+en una sola transacción en la BD nueva. No modifica la BD vieja ni NetSuite.
+El webhook sigue sin crear órdenes ausentes.
+
+Para publicar la búsqueda en NetSuite, reemplazar solo
+`/SuiteScripts/SS2_1_RL_CRM_Habita.js` en el archivo del despliegue existente.
+La librería debe conservar soporte para `syncSnapshot`.

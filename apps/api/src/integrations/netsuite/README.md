@@ -1,5 +1,16 @@
 ## Implementación local posterior — 2026-11-02
 
+## Corte del BFF y SuiteScript — 2026-11-10
+
+El release de Habita `63139a8` incluye el límite temporal del cursor y el
+archivo SuiteScript versionado `2026.11.03.7`. La librería del árbol local
+identifica `2026.11.10.4` y amplía la proyección de fecha de entrega y
+la consulta de un ID por número de transacción. La extracción manual local
+es la única entrada de sincronización que puede crear una orden nativa.
+El webhook v2 conserva su función de actualización. La publicación de Habita
+y la instalación del paquete NetSuite se comprueban por separado.
+[90 — Reconciliación, extracción y migración 074](../../../Arquitectura/90-Reconciliacion-API-20261110.md).
+
 ## Estado vigente contrastado — 2026-11-03
 
 El escritor v2, su auditoría, cursor y resolución de autoridad ya están
@@ -137,3 +148,12 @@ aprobadas con fetch simulado, sin llamadas reales ni escrituras externas. La rev
 independiente resolvio cobertura loopback y validacion de configuracion parcial. El
 chequeo general se detuvo en format:check por tres pruebas de Calendario ajenas a esta
 tarea; estos resultados no acreditan conexion efectiva a los scripts pendientes.
+
+
+### Extracción en segundo plano
+
+`POST /formalization/orders/netsuite/import` devuelve HTTP 202 cuando la solicitud queda en `int_event_outbox`. El trabajo guarda el número y la identidad interna del solicitante. La campanita consulta sus resultados en `GET /formalization/orders/netsuite/import/notices`.
+
+Se consulta el número de orden en ambas bases antes de leer NetSuite. Los vínculos de cliente, subsidiaria y responsable también se buscan primero por ID exacto en ambas bases. La lectura de datos faltantes requiere el RESTlet con las acciones `importCustomer` e `importRelation`. Si el expediente de custbody38 no está vinculado en Habita, importRelation con kind=unitFile lee su código (name) y el ID interno de su proyecto principal (custrecord_163_csegix_proyectos). El proyecto debe tener una referencia activa de NetSuite en la BD nueva. Una campaña, proyecto u origen comercial ausente impide inventar la atribución del cliente. El trabajador guarda la orden y los vínculos nuevos en una transacción.
+
+La oportunidad y el registro de origen se preservan como referencias de la captura cuando el proveedor devuelve sus IDs. El modelo todavía no crea ni vincula entidades independientes de oportunidad o estimación.

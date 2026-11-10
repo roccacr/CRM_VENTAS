@@ -1,5 +1,9 @@
 # Calendario global por módulo
 
+## Ajuste de interfaz en la copia de trabajo del 10 de noviembre de 2026
+
+Quitar un lead con órdenes vinculadas o de relación incierta abre una confirmación de Habita antes de modificar los vínculos. Si el navegador bloquea el popup al conectar Microsoft, el mismo diálogo advierte que navegar al login descarta el borrador sin guardar. Cancelar conserva el formulario. El consentimiento sigue por BFF y se comprueba con una sesión nueva. Ver [corte 33](33-Reconciliacion-Frontend-20261110.md) para distinguir estas modificaciones de las verificadas en producción.
+
 ## Contrato vigente contrastado — 03/11/2026
 
 Relectura de interfaz: el interruptor Reunión de Microsoft Teams está junto a los datos del evento, fuera del acordeón Participantes; elegirlo solicita el enlace con la invitación, sin acreditar entrega. La búsqueda de colaboradores acepta varios nombres/correos separados por coma solo cuando cada token coincide de forma única con una cuenta devuelta por el lookup autorizado. No fabrica participantes por texto libre; los invitados externos conservan su campo separado. El snapshot congelado de las16:02:13 UTC confirma el consumidor de avisos descrito a continuación.

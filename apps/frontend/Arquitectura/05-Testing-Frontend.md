@@ -1,5 +1,15 @@
 # 05 - Testing Frontend
 
+## Runtime de pruebas al 10 de noviembre de 2026
+
+Desde `4ad7a59`, Vitest carga `test/setup.ts` para los matchers de jest-dom. La configuración usa jsdom, dos workers y un máximo de 20 s por prueba y por hook. `fast-check` cubre propiedades de rangos de Captación y validación de números de WhatsApp en `test/property`. Los ajustes `4c7af0a` y `48b7707` drenan trabajo diferido en los tests de drawers antes del teardown.
+
+Las regresiones de Catálogos cubren paginación y caché, renderizado de datos como texto y apertura del menú de fila bajo demanda. Las pruebas en jsdom sustituyen la inicialización de SearchPanes. Para medir latencia de tabla, filtros y detalle, usar un navegador y comprobar por separado la petición, el redibujado y el tamaño del lote. El [corte 33](33-Reconciliacion-Frontend-20261110.md) delimita las mediciones disponibles.
+
+Desde `apps/frontend`, `pnpm test` ejecuta la suite y `pnpm test:coverage` mide cobertura de fuentes con V8. `pnpm check` agrega formato, lint, tipos y build. Los resultados siguientes son históricos.
+
+Verificación focalizada del 10 de noviembre: `pnpm exec vitest run test/property` aprobó 15 pruebas en dos archivos.
+
 ## Actualización contrastada — 03/11/2026
 
 El árbol local incorpora regresiones de Adéndum manual/lectura/bandeja/futuro, calendario contextual y vacío global, disponibilidad/consentimiento Microsoft, detalle Outlook/participantes/posición, perfil por secciones, teléfono/país y las combinaciones de flags de cierre. Las pruebas usan servicios HTTP sustituidos; leer sus aserciones no acredita que se ejecutaron. Los resultados y fallos fechados inferiores se conservan. Esta conciliación documental no ejecuta la suite completa ni atribuye a HEAD los conteos antiguos; cualquier verificación nueva se registra en el cierre raíz.

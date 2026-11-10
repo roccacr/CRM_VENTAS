@@ -1,5 +1,13 @@
 # 73 — Sincronización de estados de Orden de Venta
 
+## Cursor publicado y ampliaciones locales — 2026-11-10
+
+`5a667e7` integra el rechazo antes de persistir cuando la revisión o una
+marca presente de la ventana de lectura supera el reloj del servidor por más
+de 60 segundos. La ordenación e idempotencia de eventos históricos se mantienen.
+El árbol local incorpora entrega ERP, cambios de cierre y una extracción manual
+separada del webhook. [90 — Contrato local y migración 074](90-Reconciliacion-API-20261110.md).
+
 ## Estado vigente y precedencia — 2026-11-03
 
 El escritor v2, su auditoría, cursor y resolución de autoridad ya están

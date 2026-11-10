@@ -11,7 +11,9 @@ import { assertFormalizationOrderReadable } from "../../modules/crm/sales/sales-
 import { orderTimingIdentity, type TimingOrder } from "../../modules/crm/sales/sales-orders/order-timing.contract.js";
 import { NetsuiteOrderRepository } from "./netsuite-order.repository.js";
 import { persistedOrderEvent, productionOrderEvent } from "./netsuite-order-event.contract.js";
+import { readOrderRelationValues } from "./netsuite-order-event.mapper.js";
 import { NetsuiteOrderEventService } from "./netsuite-order-event.service.js";
+import { reconcileImportRelations } from "./netsuite-order-import.relations.js";
 import { NetsuiteRestletClient } from "./netsuite-restlet.client.js";
 
 /** Authorized provider reads and manual database synchronization; never updates ERP records. */
@@ -73,14 +75,8 @@ export class NetsuiteSalesOrderService {
             const context = this.client.integrationContext();
             if (!this.events.synchronizationEnabled(context.environment)) throw new ServiceUnavailableException("Sincronizacion deshabilitada para este ambiente y base de datos.");
             const resolved = await this.repository.resolve(target, check);
-            const raw = await this.client.readSalesOrderSnapshot(resolved.netsuiteId);
-            const metadata = z.looseObject({ sourceModifiedAt: z.iso.datetime(), snapshotReadStartedAt: z.iso.datetime(), snapshotReadCompletedAt: z.iso.datetime() }).safeParse(raw);
-            if (!metadata.success) throw new BadGatewayException("Actualiza la libreria NetSuite: no devolvio una lectura verificada para sincronizar.");
-            const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt, ...snapshot } = metadata.data;
-            const envelope = { schemaVersion: 2, source: { system: "netsuite", ...context }, event: { recordType: "salesorder", netsuiteId: resolved.netsuiteId, eventType: "edit", eventId: randomUUID(), observedAt: new Date().toISOString(), sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt }, snapshot };
-            const parsed = (context.environment === "production" ? productionOrderEvent : persistedOrderEvent).safeParse(envelope);
-            if (!parsed.success || parsed.data.snapshot.data.fields.crm_sync_projection !== 1) throw new BadGatewayException("NetSuite no devolvio la proyeccion completa y valida de esta orden.");
-            const result = await this.events.receive(parsed.data, {
+            const event = await this.verifiedEvent(resolved.netsuiteId, context);
+            const result = await this.events.receive(event, {
                 authorize: async (tx, destination) => {
                     const current = await this.identity.getCurrentUser(session);
                     if (current.user.publicId !== profile.user.publicId || !canReadFormalizationOrder(current) || !formalizationPermissionScope(current, "formalizacion.orders.stage.update").allowed) throw new ForbiddenException("La autorizacion cambio durante la consulta; recarga la orden.");
@@ -98,6 +94,85 @@ export class NetsuiteSalesOrderService {
             return { ...result, environment: context.environment };
         });
     }
+    /** El navegador solo indica el número; la cuenta, el ID y los campos vienen del servidor. */
+    async importOrder(session: string | undefined, input: unknown) {
+        const profile = await this.identity.getCurrentUser(session);
+        assertImportAccess(profile);
+        const parsed = z
+            .strictObject({
+                tranid: z
+                    .string()
+                    .trim()
+                    .regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,59}$/),
+            })
+            .safeParse(input);
+        if (!parsed.success) throw new BadRequestException("Indica el número exacto de la orden.");
+        const tranid = parsed.data.tranid.toUpperCase();
+        return this.executeImport(tranid, async () => {
+            const current = await this.identity.getCurrentUser(session);
+            if (current.user.publicId !== profile.user.publicId) throw new ForbiddenException("La autorización cambió durante la consulta.");
+            assertImportAccess(current);
+            return current;
+        });
+    }
+
+    /**
+     *
+     */
+    async executeQueuedImport(tranid: string, actor: Parameters<NetsuiteOrderRepository["captureSynchronizationActor"]>[1]) {
+        return this.executeImport(tranid, () => Promise.resolve(actor), true);
+    }
+
+    private async executeImport(tranid: string, actor: () => Promise<Parameters<NetsuiteOrderRepository["captureSynchronizationActor"]>[1]>, queued = false) {
+        const context = this.client.integrationContext();
+        if (!this.events.synchronizationEnabled(context.environment)) throw new ServiceUnavailableException("Importación NetSuite deshabilitada para este ambiente.");
+        const netsuiteId = await this.client.findSalesOrderByTranId(tranid);
+        const event = await this.verifiedEvent(netsuiteId, context);
+        const number = event.snapshot.data.fields.initialtranid;
+        if (typeof number !== "string" || number.trim().toUpperCase() !== tranid) throw new BadGatewayException("NetSuite devolvió una orden distinta a la solicitada.");
+        const current = await actor();
+        const fields = event.snapshot.data.fields;
+        const dependencies = queued ? await this.readMissingImportRelations(fields) : {};
+        const outcome = { ownerLinked: true };
+        const result = await this.events.receive(event, {
+            importTranid: tranid,
+            allowUnlinkedOwner: queued,
+            authorize: async (tx, destination) => {
+                const authorized = await this.repository.captureSynchronizationActor(tx, current);
+                if (queued) outcome.ownerLinked = await reconcileImportRelations(tx, { fields, orderId: destination.id, netsuiteId, operationId: event.event.eventId, ...dependencies });
+                return authorized;
+            },
+        });
+        return { result: result.result, tranid, ...(outcome.ownerLinked ? {} : { warning: "Orden guardada sin responsable: falta vincular su cuenta." }) };
+    }
+
+    private async readMissingImportRelations(fields: Record<string, unknown>) {
+        const { entity, subsidiary, crm_owner_employee, custbody38 } = readOrderRelationValues(fields);
+        const [customer, subsidiaryName, ownerEmail, unit] = await Promise.all([
+            entity && (await this.repository.importNeedsRelation("lead", entity)) ? this.client.readImportCustomer(entity) : undefined,
+            subsidiary && (await this.repository.importNeedsRelation("subsidiary", subsidiary)) ? this.client.readImportRelation("subsidiary", subsidiary) : undefined,
+            crm_owner_employee && (await this.repository.importNeedsRelation("user", crm_owner_employee)) ? this.client.readImportRelation("user", crm_owner_employee) : undefined,
+            this.readMissingImportUnit(custbody38),
+        ]);
+        return { customer, subsidiaryName, ownerEmail, unit };
+    }
+
+    private async readMissingImportUnit(id: string | null | undefined) {
+        if (id && (await this.repository.importNeedsRelation("unit_file", id))) return this.client.readImportUnit(id);
+        return undefined;
+    }
+
+    private async verifiedEvent(netsuiteId: string, context: ReturnType<NetsuiteRestletClient["integrationContext"]>) {
+        const raw = await this.client.readSalesOrderSnapshot(netsuiteId);
+        const metadata = z.looseObject({ sourceModifiedAt: z.iso.datetime(), snapshotReadStartedAt: z.iso.datetime(), snapshotReadCompletedAt: z.iso.datetime() }).safeParse(raw);
+        if (!metadata.success) throw new BadGatewayException("Actualiza la libreria NetSuite: no devolvio una lectura verificada para sincronizar.");
+        const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt, ...snapshot } = metadata.data;
+        const envelope = { schemaVersion: 2, source: { system: "netsuite", ...context }, event: { recordType: "salesorder", netsuiteId: netsuiteId, eventType: "edit", eventId: randomUUID(), observedAt: new Date().toISOString(), sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt }, snapshot };
+        const parsed = (context.environment === "production" ? productionOrderEvent : persistedOrderEvent).safeParse(envelope);
+        if (!parsed.success || parsed.data.snapshot.data.fields.crm_sync_projection !== 1) throw new BadGatewayException("NetSuite no devolvio la proyeccion completa y valida de esta orden.");
+        return parsed.data;
+    }
+
     private async authorized<T>(session: string | undefined, input: unknown, read: (target: { source: "native" | "legacy"; id: string }, check: (order: TimingOrder) => void, profile: IdentityProfile) => Promise<T>): Promise<T> {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("Permiso insuficiente para consultar la orden.");
@@ -111,4 +186,8 @@ export class NetsuiteSalesOrderService {
             profile,
         );
     }
+}
+
+function assertImportAccess(profile: IdentityProfile): void {
+    if (!canReadFormalizationOrder(profile) || !formalizationPermissionScope(profile, "formalizacion.orders.stage.update").allowed) throw new ForbiddenException("No tiene permiso para extraer órdenes.");
 }

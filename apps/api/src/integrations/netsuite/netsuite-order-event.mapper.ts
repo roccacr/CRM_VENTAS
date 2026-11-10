@@ -1,4 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
+export const NETSUITE_DELIVERY_DATE_FIELD = "custbody_fecha_unidad_entregada";
 export const orderFlagMappings = [
     {
         netsuite: "custbody90",
@@ -129,7 +130,8 @@ function money(value: unknown): string | null {
     return `${String(match[1])}${integer}.${fraction}`.replace(/^-0\.0000$/, "0.0000");
 }
 
-function calendarDate(value: unknown): string | null {
+/** Validates the calendar date sent by NetSuite. */
+export function calendarDate(value: unknown): string | null {
     if (value === null || value === "") return null;
     if (value instanceof Date) return [value.getFullYear(), String(value.getMonth() + 1).padStart(2, "0"), String(value.getDate()).padStart(2, "0")].join("-");
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value) throw new BadRequestException("Fecha NetSuite requiere calendario ISO YYYY-MM-DD.");

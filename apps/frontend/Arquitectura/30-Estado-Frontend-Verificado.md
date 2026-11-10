@@ -1,5 +1,9 @@
 # 30 - Estado frontend contrastado con el código - 2026-10-27
 
+## Actualización del 10 de noviembre de 2026
+
+El inventario reciente se concilia en [33 - Frontend de Habita](33-Reconciliacion-Frontend-20261110.md). Allí se separan la versión `v2.0.0` del release `63139a8`, HEAD `4ad7a59` y la copia de trabajo con `v2.0.1`, catálogos de 500 filas y ajustes de Formalización y Calendario. Los cortes y resultados siguientes conservan su fecha y alcance.
+
 ## Permisos personales — corrección vigente 2026-11-03
 
 Un grant operativo efectivo se acepta por rol o por excepción personal, sin exigir además un nombre fijo de rol. Esta corrección sustituye las restricciones históricas de rol de Bancos y Formalización, manteniendo módulos, deny, alcance, recurso y controles de delegación/plantillas protegidas. [Alcance y verificación](../../api/Arquitectura/Permisos-Excepciones-Personales-20261103.md). Implementación local, sin modificación de asignaciones ni despliegue.

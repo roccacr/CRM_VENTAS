@@ -10,17 +10,31 @@ import { type PermissionRequirement, REQUIRE_PERMISSION_METADATA } from "./requi
 import { hasRoutePermission } from "./route-permission.js";
 import { ROUTE_SECURITY_METADATA } from "./route-security.decorator.js";
 
-/** Default-deny authentication/permission boundary; domain and row checks remain in services. */
+/**
+ * Frontera de autenticacion y permiso. Niega por defecto.
+ *
+ * Una ruta sin clasificacion, o con un valor que no es `public`,
+ * `authenticated` o `permission`, no queda abierta: responde como permiso
+ * insuficiente. `public` omite la sesion de acceso y no omite CSRF.
+ *
+ * El perfil se recarga en la peticion. Un permiso retirado deja de autorizar
+ * la siguiente llamada protegida; no se reutiliza el mapa capturado al login.
+ * La fila y la condicion de negocio no se deciden aqui.
+ */
 @Injectable()
 export class AuthGuard implements CanActivate {
-    /** Reuses the exported identity service and the process-local read limiter. */
+    /** Identidad exportada y el cupo de lectura de este proceso. El cupo no autentica. */
     constructor(
         @Inject(Reflector) private readonly reflector: Reflector,
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(AuthenticatedReadRateLimit) private readonly readLimit: AuthenticatedReadRateLimit,
     ) {}
 
-    /** Public handlers skip access authentication; other handlers must explicitly opt in. */
+    /**
+     * Orden fijo: clasificacion, perfil vigente, permiso de ruta y solo entonces
+     * el cupo de GET/HEAD. Un 401 o un 403 no consume la cuota autenticada, y
+     * una mutacion no entra en este limitador.
+     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const classification = this.reflector.get<unknown>(ROUTE_SECURITY_METADATA, context.getHandler());
         if (classification === "public") return true;

@@ -37,11 +37,10 @@ function followUpMatches(access: FollowUpAccess) {
         closed: sql`contractSigned=1 AND completedThisYear=1`,
         addendum: sql`(${queuePermissions.addendum === true} AND addendumStatus='pending')`,
     };
-    const visibility = { ...stages };
-    stages.transfer = sql`contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1 AND unitTransferred=0 AND unitDelivered=0`;
+    const visibility = { ...stages, closed: sql`contractSigned=1 AND (stateCode='closed' OR completedThisYear=1)` };
+    stages.transfer = sql`contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1`;
     // La firma registrada manualmente aparece mientras NetSuite confirma el traspaso.
     stages.signed = sql`contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND keysDelivered=0 AND unitDelivered=0`;
-    stages.closed = sql`contractSigned=1 AND completedThisYear=1 AND unitDelivered=1`;
     for (const queue of Object.keys(stages) as Exclude<FollowUpQueue, "all">[]) {
         const key = queue === "send" || queue === "signature" ? "contracts" : queue;
         if (access.queues) {
@@ -66,6 +65,19 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
     const recordId = query.recordId ?? "";
     const legacyId = recordId.startsWith("legacy:") ? recordId.slice(7) : "";
     const search = query.search.toLocaleLowerCase("es");
+    // Exact lookup is authorized separately from the board and retains source authority.
+    const exactFallback =
+        access.exactOrderSearch && search && !recordId
+            ? sql`UNION ALL SELECT candidate.* FROM classified candidate
+            WHERE NOT EXISTS (SELECT 1 FROM selected)
+                AND (${!access.ownOnly} OR candidate.ownerId=${access.actorId})
+                AND (LOWER(candidate.number)=${search} OR (candidate.source='native' AND EXISTS (
+                    SELECT 1 FROM crm_sales_order_external_reference ref
+                    WHERE ref.sales_order_id_sales_order_external_reference=candidate.sortId
+                        AND ref.status_sales_order_external_reference='active'
+                        AND LOWER(TRIM(ref.transaction_number_sales_order_external_reference))=${search}
+                )))`
+            : sql``;
     return sql<Record<string, unknown>>`
         WITH base AS (${base}), classified AS (
             SELECT base.*,${followUpClassification} AS stateCode
@@ -78,7 +90,8 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
                 OR (source='native' AND id IN (SELECT public_id_sales_order FROM crm_sales_order WHERE id_old_produccion_sales_order=${legacyId})))
                 AND ${selectedProjects}
                 AND (${search}='' OR LOCATE(${search},LOWER(CONCAT_WS(' ',number,client,projectName,unit,ownerName)))>0)
-        ), filtered AS (SELECT * FROM searched WHERE ${selectionPredicate}),
+        ), selected AS (SELECT * FROM searched WHERE ${selectionPredicate}),
+        filtered AS (SELECT * FROM selected ${exactFallback}),
         ranked AS (SELECT filtered.*,ROW_NUMBER() OVER (ORDER BY projectName IS NULL,projectName,unit IS NULL,unit,source,sortId,id) AS pageOrdinal FROM filtered),
         paged AS (SELECT * FROM ranked ORDER BY pageOrdinal LIMIT ${query.limit} OFFSET ${query.offset}),
         projects AS (SELECT projectId AS id,COALESCE(MAX(CASE WHEN source='native' THEN projectName END),MAX(projectName)) AS name FROM visible WHERE projectId IS NOT NULL AND projectName IS NOT NULL GROUP BY projectId)

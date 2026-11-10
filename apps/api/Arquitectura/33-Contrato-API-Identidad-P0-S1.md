@@ -1,5 +1,12 @@
 # 33 - Contrato API de Identidad P0-S1
 
+## Validación de correos — 2026-11-10
+
+Desde `3f2537c`, el login local, la solicitud de restablecimiento y los DTOs
+de usuarios rechazan correos que contienen caracteres invisibles, controles
+o marcas direccionales definidos por `NO_INVISIBLE_CHARACTERS`. El rechazo
+ocurre en la validación de entrada. [90 — Reconciliación](90-Reconciliacion-API-20261110.md).
+
 ## Contrato incremental vigente — 2026-11-03
 
 `POST /identity/microsoft/start` admite `?calendar=true`: esta variante exige sesión y lectura de calendario, vincula el consentimiento a la misma cuenta corporativa mediante challenge firmado y conserva tokens/caché exclusivamente en servidor. La falta de consentimiento para el acceso incremental no revoca por sí sola la sesión CRM; no modifica el contrato ordinario de refresh. Detalle: [24](24-Seguridad-Autenticacion-BFF-OIDC-Local.md).

@@ -419,3 +419,50 @@ it("keeps approval true when two requests read the same previous value", () => {
     expect(workflow.initiate).toHaveBeenCalledTimes(2);
     expect(record.submitFields).not.toHaveBeenCalled();
 });
+
+it.each([0, 1, 2])("resolves only one exact NetSuite transaction number (%i matches)", (count) => {
+    const getRange = vi.fn().mockReturnValue(Array.from({ length: count }, (_, index) => ({ id: String(8906821 + index), getValue: () => "BC448" })));
+    const create = vi.fn(() => ({ run: () => ({ getRange }) }));
+    const record = recordMock();
+    const restlet = load(undefined, undefined, record, { search: { Type: { SALES_ORDER: "salesorder" }, create } });
+    const result = restlet.get?.({ module: "salesOrders", action: "findByTranId", tranid: "BC448" });
+    expect(result).toMatchObject(count === 1 ? { status: 200, data: { id: "8906821", tranid: "BC448" } } : { status: count === 0 ? 404 : 409, error: { code: count === 0 ? "SALES_ORDER_NOT_FOUND" : "SALES_ORDER_AMBIGUOUS" } });
+    expect(create).toHaveBeenCalledWith({ type: "salesorder", filters: [["mainline", "is", "T"], "and", ["tranid", "is", "BC448"]], columns: ["internalid", "tranid"] });
+    expect(getRange).toHaveBeenCalledWith({ start: 0, end: 2 });
+    expect(record.load).not.toHaveBeenCalled();
+});
+
+it("looks up a customer by internal ID and returns the permitted fields", () => {
+    const lookupFields = vi.fn(() => ({ firstname: "Ana", lastname: "Prueba", email: "synthetic@example.test", leadsource: { value: 12 }, privateField: "omitted" }));
+    const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields } });
+    expect(restlet.get?.({ module: "leads", action: "importCustomer", id: "2034401" })).toEqual({
+        status: 200,
+        data: { id: "2034401", fullName: "Ana Prueba", email: "synthetic@example.test", company: null, phone: null, campaign: "12" },
+    });
+    expect(lookupFields).toHaveBeenCalledOnce();
+});
+
+it.each([
+    { kind: "subsidiary", type: "subsidiary", field: "name", value: "Subsidiaria de prueba" },
+    { kind: "user", type: "employee", field: "email", value: "synthetic@example.test" },
+])("reads only the allowed field for a $kind relation", ({ kind, type, field, value }) => {
+    const lookupFields = vi.fn(() => ({ [field]: value, extra: "omitted" }));
+    const restlet = load(undefined, undefined, undefined, { search: { Type: { SUBSIDIARY: "subsidiary", EMPLOYEE: "employee" }, lookupFields } });
+    expect(restlet.get?.({ module: "salesOrders", action: "importRelation", kind, id: "13" })).toEqual({ status: 200, data: { id: "13", value } });
+    expect(lookupFields).toHaveBeenCalledExactlyOnceWith({ type, id: "13", columns: [field] });
+    expect(restlet.get?.({ module: "salesOrders", action: "importRelation", kind: "other", id: "13" })).toMatchObject({ status: 400, error: { code: "INVALID_RELATION" } });
+    expect(lookupFields).toHaveBeenCalledOnce();
+});
+
+it("loads the unit by internal ID and returns its code and principal project ID", () => {
+    const record = recordMock();
+    const getValue = vi.fn(({ fieldId }) => (fieldId === "name" ? "TEST-FF01" : 1805));
+    record.load.mockReturnValue({ getValue } as never);
+    const restlet = load(undefined, undefined, record);
+    expect(restlet.get?.({ module: "salesOrders", action: "importRelation", kind: "unitFile", id: "8771" })).toEqual({
+        status: 200,
+        data: { id: "8771", code: "TEST-FF01", projectId: "1805" },
+    });
+    expect(record.load).toHaveBeenCalledExactlyOnceWith({ type: "customrecord_ix_record_exp_unidades", id: "8771" });
+    expect(getValue).toHaveBeenCalledWith({ fieldId: "custrecord_163_csegix_proyectos" });
+});

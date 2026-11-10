@@ -7,10 +7,14 @@ de autenticación, el encabezado de escritorio y móvil, la marca de agua y el
 icono de pestaña. Las vistas de React comparten la ruta y las dimensiones en
 `src/config/branding.ts`.
 
-## Referencias revisadas — 2026-11-02
+Los planos de la tarjeta de login y del encabezado se sirven desde
+`public/illustrations`. Son elementos decorativos. La etiqueta de versión
+se presenta por separado junto al logo del shell. El [corte frontend](../../Arquitectura/33-Reconciliacion-Frontend-20261110.md) registra la versión publicada y la copia de trabajo.
 
-Se confirmó en el código actual que `index.html` referencia los favicons PNG/SVG
-y LoginPage, GlobalHomeShell y AuthStateScreens usan `/Logo/rocca-concept.png`.
+## Referencias históricas — 2026-11-02
+
+En ese corte, `index.html` referenciaba los favicons PNG/SVG. LoginPage,
+GlobalHomeShell y AuthStateScreens usaban `/Logo/rocca-concept.png`.
 No se regeneraron imágenes ni se midieron peso, transparencia, accesibilidad
 visual o nitidez en esta revisión; la procedencia inferior conserva su fecha.
 Inventario y límites: [72](../../../api/Arquitectura/72-Reconciliacion-Documental-20261102.md).
@@ -22,8 +26,8 @@ Inventario y límites: [72](../../../api/Arquitectura/72-Reconciliacion-Document
 ## Archivos históricos de marca
 
 `rocca-favicon.png` es un monograma R original generado para la pestana del
-nuevo sistema: blanco sobre fondo carbon, sin texto pequeno. Se referencia
-desde index.html y sustituye el JPG horizontal, que perdia legibilidad al
+nuevo sistema: blanco sobre fondo carbon, sin texto pequeno. Se referenciaba
+desde index.html y sustituyó el JPG horizontal, que perdía legibilidad al
 reducirse. No reemplaza el logo del encabezado ni del login; no es una marca
 oficial aprobada. El PNG original generado se conserva en el proyecto.
 

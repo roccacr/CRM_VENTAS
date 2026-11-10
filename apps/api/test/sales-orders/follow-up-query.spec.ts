@@ -26,6 +26,20 @@ function database(rows: Record<string, unknown>[] = [{ ...emptyFollowUpSource().
     return { db, queries };
 }
 describe("bounded federated follow-up SQL", () => {
+    it("adds a bound exact order lookup only for authorized searches without filtered results", async () => {
+        const { db } = database();
+        try {
+            const input = { ...query, search: "BC486" };
+            const authorized = followUpSourceQuery(sql`SELECT 1`, input, { ...access, exactOrderSearch: true }).compile(db);
+            expect(authorized.sql).toContain("NOT EXISTS (SELECT 1 FROM selected)");
+            expect(authorized.sql).toContain("LOWER(candidate.number)=?");
+            expect(authorized.sql).toContain("LOWER(TRIM(ref.transaction_number_sales_order_external_reference))=?");
+            expect(authorized.parameters).toContain("bc486");
+            expect(followUpSourceQuery(sql`SELECT 1`, input, access).compile(db).sql).not.toContain("candidate.number");
+        } finally {
+            await db.destroy();
+        }
+    });
     it("limits the portfolio, project options and All queue to the union of banner conditions", () => {
         const { db } = database();
         try {
@@ -37,9 +51,9 @@ describe("bounded federated follow-up SQL", () => {
             expect(visible).toContain("completedThisYear=1");
             expect(compiled.sql).not.toContain("SUM(TRUE)");
             expect(visible).not.toContain("unitDelivered=");
-            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1 AND unitTransferred=0 AND unitDelivered=0))");
+            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1))");
             expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND keysDelivered=0 AND unitDelivered=0))");
-            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND completedThisYear=1 AND unitDelivered=1))");
+            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND completedThisYear=1))");
             expect(compiled.sql).toContain("FROM visible WHERE projectId IS NOT NULL");
         } finally {
             void db.destroy();
@@ -142,7 +156,7 @@ it.each(["bank", "closed"] as const)("keeps signed %s membership independent of 
     const visible = compiled.sql.split("visible AS (")[1]?.split("), searched AS")[0];
     expect(visible).not.toContain("approvalPending=0");
     expect(visible).toContain("contractSigned=1 AND stateCode IN ('bank_management','bank_management_in_progress')");
-    expect(visible).toContain("contractSigned=1 AND completedThisYear=1");
+    expect(visible).toContain("contractSigned=1 AND (stateCode='closed' OR completedThisYear=1)");
     expect(compiled.sql).toContain("approved=1 AND stateCode IN ('contract_pending_send','contract_pending_signature')");
     expect(compiled.sql).toContain("AND approvalPending=1");
     expect(compiled.sql).toContain("FROM visible WHERE projectId IS NOT NULL");
@@ -283,7 +297,7 @@ describe("project distribution aggregates", () => {
         const statement = projectDistributionQuery(sql`SELECT 1`, distributionAccess).compile(db);
         expect(projectDistributionSeries(distributionAccess)).toEqual(["approvals", "send", "signature", "bank_not_started", "bank_in_progress", "closed", "addendum"]);
         expect(statement.sql).toContain("GROUP BY projectId ORDER BY total DESC,name,projectId");
-        expect(statement.sql).toContain("completedThisYear=1 AND unitDelivered=1");
+        expect(statement.sql).toContain("completedThisYear=1");
         expect(statement.sql).toContain("addendumStatus='pending'");
         expect(statement.sql).toContain("saleLost=0");
         expect(statement.sql).not.toContain("LIMIT");

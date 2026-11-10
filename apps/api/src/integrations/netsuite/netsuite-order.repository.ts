@@ -11,6 +11,7 @@ import { readOrderRecord } from "../../modules/crm/sales/sales-orders/order-reco
 import type { TimingOrder } from "../../modules/crm/sales/sales-orders/order-timing.contract.js";
 import { ORDER_TIMING_LEGACY_READER, type OrderTimingLegacyReader } from "../../modules/crm/sales/sales-orders/order-timing.port.js";
 import { OrderTimingRepository } from "../../modules/crm/sales/sales-orders/order-timing.repository.js";
+import { missingImportRelation } from "./netsuite-order-import.relations.js";
 
 /**
  *
@@ -59,7 +60,7 @@ export class NetsuiteOrderRepository {
         return this.captureSynchronizationActor(tx, profile);
     }
     /** Locks the live user/session version until the commercial transaction commits. */
-    private async captureSynchronizationActor(tx: Transaction<CrmDatabase>, profile: IdentityProfile) {
+    async captureSynchronizationActor(tx: Transaction<CrmDatabase>, profile: { user: Pick<IdentityProfile["user"], "publicId" | "permissionVersion">; session: Pick<IdentityProfile["session"], "publicId"> }) {
         const user = await tx.selectFrom("sec_user").select(["id_user", "permission_version_user"]).where("public_id_user", "=", profile.user.publicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
         if (!user || user.permission_version_user !== profile.user.permissionVersion) throw new ForbiddenException("Los permisos del usuario cambiaron durante la sincronizacion.");
         const session = await tx.selectFrom("sec_auth_session").select("id_auth_session").where("public_id_auth_session", "=", profile.session.publicId).where("user_id_auth_session", "=", user.id_user).where("status_auth_session", "=", "active").where("expires_at_auth_session", ">", new Date()).where("permission_version_auth_session", "=", user.permission_version_user).forUpdate().executeTakeFirst();
@@ -68,6 +69,14 @@ export class NetsuiteOrderRepository {
         if (!actor) throw new ForbiddenException("El usuario solicitante ya no esta activo.");
         return actor;
     }
+    /**
+     *
+     */
+    async importNeedsRelation(domain: "lead" | "subsidiary" | "user" | "unit_file", id: string) {
+        if (!this.legacy.enabled()) throw new ServiceUnavailableException("La base anterior no está disponible para conciliar al cliente.");
+        return this.resolveSafely((tx) => missingImportRelation(tx, domain, id));
+    }
+
     private async authoritative(tx: Transaction<CrmDatabase>, target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void) {
         let source: "native" | "legacy" = "native";
         let order = await this.native.find(tx, target.source, target.id);

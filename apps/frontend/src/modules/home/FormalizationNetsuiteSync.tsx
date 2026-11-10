@@ -4,6 +4,7 @@ import Modal from "antd/es/modal";
 import { useEffect, useRef, useState } from "react";
 
 import { getNetsuiteSynchronizationContext, type NetsuiteOrderIdentity, type NetsuiteSynchronizationContext, synchronizeNetsuiteOrder } from "../../services/formalization/netsuite-order-service";
+import { ADMINISTRATION_MODAL_Z_INDEX } from "../administration/administration-theme";
 
 interface SynchronizationProps {
     readonly identity: NetsuiteOrderIdentity;
@@ -101,6 +102,7 @@ export function NetsuiteSynchronizationActions(props: SynchronizationProps) {
             <Modal
                 title="Sincronizar datos de la orden"
                 open={open}
+                zIndex={ADMINISTRATION_MODAL_Z_INDEX}
                 confirmLoading={status === "saving"}
                 okText="Confirmar sincronización"
                 cancelText="Cancelar"

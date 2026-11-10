@@ -7,9 +7,16 @@ import { NetsuiteSalesOrderService } from "../../src/integrations/netsuite/netsu
 function fixture(environment = "production", permission = true, enabled = true) {
     const profile = { user: { publicId: "user-1" }, roles: [{ code: "formalizacion", status: "active" }], permissions: [{ code: "formalizacion.orders.read", effect: "allow", scope: "all_areas" }, ...(permission ? [{ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas" }] : [])] };
     const identity = { getCurrentUser: vi.fn().mockResolvedValue(profile) };
-    const repository = { resolve: vi.fn().mockResolvedValue({ source: "legacy", id: "legacy:1", netsuiteId: "123" }), authorizeSynchronization: vi.fn() };
+    const repository = { resolve: vi.fn().mockResolvedValue({ source: "legacy", id: "legacy:1", netsuiteId: "123" }), authorizeSynchronization: vi.fn(), importNeedsRelation: vi.fn() };
     const now = "2026-11-03T18:00:00.000Z";
-    const client = { integrationContext: () => ({ environment, accountId: environment === "production" ? "4552704" : "4552704_SB1" }), readSalesOrderSnapshot: vi.fn().mockResolvedValue({ status: 200, sourceModifiedAt: now, snapshotReadStartedAt: now, snapshotReadCompletedAt: now, data: { type: "salesorder", id: "123", fields: { crm_sync_projection: 1, custbody37: "2" }, sublists: { item: [] } } }) };
+    const client = {
+        integrationContext: () => ({ environment, accountId: environment === "production" ? "4552704" : "4552704_SB1" }),
+        findSalesOrderByTranId: vi.fn().mockResolvedValue("123"),
+        readImportCustomer: vi.fn(),
+        readImportRelation: vi.fn(),
+        readImportUnit: vi.fn(),
+        readSalesOrderSnapshot: vi.fn().mockResolvedValue({ status: 200, sourceModifiedAt: now, snapshotReadStartedAt: now, snapshotReadCompletedAt: now, data: { type: "salesorder", id: "123", fields: { crm_sync_projection: 1, initialtranid: "BC448", entity: "2034401", custbody38: "8771", subsidiary: "13", crm_owner_employee: "1623817", opportunity: null, custbody37: "2" }, sublists: { item: [] } } }),
+    };
     const events = { synchronizationEnabled: () => enabled, receive: vi.fn<(event: PersistedOrderEvent, manual?: ManualOrderSynchronization) => Promise<{ persisted: boolean; result: string; destination: string; changes: number }>>().mockResolvedValue({ persisted: true, result: "applied", destination: "legacy", changes: 2 }) };
     const service = new NetsuiteSalesOrderService(identity as never, repository as never, client as never, events as never);
     return { service, client, events, repository, identity, profile };
@@ -82,4 +89,38 @@ it.each(["identity", "projection", "window"])("rejects an invalid verified snaps
     if (mode === "window") raw.snapshotReadCompletedAt = "2026-11-03T18:02:00.000Z";
     await expect(f.service.synchronize("s", { source: "legacy", id: "1" })).rejects.toThrow("NetSuite no devolvio la proyeccion completa y valida de esta orden.");
     expect(f.events.receive).not.toHaveBeenCalled();
+});
+
+it("imports the exact ERP number using a server-side verified snapshot", async () => {
+    const f = fixture();
+    await expect(f.service.importOrder("s", { tranid: " bc448 " })).resolves.toEqual({ result: "applied", tranid: "BC448" });
+    expect(f.client.findSalesOrderByTranId).toHaveBeenCalledWith("BC448");
+    expect(f.client.readSalesOrderSnapshot).toHaveBeenCalledWith("123");
+    expect(f.events.receive.mock.calls[0]?.[1]?.importTranid).toBe("BC448");
+});
+
+it("blocks import for read-only users and rejects a different number from the snapshot", async () => {
+    const denied = fixture("production", false);
+    await expect(denied.service.importOrder("s", { tranid: "BC448" })).rejects.toMatchObject({ status: 403 });
+    expect(denied.client.findSalesOrderByTranId).not.toHaveBeenCalled();
+    const mismatch = fixture();
+    await expect(mismatch.service.importOrder("s", { tranid: "BC449" })).rejects.toMatchObject({ status: 502 });
+    expect(mismatch.events.receive).not.toHaveBeenCalled();
+});
+
+it("reads only missing customer data from NetSuite after local reconciliation checks", async () => {
+    const f = fixture();
+    f.repository.importNeedsRelation.mockImplementation((kind: string) => Promise.resolve(kind === "lead" || kind === "unit_file"));
+    f.client.readImportCustomer.mockResolvedValue({ fullName: "Synthetic customer" });
+    await f.service.executeQueuedImport("BC448", { user: { publicId: "requester", permissionVersion: 1 }, session: { publicId: "session" } });
+    expect(f.repository.importNeedsRelation.mock.calls).toEqual([
+        ["lead", "2034401"],
+        ["subsidiary", "13"],
+        ["user", "1623817"],
+        ["unit_file", "8771"],
+    ]);
+    expect(f.client.readImportCustomer).toHaveBeenCalledWith("2034401");
+    expect(f.client.readImportRelation).not.toHaveBeenCalled();
+    expect(f.client.readImportUnit).toHaveBeenCalledExactlyOnceWith("8771");
+    expect(f.events.receive).toHaveBeenCalledOnce();
 });

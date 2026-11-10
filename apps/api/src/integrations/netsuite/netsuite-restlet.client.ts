@@ -80,9 +80,77 @@ export class NetsuiteRestletClient {
      */
     async readSalesOrder(id: string, verifiedSnapshot = false): Promise<unknown> {
         if (!/^[1-9][0-9]{0,19}$/.test(id)) throw new BadRequestException("Identificador NetSuite invalido.");
+        const body = await this.get((environment) => this.salesOrderOperation(id, environment, verifiedSnapshot));
+        try {
+            return readSalesOrderBody(body);
+        } catch (error) {
+            if (error instanceof NotFoundException) throw error;
+            throw new BadGatewayException("No fue posible consultar NetSuite. La orden no fue modificada.");
+        }
+    }
+
+    /** Only an exact, unambiguous transaction number may select an internal ID. */
+    async findSalesOrderByTranId(tranid: string): Promise<string> {
+        const body = await this.get(() => ({ module: "salesOrders", action: "findByTranId", tranid }));
+        const payload = decodeLookup(body);
+        assertProviderOrderExists(payload);
+        if (z.object({ status: z.literal(409), error: z.object({ code: z.literal("SALES_ORDER_AMBIGUOUS") }) }).safeParse(payload).success) throw new ConflictException("NetSuite devolvió más de una orden con ese número.");
+        const found = z.object({ status: z.literal(200), data: z.object({ id: z.string().regex(/^[1-9][0-9]{0,19}$/), tranid: z.string() }) }).safeParse(payload);
+        if (found.success && found.data.data.tranid.trim().toUpperCase() === tranid) return found.data.data.id;
+        throw new BadGatewayException("NetSuite no confirmó el número de orden. Verifica la versión del RESTlet.");
+    }
+
+    /** Read the exact customer and only the fields used by the CRM import. */
+    async readImportCustomer(id: string) {
+        const body = await this.get(() => ({ module: "leads", action: "importCustomer", id }));
+        const parsed = z
+            .object({
+                status: z.literal(200),
+                data: z.object({
+                    id: z.string(),
+                    fullName: z.string().trim().min(1).max(250),
+                    company: z.string().max(250).nullable(),
+                    email: z.string().max(254).nullable(),
+                    phone: z.string().max(80).nullable(),
+                    campaign: z.string().nullable(),
+                }),
+            })
+            .safeParse(decodeLookup(body));
+        if (!parsed.success || parsed.data.data.id !== id) throw new BadGatewayException("NetSuite no confirmó la ficha del cliente.");
+        return parsed.data.data;
+    }
+
+    /** Lookup a bounded attribute for reconciliation of a missing relation. */
+    async readImportRelation(kind: "subsidiary" | "user", id: string) {
+        const body = await this.get(() => ({ module: "salesOrders", action: "importRelation", kind, id }));
+        const parsed = z.object({ status: z.literal(200), data: z.object({ id: z.string(), value: z.string().trim().min(1).max(254).nullable() }) }).safeParse(decodeLookup(body));
+        if (!parsed.success || parsed.data.data.id !== id) throw new BadGatewayException("NetSuite no confirmó la relación " + kind + ".");
+        return parsed.data.data.value;
+    }
+
+    /** Read the unit's code and principal project from its NetSuite record. */
+    async readImportUnit(id: string) {
+        const body = await this.get(() => ({ module: "salesOrders", action: "importRelation", kind: "unitFile", id }));
+        const parsed = z
+            .object({
+                status: z.literal(200),
+                data: z.object({
+                    id: z.string(),
+                    code: z.string().trim().min(1).max(255),
+                    projectId: z
+                        .string()
+                        .regex(/^[1-9][0-9]{0,9}$/)
+                        .refine((value) => Number(value) <= 2147483647),
+                }),
+            })
+            .safeParse(decodeLookup(body));
+        if (!parsed.success || parsed.data.data.id !== id) throw new BadGatewayException("NetSuite no confirmó el código y el proyecto principal del expediente " + id + ".");
+        return parsed.data.data;
+    }
+
+    private async get(operation: (environment: "production" | "sandbox") => Record<string, string>): Promise<string> {
         const { credentials, url, environment } = this.connection();
-        const operation = this.salesOrderOperation(id, environment, verifiedSnapshot);
-        for (const [key, value] of Object.entries(operation)) url.searchParams.set(key, value);
+        for (const [key, value] of Object.entries(operation(environment))) url.searchParams.set(key, value);
         const authorization = netsuiteGetAuthorization(url, credentials, randomBytes(16).toString("hex"), String(Math.floor(Date.now() / 1000)));
         try {
             const response = await fetch(url, { method: "GET", redirect: "error", headers: { Authorization: authorization, Accept: "application/json", "Content-Type": "application/json" }, signal: AbortSignal.timeout(15000) });
@@ -90,14 +158,13 @@ export class NetsuiteRestletClient {
                 await response.body?.cancel();
                 throw new Error("upstream");
             }
-            return readSalesOrderBody(await this.readBody(response));
-        } catch (error) {
-            if (error instanceof NotFoundException) throw error;
+            return await this.readBody(response);
+        } catch {
             throw new BadGatewayException("No fue posible consultar NetSuite. La orden no fue modificada.");
         }
     }
     /** Match the confirmed deployment contract, separately from account/credential selection. */
-    private salesOrderOperation(id: string, environment: "production" | "sandbox", verifiedSnapshot = false) {
+    private salesOrderOperation(id: string, environment: "production" | "sandbox", verifiedSnapshot = false): Record<string, string> {
         if (verifiedSnapshot) return { module: "salesOrders", id, action: "syncSnapshot" };
         if (environment === "sandbox") return { module: "salesOrders", id };
         const mode = this.config.get<unknown>("NETSUITE_PRODUCTION_READ_MODE") ?? "legacy";
@@ -193,4 +260,12 @@ function confirmApprovalBody(body: string, id: string) {
     const { data } = approvalConfirmation.parse(parseRestletBody(body));
     if (data.id !== id) throw new Error("upstream-confirmation");
     return data;
+}
+
+function decodeLookup(body: string): unknown {
+    try {
+        return decodeRestletBody(body);
+    } catch {
+        return null;
+    }
 }

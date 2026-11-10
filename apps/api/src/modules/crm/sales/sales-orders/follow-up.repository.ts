@@ -4,6 +4,7 @@ import { type RawBuilder, sql, type Transaction } from "kysely";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { FollowUpAccess, FollowUpPeriod, FollowUpRead } from "./follow-up.contract.js";
 import { followUpSourceQuery, readFollowUpRecord, readFollowUpSource, readProjectDistribution } from "./follow-up.query.js";
+import { formalizationClosedThisYear } from "./formalization-closure.query.js";
 
 /** Native relationships use native PKs. Provider transaction numbers are labels, never identity. */
 @Injectable()
@@ -71,8 +72,7 @@ export class FollowUpRepository {
                 (EXISTS(SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='sales_management' AND a.status_sales_order_approval='approved')
                     AND EXISTS(SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='developer' AND a.status_sales_order_approval='approved')
                     AND EXISTS(SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='formalization' AND a.status_sales_order_approval='not_approved')) AS approvalPending,
-                EXISTS(SELECT 1 FROM audit_sales_order_state_event ce WHERE ce.sales_order_id_sales_order_state_event=o.id_sales_order AND ce.to_state_code_sales_order_state_event='closed'
-                    AND ce.effective_at_sales_order_state_event>=${period.start} AND ce.effective_at_sales_order_state_event<${period.endExclusive}) AS completedThisYear
+                ${formalizationClosedThisYear("native", period)} AS completedThisYear
             FROM crm_sales_order o
             LEFT JOIN crm_lead l ON l.id_lead=o.lead_id_sales_order AND l.deleted_at_lead IS NULL
             LEFT JOIN crm_contact c ON c.id_contact=l.primary_contact_id_lead AND c.deleted_at_contact IS NULL

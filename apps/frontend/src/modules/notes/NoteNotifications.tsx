@@ -1,6 +1,7 @@
 import "../administration/components/UserDetailDrawer.css";
 import "./NoteCollaboration.css";
 import "./PersonalNotes.css";
+import "./NotificationCenter.css";
 
 import BellOutlined from "@ant-design/icons/BellOutlined";
 import CheckOutlined from "@ant-design/icons/CheckOutlined";
@@ -8,16 +9,20 @@ import MessageOutlined from "@ant-design/icons/MessageOutlined";
 import TeamOutlined from "@ant-design/icons/TeamOutlined";
 import UserOutlined from "@ant-design/icons/UserOutlined";
 import Drawer from "antd/es/drawer";
+import Tag from "antd/es/tag";
 import Typography from "antd/es/typography";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ApiClientError } from "../../services/api/api-client";
+import { ApiClientError, apiRequest } from "../../services/api/api-client";
+import { NETSUITE_IMPORT_QUEUED } from "../../services/formalization/netsuite-order-service";
 import { getNoteNotifications, getNoteUnreadCount, markAllNoteNotificationsRead, markNoteNotificationRead, type NoteNotification, type NoteNotifications } from "../../services/notes/note-notifications-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
 import { CalendarNotificationList } from "../calendar/CalendarNotifications";
 import { useCalendarNotifications } from "../calendar/useCalendarNotifications";
 import { NotesLoading } from "./NotesLoading";
 import { useNotesRealtime } from "./useNotesRealtime";
+type NotificationFilter = "all" | "unread" | "mentions";
+
 interface Props {
     readonly onOpenNote: (id: string) => void;
     readonly mobile?: boolean;
@@ -26,6 +31,8 @@ interface Props {
 /** Both header variants share realtime; only the visible bell reads counts and announces notices. */
 export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = true }: Props) {
     const [open, setOpen] = useState(false);
+    const [filter, setFilter] = useState<NotificationFilter>("unread");
+    const [page, setPage] = useState(1);
     const alive = useRef(true);
     const refreshSequence = useRef(0);
     const reading = useRef(new Map<string, number>());
@@ -48,7 +55,10 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
         };
     }, [mobile]);
     const calendarNotices = useCalendarNotifications(viewport);
-    const bellCount = Number(count) + calendarNotices.unreadCount;
+    const imports = useOrderImportNotices(viewport);
+    const visibleCalendar = calendarNotices.items.filter((item) => filter === "all" || (filter === "unread" && item.readAt === null));
+    const visibleImports = imports.items.filter((item) => filter === "all" || (filter === "unread" && !item.read));
+    const bellCount = Number(count) + calendarNotices.unreadCount + imports.items.filter((item) => !item.read).length;
     const refresh = useCallback(async () => {
         if (reading.current.size) return;
         const key = ++refreshSequence.current;
@@ -107,6 +117,7 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
                 onClick={() => {
                     setOpen(true);
                     void calendarNotices.refresh();
+                    void imports.refresh();
                 }}
             >
                 <BellOutlined aria-hidden="true" />
@@ -122,7 +133,7 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
                         </span>
                         <div className="user-detail-drawer__identity-copy">
                             <Typography.Title level={4}>Notificaciones</Typography.Title>
-                            <Typography.Text type="secondary">Invitaciones de calendario y avisos de notas</Typography.Text>
+                            <Typography.Text type="secondary">Calendario, notas e importaciones de órdenes</Typography.Text>
                         </div>
                     </div>
                 }
@@ -132,8 +143,26 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
                     setOpen(false);
                 }}
             >
+                <div className="note-notifications__tools">
+                    <label>
+                        Mostrar
+                        <select
+                            aria-label="Filtrar notificaciones"
+                            value={filter}
+                            onChange={(event) => {
+                                setFilter(event.target.value as NotificationFilter);
+                                setPage(1);
+                            }}
+                        >
+                            <option value="unread">No leídas</option>
+                            <option value="all">Todas</option>
+                            <option value="mentions">Menciones</option>
+                        </select>
+                    </label>
+                </div>
+                <OrderImportNoticeList items={visibleImports} onRead={imports.markRead} />
                 <CalendarNotificationList
-                    model={calendarNotices}
+                    model={{ ...calendarNotices, items: visibleCalendar }}
                     onOpen={() => {
                         setOpen(false);
                     }}
@@ -141,6 +170,9 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
                 {enabled ? (
                     <NotificationsContent
                         open={open}
+                        filter={filter}
+                        page={page}
+                        onPage={setPage}
                         onReadStart={(key, amount) => {
                             reading.current.set(key, amount);
                             refreshSequence.current += 1;
@@ -167,6 +199,9 @@ export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = 
 }
 interface ContentProps {
     readonly open: boolean;
+    readonly filter: NotificationFilter;
+    readonly page: number;
+    readonly onPage: (page: number) => void;
     readonly onReadStart: (key: string, amount: number) => void;
     readonly onReadSettled: (key: string, confirmed: boolean) => void;
     readonly onOpenNote: (id: string) => void;
@@ -185,9 +220,7 @@ function presentNotifications(data: NoteNotifications, reads: ReadIntent[], filt
     const unreadCount = Math.max(0, data.unreadCount - reads.reduce((sum, read) => sum + read.amount, 0));
     return { ...data, items: filter === "unread" ? items.filter((item) => item.readAt === null) : items, unreadCount };
 }
-function NotificationsContent({ open, onReadStart, onReadSettled, onOpenNote }: ContentProps) {
-    const [filter, setFilter] = useState<"all" | "unread" | "mentions">("unread");
-    const [page, setPage] = useState(1);
+function NotificationsContent({ open, filter, page, onPage, onReadStart, onReadSettled, onOpenNote }: ContentProps) {
     const [data, setData] = useState<NoteNotifications | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -271,18 +304,6 @@ function NotificationsContent({ open, onReadStart, onReadSettled, onOpenNote }: 
     const showInitialLoading = loading && data === null;
     return (
         <div className="note-notifications">
-            <p className="note-notifications__hint">Solo tus avisos. Abrir la campana no los marca como leídos.</p>
-            <NotificationTools
-                filter={filter}
-                hasData={data !== null}
-                onFilter={(value) => {
-                    setFilter(value);
-                    setPage(1);
-                }}
-                onMarkAll={() => {
-                    markAll();
-                }}
-            />
             {error && (
                 <div role="alert" className="personal-notes-panel__error">
                     <p>{error}</p>
@@ -297,10 +318,14 @@ function NotificationsContent({ open, onReadStart, onReadSettled, onOpenNote }: 
                 </div>
             )}
             {showInitialLoading && <NotesLoading label="Cargando tus avisos…" />}
-            {data && (
+            {data && visible && visible.items.length > 0 && (
                 <>
+                    <h3 className="notif-section__title">Notas</h3>
+                    <button type="button" onClick={markAll}>
+                        Marcar todas como leídas
+                    </button>
                     <NotificationList
-                        items={visible?.items ?? []}
+                        items={visible.items}
                         onMark={(id) => {
                             mark(id);
                         }}
@@ -309,7 +334,7 @@ function NotificationsContent({ open, onReadStart, onReadSettled, onOpenNote }: 
                             mark(item.id);
                         }}
                     />
-                    <NotificationPagination page={page} pagination={data.page} onPage={setPage} />
+                    <NotificationPagination page={page} pagination={data.page} onPage={onPage} />
                 </>
             )}
         </div>
@@ -337,13 +362,6 @@ function NotificationList({ items, onMark, onOpen }: ListProps) {
         group.push(item);
         groups.set(item.noteId, group);
     }
-    if (items.length === 0)
-        return (
-            <div className="personal-notes-panel__empty">
-                <BellOutlined aria-hidden="true" />
-                <p className="note-notifications-empty">No tienes avisos en esta selección.</p>
-            </div>
-        );
     return (
         <>
             <label>
@@ -442,36 +460,6 @@ function BellCount({ count, lower }: { readonly count: number | null; readonly l
     );
 }
 
-function NotificationTools({ filter, hasData, onFilter, onMarkAll }: { readonly filter: "all" | "unread" | "mentions"; readonly hasData: boolean; readonly onFilter: (value: "all" | "unread" | "mentions") => void; readonly onMarkAll: () => void }) {
-    return (
-        <div className="note-notifications__tools">
-            <label>
-                Mostrar
-                <select
-                    aria-label="Filtrar notificaciones"
-                    value={filter}
-                    onChange={(e) => {
-                        onFilter(e.target.value as typeof filter);
-                    }}
-                >
-                    <option value="unread">No leídas</option>
-                    <option value="all">Todas</option>
-                    <option value="mentions">Menciones</option>
-                </select>
-            </label>
-            <button
-                type="button"
-                disabled={!hasData}
-                onClick={() => {
-                    onMarkAll();
-                }}
-            >
-                Marcar todas como leídas
-            </button>
-        </div>
-    );
-}
-
 function NotificationPagination({ page, pagination, onPage }: { readonly page: number; readonly pagination: NoteNotifications["page"]; readonly onPage: (page: number) => void }) {
     return (
         <div className="note-pagination personal-notes-panel__pages">
@@ -496,4 +484,98 @@ function NotificationPagination({ page, pagination, onPage }: { readonly page: n
             </button>
         </div>
     );
+}
+
+interface OrderImportNotice {
+    id: string;
+    tranid: string;
+    status: "pending" | "processing" | "delivered" | "failed";
+    reason: string | null;
+    orderId: string | null;
+    orderSource: "native" | "legacy" | null;
+    read: boolean;
+}
+
+const importStatus = {
+    pending: { color: "gold", label: "Pendiente de sincronización" },
+    processing: { color: "gold", label: "Sincronizando con NetSuite" },
+    delivered: { color: "green", label: "Completada" },
+    failed: { color: "red", label: "Error de sincronización" },
+} as const;
+
+function OrderImportNoticeList({ items, onRead }: { readonly items: OrderImportNotice[]; readonly onRead: (id: string) => Promise<void> }) {
+    if (items.length === 0) return null;
+    return (
+        <section className="notif-section" aria-label="Importaciones de órdenes">
+            <h3 className="notif-section__title">Importaciones de órdenes</h3>
+            <ul className="notif-import-list">
+                {items.map((item) => (
+                    <OrderImportNoticeItem key={item.id} item={item} onRead={onRead} />
+                ))}
+            </ul>
+        </section>
+    );
+}
+
+function OrderImportNoticeItem({ item, onRead }: { readonly item: OrderImportNotice; readonly onRead: (id: string) => Promise<void> }) {
+    const { color, label } = importStatus[item.status];
+    const title = `Orden de venta #${item.tranid}`;
+    const orderPath = item.status === "delivered" && item.orderId && item.orderSource ? `/home/formalization/orders?${new URLSearchParams({ orderSource: item.orderSource, orderId: item.orderId })}` : null;
+    return (
+        <li className="notif-import" data-status={item.status}>
+            <div className="notif-import__head">
+                {orderPath ? <a href={orderPath}>{title}</a> : <strong>{title}</strong>} <Tag color={color}>{label}</Tag>
+            </div>
+            {item.reason && <p>{item.reason}</p>}
+            {!item.read && ["delivered", "failed"].includes(item.status) && (
+                <button
+                    type="button"
+                    className="notif-import__read"
+                    onClick={() => {
+                        void onRead(item.id);
+                    }}
+                >
+                    Marcar aviso como leído
+                </button>
+            )}
+        </li>
+    );
+}
+
+const orderImportNoticesPath = "/formalization/orders/netsuite/import/notices";
+
+function useOrderImportNotices(enabled: boolean) {
+    const [items, setItems] = useState<OrderImportNotice[]>([]);
+    const refresh = useCallback(async (signal?: AbortSignal) => {
+        try {
+            const result = await apiRequest<OrderImportNotice[]>(orderImportNoticesPath, { ...(signal ? { signal } : {}) });
+            if (!signal?.aborted && Array.isArray(result)) setItems(result);
+        } catch {
+            // Polling retries independently of note and calendar delivery.
+        }
+    }, []);
+    useEffect(() => {
+        if (!enabled) return;
+        const controller = new AbortController();
+        const poll = () => {
+            if (!document.hidden) void refresh(controller.signal);
+        };
+        poll();
+        const timer = window.setInterval(poll, 5000);
+        window.addEventListener(NETSUITE_IMPORT_QUEUED, poll);
+        return () => {
+            controller.abort();
+            window.clearInterval(timer);
+            window.removeEventListener(NETSUITE_IMPORT_QUEUED, poll);
+        };
+    }, [enabled, refresh]);
+    const markRead = async (id: string) => {
+        try {
+            await apiRequest(`${orderImportNoticesPath}/${encodeURIComponent(id)}/read`, { method: "POST", body: {} });
+            setItems((current) => current.map((item) => (item.id === id ? { ...item, read: true } : item)));
+        } catch {
+            await refresh();
+        }
+    };
+    return { items, refresh, markRead };
 }

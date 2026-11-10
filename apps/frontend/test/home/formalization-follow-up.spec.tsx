@@ -546,3 +546,20 @@ it("applies a pending banner request when the Home list mounts again", async () 
         expect(reads().at(-1)?.[0]).toContain("queues=balance");
     });
 });
+
+it("offers an explicit import after an empty exact search and refreshes the list shows the queue confirmation", async () => {
+    const found = payload("BC448");
+    vi.mocked(apiRequest).mockImplementation((path) => {
+        if (path === "/formalization/orders/netsuite/import") {
+            return Promise.resolve({ queued: true, tranid: "BC448" });
+        }
+        return Promise.resolve({ ...found, items: [], page: { ...found.page, total: 0, totalPages: 0 } });
+    });
+    render(<FormalizationFollowUpPreview {...props} canUpdateStage />);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar operación" }), { target: { value: "BC448" } });
+    const button = await screen.findByRole("button", { name: "Extraer de NetSuite" });
+    expect(vi.mocked(apiRequest).mock.calls.some(([path]) => path.endsWith("/netsuite/import"))).toBe(false);
+    fireEvent.click(button);
+    await screen.findByText("La importación de BC448 quedó en cola. Te avisaremos en la campanita cuando termine.");
+    expect(apiRequest).toHaveBeenCalledWith("/formalization/orders/netsuite/import", { method: "POST", body: { tranid: "BC448" }, retryOnUnauthorized: false });
+});

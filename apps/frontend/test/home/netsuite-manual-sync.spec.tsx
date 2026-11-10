@@ -16,6 +16,7 @@ it("requires confirmation showing the environment and refreshes only after a con
     render(<NetsuiteSynchronizationActions identity={{ source: "legacy", id: "legacy:1" }} allowed onSynchronized={refresh} />);
     fireEvent.click(await screen.findByRole("button", { name: "Sincronizar con NetSuite" }));
     expect(within(screen.getByRole("dialog")).getByText(/NetSuite Producción/)).toBeTruthy();
+    expect(screen.getByRole("dialog").closest(".ant-modal-wrap")).toHaveStyle({ zIndex: "1400" });
     expect(apiRequest).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Confirmar sincronización" }));
     expect(await screen.findByText(/3 campos actualizados/)).toBeInTheDocument();

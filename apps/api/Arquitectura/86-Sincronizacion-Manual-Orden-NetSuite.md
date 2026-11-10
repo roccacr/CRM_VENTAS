@@ -1,5 +1,15 @@
 # Sincronizacion manual de una orden desde NetSuite
 
+## Corte local — 2026-11-10
+
+La sincronización de una orden existente conserva su identidad y contrato.
+El árbol local añade una operación distinta, `POST /formalization/orders/netsuite/import`,
+para la extracción explícita por `tranid`. Valida el número exacto y el
+snapshot obtenido por el servidor. Solo esa operación puede crear la orden
+nativa. Requiere los permisos efectivos de lectura y actualización de
+etapa, sesión, CSRF, configuración de ambiente y el RESTlet compatible.
+[90 — Ruta, deduplicación y estado de publicación](90-Reconciliacion-API-20261110.md).
+
 Solicitud: boton junto a refrescar y ambiente visible en la ruta de la orden.
 
 - GET contexto autorizado informa ambiente elegido por configuracion del servidor, no por el navegador.
