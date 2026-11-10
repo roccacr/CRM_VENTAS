@@ -106,6 +106,7 @@ export class NetsuiteRestletClient {
                     email: z.string().max(254).nullable(),
                     phone: z.string().max(80).nullable(),
                     campaign: z.string().nullable(),
+                    campaignName: z.string().trim().min(1).max(180).nullable().optional(),
                 }),
             })
             .safeParse(decodeLookup(body));

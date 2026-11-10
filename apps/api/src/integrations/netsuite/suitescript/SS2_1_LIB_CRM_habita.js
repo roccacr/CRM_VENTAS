@@ -1,5 +1,5 @@
 /**
- * Versión: 2026.11.10.6 — Lectura del expediente y su proyecto principal.
+ * Versión: 2026.11.10.7 — Nombre de la campaña NetSuite en la ficha de importación.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
  * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
  * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
@@ -281,15 +281,16 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             return null;
         }
 
+        /** La cuenta del parametro tiene que ser exactamente runtime.accountId. Si el parametro falta, produccion usa 4552704 y sandbox 4552704_SB1. Otro tipo de cuenta queda bloqueado. */
         function isAuthorizedEnvironment() {
             const configuredAccount = runtime.getCurrentScript().getParameter({ name: ACCOUNT_PARAMETER });
-            // Temporary defaults by environment; a configured deployment value always takes precedence.
+            // Si el despliegue trae cuenta, esa gana. El respaldo solo entra cuando el parametro es null, undefined o vacio.
             const missingAccount =
                 configuredAccount === null || configuredAccount === undefined || configuredAccount === "";
             const environmentName = getEnvironmentName();
             const parameter =
                 missingAccount && environmentName !== null ? DEFAULT_ACCOUNTS[environmentName] : configuredAccount;
-            // Integer deployment parameters are valid too; never coerce arbitrary objects/booleans.
+            // Un entero seguro tambien vale y se vuelve texto. Un objeto o un booleano no se convierte y no autoriza.
             const accountId =
                 typeof parameter === "number" && Number.isSafeInteger(parameter) ? String(parameter) : parameter;
             return getEnvironmentName() !== null && typeof accountId === "string" && accountId === runtime.accountId;
@@ -372,6 +373,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             return result;
         }
 
+        /** Cada intento lee de nuevo y lleva un UUID nuevo. Las tres marcas de tiempo salen de la foto y entran al evento, no al snapshot. */
         function sendSnapshot(url, authorization, event, readSnapshot) {
             const versionedEvent = { ...event, eventId: random.generateUUID(), observedAt: new Date().toISOString() };
             const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt, ...snapshot } = readSnapshot(
@@ -435,7 +437,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             return { status: "received_local", delivered: true };
         }
 
-        /** Un solo reintento inmediato para red/5xx; conserva cuerpo y UUID para un COMMIT de resultado incierto. */
+        /** Un solo reintento inmediato para red o HTTP 500 o mas. Un 4xx, incluido el 409, vuelve en el primer intento. El cuerpo y el UUID no cambian en ese reintento. */
         function postWithRetry(request) {
             for (let attempt = 0; attempt < 2; attempt++) {
                 try {
@@ -746,6 +748,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 email: fields.email || null,
                 phone: fields.phone || null,
                 campaign: campaign ? String(campaign.value) : null,
+                campaignName: typeof campaign?.text === "string" ? campaign.text.trim() || null : null,
             });
         }
 
@@ -830,7 +833,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             const readBodyValue = bodyValue(order);
             const readValue = (fieldId) => {
                 const value = readBodyValue(fieldId);
-                // An unreadable field must not become an explicit empty value and erase CRM funds.
+                // custbody37 solo acepta vacio, 1 o 2. Otro valor no se manda como vacio: borraria los fondos ya guardados en el CRM.
                 if (fieldId === "custbody37" && ![null, "", 1, "1", 2, "2"].includes(value))
                     throw new Error("purchase_funds_unavailable");
                 return value;
@@ -848,6 +851,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                     order.getSublists().includes(team.sublist) && order.getLineCount({ sublistId: team.sublist }) > 0
                         ? order.getSublistValue({ sublistId: team.sublist, fieldId: team.field, line: 0 })
                         : null;
+                // Si el campo no esta en el record, no se envia y el CRM conserva la fecha. Null o vacio la limpia. Una fecha valida usa el calendario local del record, no UTC. Otro valor se omite.
                 const deliveryField = "custbody_fecha_unidad_entregada";
                 const delivery =
                     typeof order.getFields === "function" && order.getFields().includes(deliveryField)
@@ -986,6 +990,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         }
 
         return Object.freeze({
+            // findByTranId e importRelation no cargan la ficha. syncSnapshot pide la foto de evento. Lo demas es la lectura por id.
             get: (request) => {
                 if (request?.action === "findByTranId") return importQueries.findSalesOrderByTranId(request.tranid);
                 if (request?.action === "importRelation") return importQueries.importRelation(request);
@@ -1086,6 +1091,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
 
         const { notImplemented } = responses;
 
+        // Solo importCustomer esta activo. Cualquier otra lectura o escritura responde 501.
         return Object.freeze({
             get: (request) =>
                 request?.action === "importCustomer" ? importQueries.importCustomer(request) : notImplemented(),
@@ -1099,6 +1105,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
 
         const { notImplemented } = responses;
 
+        // Estimaciones siguen reservadas: lectura y escritura responden 501.
         return Object.freeze({ get: notImplemented, put: notImplemented });
     })(responses);
 

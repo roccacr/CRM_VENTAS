@@ -2,10 +2,19 @@
 
 ## Corte local — 2026-11-10
 
-La librería local identifica `2026.11.10.4`. El RESTlet añade
+La cabecera de la librería local identifica `2026.11.10.7`. El RESTlet añade
 `GET module=salesOrders&action=findByTranId&tranid=<número>` para resolver
 el ID interno de una orden con coincidencia exacta. Se incorpora
 `custbody_fecha_unidad_entregada` a la proyección.
+
+La consulta `module=leads&action=importCustomer` devuelve `campaign` con el ID de
+NetSuite y `campaignName` con el texto de `leadsource`. Habita usa ese ID para
+buscar la referencia externa de la campaña. Si falta, concilia por
+`campanas.id_NetsauiteCampana` o crea la campaña con el nombre confirmado y
+guarda el vínculo en la BD nueva dentro de la transacción de importación.
+Cuando el cliente carece de un origen comercial conciliado, Habita usa o crea
+el origen de respaldo `netsuite` («Importado desde NetSuite»).
+
 La biblioteca local fija la URL base de producción en
 `https://api-habita.rdghub.com/integrations/netsuite/production`.
 El UE añade `/order-events`; el dominio autorizado del secreto en ese

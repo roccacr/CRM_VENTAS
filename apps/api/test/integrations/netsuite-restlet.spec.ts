@@ -433,11 +433,11 @@ it.each([0, 1, 2])("resolves only one exact NetSuite transaction number (%i matc
 });
 
 it("looks up a customer by internal ID and returns the permitted fields", () => {
-    const lookupFields = vi.fn(() => ({ firstname: "Ana", lastname: "Prueba", email: "synthetic@example.test", leadsource: { value: 12 }, privateField: "omitted" }));
+    const lookupFields = vi.fn(() => ({ firstname: "Ana", lastname: "Prueba", email: "synthetic@example.test", leadsource: [{ value: 651, text: "Gogetit Leads" }], privateField: "omitted" }));
     const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields } });
     expect(restlet.get?.({ module: "leads", action: "importCustomer", id: "2034401" })).toEqual({
         status: 200,
-        data: { id: "2034401", fullName: "Ana Prueba", email: "synthetic@example.test", company: null, phone: null, campaign: "12" },
+        data: { id: "2034401", fullName: "Ana Prueba", email: "synthetic@example.test", company: null, phone: null, campaign: "651", campaignName: "Gogetit Leads" },
     });
     expect(lookupFields).toHaveBeenCalledOnce();
 });
