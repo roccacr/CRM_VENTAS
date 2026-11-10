@@ -53,7 +53,7 @@ jobs:
           retention-days: 7
 
       - name: Preserve the build verified by CI
-        if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && vars.HABITA_QA_ENABLED == 'true'
+        if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && (vars.HABITA_QA_ENABLED == 'true' || vars.HABITA_PRODUCTION_ENABLED == 'true')
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: habita-build-${{ matrix.app }}
@@ -62,7 +62,7 @@ jobs:
           retention-days: 7
 
   package-habita:
-    if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && vars.HABITA_QA_ENABLED == 'true'
+    if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && (vars.HABITA_QA_ENABLED == 'true' || vars.HABITA_PRODUCTION_ENABLED == 'true')
     needs: [quality, dependency-audit, habita-netsuite]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -88,14 +88,20 @@ jobs:
           retention-days: 14
 
   deploy-qa:
+    if: vars.HABITA_QA_ENABLED == 'true'
     needs: package-habita
     uses: ./.github/workflows/habita-promote.yml
     with:
       target: habita-qa
 
   deploy-production:
-    if: vars.HABITA_PRODUCTION_ENABLED == 'true'
-    needs: deploy-qa
+    if: >-
+      ${{ !cancelled() &&
+      vars.HABITA_PRODUCTION_ENABLED == 'true' &&
+      needs.package-habita.result == 'success' &&
+      (needs.deploy-qa.result == 'success' ||
+       (vars.HABITA_QA_ENABLED != 'true' && needs.deploy-qa.result == 'skipped')) }}
+    needs: [package-habita, deploy-qa]
     uses: ./.github/workflows/habita-promote.yml
     with:
       target: production
