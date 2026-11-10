@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Business fields explicitly exposed by the timeline; arbitrary audit JSON is never returned. */
+/** Campos de negocio que salen en la línea de tiempo. Un JSON de auditoría arbitrario no se devuelve. */
 export const historyEntrySchema = z.object({
     actionCode: z.string().min(1).max(80),
     reason: z.object({ code: z.string(), name: z.string() }).nullable(),
@@ -17,7 +17,7 @@ export const historyEntrySchema = z.object({
     evidence: z.enum(["legacy_observation", "native_event"]),
 });
 
-/** Read-only legacy adapter output. It must never be persisted in the native database. */
+/** Salida de solo lectura del adaptador viejo. No se persiste en la base nativa. */
 export interface HistoricalLeadEvidence {
     id: number;
     leadReference: string;

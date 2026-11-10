@@ -1,3 +1,7 @@
+/**
+ * Forma de `crm_subsidiary` y de su referencia externa.
+ * `public_id_subsidiary` es la identidad. `id_old_produccion_subsidiary` solo vincula. La fecha se puede leer y escribir. El borrado de la fila y el archivo de la referencia son lógicos.
+ */
 import type { ColumnType, Generated } from "kysely";
 
 type DateTime = ColumnType<Date, Date | string, Date | string>;

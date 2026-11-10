@@ -14,15 +14,15 @@ export interface NoteNotification {
     kind: NoteNotificationRecipient["kind"];
     actor: { publicId: string; displayName: string };
     noteId: string;
-    /** Which note the notice is about; lets the bell say "sobre «título»" without opening it. */
+    /** De qué nota es el aviso. La campana puede decir el título sin abrirla. */
     note: { title: string | null; excerpt: string };
-    /** What was written for a reply or mention: the actor's latest live reply up to the notice. Null for invitations. */
+    /** Texto de una respuesta o mención: la última respuesta viva del actor hasta el aviso. Una invitación lo deja nulo. */
     replyExcerpt: string | null;
     moduleCode: string;
     createdAt: string;
     readAt: string | null;
 }
-/** One delivery per recipient: the most specific reason wins and authors never notify themselves. */
+/** Un aviso por destinatario. Gana la prioridad más alta y el autor no se notifica a sí mismo. */
 export function deduplicateNoteRecipients(actor: string, recipients: readonly NoteNotificationRecipient[]): NoteNotificationRecipient[] {
     const priority = { reply: 0, shared: 1, mention: 2, assigned: 3, reminder: 0, due: 0 };
     const result = new Map<string, NoteNotificationRecipient>();

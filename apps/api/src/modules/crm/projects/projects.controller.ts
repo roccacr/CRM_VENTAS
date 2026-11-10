@@ -14,7 +14,10 @@ import { RouteSecurity } from "../../../common/security/route-security.decorator
 import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, UpdateCatalogItemStatusDto } from "../catalogs/dto/catalog-items.dto.js";
 import { ProjectsService } from "./projects.service.js";
 
-/** Expone operaciones de proyectos y delega autorizacion al servicio. */
+/**
+ * Contrato de catálogo, con cookie de sesión. El permiso de ruta es la primera puerta; el servicio vuelve a evaluar el efectivo.
+ * El nombre usa el cuerpo compartido: de 2 a 180. Este agregado no lo vuelve a recortar.
+ */
 @ApiTags("projects")
 @Controller("catalogs/projects")
 export class ProjectsController {
@@ -66,6 +69,7 @@ export class ProjectsController {
     /**
      * Activa o inactiva el proyecto.
      *
+     * La acción de ruta `status` no es un permiso: activo exige actualizar e inactivo exige inactivar.
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")

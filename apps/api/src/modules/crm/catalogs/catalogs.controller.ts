@@ -13,11 +13,12 @@ import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, U
  *
  * Entrega la cookie de sesión, el código de ruta y el contexto de auditoría.
  * No autoriza: el servicio vuelve a leer el permiso efectivo del módulo de contexto.
+ * Bancos se rechazan en la política. Los demás agregados propios se rechazan en el repositorio. Expedientes sí se atienden aquí.
  */
 @ApiTags("catalogs")
 @Controller("catalogs")
 export class CatalogsController {
-    /** @param catalogs - Caso de uso compartido. Proyectos no se atienden por esta ruta. */
+    /** Caso de uso compartido. Esta clase no abre la base vieja ni los agregados propios. */
     constructor(@Inject(CatalogsService) private readonly catalogs: CatalogsService) {}
 
     /** Lista valores del catálogo indicado. El módulo de la query decide el permiso de lectura. */
@@ -51,7 +52,7 @@ export class CatalogsController {
         return this.catalogs.updateCatalogItem(request.cookies[SESSION_COOKIE_NAME], catalogCode, itemPublicId, body, { ipAddress: request.ip, userAgent });
     }
 
-    /** Activa o inactiva. El motivo del cuerpo queda en el evento de auditoría. */
+    /** La acción de ruta `status` no es un permiso: activo exige actualizar e inactivo exige inactivar. El motivo queda en la auditoría. */
     // eslint-disable-next-line max-params -- Handler Nest: los parametros vienen de decoradores HTTP separados.
     @Patch(":catalogCode/items/:itemPublicId/status")
     @RouteSecurity("permission")

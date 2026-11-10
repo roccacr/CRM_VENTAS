@@ -11,14 +11,14 @@ import { CATALOG_CONTEXT_MODULES } from "../catalogs/catalogs.constants.js";
 import { createNoteSchema, editNoteSchema, noteStateSchema, placementSchema } from "./notes.contract.js";
 import { NotesService } from "./notes.service.js";
 
-/** Every handler uses the BFF cookie and resource checks; no caller-selected author or SQL target. */
+/** Cada ruta usa la cookie del BFF y vuelve a comprobar el recurso. El cliente no elige al autor ni el destino SQL. */
 @ApiTags("notes")
 @Controller("notes")
 export class NotesController {
-    /** Injects the native notes use case. */
+    /** Inyección explícita del caso de uso nativo. */
     constructor(@Inject(NotesService) private readonly notes: NotesService) {}
 
-    /** Lists only the authenticated actor's authorized context. */
+    /** Lista solo el contexto que el actor autenticado puede ver. */
     @Get()
     @RouteSecurity("permission")
     @RequirePermission({ kind: "notes", action: "read" })
@@ -33,7 +33,7 @@ export class NotesController {
         return this.notes.list(req.cookies[SESSION_COOKIE_NAME], query);
     }
 
-    /** Reads bounded metadata history after resource authorization. */
+    /** Lee una historia acotada de metadatos después de autorizar el recurso. */
     @Get(":id/history")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "notes", action: "read", allowCrossModuleRead: true })
@@ -44,7 +44,7 @@ export class NotesController {
         return this.notes.history(req.cookies[SESSION_COOKIE_NAME], id, query);
     }
 
-    /** Loads private content and personal layout without cache. */
+    /** Carga el contenido privado y la disposición personal. La respuesta no se cachea. */
     @Get(":id")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "notes", action: "read", allowCrossModuleRead: true })
@@ -55,7 +55,7 @@ export class NotesController {
         return this.notes.read(req.cookies[SESSION_COOKIE_NAME], id, query);
     }
 
-    /** Creates a private note using server-derived authorship. */
+    /** Crea una nota privada. El autor sale de la sesión, no del cuerpo. */
     @Post()
     @RouteSecurity("permission")
     @RequirePermission({ kind: "notes", action: "create" })
@@ -66,7 +66,7 @@ export class NotesController {
         return this.notes.create(req.cookies[SESSION_COOKIE_NAME], body);
     }
 
-    /** Updates author-owned content with an explicit version. */
+    /** Edita el contenido del autor con la versión esperada. */
     @Patch(":id")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "notes", action: "edit_own" })
@@ -77,7 +77,7 @@ export class NotesController {
         return this.notes.edit(req.cookies[SESSION_COOKIE_NAME], id, body);
     }
 
-    /** Completes an open note without deleting its conversation. */
+    /** Completa una nota abierta. La conversación sigue. */
     @Post(":id/complete")
     @HttpCode(200)
     @RouteSecurity("permission")
@@ -89,7 +89,7 @@ export class NotesController {
         return this.notes.lifecycle(req.cookies[SESSION_COOKIE_NAME], id, body, "complete");
     }
 
-    /** Reopens a completed note with optimistic concurrency. */
+    /** Reabre una nota completada con la versión esperada. */
     @Post(":id/reopen")
     @HttpCode(200)
     @RouteSecurity("permission")
@@ -101,7 +101,7 @@ export class NotesController {
         return this.notes.lifecycle(req.cookies[SESSION_COOKIE_NAME], id, body, "reopen");
     }
 
-    /** Archives the author's note; never performs a physical deletion. */
+    /** Archiva la nota del autor. No hay baja física. */
     @Post(":id/archive")
     @HttpCode(200)
     @RouteSecurity("permission")
@@ -113,7 +113,7 @@ export class NotesController {
         return this.notes.lifecycle(req.cookies[SESSION_COOKIE_NAME], id, body, "archive");
     }
 
-    /** Saves only the authenticated caller's placement and PIN. */
+    /** Guarda solo la posición y el pin de quien llama. No cambia el contenido. */
     @Put(":id/my-placement")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "notes", action: "read", source: "body", allowCrossModuleRead: true })

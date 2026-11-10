@@ -9,16 +9,16 @@ import { CONTRACT_ORDERS_LEGACY_READER, type ContractOrdersLegacyReader } from "
 import { ContractOrdersRepository } from "./contract-orders.repository.js";
 import { ContractSummaryRepository } from "./contract-summary.repository.js";
 
-/** Strips internal sort keys; `nextCursor` is emitted only when the probe row proves more data exists. */
+/** Quita las claves internas de orden. `nextCursor` sale solo si la fila de sonda demuestra que hay más datos. */
 const pageResponse = (rows: ContractOrderPageRow[], more: boolean) => {
     const last = rows.at(-1);
     return { items: rows.map(({ source, id, businessId, state, sequence }) => ({ source, id, businessId, state, sequence })), nextCursor: more && last ? `${last.source}:${last.sortId}` : null };
 };
 
-/** No global order listing: only role-authorized, bounded contract queues are exposed. */
+/** No hay un listado global de órdenes. Salen solo las colas de contrato autorizadas por rol y acotadas. */
 @Injectable()
 export class ContractOrdersService {
-    /** Reuses the exact same snapshot mechanism as the banner totals. */
+    /** Reutiliza el mismo mecanismo de foto que los totales del banner. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(ContractSummaryRepository) private readonly snapshot: ContractSummaryRepository,
@@ -26,7 +26,7 @@ export class ContractOrdersService {
         @Inject(CONTRACT_ORDERS_LEGACY_READER) private readonly legacy: ContractOrdersLegacyReader,
     ) {}
 
-    /** Membership is revalidated before lookup; unavailable sources do not become empty pages. */
+    /** La membresía se vuelve a validar antes de buscar. Una fuente no disponible no se convierte en una página vacía. */
     async list(session: string | undefined, input: ContractOrdersQuery) {
         const profile = await this.identity.getCurrentUser(session);
         const query = validateContractOrdersQuery(input);
@@ -39,8 +39,8 @@ export class ContractOrdersService {
     }
 
     /**
-     * Native rows are exhausted before legacy ones so the combined cursor stays monotonic.
-     * Each source is read with limit+1 to detect a next page without an extra count query.
+     * Primero se agotan las filas nativas y después las viejas, para que el cursor combinado siga siendo monótono.
+     * Cada fuente se lee con límite más uno y así se detecta otra página sin una consulta extra de conteo.
      */
     private async readPage(tx: Transaction<CrmDatabase>, query: ContractOrdersQuery) {
         const cursor = parseContractCursor(query.cursor);

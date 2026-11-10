@@ -15,27 +15,27 @@ export interface ClaimedNoteNotificationEvent {
 }
 const recipientId = (publicId: string) => sql`(SELECT id_user FROM sec_user WHERE public_id_user=${publicId} AND status_user='active' AND deleted_at_user IS NULL)`;
 const MAX_ATTEMPTS = 5;
-/** Native bell metadata and collaboration-only outbox. Callers own collaboration transactions. */
+/** Metadatos nativos de la campana y bandeja solo de colaboración. La transacción la abre quien llama. */
 @Injectable()
 export class NoteNotificationsRepository {
-    /** Injects the native dependencies with explicit Nest tokens. */
+    /** Dependencias nativas con tokens explícitos. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(NotesRealtimeEventsRepository) private readonly realtime: NotesRealtimeEventsRepository,
     ) {}
-    /** Appends exactly one envelope for a collaboration command; never opens another transaction. */
+    /** Agrega un solo sobre por comando de colaboración. No abre otra transacción. */
     async enqueue(tx: Tx, event: NoteNotificationEvent): Promise<void> {
         const payload = { ...event, recipients: deduplicateNoteRecipients(event.actorPublicId, event.recipients) };
         notificationEventSchema.parse(payload);
 
         await sql`INSERT INTO int_event_outbox (public_id_event_outbox,aggregate_type_event_outbox,aggregate_public_id_event_outbox,aggregate_version_event_outbox,event_type_event_outbox,destination_code_event_outbox,payload_event_outbox) VALUES (${ulid()},'note_collaboration',${event.noteId},${event.version},'collaboration_changed','notification',${JSON.stringify(payload)})`.execute(tx);
     }
-    /** Removes pending recipients too: revocation must not revive old notices on reinvitation. */
+    /** También quita destinatarios pendientes. Revocar no revive un aviso viejo al volver a invitar. */
     async suppressForNote(tx: Tx, noteId: string, userPublicIds: readonly string[]): Promise<void> {
         if (!userPublicIds.length) return;
         await sql`UPDATE sec_notification SET status_notification='suppressed' WHERE note_id_notification=(SELECT id_note FROM crm_note WHERE public_id_note=${noteId}) AND recipient_user_id_notification IN (SELECT id_user FROM sec_user WHERE public_id_user IN (${sql.join(userPublicIds)}))`.execute(tx);
         for (const userId of new Set(userPublicIds)) await this.realtime.enqueueUserEvent(tx, userId, { kind: "notifications.changed" });
-        // Note-row lock held by the collaboration command serializes this with delivery.
+        // El bloqueo de la nota, tomado por el comando de colaboración, serializa esto con la entrega.
         const events = await sql<{ id: number; payload: unknown }>`SELECT id_event_outbox AS id,payload_event_outbox AS payload FROM int_event_outbox WHERE aggregate_type_event_outbox='note_collaboration' AND aggregate_public_id_event_outbox=${noteId} AND destination_code_event_outbox='notification' AND status_event_outbox IN ('pending','processing') FOR UPDATE`.execute(tx);
         for (const event of events.rows) {
             const payload = notificationEventSchema.parse(typeof event.payload === "string" ? JSON.parse(event.payload) : event.payload);
@@ -43,15 +43,15 @@ export class NoteNotificationsRepository {
             await sql`UPDATE int_event_outbox SET payload_event_outbox=${JSON.stringify(payload)},updated_at_event_outbox=UTC_TIMESTAMP(3) WHERE id_event_outbox=${event.id}`.execute(tx);
         }
     }
-    /** A missing migration keeps the internal worker inert. */
+    /** Si falta la migración, el worker interno no arranca. */
     async schemaReady(): Promise<boolean> {
         const result = await sql<{ ready: number }>`SELECT COUNT(*) AS ready FROM conf_schema_migration WHERE migration_name_schema_migration IN ('202610270044_notes_collaboration','202610280046_notes_realtime')`.execute(this.database.db);
         return Number(result.rows[0]?.ready) === 2;
     }
-    /** Short row lock plus expiry permits concurrent workers and recovery after process death. */
+    /** Un bloqueo corto y un vencimiento permiten workers concurrentes y recuperar un proceso caído. */
     async claim(): Promise<ClaimedNoteNotificationEvent | null> {
         return this.database.db.transaction().execute(async (tx) => {
-            // A process can die during its last lease; expired exhausted rows must become terminal.
+            // Un proceso puede caer en su último arrendamiento. Una fila agotada y vencida queda terminal.
             await sql`UPDATE int_event_outbox SET status_event_outbox='failed',last_error_code_event_outbox='internal_notification_lease_exhausted',updated_at_event_outbox=UTC_TIMESTAMP(3) WHERE aggregate_type_event_outbox='note_collaboration' AND destination_code_event_outbox='notification' AND status_event_outbox='processing' AND attempts_event_outbox>=${MAX_ATTEMPTS} AND available_at_event_outbox<=UTC_TIMESTAMP(3)`.execute(tx);
             const result = await sql<{
                 id: number;
@@ -65,7 +65,7 @@ export class NoteNotificationsRepository {
             return { ...row, attempt: row.attempt + 1 };
         });
     }
-    /** Locks note before envelope, matching collaboration mutation order; rechecks payload after revokes. */
+    /** Bloquea la nota antes del sobre, en el mismo orden que la mutación. Vuelve a leer el contenido después de una revocación. */
     async deliver(event: ClaimedNoteNotificationEvent, authorize: (userId: string, noteId: string) => Promise<unknown>): Promise<void> {
         await this.database.db
             .transaction()
@@ -89,18 +89,18 @@ export class NoteNotificationsRepository {
                 await sql`UPDATE int_event_outbox SET status_event_outbox='delivered',delivered_at_event_outbox=UTC_TIMESTAMP(3),updated_at_event_outbox=UTC_TIMESTAMP(3),last_error_code_event_outbox=NULL WHERE id_event_outbox=${event.id} AND attempts_event_outbox=${event.attempt}`.execute(tx);
             });
     }
-    /** Store unread metadata for an explicitly invited dormant member; visibility and sockets still require an active account. */
+    /** Guarda el metadato no leído de un invitado dormido. Verlo y el socket siguen exigiendo una cuenta activa. */
     private async dormantMember(tx: Tx, userId: string, noteId: string): Promise<boolean> {
         const rows = await sql`SELECT u.id_user FROM sec_user u JOIN crm_note n ON n.public_id_note=${noteId} WHERE u.public_id_user=${userId} AND u.status_user IN ('inactive','pending') AND u.deleted_at_user IS NULL AND (n.author_user_id_note=u.id_user OR EXISTS (SELECT 1 FROM crm_note_participant p WHERE p.note_id_note_participant=n.id_note AND p.user_id_note_participant=u.id_user AND p.status_note_participant='active' AND p.revoked_at_note_participant IS NULL))`.execute(tx);
         return rows.rows.length === 1;
     }
-    /** Fenced failures cannot overwrite a newer lease or completed delivery; error text stays private. */
+    /** Un fallo cercado no pisa un arrendamiento más nuevo ni una entrega completada. El texto del error se queda adentro. */
     async retry(event: ClaimedNoteNotificationEvent): Promise<void> {
         await sql`UPDATE int_event_outbox SET status_event_outbox=${event.attempt >= MAX_ATTEMPTS ? "failed" : "pending"},available_at_event_outbox=DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 30 SECOND),last_error_code_event_outbox='internal_notification_delivery_failed',updated_at_event_outbox=UTC_TIMESTAMP(3) WHERE id_event_outbox=${event.id} AND aggregate_type_event_outbox='note_collaboration' AND destination_code_event_outbox='notification' AND status_event_outbox='processing' AND attempts_event_outbox=${event.attempt}`.execute(
             this.database.db,
         );
     }
-    /** Only metadata for this active native recipient is ever loaded. Service revalidates each note. */
+    /** Solo se carga el metadato de este destinatario nativo activo. El servicio revalida cada nota. */
     async candidates(userId: string, through: string): Promise<NoteNotification[]> {
         const rows = await sql<
             Omit<NoteNotification, "actor" | "note"> & { actorId: string; actorName: string; noteTitle: string | null; noteExcerpt: string | null }
@@ -109,7 +109,7 @@ export class NoteNotificationsRepository {
         );
         return rows.rows.map(({ actorId, actorName, noteTitle, noteExcerpt, replyExcerpt, ...item }) => ({ ...item, actor: { publicId: actorId, displayName: actorName }, note: { title: noteTitle, excerpt: noteExcerpt ?? "" }, replyExcerpt: replyExcerpt ?? null }));
     }
-    /** Idempotent own-only updates preserve the first read time and exclude events after the observed cutoff. */
+    /** La actualización propia es idempotente. Conserva la primera lectura y deja fuera eventos posteriores al corte observado. */
     async markRead(userId: string, ids: readonly string[], through: string): Promise<void> {
         if (!ids.length) return;
         await this.database.db.transaction().execute(async (tx) => {

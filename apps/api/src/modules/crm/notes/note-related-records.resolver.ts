@@ -23,7 +23,7 @@ function access(profile: IdentityAuthorizationProfile, kind: NoteRelatedReferenc
     if (entries.some((permission) => permission.effect === "deny")) throw new ForbiddenException("Sin permiso para consultar clientes.");
     const grants = entries.filter((permission) => permission.effect === "allow" && ["self", "assigned", "own_area", "own_area_and_children", "all_areas"].includes(permission.scope));
     if (!grants.length && !orders) throw new ForbiddenException("Sin permiso para consultar clientes.");
-    // Area hierarchy is not a customer grant: without an existing area resolver, remain owner-scoped.
+    // La jerarquía de área no concede el cliente. Sin un resolvedor de área, el alcance sigue siendo el del dueño.
     return { actor: profile.user.publicId, all: grants.some((permission) => permission.scope === "all_areas"), own: grants.length > 0, orders };
 }
 function assertReadable(profile: IdentityAuthorizationProfile, row: RelatedResourceRow): void {
@@ -54,19 +54,19 @@ function restricted(reference: NoteRelatedReference, error: HttpException): Note
     return { kind: reference.kind, label: null, description: null, url: null, restricted: true, ...(error.getStatus() === 503 ? { unavailable: true } : {}) };
 }
 
-/** Resolves source-qualified business references without granting access through notes or reports. */
+/** Resuelve referencias de negocio calificadas por origen. La nota o el reporte no conceden ese acceso. */
 @Injectable()
 export class NoteRelatedRecordsResolver {
-    /** Uses bounded, read-only source adapters; all authorization remains here. */
+    /** Usa adaptadores de origen acotados y de solo lectura. La autorización se queda aquí. */
     constructor(@Inject(NoteRelatedRecordsReader) private readonly reader: NoteRelatedRecordsReader) {}
-    /** Validation for a command is strict: forbidden, missing and unavailable records never become links. */
+    /** Validar un comando es estricto. Un registro prohibido, ausente o no disponible no se vuelve vínculo. */
     async resolve(profile: IdentityAuthorizationProfile, reference: NoteRelatedReference): Promise<NoteRelatedResolution> {
         const [result] = await this.resolveBatch(profile, this.references([reference]));
         if (!result) throw new NotFoundException("Registro disponible no encontrado.");
         if ("error" in result) throw result.error;
         return result.resolution;
     }
-    /** List rendering redacts references themselves; batch source reads avoid per-card SQL. */
+    /** La lista redacta las propias referencias. La lectura de origen va en lote, no una consulta por ficha. */
     async resolveMany(profile: IdentityAuthorizationProfile, references: readonly NoteRelatedReference[]): Promise<NoteRelatedSummary[]> {
         const parsed = this.references(references);
         const results = await this.resolveBatch(profile, parsed);
@@ -78,7 +78,7 @@ export class NoteRelatedRecordsResolver {
             return restricted(reference, result.error);
         });
     }
-    /** Search uses native-first pagination and exposes partial legacy availability explicitly. */
+    /** La búsqueda pagina primero lo nativo y dice de forma explícita si la disponibilidad legacy es parcial. */
     // eslint-disable-next-line max-params
     async search(profile: IdentityAuthorizationProfile, moduleCode: NoteModule, kind: NoteRelatedReference["kind"], search: string, page: number): Promise<NoteRelatedOptions> {
         const parsed = relatedOptionsQuerySchema.safeParse({ moduleCode, kind, search, page });

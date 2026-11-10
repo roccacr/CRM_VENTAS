@@ -7,7 +7,7 @@ import { SecurityAuditService } from "../audit/security-audit.service.js";
 import type { CompleteLocalPasswordResetInput, CompleteLocalPasswordResetResult, CreateLocalPasswordResetTokenInput, FailedLocalLoginRecord, LocalLoginIdentity, ResettableLocalIdentity } from "./identity.repository.js";
 import { ACTIVE_STATUS, EXPIRED_STATUS, hasUpdatedRows, IDENTITY_RUNTIME_AUDIT_SOURCE, LOCAL_PROVIDER_AVAILABLE_STATUSES, LOCAL_PROVIDER_CODE, PENDING_LOCAL_STATUS, REVOKED_STATUS, USED_STATUS } from "./identity-repository.shared.js";
 
-/** Password-reset token with its user and expiry. */
+/** Token de reset con su usuario y su vencimiento. El repositorio distingue vencido, inválido y ausente; quien llama decide el mensaje. */
 type LocalPasswordResetRow = {
     authIdentityId: number;
     identityStatus: string;

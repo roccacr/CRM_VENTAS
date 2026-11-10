@@ -1,8 +1,9 @@
 /**
  * Catálogos que todavía viven en las tablas compartidas.
  *
- * Proyectos no entra aquí: tiene su propio agregado. Identidad resuelve la
- * sesión y auditoría escribe el motivo en la misma transacción del cambio.
+ * Los agregados propios no se registran aquí. Identidad resuelve la sesión y
+ * la bitácora escribe el motivo en la misma transacción del cambio. El lector
+ * del CRM viejo tampoco se registra en este módulo.
  */
 import { Module } from "@nestjs/common";
 

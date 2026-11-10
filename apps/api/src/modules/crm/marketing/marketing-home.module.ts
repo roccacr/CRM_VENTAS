@@ -13,18 +13,15 @@ import { MarketingLeadsReportRepository } from "./marketing-leads-report.reposit
 import { MarketingLeadsReportService } from "./marketing-leads-report.service.js";
 
 /**
- *
+ * Inicio de Mercadeo. La cookie identifica la sesión y la respuesta no se cachea.
+ * El permiso de ruta es `mercadeo.home.read`. El de captación es otro y no abre este resumen.
  */
 @ApiTags("Marketing")
 @Controller("marketing/home")
 export class MarketingHomeController {
-    /**
-     *
-     */
+    /** Inyección explícita. El servicio vuelve a evaluar el permiso efectivo y el alcance. */
     constructor(@Inject(MarketingHomeService) private readonly service: MarketingHomeService) {}
-    /**
-     *
-     */
+    /** El periodo llega como texto. El servicio cierra la forma; un campo de más se rechaza. */
     @Get("summary")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "all", codes: ["mercadeo.home.read"] })
@@ -35,7 +32,8 @@ export class MarketingHomeController {
     }
 }
 /**
- *
+ * Identidad entra como dependencia. Este módulo no registra los lectores del CRM viejo y no exporta otro pool.
+ * El inicio y la captación comparten el módulo, con permisos distintos.
  */
 @Module({ imports: [IdentityModule], controllers: [MarketingHomeController, MarketingLeadsReportController], providers: [MarketingHomeRepository, MarketingHomeService, MarketingLeadsReportRepository, MarketingLeadsReportService] })
 export class MarketingHomeModule {}

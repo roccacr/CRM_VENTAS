@@ -197,7 +197,7 @@ export interface DeleteIdentityRoleInput {
 
 /** Input to rename a role; the reason is stored in the audit trail. */
 export interface UpdateIdentityRoleInput {
-    /** General edits require a trusted service profile for transaction-local authorization. */
+    /** Editar la plantilla general exige el perfil de servicio. El cliente no manda ese perfil. */
     actorProfile?: IdentityProfile;
     actorPublicId: string;
     code: string;
@@ -212,7 +212,7 @@ export interface UpdateIdentityRoleInput {
 
 /** Input to replace the full permission set of a role. */
 export interface ReplaceIdentityRolePermissionsInput {
-    /** General edits require a trusted service profile, never a client field. */
+    /** Editar la plantilla general exige el perfil de servicio. No es un campo del cliente. */
     actorProfile?: IdentityProfile;
     moduleCodes?: readonly string[];
     actorPublicId: string;
@@ -225,7 +225,7 @@ export interface ReplaceIdentityRolePermissionsInput {
 
 /** Input to replace a user's roles, modules and permission exceptions. */
 export interface ReplaceIdentityUserAccessInput {
-    /** Trusted service closure carrying the session profile; never accepted from HTTP. */
+    /** Cierre de servicio con el perfil de la sesión. HTTP no puede enviar una función. */
     validateAccess: (transaction: IdentityTransaction) => Promise<void>;
     actorPublicId: string;
     ipAddress?: string | undefined;
@@ -920,7 +920,7 @@ export class IdentityAccessManagementRepository {
         return { ...this.mapRole(role), ...(await this.rolePolicy(executor, role)), deleted: false, permissionCodes: permissions.map((permission) => permission.code).sort() };
     }
 
-    /** Inactive mapping rows retain the ceiling when its last active module is removed. */
+    /** Aunque se quite el último módulo activo, las filas inactivas siguen marcando que el rol tiene techo. Vaciarlo no lo vuelve global. */
     private async rolePolicy(executor: AccessManagementExecutor, role: RoleRow) {
         const rows = await executor.selectFrom("sec_role_module as mapping").innerJoin("sec_org_unit as unit", "unit.id_org_unit", "mapping.org_unit_id_role_module").select(["unit.code_org_unit as code", "mapping.status_role_module as status", "unit.status_org_unit as unitStatus", "unit.deleted_at_org_unit as deletedAt"]).where("mapping.role_id_role_module", "=", role.id).execute();
         return {
@@ -979,7 +979,7 @@ export class IdentityAccessManagementRepository {
         if (codes.some((code) => !operational.has(code.trim().toLowerCase()))) throw new BadRequestException("La plantilla Jefe General solo admite modulos y permisos operativos.");
     }
 
-    /** Lock actor authority before ordinary reads so revoked ownership/denies cannot be hidden by an older snapshot. */
+    /** Bloquea la autoridad del actor antes de las lecturas. Un Owner revocado o un deny no se esconden en una foto vieja. */
     private async assertGeneralTemplateOwner(executor: AccessManagementExecutor, role: RoleRow, input: { actorPublicId: string; actorProfile?: IdentityProfile }): Promise<void> {
         if (role.code !== "jefe_general") return;
         const profile = input.actorProfile;
@@ -1039,7 +1039,7 @@ export class IdentityAccessManagementRepository {
                 .execute();
     }
 
-    /** Delegation is bounded by live effective authority; deny wins even over a role grant. */
+    /** Solo se delega lo que la autoridad efectiva tiene ahora. Un deny gana aunque el rol lo conceda. Owner no pasa por este corte. */
     // The executor keeps writer revalidation on the same locked transaction as assignment.
     // eslint-disable-next-line max-params
     async assertDelegableAccess(profile: IdentityProfile, roleCodes: readonly string[], moduleCodes: readonly string[], overrides: readonly PermissionOverrideRow[], executor: AccessManagementExecutor = this.database.db): Promise<void> {
@@ -1047,7 +1047,7 @@ export class IdentityAccessManagementRepository {
         if (profile.roles.some((role) => role.code === "owner" && role.status === ACTIVE_STATUS)) return;
         const ownRoles = new Set(profile.roles.filter((role) => role.status === ACTIVE_STATUS).map((role) => role.code));
         const ownModules = new Set(profile.orgUnits.filter((unit) => unit.status === ACTIVE_STATUS).map((unit) => unit.code));
-        /** Effective permission check where any deny wins over allow. */
+        /** Hay permiso si existe allow y ningún deny. */
         const can = (code: string) => profile.permissions.some((permission) => permission.code === code && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === code && permission.effect === "deny");
         // Administrar asignaciones no exige ejecutar esta acción sensible: la excepción no se extiende a otros permisos.
         const canDelegate = (code: string) => can(code) || (code === ADDENDUM_MARK_PENDING_PERMISSION && can("role.assign"));
@@ -1076,7 +1076,7 @@ export class IdentityAccessManagementRepository {
         if (permissions.length !== allows.length || permissions.some((permission) => permission.code !== LEAD_PROFILE_PERMISSION && !operational.has(normalizePermissionModule(permission.moduleCode)))) throw new ForbiddenException("Jefe General no admite permisos administrativos directos.");
     }
 
-    /** Runs before snapshot reads; role policy/grant writers lock these same rows. */
+    /** Corre antes de leer la foto. Quien escribe la política o los permisos del rol bloquea estas mismas filas. */
     async validateAssignmentInTransaction(executor: AccessManagementExecutor, input: { profile: IdentityProfile; roleCodes: readonly string[]; moduleCodes: readonly string[]; overrides?: readonly PermissionOverrideRow[]; userPublicId?: string; validateAssignments?: boolean }): Promise<void> {
         const roles = [...new Set(input.roleCodes.map((code) => code.trim().toLowerCase()))].sort();
         const locked = await executor.selectFrom("sec_role").select("id_role").where("code_role", "in", roles).where("status_role", "=", ACTIVE_STATUS).where("deleted_at_role", "is", null).orderBy("id_role", "asc").forUpdate().execute();
@@ -1088,7 +1088,7 @@ export class IdentityAccessManagementRepository {
         await this.assertDelegableAccess(input.profile, roles, input.moduleCodes, overrides, executor);
     }
 
-    /** Keep provider credentials and external metadata outside the business audit projection. */
+    /** La proyección de negocio no lleva credenciales del proveedor ni metadata externa. */
     private async readUserAuditSnapshot(executor: AccessManagementExecutor, user: UserRow, access: IdentityUserAccessSummary): Promise<Record<string, unknown>> {
         const accessMethods = await executor.selectFrom("sec_auth_identity").select(["provider_code_auth_identity as code", "status_auth_identity as status"]).where("user_id_auth_identity", "=", user.id).where("deleted_at_auth_identity", "is", null).orderBy("provider_code_auth_identity").execute();
         const externalReferences = await executor

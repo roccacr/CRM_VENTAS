@@ -5,18 +5,18 @@ import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { ContractCounts } from "./contract-summary.port.js";
 
-/** Explicit Formalization approval starts the NEW CRM workflow; latest later stages never reset to send. */
+/** La aprobación explícita de formalización abre el flujo nuevo del CRM. Una etapa posterior no regresa el envío. */
 @Injectable()
 export class ContractSummaryRepository {
-    /** Uses the canonical application connection. */
+    /** Usa la conexión canónica de la aplicación. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
 
-    /** Both schemas share one read-only repeatable snapshot, including native-shadow lookups. */
+    /** Los dos esquemas comparten una foto de solo lectura y lectura repetible, incluidas las búsquedas que tapa lo nativo. */
     readSnapshot<T>(read: (tx: Transaction<CrmDatabase>) => Promise<T>): Promise<T> {
         return this.database.db.transaction().setIsolationLevel("repeatable read").setAccessMode("read only").execute(read);
     }
 
-    /** Latest sequence, not highest stage, determines re-entry after an explicit reversal. */
+    /** La última secuencia, no la etapa más alta, decide el reingreso después de una reversa explícita. */
     async countNative(transaction: Transaction<CrmDatabase>): Promise<ContractCounts> {
         const result = await sql<{ toSend: string | number | null; pendingSignature: string | number | null }>`
             SELECT /*+ MAX_EXECUTION_TIME(1500) */ SUM(stage IN ('unclassified','pending_approval','contract_pending_send')) AS toSend,

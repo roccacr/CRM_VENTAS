@@ -8,6 +8,6 @@ import { ContractTransitionService } from "./contract-transition.service.js";
 import { FormalizationApprovalController, FormalizationApprovalService } from "./formalization-approval.js";
 import { FormalizationApprovalRepository } from "./formalization-approval.repository.js";
 
-/** Wires the contract send/revert command; the legacy adapter is supplied by LegacyCrmModule. Session-authorized commands share audit and canonical persistence providers. */
+/** Cablea el comando de envío y reversa del contrato. El adaptador viejo lo aporta el módulo legacy. Los comandos de sesión comparten la bitácora y la persistencia canónica. */
 @Module({ imports: [IdentityModule, AuditModule], controllers: [ContractTransitionController, FormalizationStageController, FormalizationApprovalController], providers: [ContractTransitionService, ContractTransitionRepository, FormalizationApprovalService, FormalizationApprovalRepository] })
 export class ContractTransitionModule {}

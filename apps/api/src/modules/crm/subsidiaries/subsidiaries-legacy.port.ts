@@ -21,7 +21,7 @@ export interface SubsidiaryLegacyPayload {
 }
 
 /**
- * Lectura y escritura dla subsidiaria viejo dentro de la transacción nativa.
+ * Lectura y escritura de la subsidiaria vieja dentro de la transacción nativa.
  *
  * `create` devuelve el id de producción viejo, o `null` si no se insertó.
  * `enabled` en `false` deja el agregado solo en `crm_subsidiary`.

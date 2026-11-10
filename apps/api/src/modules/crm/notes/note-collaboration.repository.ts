@@ -26,11 +26,11 @@ export interface CollaborationNote {
     participants: NoteParticipant[];
 }
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
-/** Persistence for one conversation; every command locks actor and note before receipts and metadata events. */
+/** Persistencia de una conversación. Cada comando bloquea actor y nota antes de los acuses y los eventos de metadatos. */
 @Injectable()
 export class NoteCollaborationRepository {
-    /** Injects existing authorization and native persistence collaborators. */
-    // Explicit collaborators keep durable publication in the same command transaction.
+    /** Autorización existente y persistencia nativa. */
+    // La publicación durable entra en la misma transacción del comando.
     // eslint-disable-next-line max-params
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
@@ -39,11 +39,11 @@ export class NoteCollaborationRepository {
         @Inject(NoteNotificationsRepository) private readonly notifications: NoteNotificationsRepository,
         @Inject(NotesRealtimeEventsRepository) private readonly realtime: NotesRealtimeEventsRepository,
     ) {}
-    /** Only IDs are loaded before service authorization; no private content is exposed. */
+    /** Antes de autorizar en el servicio solo se cargan ids. El contenido privado no sale. */
     async metadata(id: string, executor: Executor = this.database.db) {
         return (await sql<{ moduleCode: NoteModule }>`SELECT origin_module_code_note AS moduleCode FROM crm_note WHERE public_id_note=${id}`.execute(executor)).rows[0];
     }
-    /** Repository ACL includes self-scoped invitees; service separately enforces live capabilities and context. */
+    /** La ACL del repositorio incluye invitados de alcance propio. El servicio vuelve a exigir la capacidad viva y el contexto. */
     async load(actor: string, id: string, executor: Executor = this.database.db, lock = false): Promise<CollaborationNote> {
         const metadata = await this.metadata(id, executor);
         if (!metadata) throw new NotFoundException("Nota disponible no encontrada.");
@@ -53,7 +53,7 @@ export class NoteCollaborationRepository {
         if (!version) throw new ServiceUnavailableException("Colaboracion no disponible.");
         return { note, context, collaborationVersion: version, participants: await this.participants(note.internalId, executor) };
     }
-    /** Reuses the existing actor-bound layout query only after service authorization. */
+    /** La disposición del actor se lee solo después de que el servicio autorizó. */
     async placement(actorPublicId: string, note: NoteRecord) {
         return this.notes.placement({ actorPublicId, moduleCode: note.moduleCode, ownOnly: false }, note);
     }
@@ -64,15 +64,15 @@ export class NoteCollaborationRepository {
             )
         ).rows.map((p) => ({ ...p, following: Number(p.following) === 1, active: Number(p.active) === 1 }));
     }
-    /** Directory includes dormant accounts for future invitations; it never activates them. */
+    /** El directorio incluye cuentas dormidas para invitarlas después. Esta consulta no las activa. */
     async directory(search: string, page = 1) {
         return (await sql<{ publicId: string; displayName: string; status: "active" | "inactive" | "pending" }>`SELECT public_id_user AS publicId,display_name_user AS displayName,status_user AS status FROM sec_user WHERE status_user IN ('active','inactive','pending') AND deleted_at_user IS NULL AND (${search}='' OR LOCATE(${search},display_name_user)>0) ORDER BY display_name_user,public_id_user LIMIT 101 OFFSET ${(page - 1) * 100}`.execute(this.database.db)).rows;
     }
-    /** Dormant recipients may be invited, but cannot authenticate or read notes until activated. */
+    /** Un destinatario dormido puede ser invitado. No autentica ni lee notas hasta activarse. */
     async recipientStatus(publicId: string): Promise<string | null> {
         return (await sql<{ status: string }>`SELECT status_user AS status FROM sec_user WHERE public_id_user=${publicId} AND deleted_at_user IS NULL`.execute(this.database.db)).rows[0]?.status ?? null;
     }
-    /** Display references never replace the primary canonical record identity. */
+    /** Una referencia de presentación no sustituye la identidad canónica del registro principal. */
     async locations(noteId: number, executor: Executor = this.database.db): Promise<NoteLocation[]> {
         if (!(await this.locationsReady(executor))) return [];
         return (await sql<NoteLocation>`SELECT module_code_note_location AS moduleCode,view_code_note_location AS code FROM crm_note_location WHERE note_id_note_location=${noteId} ORDER BY module_code_note_location,view_code_note_location`.execute(executor)).rows;
@@ -80,7 +80,7 @@ export class NoteCollaborationRepository {
     private async locationsReady(executor: Executor) {
         return (await sql`SELECT migration_name_schema_migration FROM conf_schema_migration WHERE migration_name_schema_migration='202610280052_notes_locations'`.execute(executor)).rows.length === 1;
     }
-    /** Attributed metadata only: no historical text or restoration payload is exposed. */
+    /** Solo metadatos con atribución. No sale el texto histórico ni un cuerpo para restaurar. */
     async activity(note: NoteRecord, page: number, actorPublicId: string) {
         const filter = sql`r.source_schema_record='CRM_THINK_V2' AND r.entity_type_record='note' AND r.source_table_record='crm_note' AND r.source_id_record=${note.publicId} AND ((NOT JSON_CONTAINS_PATH(COALESCE(e.after_record_event,JSON_OBJECT()),'one','$.remindAt') AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(e.after_record_event,'$.command')),'')<>'following') OR JSON_UNQUOTE(JSON_EXTRACT(e.actor_snapshot_record_event,'$.publicId'))=${actorPublicId})`;
         const total = (await sql<{ total: number }>`SELECT COUNT(*) AS total FROM audit_record r JOIN audit_record_event e ON e.record_id_record_event=r.id_record WHERE ${filter}`.execute(this.database.db)).rows[0]?.total ?? 0;
@@ -98,11 +98,11 @@ export class NoteCollaborationRepository {
         ).rows;
         return { items, page: { number: page, size: 100, total } };
     }
-    /** Reads metadata IDs first so service filters resource permissions before pagination/content. */
+    /** Primero lee ids de metadatos. El servicio filtra el permiso del recurso antes de paginar o mostrar contenido. */
     async inboxIds(actor: string, query: CollaborationInbox) {
         return (await this.inboxPage(actor, query, ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"])).items;
     }
-    /** Complete author choices come only from notes visible to this session, never from the current page. */
+    /** Las opciones de autor salen de las notas que esta sesión puede ver, no de la página actual. */
     async inboxAuthors(actor: string, modules: readonly NoteModule[]) {
         if (!modules.length) return [];
         return (
@@ -114,7 +114,7 @@ export class NoteCollaborationRepository {
             )
         ).rows;
     }
-    /** Database count and page share one snapshot; private content loads are bounded by pageSize. */
+    /** El total y la página comparten una foto. El contenido privado se carga hasta el tamaño de página. */
     async inboxPage(actor: string, query: CollaborationInbox, modules: readonly NoteModule[]) {
         if (!modules.length) return { items: [], total: 0 };
         const filter = this.inboxFilter(query, modules);
@@ -147,11 +147,11 @@ export class NoteCollaborationRepository {
         const to = query.createdTo ? sql`n.created_at_note<=${new Date(query.createdTo).toISOString().slice(0, 23).replace("T", " ")}` : sql`1=1`;
         return sql`${record} AND ${from} AND ${to}`;
     }
-    /** Loads or changes structured mentions within the authorized conversation. */
+    /** Carga o cambia menciones estructuradas dentro de la conversación autorizada. */
     async mentions(noteId: number, replyId: number | null, executor: Executor = this.database.db) {
         return (await sql<{ id: string }>`SELECT DISTINCT u.public_id_user AS id FROM crm_note_mention m JOIN sec_user u ON u.id_user=m.user_id_note_mention WHERE m.note_id_note_mention=${noteId} AND ${replyId === null ? sql`m.reply_id_note_mention IS NULL` : sql`m.reply_id_note_mention=${replyId}`}`.execute(executor)).rows.map((r) => r.id);
     }
-    /** Reads one bounded reply page after note authorization. */
+    /** Lee una página acotada de respuestas después de autorizar la nota. */
     async replies(note: NoteRecord, page: number) {
         const total = (await sql<{ total: number }>`SELECT COUNT(*) AS total FROM crm_note_reply WHERE note_id_note_reply=${note.internalId}`.execute(this.database.db)).rows[0]?.total ?? 0;
         const rows = (
@@ -165,10 +165,10 @@ export class NoteCollaborationRepository {
         for (const r of rows) items.push({ ...r, mentionUserIds: r.withdrawn ? [] : await this.mentions(note.internalId, r.internalId) });
         return { items, total };
     }
-    /** Actor operation key is global across note commands; failures roll back body, ACL, audit and notification outbox. */
+    /** La clave de operación del actor vale para todos los comandos de notas. Un fallo revierte cuerpo, ACL, bitácora y la bandeja de avisos. */
     async command(actorPublicId: string, id: string, input: CollaborationCommand, authorize: (state: CollaborationNote, tx: CollaborationTx, phase: "read" | "write") => Promise<void>): Promise<CollaborationResult> {
         if (!this.audit.enabled) throw new ServiceUnavailableException("Notas requiere auditoria central habilitada.");
-        // Metadata reads before the note lock must not freeze an invitation revoked while waiting.
+        // Una lectura de metadatos anterior al bloqueo no congela una invitación revocada durante la espera.
         return retryNoteDeadlock(() =>
             this.database.db
                 .transaction()
@@ -236,7 +236,7 @@ export class NoteCollaborationRepository {
     }
     private async replaceLocations(context: WriteContext, input: Extract<CollaborationCommand, { kind: "locations" }>) {
         if (!(await this.locationsReady(context.tx))) throw new ServiceUnavailableException("Ubicaciones de notas no disponibles.");
-        // Preserve destinations the author can no longer administer; visible edits must not silently remove them.
+        // Se conservan los destinos que el autor ya no puede administrar. Una edición visible no los quita en silencio.
         const editable = input.editableModules ?? ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"];
         if (editable.length) await sql`DELETE FROM crm_note_location WHERE note_id_note_location=${context.state.note.internalId} AND module_code_note_location IN (${sql.join(editable)})`.execute(context.tx);
         for (const location of input.locations) await sql`INSERT INTO crm_note_location (note_id_note_location,module_code_note_location,view_code_note_location,created_by_user_id_note_location) VALUES (${context.state.note.internalId},${location.moduleCode},${location.code},${context.actor})`.execute(context.tx);
@@ -252,7 +252,7 @@ export class NoteCollaborationRepository {
             if (workflow.rows.length) {
                 await sql`UPDATE crm_note_workflow_event SET status_note_workflow_event='suppressed' WHERE note_id_note_workflow_event=${state.note.internalId} AND recipient_user_id_note_workflow_event IN (SELECT id_user FROM sec_user WHERE public_id_user IN (${sql.join(revoked)})) AND status_note_workflow_event IN ('pending','processing')`.execute(tx);
                 const cleared = await sql`UPDATE crm_note_task SET assignee_user_id_note_task=NULL,version_note_task=version_note_task+1,updated_at_note_task=UTC_TIMESTAMP(3) WHERE note_id_note_task=${state.note.internalId} AND assignee_user_id_note_task IN (SELECT id_user FROM sec_user WHERE public_id_user IN (${sql.join(revoked)}))`.execute(tx);
-                // An unassigned due date belongs to the author; revocation must not silently lose that deadline.
+                // Una fecha sin asignar es del autor. Revocar no la pierde en silencio.
                 await sql`INSERT INTO crm_note_workflow_event (note_id_note_workflow_event,recipient_user_id_note_workflow_event,kind_note_workflow_event,scheduled_at_note_workflow_event,available_at_note_workflow_event) SELECT t.note_id_note_task,n.author_user_id_note,'due',t.due_at_note_task,t.due_at_note_task FROM crm_note_task t JOIN crm_note n ON n.id_note=t.note_id_note_task WHERE ${Number(cleared.numAffectedRows) > 0} AND t.note_id_note_task=${state.note.internalId} AND t.due_at_note_task IS NOT NULL AND n.status_note='open'`.execute(
                     tx,
                 );

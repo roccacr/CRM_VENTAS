@@ -16,7 +16,8 @@ import { CreateSubsidiaryDto, UpdateSubsidiaryDto } from "./subsidiaries.dto.js"
 import { SubsidiariesService } from "./subsidiaries.service.js";
 
 /**
- * Exposes Subsidiaries routes using the established catalog API contract.
+ * Contrato de catálogo, con cookie de sesión. El permiso de ruta es la primera puerta; el servicio vuelve a evaluar el efectivo.
+ * El nombre propio va de 2 a 250. El cuerpo compartido de 180 no alcanza para este agregado.
  */
 @ApiTags("subsidiaries")
 @Controller("catalogs/subsidiaries")
@@ -25,7 +26,7 @@ export class SubsidiariesController {
     constructor(@Inject(SubsidiariesService) private readonly catalogs: SubsidiariesService) {}
 
     /**
-     * Lista subsidiarias nativas y, si el fallback está activo, los que aún no migraron.
+     * Lista subsidiarias nativas y, si el fallback está activo, las que aún no migraron.
      *
      * La cookie identifica la sesión. El permiso de lectura lo resuelve el servicio.
      */
@@ -69,6 +70,7 @@ export class SubsidiariesController {
     /**
      * Activa o inactiva la subsidiaria.
      *
+     * La acción de ruta `status` no es un permiso: activo exige actualizar e inactivo exige inactivar.
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")

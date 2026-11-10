@@ -13,10 +13,10 @@ import { NotesRealtimeSignal } from "./notes-realtime.signal.js";
 
 const replaceSchema = z.object({ operationId: z.string().regex(/^[A-Za-z0-9_-]{16,100}$/), expectedCollaborationVersion: z.number().int().min(1).max(4294967294), relatedRecords: relatedRecordsSchema }).strict();
 
-/** Note access and resource access remain separate throughout search, mutation and presentation. */
+/** El acceso a la nota y el acceso al recurso siguen separados en la búsqueda, la mutación y la presentación. */
 @Injectable()
 export class NoteRelatedRecordsService {
-    /** Reuses identity, audited collaboration commands, batched links and source readers. */
+    /** Reutiliza la identidad, los comandos auditados, los vínculos en lote y los lectores de origen. */
     // eslint-disable-next-line max-params
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
@@ -26,7 +26,7 @@ export class NoteRelatedRecordsService {
         @Inject(NotesRealtimeSignal) private readonly realtime: NotesRealtimeSignal,
     ) {}
 
-    /** Searches only when the actor can create or edit their own notes in the requested module. */
+    /** Busca solo si el actor puede crear o editar sus notas en el módulo pedido. */
     async options(session: string | undefined, input: unknown) {
         const query = this.parse(relatedOptionsQuerySchema, input);
         const profile = await this.identity.getCurrentUser(session);
@@ -34,7 +34,7 @@ export class NoteRelatedRecordsService {
         return this.resolver.search(profile, query.moduleCode, query.kind, query.search, query.page);
     }
 
-    /** Reads the conversation independently of the linked business record's accessibility. */
+    /** Lee la conversación aunque el registro de negocio vinculado no esté accesible. */
     async read(session: string | undefined, id: string) {
         const profile = await this.identity.getCurrentUser(session);
         const state = await this.load(profile, id);
@@ -42,7 +42,7 @@ export class NoteRelatedRecordsService {
         return { schemaVersion: 1 as const, version: state.collaborationVersion, items, canManage: this.canManage(profile, state) };
     }
 
-    /** Revalidates each selected target; confidential/unavailable references cannot be attached. */
+    /** Vuelve a validar cada destino. Una referencia confidencial o no disponible no se adjunta. */
     async authorizeReferences(profile: IdentityAuthorizationProfile, references: readonly NoteRelatedReference[]): Promise<NoteRelatedSummary[]> {
         if (!references.length) return [];
         const summaries = await this.resolver.resolveMany(profile, [...references]);
@@ -53,12 +53,12 @@ export class NoteRelatedRecordsService {
         return summaries;
     }
 
-    /** Confirmed aliases let source-specific URLs find one note without rewriting persisted links. */
+    /** Un alias confirmado permite que la URL de un origen encuentre la nota. Los vínculos guardados no se reescriben. */
     async resourceAliases(profile: IdentityAuthorizationProfile, reference: NoteRelatedReference): Promise<NoteRelatedReference[]> {
         return (await this.resolver.resolve(profile, reference)).aliases;
     }
 
-    /** One reference read and one batched authorization pass per note page, rather than a request per chip. */
+    /** Una lectura de referencias y una autorización en lote por página. No hay una petición por ficha. */
     async summariesForNotes(profile: IdentityAuthorizationProfile, notes: readonly NoteRecord[]): Promise<Map<string, NoteRelatedSummary[]>> {
         const stored = await this.repository.referencesForNotes(notes);
         const references = new Map<string, NoteRelatedReference>();
@@ -83,7 +83,7 @@ export class NoteRelatedRecordsService {
         );
     }
 
-    /** Keeps the immutable primary context and inaccessible secondary relations when replacing visible links. */
+    /** Al reemplazar los vínculos visibles se conservan el contexto principal, que no cambia, y las relaciones secundarias que el editor no puede ver. */
     async replace(session: string | undefined, id: string, input: unknown) {
         this.parse(noteIdSchema, id);
         const body = this.parse(replaceSchema, input);
@@ -103,7 +103,7 @@ export class NoteRelatedRecordsService {
             if (summaries.some((summary) => summary.unavailable)) throw new ServiceUnavailableException("No se pudieron comprobar los vinculos existentes.");
             command.preservedLinkIds = existing.filter((row, index) => !row.primary && summaries[index]?.restricted).map((row) => row.linkId);
             const primaryKeys = new Set(summaries.flatMap((summary, index) => (existing[index]?.primary && summary.reference ? [noteRelatedRecordKey(summary.reference)] : [])));
-            // Canonical aliases of the immutable principal are not additional links; keep the original client payload for receipt hashing.
+            // Un alias canónico del principal no es un vínculo extra. El acuse se hashea con el cuerpo original del cliente.
             command.persistedRelatedRecords = command.relatedRecords.filter((_reference, index) => {
                 const canonical = selected[index]?.reference;
                 return !canonical || !primaryKeys.has(noteRelatedRecordKey(canonical));

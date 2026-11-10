@@ -13,7 +13,10 @@ import type { CatalogDefinition } from "../catalogs/catalogs.constants.js";
 import { IdentityService } from "../identity/identity.service.js";
 import { ProjectsRepository } from "./projects.repository.js";
 
-/** Especializa la politica de catalogos para el agregado de proyectos. */
+/**
+ * Autorización y normalización compartidas, persistencia propia de `crm_project`.
+ * Aquí solo se acepta el código `projects`. La forma `legacy:projects:N` se deja pasar; el repositorio rechaza un N que no quepa en un entero de 32 bits con signo.
+ */
 @Injectable()
 export class ProjectsService extends CatalogItemOperations {
     /**

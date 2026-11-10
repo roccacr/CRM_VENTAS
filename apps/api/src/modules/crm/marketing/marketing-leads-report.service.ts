@@ -8,17 +8,23 @@ import { MARKETING_LEADS_REPORT_LEGACY_READER, type MarketingLeadsReportLegacyRe
 import { MarketingLeadsReportRepository } from "./marketing-leads-report.repository.js";
 import { hasGlobalMarketingRead } from "./marketing-read.policy.js";
 
-/** Enforces the report's independent permission before either source is touched. */
+/**
+ * Exige `mercadeo.leads.read` antes de tocar cualquiera de las dos fuentes.
+ * Hace falta un allow y ningún deny. Un alcance desconocido se rechaza. El permiso del inicio no abre este reporte.
+ */
 @Injectable()
 export class MarketingLeadsReportService {
-    /** Reuses the stable read-only snapshot and organizational seller-scope implementation. */
+    /** Reutiliza la foto de solo lectura del inicio y el alcance de vendedores por unidad. El lector viejo entra en esa misma foto. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(MarketingHomeRepository) private readonly snapshot: MarketingHomeRepository,
         @Inject(MarketingLeadsReportRepository) private readonly repository: MarketingLeadsReportRepository,
         @Inject(MARKETING_LEADS_REPORT_LEGACY_READER) private readonly legacy: MarketingLeadsReportLegacyReader,
     ) {}
-    /** Aggregate cohorts/catalogs only; no customer or seller contact data is serialized. */
+    /**
+     * Devuelve cohortes y catálogos. No serializa contacto de cliente ni de vendedor.
+     * Primero lee lo nativo. Si el puerto está apagado, el viejo queda en listas vacías. Un fallo de la foto responde 503 y no entrega un conteo parcial.
+     */
     async report(session: string | undefined, query: unknown): Promise<MarketingLeadsReport> {
         const profile = await this.identity.getCurrentUser(session);
         const grants = profile.permissions.filter((permission) => permission.code === "mercadeo.leads.read");

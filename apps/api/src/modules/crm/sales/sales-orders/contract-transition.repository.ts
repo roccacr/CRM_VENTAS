@@ -16,28 +16,28 @@ import { assertFiniquitoTransition, finiquitoEligible, finiquitoSnapshot, type F
 import { formalizationCompletionTarget } from "./formalization-completion.policy.js";
 import type { PurchaseFundsDto } from "./purchase-funds.dto.js";
 
-/** Validated command plus server-derived context (actor, correlation id, network metadata); none of it comes from the client. */
+/** Comando ya validado más el contexto que arma el servidor: actor, correlación y red. Nada de eso viene del cliente. */
 export interface ContractTransitionCommand extends ContractTransitionDto {
     action: ContractAction;
-    /** Trusted capability derived from the live profile, never from the request body. */
+    /** Capacidad de confianza tomada del perfil vivo. No viene del cuerpo. */
     canSkipStages?: boolean;
     actorPublicId: string;
-    /** Server-derived only. Omission keeps internal callers owner-only, never unrestricted. */
+    /** Solo lo arma el servidor. Si se omite, el llamador interno queda limitado al dueño. No queda sin restricción. */
     ownOnly?: boolean;
     reason: string;
     correlationId: string;
     ipAddress?: string;
     userAgent?: string;
 }
-/** Native order row, or undefined when the order only exists in legacy. */
+/** Fila nativa de la orden. Queda indefinida si la orden solo existe en el CRM viejo. */
 type NativeOrder = Awaited<ReturnType<ContractTransitionRepository["nativeOrder"]>>;
-/** Order located in either source, with the native alias when both exist. */
+/** Orden encontrada en cualquiera de las dos fuentes. Si existen las dos, manda el alias nativo. */
 interface ResolvedOrder {
     native: NativeOrder;
     order: ContractOrder;
     source: "native" | "legacy";
 }
-/** Everything the central audit needs to record one state change. */
+/** Lo que la bitácora central necesita para registrar un cambio de estado. */
 interface CentralChange {
     command: ContractTransitionCommand;
     resolved: ResolvedOrder;
@@ -51,22 +51,22 @@ const SEND = "contract_pending_send";
 const SIGNATURE = "contract_pending_signature";
 const replayFundsSnapshot = z.object({ purchaseFundsOrigin: z.enum(PURCHASE_FUNDS_ORIGINS).nullable() });
 
-/** Fail closed on missing/corrupt history; JSON object key order is immaterial. */
+/** Una historia ausente o corrupta se cierra. El orden de las claves del JSON no importa. */
 function assertFundsReplay(replay: { actor_reference_record_event: string | null; before_record_event: unknown; after_record_event: unknown; action_record_event: string }, actor: string, before: object, after: object): void {
     try {
         const decode = (value: unknown): unknown => (typeof value === "string" ? JSON.parse(value) : value);
         const matches = [replay.actor_reference_record_event === actor, replay.action_record_event === "update", isDeepStrictEqual(decode(replay.before_record_event), before), isDeepStrictEqual(decode(replay.after_record_event), after)].every(Boolean);
         if (matches) return;
     } catch {
-        /* Invalid stored JSON is rejected as a conflict, never replayed. */
+        /* Un JSON guardado inválido es conflicto. No se trata como repetición. */
     }
     throw new ConflictException("Operación reutilizada con datos diferentes");
 }
 
-/** Persistence collaborator of the authorized service, not an alternate public use case. */
+/** Colaborador de persistencia del servicio ya autorizado. No es otro caso de uso público. */
 @Injectable()
 export class ContractTransitionRepository {
-    /** Edit snapshot includes the central version: even an A→B→A edit invalidates stale forms. */
+    /** La foto de edición incluye la versión central. Un cambio A, B y otra vez A invalida un formulario viejo. */
     async purchaseFundsSnapshot(command: ContractTransitionCommand) {
         return this.database.db.transaction().execute(async (tx) => {
             const resolved = await this.resolve(tx, command);
@@ -77,10 +77,10 @@ export class ContractTransitionRepository {
         });
     }
 
-    /** Durable independent branch in the existing append-only record journal; no commercial visit is written. */
+    /** Rama durable e independiente en el diario de solo agregado. No escribe una visita comercial. */
     async finiquito(command: ContractTransitionCommand, change?: { status: FiniquitoStatus; expectedVersion: number }) {
         if (!this.audit.enabled) throw new ServiceUnavailableException("Finiquito requiere auditoría habilitada.");
-        // Keep flags, replay, CAS and journal append inside the same locked transaction.
+        // Banderas, repetición, control optimista y el agregado al diario quedan en la misma transacción bloqueada.
         // eslint-disable-next-line complexity
         return this.database.db.transaction().execute(async (tx) => {
             const resolved = await this.resolve(tx, command, !change);
@@ -143,7 +143,7 @@ export class ContractTransitionRepository {
         return last?.sequence_record_event ?? 0;
     }
 
-    /** One transaction updates classification and central audit; no stage visit or stage timer changes. */
+    /** Una transacción actualiza la clasificación y la bitácora central. No cambia la visita ni el temporizador de etapa. */
     async updatePurchaseFunds(command: ContractTransitionCommand & PurchaseFundsDto) {
         if (!this.audit.enabled) throw new ServiceUnavailableException("Purchase funds require enabled record audit");
         return this.database.db.transaction().execute(async (tx) => {
@@ -189,14 +189,14 @@ export class ContractTransitionRepository {
         const stale = [(last?.sequence ?? 0) !== command.expectedSequence, (resolved.order.purchaseFundsOrigin ?? null) !== command.expectedPurchaseFundsOrigin, (await this.fundsAuditSequence(tx, resolved)) !== command.expectedAuditSequence].some(Boolean);
         if (stale) throw new ConflictException("La orden cambió. Actualiza antes de guardar.");
     }
-    /** Uses the canonical pool and the domain-owned port, never an integration import. */
+    /** Usa el pool canónico y el puerto del dominio. No importa la integración. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(RecordAuditService) private readonly audit: RecordAuditService,
         @Inject(CONTRACT_TRANSITION_LEGACY) private readonly legacy: ContractTransitionLegacy,
     ) {}
 
-    /** Locks include inactive/deleted aliases: a native row always shadows its legacy source. */
+    /** El bloqueo incluye alias inactivos y borrados. Una fila nativa tapa su fuente vieja. */
     async nativeOrder(tx: Transaction<CrmDatabase>, source: "native" | "legacy", id: string) {
         const column = source === "native" ? "public_id_sales_order" : "id_old_produccion_sales_order";
         return tx
@@ -207,14 +207,14 @@ export class ContractTransitionRepository {
             .executeTakeFirst();
     }
 
-    /** Import/promotion must lock the legacy parent BEFORE inserting its native alias in the same transaction.
-     * This protocol serializes legacy writes against migration; no legacy flags are ever updated here.
+    /** Importar o promover bloquea primero el padre viejo y después inserta el alias nativo, en la misma transacción.
+     * Ese orden serializa la escritura vieja contra la migración. Aquí no se actualizan banderas del CRM viejo.
      */
     private async resolve(tx: Transaction<CrmDatabase>, command: ContractTransitionCommand, readOnlyLegacy?: boolean): Promise<ResolvedOrder> {
         let legacy: ContractOrder | undefined;
         if (command.source === "legacy") {
-            // A positive native probe avoids touching a retired/disabled legacy source.
-            // A negative RR snapshot is never authoritative: lock legacy, then recheck native using a current locking read.
+            // Si ya hay alias nativo, no se toca una fuente vieja retirada o apagada.
+            // Una foto de lectura repetible que no vio el alias no manda. Se bloquea lo viejo y se vuelve a leer lo nativo con un bloqueo actual.
             const alias = await tx.selectFrom("crm_sales_order").select("id_sales_order").where("id_old_produccion_sales_order", "=", Number(command.id)).executeTakeFirst();
             if (!alias) legacy = await this.legacy.lock(tx, command.id, readOnlyLegacy);
         }
@@ -249,7 +249,7 @@ export class ContractTransitionRepository {
         return row ? { sequence: row.sequence_sales_order_state_event, state: row.to_state_code_sales_order_state_event, actor: row.actor_user_id_sales_order_state_event === null ? null : String(row.actor_user_id_sales_order_state_event), reason: row.reason_sales_order_state_event } : undefined;
     }
 
-    /** Specialized and central history share one native connection and commit boundary. */
+    /** La historia especializada y la central comparten la conexión nativa y el mismo commit. */
     async transition(command: ContractTransitionCommand) {
         if (!this.audit.enabled) throw new ServiceUnavailableException("Contract transitions require enabled central record audit");
         return this.database.db.transaction().execute((tx) => this.executeTransition(tx, command));
@@ -275,9 +275,9 @@ export class ContractTransitionRepository {
         const sequence = previous.sequence;
         const current = this.assertTransition(command, resolved.order, last);
         const snapshot = await this.audit.captureActor(tx, actor.id_user);
-        // The first stored visit has no previous stored visit (both schemas require a NULL predecessor).
-        // Central audit below retains the known logical before/after; no historical visit/date is invented.
-        // The authenticated changer takes initial responsibility for the new visit; seller remains separate.
+        // La primera visita guardada no tiene visita previa. Los dos esquemas exigen un predecesor nulo.
+        // La bitácora central conserva el antes y el después lógicos conocidos. No se inventa una visita ni una fecha histórica.
+        // Quien está autenticado asume la responsabilidad inicial de la visita nueva. El vendedor sigue siendo otro dato.
         const event = { sequence: sequence + 1, from: sequence === 0 ? null : current, state: target, actor: snapshot.publicId, actorSnapshot: snapshot, responsibleSnapshot: snapshot, purchaseFundsOrigin: command.purchaseFundsOrigin, reason: command.reason, operationId: command.operationId, correlationId: command.correlationId };
         if (resolved.native) await this.appendNative(tx, resolved.native.id_sales_order, { id: actor.id_user, snapshot }, event);
         else await this.legacy.append(tx, resolved.order.id, event);
@@ -286,26 +286,26 @@ export class ContractTransitionRepository {
         return this.result(resolved, target, sequence + 1, false);
     }
 
-    /** Lock the linked lead and canonical user; the order owner or stage responsible is not the seller. */
+    /** Bloquea el lead vinculado y el usuario canónico. El dueño de la orden o el responsable de la etapa no es el vendedor. */
     private async nativeOwner(tx: Transaction<CrmDatabase>, leadId: number | null): Promise<string | null> {
         if (leadId === null) return null;
         const owner = await tx.selectFrom("crm_lead").innerJoin("sec_user", "sec_user.id_user", "crm_lead.owner_user_id_lead").select("sec_user.public_id_user").where("crm_lead.id_lead", "=", leadId).where("crm_lead.deleted_at_lead", "is", null).where("sec_user.deleted_at_user", "is", null).forUpdate().executeTakeFirst();
         return owner?.public_id_user ?? null;
     }
 
-    /** Ownership is checked before replay, so retries cannot bypass a reassignment or scope reduction. */
+    /** La propiedad se comprueba antes de la repetición. Un reintento no salta una reasignación ni un alcance reducido. */
     private async assertOwnerScope(tx: Transaction<CrmDatabase>, resolved: ResolvedOrder, command: ContractTransitionCommand): Promise<void> {
         if (command.ownOnly === false) return;
         const owner = resolved.native ? await this.nativeOwner(tx, resolved.native.lead_id_sales_order) : await this.legacy.owner(tx, resolved.order.id);
         if (owner !== command.actorPublicId) throw new ForbiddenException("No tiene alcance sobre el responsable del lead de esta orden");
     }
 
-    /** Response shape; `replayed` tells the client an identical earlier operation was returned. */
+    /** Forma de la respuesta. `replayed` dice que se devolvió la operación anterior idéntica. */
     private result(resolved: ResolvedOrder, state: string, sequence: number, replayed: boolean) {
         return { purchaseFundsOrigin: resolved.order.purchaseFundsOrigin ?? null, source: resolved.source, id: resolved.native?.public_id_sales_order ?? resolved.order.id, state, sequence, replayed };
     }
 
-    /** A repeated operationId is accepted only if it carries the same target state, actor and reason. */
+    /** Un operationId repetido se acepta solo si trae el mismo estado destino, el mismo actor y el mismo motivo. */
     private assertReplay(replay: ContractEvent, command: ContractTransitionCommand, actor: string): void {
         const target = contractTarget(command);
         if (replay.state !== target || replay.actor !== actor || replay.reason !== command.reason) throw new ConflictException("Operation reused with different content");
@@ -317,7 +317,7 @@ export class ContractTransitionRepository {
             .digest("hex");
     }
 
-    /** Compare a retry with its original audit snapshot, even if a later command changed the funds choice. */
+    /** El reintento se compara con la foto original de la bitácora, aunque un comando posterior haya cambiado los fondos. */
     private async replayFunds(tx: Transaction<CrmDatabase>, resolved: ResolvedOrder, command: ContractTransitionCommand) {
         const { source } = this.auditSource(resolved);
         const event = await tx.selectFrom("audit_record_event as event").innerJoin("audit_record as record", "record.id_record", "event.record_id_record_event").select("event.after_record_event").where("record.source_schema_record", "=", source.schema).where("record.source_table_record", "=", source.table).where("record.source_id_record", "=", source.id).where("event.operation_id_record_event", "=", this.auditOperationId(command.operationId)).executeTakeFirst();
@@ -328,7 +328,7 @@ export class ContractTransitionRepository {
         return original;
     }
 
-    /** Optimistic check: the expected sequence sent by the client must match the latest event, and the order must be in the stage the action leaves. */
+    /** Control optimista: la secuencia esperada tiene que ser el último evento, y la orden tiene que estar en la etapa de la que sale la acción. */
     private assertTransition(command: ContractTransitionCommand, order: ContractOrder, last?: ContractEvent): string {
         const sequence = last?.sequence ?? 0;
         if (sequence !== command.expectedSequence || sequence >= 4294967295) throw new ConflictException("Order changed; reload before continuing");
@@ -342,7 +342,7 @@ export class ContractTransitionRepository {
         return current;
     }
 
-    /** Sequential by default; exceptional jumps require a server-derived capability and reason. */
+    /** Por defecto el avance es secuencial. Un salto excepcional exige una capacidad armada en el servidor y un motivo. */
     private assertSelectedStage(command: ContractTransitionCommand, current: string, order: ContractOrder): void {
         const target = contractTarget(command);
         if (current === target) throw new ConflictException("Order is already in that stage");
@@ -365,7 +365,7 @@ export class ContractTransitionRepository {
         if (before >= transferIndex && target === "pending_balance") throw new ConflictException({ code: "PENDING_BALANCE_RETURN_FORBIDDEN", message: "No se permite volver a Pendiente de saldo despues de iniciar el traspaso." });
     }
 
-    /** The exit choice is mandatory and fixes the destination even for exceptional stage grants. */
+    /** La salida es obligatoria y fija el destino, también cuando el permiso de etapa es excepcional. */
     private assertPurchaseFundsRoute(before: number, after: number, command: ContractTransitionCommand, order: ContractOrder): void {
         if (before >= 2 || after < 2) return;
         const origin = command.purchaseFundsOrigin ?? order.purchaseFundsOrigin;
@@ -373,7 +373,7 @@ export class ContractTransitionRepository {
         if (contractTarget(command) !== this.contractExitStage(origin)) throw new ConflictException({ code: "PURCHASE_FUNDS_ROUTE_REQUIRED", message: "La etapa de salida de Contratos debe corresponder al origen de fondos seleccionado." });
     }
 
-    /** ERP evidence may advance directly to a later completion target; stored stages change only on explicit commands. */
+    /** La evidencia del ERP puede avanzar directo a un cierre posterior. La etapa guardada cambia solo con un comando explícito. */
     private nextStage(current: string, origin: ContractOrder["purchaseFundsOrigin"], order: ContractOrder): string | undefined {
         if (["pending_balance", "pending_transfer", "transfer_signed"].includes(current)) {
             const completion = formalizationCompletionTarget(order);
@@ -383,7 +383,7 @@ export class ContractTransitionRepository {
         return FORMALIZATION_STAGE_CODES[FORMALIZATION_STAGE_CODES.findIndex((code) => code === current) + 1];
     }
 
-    /** Financed orders enter the queue before an operator starts banking. */
+    /** Una orden financiada entra a la cola antes de que un operador empiece la gestión bancaria. */
     private contractExitStage(origin: ContractOrder["purchaseFundsOrigin"]): string {
         return origin === "own_funds" ? "pending_balance" : "bank_management";
     }
@@ -393,17 +393,17 @@ export class ContractTransitionRepository {
         if (!command.reason.trim()) throw new ConflictException("Se requiere un motivo para el cambio excepcional");
     }
 
-    /** Firma observada is a prerequisite, never an ERP mutation or a substitute for registering send. */
+    /** La firma observada es un requisito. No muta el ERP ni sustituye registrar el envío. */
     private assertBankingPrerequisites(order: ContractOrder, before: number, after: number): void {
         if (after < 2) return;
         if (!order.contractSigned) throw new ConflictException({ code: "CONTRACT_SIGNATURE_REQUIRED", message: "Se requiere el contrato firmado para pasar a Gestión bancaria o etapas posteriores." });
         if (before < 1) throw new ConflictException({ code: "CONTRACT_SEND_REQUIRED", message: "Primero registra el envío del contrato y completa la etapa Pendiente de firma." });
     }
 
-    /** Orders without a stored stage are pending send; Formalization approval is the contract eligibility gate. */
+    /** Una orden sin etapa guardada está pendiente de envío. La elegibilidad del contrato la abre la aprobación de formalización. */
     private currentStage(order: ContractOrder, stored?: string): string {
         if (!order.active || !order.approved) throw new ConflictException("Order requires active noncancelled status and Formalization approval");
-        // A signed flag gates banking, but does not invent an earlier CRM send event.
+        // La bandera de firma abre la banca. No inventa un envío anterior del CRM.
         if (stored === undefined || stored === "unclassified" || stored === "pending_approval") return SEND;
         return stored;
     }
@@ -436,7 +436,7 @@ export class ContractTransitionRepository {
             .execute();
     }
 
-    /** Audit identity: legacy orders are audited against the legacy table, native aliases also record their effective native source. */
+    /** Identidad de la bitácora: la orden vieja se audita contra su tabla vieja. El alias nativo también registra su fuente nativa efectiva. */
     private auditSource({ native, order }: ResolvedOrder) {
         const nativeSource = { schema: "CRM_THINK_V2", entity: "sales_order", table: "crm_sales_order", id: order.id } as const;
         const legacyId = native?.id_old_produccion_sales_order ?? (native ? null : order.id);

@@ -4,7 +4,10 @@ import type { CrmDatabase } from "../../../database/database.types.js";
 import type { NativeAppointmentAlias, NativeAppointmentEvent, NativeAppointmentEvidence, NativeAppointmentLead } from "./marketing-appointments.contract.js";
 import type { MarketingWindow } from "./marketing-home.contract.js";
 
-/** Native evidence only. Participant copies and event creator never determine commercial attribution. */
+/**
+ * Solo evidencia nativa. La atribución comercial es el dueño y el proyecto del lead, no quien creó el evento ni sus copias de participante.
+ * Pasar de 100000 cohortes o alias, o de 50000 eventos, es un error. No se recorta la página.
+ */
 export async function readNativeAppointments(tx: Transaction<CrmDatabase>, window: MarketingWindow): Promise<NativeAppointmentEvidence> {
     const from = new Date(window.startEpoch * 1000).toISOString().slice(0, 23).replace("T", " ");
     const to = new Date(window.endEpoch * 1000).toISOString().slice(0, 23).replace("T", " ");

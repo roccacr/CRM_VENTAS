@@ -16,7 +16,7 @@ export function assertFiniquitoTransition(before: FiniquitoStatus | null, after:
     if (after !== expected) throw new ConflictException("El finiquito cambió o la transición no es válida. Actualiza la orden.");
 }
 
-/** The public body never supplies actors, eligibility flags or a commercial destination. */
+/** El cuerpo público no trae actores, banderas de elegibilidad ni un destino comercial. */
 export function validateFiniquitoInput(input: unknown, write: boolean) {
     const fields = { source: z.enum(["native", "legacy"]), id: z.string() };
     const changeSchema = z.object({ status: z.enum(FINIQUITO_STATES), expectedVersion: z.number().int().min(0).max(4294967294), operationId: z.uuid() });

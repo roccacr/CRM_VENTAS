@@ -28,7 +28,7 @@ import { NotesRealtimeEventsRepository } from "./notes-realtime.repository.js";
 import { NotesRealtimeSignal } from "./notes-realtime.signal.js";
 import { NotesRealtimeWorker } from "./notes-realtime.worker.js";
 
-/** Native notes and internal collaboration delivery. Legacy projection remains inactive. */
+/** Notas nativas y entrega interna de colaboración. La proyección legacy sigue inactiva. */
 @Module({
     imports: [IdentityModule, AuditModule, HomeSummaryModule],
     controllers: [NoteRelatedRecordsController, NotesController, NoteCollaborationController, NoteNotificationsController, NoteWorkflowController],

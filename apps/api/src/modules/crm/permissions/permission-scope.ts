@@ -16,7 +16,11 @@ const DEFAULT_SCOPE_PRIORITY = SCOPE_PRIORITY.self ?? 10;
  * Una persona puede pertenecer a mas de un area o ruta de rol. El backend no
  * puede tomar la primera fila que devuelva MySQL porque el orden volveria
  * inestables los permisos. Esta prioridad deterministica deja explicita la
- * jerarquia.
+ * jerarquia: `self`, `assigned`, `own_area`, `own_area_and_children`, `all_areas`.
+ *
+ * Una lista vacia devuelve `self`. Un alcance desconocido tiene la misma
+ * prioridad que `self` y no lo reemplaza, porque solo gana una prioridad
+ * estrictamente mayor.
  */
 export const resolveHighestPermissionScope = (scopes: string[]): PermissionScope => {
     let selectedScope: PermissionScope = "self";

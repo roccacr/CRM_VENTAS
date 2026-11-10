@@ -1,3 +1,8 @@
+/**
+ * Forma física de la bitácora del lead.
+ * El tipo de actividad y el motivo aplicable son catálogos. La fila importada apunta al origen; no es la identidad nativa.
+ * El vínculo une el lead nuevo con el archivo viejo. La actividad guarda el `operationId` que detecta una repetición.
+ */
 import type { ColumnType, Generated } from "kysely";
 
 type DateTime = ColumnType<Date, Date | string, Date | string>;

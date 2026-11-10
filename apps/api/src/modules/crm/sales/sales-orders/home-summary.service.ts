@@ -6,17 +6,17 @@ import { HOME_SUMMARY_LEGACY_READER, type HomeSummaryLegacyReader } from "./home
 import { HomeSummaryRepository } from "./home-summary.repository.js";
 import { aggregateNumber, emptyStageCounts, type HomeSummary, type HomeSummaryPeriod, type StageCounts } from "./home-summary.types.js";
 
-/** Fresh DB aggregates only; later persisted stages do not re-require approvals. */
+/** Solo agregados frescos de la base. Una etapa posterior ya guardada no vuelve a exigir la aprobación. */
 @Injectable()
 export class HomeSummaryService {
-    /** Authorizes before either source and reuses the legacy domain port. */
+    /** Autoriza antes de cualquiera de las dos fuentes y reutiliza el puerto viejo del dominio. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(HomeSummaryRepository) private readonly repository: HomeSummaryRepository,
         @Inject(HOME_SUMMARY_LEGACY_READER) private readonly legacy: HomeSummaryLegacyReader,
     ) {}
 
-    /** Only the live session selects the actor. The feed covers both sources without duplicating their histories. */
+    /** Solo la sesión viva elige al actor. El feed cubre las dos fuentes y no duplica sus historias. */
     async recentActivity(session?: string) {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("No tiene permiso para consultar movimientos de órdenes.");
@@ -35,7 +35,7 @@ export class HomeSummaryService {
         }
     }
 
-    /** Costa Rica uses UTC-6; annual closure credit is independent of the latest stage. */
+    /** Costa Rica usa UTC-6. El crédito del cierre anual no depende de la última etapa. */
     async summary(session?: string): Promise<HomeSummary> {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationStages(profile)) throw new ForbiddenException("Se requiere el rol activo Formalizacion y el permiso de lectura de sus banners.");
@@ -63,7 +63,7 @@ export class HomeSummaryService {
                         .every(([, value]) => value)
                 )
                     legacy.duplicatesExcluded = 0;
-                /** Adds two counters and rejects overflow beyond safe integers. */
+                /** Suma dos contadores y rechaza un desborde fuera de los enteros seguros. */
                 const add = (a: number, b: number) => aggregateNumber(a + b);
                 const counts: StageCounts = {
                     contracts: { toSend: add(native.contracts.toSend, legacy.counts.contracts.toSend), pendingSignature: add(native.contracts.pendingSignature, legacy.counts.contracts.pendingSignature) },

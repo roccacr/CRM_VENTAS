@@ -13,13 +13,13 @@ import { OrderTimingController } from "./order-timing.controller.js";
 import { OrderTimingRepository } from "./order-timing.repository.js";
 import { OrderTimingService } from "./order-timing.service.js";
 
-/** Home aggregates only; existing contract and approval routes retain their contracts. */
+/** Solo agregados del inicio. Las rutas de contrato y de aprobación conservan su contrato. */
 @Controller("formalization/home")
 export class HomeSummaryController {
-    /** Delegates current membership and read orchestration to the service. */
+    /** Delega en el servicio la membresía actual y la orquestación de la lectura. */
     constructor(@Inject(HomeSummaryService) private readonly service: HomeSummaryService) {}
 
-    /** Bounded own-actor activity; independent order permission and live session are mandatory. */
+    /** Actividad acotada del propio actor. Exige el permiso independiente de la orden y una sesión viva. */
     @Get("recent-activity")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "formalization-order-read" })
@@ -28,7 +28,7 @@ export class HomeSummaryController {
         return this.service.recentActivity(request.cookies[SESSION_COOKIE_NAME]);
     }
 
-    /** Returns fresh global aggregates without enabling lists or mutations. */
+    /** Devuelve agregados globales frescos. No habilita listas ni mutaciones. */
     @Get("summary")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "formalization-read" })
@@ -38,13 +38,13 @@ export class HomeSummaryController {
     }
 }
 
-/** Live follow-up is read-only; it never enables the simulated detail's commands. */
+/** El seguimiento vivo es de solo lectura. No habilita los comandos del detalle simulado. */
 @Controller("formalization/home")
 export class FollowUpController {
-    /** The use case owns authorization, filtering and data access. */
+    /** El caso de uso es dueño de la autorización, el filtro y el acceso a los datos. */
     constructor(@Inject(FollowUpService) private readonly service: FollowUpService) {}
 
-    /** Fresh global project aggregates; query filters are deliberately unsupported. */
+    /** Agregados globales frescos por proyecto. Los filtros de la consulta no están soportados. */
     @Get("project-distribution")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "formalization-read" })
@@ -53,7 +53,7 @@ export class FollowUpController {
         return this.service.projectDistribution(request.cookies[SESSION_COOKIE_NAME], query);
     }
 
-    /** Filters and pagination are validated by the use case before SQL. */
+    /** El caso de uso valida filtros y paginación antes del SQL. */
     @Get("follow-up")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "formalization-read" })
@@ -63,12 +63,12 @@ export class FollowUpController {
     }
 }
 
-/** Restores a detail identity independently of the visible banner queues. */
+/** Restaura la identidad del detalle con independencia de las colas visibles del banner. */
 @Controller("formalization/orders")
 export class FormalizationOrderRecordController {
-    /** Reuses the existing projection service with independent detail authorization. */
+    /** Reutiliza la proyección existente con una autorización de detalle independiente. */
     constructor(@Inject(FollowUpService) private readonly service: FollowUpService) {}
-    /** Returns one direct FollowUpItem without exposing list metadata. */
+    /** Devuelve un ítem directo de seguimiento. No expone los metadatos de la lista. */
     @Get(":source/:id/record")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "formalization-order-read" })
@@ -78,6 +78,6 @@ export class FormalizationOrderRecordController {
     }
 }
 
-/** Registers read-only Home summaries, follow-up and per-order timing. */
+/** Registra resúmenes de inicio, seguimiento y tiempos por orden, todos de solo lectura. */
 @Module({ imports: [IdentityModule], controllers: [HomeSummaryController, FollowUpController, FormalizationOrderRecordController, OrderTimingController], exports: [OrderTimingService], providers: [HomeSummaryRepository, HomeSummaryService, FollowUpRepository, FollowUpService, OrderTimingRepository, OrderTimingService] })
 export class HomeSummaryModule {}

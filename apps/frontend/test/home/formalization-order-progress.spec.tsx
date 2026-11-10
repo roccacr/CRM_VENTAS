@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, expect, it, vi } from "vitest";
 
 import { FormalizationOrderRecord } from "../../src/modules/home/FormalizationOrderPreview";
+import { FormalizationRecordProgress } from "../../src/modules/home/FormalizationRecordProgress";
 import { apiRequest } from "../../src/services/api/api-client";
 import { type FollowUpItem, getFollowUp } from "../../src/services/formalization/follow-up-service";
 import type { NetsuitePrimary } from "../../src/services/formalization/netsuite-primary";
@@ -30,7 +31,7 @@ it.each([
 });
 it("shows the ten NetSuite checks with explicit marked, unmarked and unknown values", () => {
     installBrowserApiDoubles();
-    render(<FormalizationOrderRecord item={{ ...order, salesManagementApproved: true, developerApproved: null, formalizationApproved: false, installmentsFullyPaid: true }} onBack={() => {}} />);
+    render(<FormalizationRecordProgress item={{ ...order, salesManagementApproved: true, developerApproved: null, formalizationApproved: false, installmentsFullyPaid: true }} compact />);
     const checks = within(screen.getByRole("region", { name: "Checks de NetSuite" }));
     expect(checks.getAllByRole("term")).toHaveLength(10);
     expect(checks.getByText("Cuotas pagadas por completo").nextElementSibling).toHaveTextContent(/^Marcado$/);
@@ -107,12 +108,13 @@ it("offers a transaction reload action and disables it while loading", () => {
     expect(screen.getByRole("button", { name: "Recargar transacción" }).hasAttribute("disabled")).toBe(true);
 });
 
-it.each(["native", "legacy"] as const)("fills only the five highlights from the %s database projection", (source) => {
+it.each(["native", "legacy"] as const)("fills the summary highlights and current stage from the %s database projection", (source) => {
     installBrowserApiDoubles();
     const item: FollowUpItem = { ...order, source, client: "Cliente BD", project: { id: "project", name: "Proyecto BD" }, unit: "Unidad BD", seller: { id: "seller", name: "Vendedor BD" }, state: { code: "contract_pending_signature", label: "Pendiente de firma", since: null, days: null }, nextStep: "Dar seguimiento a la firma del contrato" };
     render(<FormalizationOrderRecord item={item} onBack={() => {}} />);
     const highlights = within(screen.getByLabelText("Datos clave de la orden"));
-    for (const value of ["Cliente BD", "Proyecto BD · Unidad BD", "Vendedor BD", "Pendiente de firma", "Dar seguimiento a la firma del contrato"]) expect(highlights.getByText(value)).toBeTruthy();
+    for (const value of ["Cliente BD", "Proyecto BD · Unidad BD", "Vendedor BD", "Dar seguimiento a la firma del contrato"]) expect(highlights.getByText(value)).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Etapas de Formalización" })).getByRole("progressbar")).toHaveAttribute("aria-valuetext", expect.stringContaining("Pendiente de firma"));
     const primary = screen.getByRole("region", { name: "Información primaria" });
     expect(primary.textContent).not.toContain("Cliente BD");
     expect(screen.getByRole("region", { name: "Resumen" }).textContent).not.toContain("229");

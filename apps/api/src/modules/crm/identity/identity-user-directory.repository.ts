@@ -140,7 +140,7 @@ export interface ListSystemUsersInput {
 
 /** Data to create a user: credentials or access methods, roles, units, external references and audit context. */
 export interface CreateSystemUserInput {
-    /** Internal-only hook, run inside the writer transaction before snapshot reads/writes. */
+    /** Gancho interno. Corre dentro de la transacción de escritura, antes de leer o guardar la foto. */
     validateAccess: (transaction: IdentityTransaction) => Promise<void>;
     passwordHash?: string;
     accessMethods: readonly CreateSystemUserAccessMethod[];
@@ -163,11 +163,11 @@ export interface CreateSystemUserInput {
 
 /** Data to edit a user; `preserveAssignments` rejects the edit if roles or units changed meanwhile. */
 export interface UpdateSystemUserInput {
-    /** Trusted service callback; HTTP DTOs cannot supply executable callbacks. */
+    /** Callback de servicio. Un DTO HTTP no puede traer una función. */
     validateAccess: (transaction: IdentityTransaction) => Promise<void>;
-    /** Trusted service decision; never accepted from the HTTP DTO. */
+    /** Decisión del servicio. El DTO HTTP no la trae. */
     preserveAssignments: boolean;
-    /** Undefined preserves provider status; only explicit selections change access. */
+    /** Si no viene la selección, el estado del proveedor se conserva. Solo una lista explícita cambia el acceso. */
     accessMethods: readonly CreateSystemUserAccessMethod[] | undefined;
     actorPublicId: string;
     displayName: string;
@@ -546,7 +546,7 @@ export class IdentityUserDirectoryRepository {
         return this.findByPublicId(input.actorPublicId, input.userPublicId);
     }
 
-    /** Explicit business projection: authentication secrets never enter audit metadata. */
+    /** Proyección de negocio. Los secretos de autenticación no entran en la bitácora. */
     private async readAuditSnapshot(executor: IdentityDirectoryExecutor, userId: number): Promise<Record<string, unknown>> {
         const user = await executor.selectFrom("sec_user").select(["display_name_user as name", "email_user as email", "status_user as status"]).where("id_user", "=", userId).executeTakeFirstOrThrow();
         const [roles, orgUnits, providers, references] = await Promise.all([this.findRolesByUser([userId], executor), this.findOrgUnitsByUser([userId], executor), this.findProvidersByUser([userId], executor), this.findExternalReferencesByUser([userId], executor)]);
@@ -682,13 +682,13 @@ export class IdentityUserDirectoryRepository {
         }
     }
 
-    /** Preserve provider subjects and recovery states; only explicit selection re-enables inactive access. */
+    /** Se conservan el subject del proveedor y el estado de recuperación. Solo una selección explícita reactiva un acceso inactivo. */
     private async syncMicrosoftAccessMethod(executor: IdentityTransaction, userId: number, input: Pick<CreateSystemUserInput, "accessMethods" | "email" | "normalizedEmail"> & { actorUserId?: number }, now: Date): Promise<void> {
         const identities = await executor.selectFrom("sec_auth_identity").select(["id_auth_identity as id", "status_auth_identity as status", "deleted_at_auth_identity as deletedAt"]).where("user_id_auth_identity", "=", userId).where("provider_code_auth_identity", "=", MICROSOFT_PROVIDER_CODE).execute();
         const selected = input.accessMethods.includes(MICROSOFT_PROVIDER_CODE);
         const nextStatus = selected ? ACTIVE_STATUS : INACTIVE_STATUS;
 
-        // An explicit denial must survive the first verified-email callback, even before a subject exists.
+        // Una denegación explícita sobrevive al primer callback de correo verificado, aunque todavía no haya subject.
         if (!selected && identities.length === 0) {
             await executor
                 .insertInto("sec_auth_identity")
@@ -1274,7 +1274,7 @@ export class IdentityUserDirectoryRepository {
         }
     }
 
-    /** A cursor is valid only for the same sort and direction it was issued for. */
+    /** El cursor solo vale para el mismo orden y la misma dirección con que se emitió. Otro orden vuelve a la primera página. */
     private isValidCursorPayload(payload: Partial<DirectoryCursor>, sort: SystemUserSortKey, direction: SystemUserSortDirection): payload is DirectoryCursor {
         const hasValidValue = payload.value === null || typeof payload.value === "string";
         return payload.sort === sort && payload.direction === direction && typeof payload.id === "number" && hasValidValue;

@@ -8,17 +8,17 @@ import { type NoteNotification, notificationReadAllSchema, notificationsListSche
 import { NoteNotificationsRepository } from "./note-notifications.repository.js";
 import { noteIdSchema } from "./notes.contract.js";
 import { NotesRealtimeSignal } from "./notes-realtime.signal.js";
-/** Authentication supplies the recipient. Current note authorization protects lists, counts and writes. */
+/** La autenticación dice quién es el destinatario. La autorización actual de la nota protege listas, conteos y escrituras. */
 @Injectable()
 export class NoteNotificationsService {
-    /** Injects the native dependencies with explicit Nest tokens. */
+    /** Dependencias nativas con tokens explícitos. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(NoteNotificationsRepository) private readonly repository: NoteNotificationsRepository,
         @Inject(NoteCollaborationService) private readonly collaboration: NoteCollaborationService,
         @Inject(NotesRealtimeSignal) private readonly signal: NotesRealtimeSignal,
     ) {}
-    /** Filtering precedes pagination and badge calculation so revoked metadata never leaks. */
+    /** El filtro va antes de paginar y de calcular la insignia. Un metadato revocado no se cuela. */
     async list(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const query = this.parse(notificationsListSchema, input);
@@ -27,13 +27,13 @@ export class NoteNotificationsService {
         const selected = items.filter((item) => query.filter === "all" || (query.filter === "unread" ? item.readAt === null : item.kind === "mention"));
         return { schemaVersion: 1, items: selected.slice((query.page - 1) * query.pageSize, query.page * query.pageSize), page: { number: query.page, size: query.pageSize, total: selected.length }, unreadCount: items.filter((item) => item.readAt === null).length, observedAt };
     }
-    /** Exact count shares the same current authorization path as the list. */
+    /** El conteo exacto usa el mismo camino de autorización actual que la lista. */
     async unreadCount(session: string | undefined) {
         const profile = await this.identity.getCurrentUser(session);
         const items = await this.authorized(profile, new Date().toISOString());
         return { count: items.filter((item) => item.readAt === null).length };
     }
-    /** Explicit individual acknowledgement is idempotent; unknown and revoked IDs are indistinguishable. */
+    /** El acuse individual es idempotente. Un id desconocido y uno revocado se responden igual. */
     async read(session: string | undefined, id: string) {
         const profile = await this.identity.getCurrentUser(session);
         this.parse(noteIdSchema, id);
@@ -44,7 +44,7 @@ export class NoteNotificationsService {
         this.signal.notify();
         return { ok: true };
     }
-    /** Snapshot cutoff prevents a read-all request from acknowledging future events. */
+    /** El corte de la foto evita que marcar todo leído acuse eventos que todavía no existían. */
     async readAll(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const { through } = this.parse(notificationReadAllSchema, input);
@@ -59,7 +59,7 @@ export class NoteNotificationsService {
         return { ok: true };
     }
     private async authorized(profile: IdentityAuthorizationProfile, through: string): Promise<NoteNotification[]> {
-        // The current request already validated this profile; reuse it, never cache it across requests.
+        // Esta petición ya validó el perfil. Se reutiliza aquí y no se guarda para otra petición.
         const candidates = await this.repository.candidates(profile.user.publicId, through);
         const allowed = new Map<string, boolean>();
         const result: NoteNotification[] = [];

@@ -27,7 +27,7 @@ export interface ClientHistoryItem {
 function string(value: unknown): string | null {
     return typeof value === "string" && value.trim() ? value.trim() : null;
 }
-/** Numeric legacy validity is normalized here, not interpreted by React. Commercial stage is separate. */
+/** La validez numérica del id viejo se normaliza aquí. React no la interpreta. La etapa comercial es otro dato. */
 export function normalizeLeadStatus(source: "native" | "legacy", value: unknown) {
     const codes: Record<string, "active" | "inactive"> = source === "legacy" ? { "1": "active", "0": "inactive" } : { active: "active", inactive: "inactive" };
     const code = codes[String(value)] ?? "unknown";
@@ -133,7 +133,7 @@ function legacyDisplay(row: Row): ClientHistoryItem {
 function entryDisplay(entry: NonNullable<ReturnType<typeof displayHistoryEntry>>) {
     return { action: entry.actionCode, detail: entry.detail, reason: entry.reason ?? sourceReason(entry.sourceReasonLabel, "source_label"), occurredAt: entry.occurredAt, sourceDate: entry.sourceDate ?? null, evidence: entry.evidence, fromStatus: entry.fromStatusCode ?? null, toStatus: entry.toStatusCode ?? null };
 }
-/** Projects only display-safe history fields; arbitrary audit snapshots remain private. */
+/** Proyecta solo campos de historia seguros para mostrar. Una foto arbitraria de la bitácora sigue privada. */
 export function displayClientHistory(row: Row): ClientHistoryItem {
     const base = legacyDisplay(row);
     if (row.source !== "native") return base;
@@ -145,7 +145,7 @@ function historyPage(rows: Row[], identity: string) {
     const last = page.at(-1);
     return { items: page.map(displayClientHistory), hasMore: rows.length > 50, nextCursor: rows.length > 50 && last ? Buffer.from(JSON.stringify({ lead: identity, before: String(last.sortAt), key: String(last.eventKey) })).toString("base64url") : null };
 }
-/** One bounded cross-source page. Scope is derived only from the authorized order's lead and explicit historical links. */
+/** Una página acotada entre fuentes. El alcance sale solo del lead de la orden autorizada y de los vínculos históricos explícitos. */
 export async function readOrderClientContext(tx: Transaction<CrmDatabase>, data: Snapshot, options: ClientContextOptions) {
     const lead = data.lead?.sourceFields;
     const identity = data.source + ":" + String(lead?.id_lead);

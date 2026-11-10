@@ -6,34 +6,34 @@ import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.cons
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { NoteWorkflowService } from "./note-workflow.service.js";
 
-/** Authenticated endpoints additionally enforce current module and note ACL in the service. */
+/** Los endpoints autenticados vuelven a exigir en el servicio el módulo actual y la ACL de la nota. */
 @ApiTags("note-workflow")
 @Controller("note-workflow")
 export class NoteWorkflowController {
-    /** Injects the note workflow application service. */
+    /** Servicio de flujo de la nota. */
     constructor(@Inject(NoteWorkflowService) private readonly workflow: NoteWorkflowService) {}
-    /** Loads the current reader's independent reminder and shared task metadata. */
+    /** Carga el recordatorio propio del lector y los metadatos compartidos de la tarea. */
     @Get("notes/:id")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     read(@Req() req: CookieRequest, @Param("id") id: string) {
         return this.workflow.read(req.cookies[SESSION_COOKIE_NAME], id);
     }
-    /** Saves task metadata with author-only optimistic concurrency. */
+    /** Guarda metadatos de la tarea. Solo el autor, con la versión esperada. */
     @Put("notes/:id/task")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     task(@Req() req: CookieRequest, @Param("id") id: string, @Body() body: unknown) {
         return this.workflow.task(req.cookies[SESSION_COOKIE_NAME], id, body);
     }
-    /** Schedules, snoozes or cancels only the current reader's reminder. */
+    /** Programa, pospone o cancela solo el recordatorio de quien lee. */
     @Put("notes/:id/reminder")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     reminder(@Req() req: CookieRequest, @Param("id") id: string, @Body() body: unknown) {
         return this.workflow.reminder(req.cookies[SESSION_COOKIE_NAME], id, body);
     }
-    /** Returns authorization-filtered assigned task counts. */
+    /** Devuelve conteos de tareas asignadas ya filtrados por autorización. */
     @Get("overview")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")

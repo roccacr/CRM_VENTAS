@@ -8,14 +8,17 @@ import { RouteSecurity } from "../../../common/security/route-security.decorator
 import { UnitFilesContextDto, UnitFilesFacetsDto, UnitFilesOptionsDto, UnitFilesQueryDto } from "./unit-files.dto.js";
 import { UnitFilesService } from "./unit-files.service.js";
 
-/** Dedicated read surface; there is deliberately no delete or legacy mutation route. */
+/**
+ * Solo lectura. No hay ruta para borrar ni para escribir el CRM viejo.
+ * El permiso de ruta abre la puerta; el servicio vuelve a exigir `catalog_file.read`.
+ */
 @ApiTags("unit-files")
 @Controller("unit-files")
 export class UnitFilesController {
-    /** Cookie/session authorization is performed by the service for every request. */
+    /** Cada request lleva la cookie. La autorización de sesión la hace el servicio. El tipo esperado conserva la validación aunque el compilador no emita metadatos. */
     constructor(@Inject(UnitFilesService) private readonly units: UnitFilesService) {}
 
-    /** Project choices do not load units. */
+    /** Elegir proyecto no carga unidades. */
     @Get("projects")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "unit-files" })
@@ -23,7 +26,7 @@ export class UnitFilesController {
         return this.units.projects(request.cookies[SESSION_COOKIE_NAME], query.moduleCode);
     }
 
-    /** Searchable choices are project-scoped and never expose complete unit records. */
+    /** Las opciones buscan dentro de los proyectos pedidos y no devuelven el expediente completo. */
     @Get("options")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "unit-files" })
@@ -31,7 +34,7 @@ export class UnitFilesController {
         return this.units.options(request.cookies[SESSION_COOKIE_NAME], query);
     }
 
-    /** Full-scope aggregate choices are independently bounded and authenticated. */
+    /** Los agregados recorren el alcance pedido, con su propio tope y la misma sesión. */
     @Get("facets")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "unit-files" })
@@ -39,7 +42,7 @@ export class UnitFilesController {
         return this.units.facets(request.cookies[SESSION_COOKIE_NAME], query);
     }
 
-    /** Unfiltered or excessive requests fail DTO validation. */
+    /** Un inventario sin proyecto, o con un límite fuera de 1 a 500, no pasa la validación de la consulta. */
     @Get()
     @RouteSecurity("permission")
     @RequirePermission({ kind: "unit-files" })
@@ -47,7 +50,7 @@ export class UnitFilesController {
         return this.units.list(request.cookies[SESSION_COOKIE_NAME], query);
     }
 
-    /** Full business data is fetched only when a specific record is opened. */
+    /** El dato completo de negocio se lee solo al abrir un expediente. */
     @Get(":id")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "unit-files" })

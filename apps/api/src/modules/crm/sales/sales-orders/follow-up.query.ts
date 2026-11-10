@@ -6,7 +6,7 @@ import { type FollowUpAccess, type FollowUpCounts, type FollowUpQueue, followUpQ
 import { aggregateNumber } from "./home-summary.types.js";
 import { type DistributionKey, distributionKeys } from "./project-distribution.contract.js";
 
-/** Shared field and state projections keep exact records identical to list items. */
+/** La proyección compartida de campos y estado deja el registro exacto igual que el ítem de la lista. */
 const followUpClassification = sql`CASE
                 WHEN approved=1 AND COALESCE(rawStage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send') THEN 'contract_pending_send'
                 WHEN rawStage IN ('contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed') THEN rawStage
@@ -22,7 +22,7 @@ const followUpRowProjection = sql`JSON_OBJECT('sortId',CAST(sortId AS CHAR),'id'
                 'commercialClosureSigned',commercialClosureSigned,'contractSignedCheck',contractSignedCheck,'saleLostCheck',saleLostCheck,
                 'unitTransferred',unitTransferred,'keysDelivered',keysDelivered,'unitDelivered',unitDelivered,'installmentsFullyPaid',installmentsFullyPaid,'purchaseFundsOrigin',purchaseFundsOrigin,'completedThisYear',completedThisYear)`;
 
-/** Shared exact banner predicates preserve independent annual closure and addendum membership. */
+/** Los predicados exactos del banner conservan por separado la membresía del cierre anual y la del adéndum. */
 function followUpMatches(access: FollowUpAccess) {
     const queuePermissions = { ...access.queues };
     const stages: Record<Exclude<FollowUpQueue, "all">, RawBuilder<unknown>> = {
@@ -50,22 +50,22 @@ function followUpMatches(access: FollowUpAccess) {
         stages[queue] = sql`(saleLost=0 AND ${stages[queue]})`;
         visibility[queue] = sql`(saleLost=0 AND ${visibility[queue]})`;
     }
-    // Lost sales remain reachable in All for their independent finiquito, never in active-sale queues.
+    // Una venta perdida sigue en Todas por su finiquito propio. No entra en las colas de venta activa.
     const canReadLost = access.finiquito === true;
-    // Stored-stage visibility keeps unsupported flag combinations available for review in "Todas".
-    // OR counts a reopened order once even when its annual closure also qualifies.
+    // La etapa guardada deja visibles en Todas las combinaciones de banderas que no están soportadas, para revisarlas.
+    // El OR cuenta una orden reabierta una sola vez, aunque su cierre anual también califique.
     const matches: Record<FollowUpQueue, RawBuilder<unknown>> = { ...stages, all: sql`((${sql.join(Object.values(visibility), sql` OR `)}) OR (${canReadLost} AND saleLost=1 AND contractSigned=1))` };
     return matches;
 }
 
-/** Both sources share filters and a global project/unit order before LIMIT. The ordinal survives unordered JSON aggregation. */
+/** Las dos fuentes comparten filtros y el orden global de proyecto y unidad antes del LIMIT. El ordinal sobrevive a una agregación JSON sin orden. */
 export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRead, access: FollowUpAccess) {
     const matches = followUpMatches(access);
     const { selectedProjects, selectionPredicate } = selectedFollowUpFilters(query, matches);
     const recordId = query.recordId ?? "";
     const legacyId = recordId.startsWith("legacy:") ? recordId.slice(7) : "";
     const search = query.search.toLocaleLowerCase("es");
-    // Exact lookup is authorized separately from the board and retains source authority.
+    // La búsqueda exacta se autoriza aparte del tablero y conserva la autoridad de la fuente.
     const exactFallback =
         access.exactOrderSearch && search && !recordId
             ? sql`UNION ALL SELECT candidate.* FROM classified candidate
@@ -106,7 +106,7 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
         FROM searched`;
 }
 
-/** Multi-selection is an OR within each filter and an AND across projects/queues. */
+/** Dentro de un filtro la selección múltiple es un OR. Entre proyectos y colas es un AND. */
 function selectedFollowUpFilters(query: FollowUpRead, matches: Record<FollowUpQueue, RawBuilder<unknown>>) {
     const projectIds = query.projectIds?.length ? [...new Set(query.projectIds)] : [query.projectId].filter(Boolean);
     const selectedQueues = query.queues?.length ? [...new Set(query.queues)] : [query.queue];
@@ -119,7 +119,7 @@ function selectedFollowUpFilters(query: FollowUpRead, matches: Record<FollowUpQu
 /** mysql2 may decode JSON columns or leave them as text; validate either representation. */
 const jsonValue = (value: unknown): unknown => (typeof value === "string" ? JSON.parse(value) : value);
 const projectedRow = followUpRow.extend({ sortId: z.string().regex(/^[1-9][0-9]*$/), pageOrdinal: z.string().regex(/^[1-9][0-9]*$/) });
-/** Query returns all counts but at most one page of records; internal sort IDs never reach HTTP. */
+/** La consulta devuelve todos los conteos y como máximo una página de registros. Los id internos de orden no salen por HTTP. */
 export async function readFollowUpSource(tx: Transaction<CrmDatabase>, statement: RawBuilder<Record<string, unknown>>): Promise<FollowUpSourcePage & { sourceTotals: { native: number; legacy: number } }> {
     const result = await statement.execute(tx);
     const row = result.rows[0];
@@ -139,7 +139,7 @@ export async function readFollowUpSource(tx: Transaction<CrmDatabase>, statement
     return { total: aggregateNumber(row.total as string | number | null), counts, projects, items, sourceTotals: { native: aggregateNumber((row.nativeTotal ?? 0) as string | number | null), legacy: aggregateNumber((row.legacyTotal ?? 0) as string | number | null) } };
 }
 
-/** Exact-record rehydration reuses source aliases, without list counts, project options or banner filtering. */
+/** Rehidratar el registro exacto reutiliza los alias de la fuente. No trae conteos de lista, opciones de proyecto ni el filtro del banner. */
 export async function readFollowUpRecord(tx: Transaction<CrmDatabase>, base: RawBuilder<unknown>) {
     const result = await sql<{ item: unknown }>`
         WITH base AS (${base}), classified AS (
@@ -150,7 +150,7 @@ export async function readFollowUpRecord(tx: Transaction<CrmDatabase>, base: Raw
     return row ? followUpRow.parse(jsonValue(row.item)) : undefined;
 }
 
-/** Ordered series contain only authorized banners; bank uses its two stored stages. */
+/** Las series ordenadas traen solo banners autorizados. Banco usa sus dos etapas guardadas. */
 export function projectDistributionSeries(access: FollowUpAccess): DistributionKey[] {
     return distributionKeys.filter((key) => {
         if (key === "bank_not_started" || key === "bank_in_progress") return access.queues?.bank === true;
@@ -159,7 +159,7 @@ export function projectDistributionSeries(access: FollowUpAccess): DistributionK
     });
 }
 
-/** One aggregate across the complete federated portfolio; no records or pagination reach the result. */
+/** Un agregado de todo el portafolio federado. Al resultado no llegan registros ni paginación. */
 export function projectDistributionQuery(base: RawBuilder<unknown>, access: FollowUpAccess) {
     const matches = followUpMatches(access);
     const series = projectDistributionSeries(access);
@@ -177,7 +177,7 @@ export function projectDistributionQuery(base: RawBuilder<unknown>, access: Foll
         FROM visible GROUP BY projectId ORDER BY total DESC,name,projectId`;
 }
 
-/** Numeric aggregate validation strips all source and contact columns. */
+/** Validar el agregado numérico quita las columnas de origen y de contacto. */
 export async function readProjectDistribution(tx: Transaction<CrmDatabase>, base: RawBuilder<unknown>, access: FollowUpAccess) {
     const series = projectDistributionSeries(access);
     const result = await projectDistributionQuery(base, access).execute(tx);

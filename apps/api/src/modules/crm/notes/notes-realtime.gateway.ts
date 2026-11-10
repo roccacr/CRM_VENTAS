@@ -19,7 +19,7 @@ interface Connection {
     expiry: ReturnType<typeof setTimeout>;
 }
 type Ack = (result: { ok: boolean; code?: string }) => void;
-/** Only authenticated metadata signals. Raw handlers intentionally use the socket BFF boundary, never HTTP-only APP_GUARDs. */
+/** Solo señales de metadatos autenticadas. Los handlers crudos usan la frontera BFF del socket. Los APP_GUARD solo de HTTP no cubren Engine.IO. */
 @WebSocketGateway({ namespace: "/notes", transports: ["websocket"], maxHttpBufferSize: 4096, connectionStateRecovery: undefined })
 export class NotesRealtimeGateway implements OnGatewayInit<Namespace>, OnGatewayConnection<Socket>, OnModuleDestroy {
     private readonly logger = new Logger(NotesRealtimeGateway.name);
@@ -28,14 +28,14 @@ export class NotesRealtimeGateway implements OnGatewayInit<Namespace>, OnGateway
     private timer: ReturnType<typeof setInterval> | undefined;
     private redis: ReturnType<typeof createClient> | undefined;
     private ready = false;
-    /** Reuses the existing identity, note authorization and validated application configuration. */
+    /** Reutiliza la identidad, la autorización de la nota y la configuración ya validada. */
     constructor(
         @Inject(NotesRealtimeAuth) private readonly auth: NotesRealtimeAuth,
         @Inject(NoteCollaborationService) private readonly collaboration: NoteCollaborationService,
         @Inject(NotesRealtimeEventsRepository) private readonly repository: NotesRealtimeEventsRepository,
         @Inject(ConfigService) private readonly config: ConfigService,
     ) {}
-    /** Optional Redis Streams forwards metadata to peers; each peer authorizes its own local sessions before any client emit. */
+    /** Redis Streams, si está, reenvía metadatos a los pares. Cada par autoriza sus sesiones locales antes de emitir al cliente. */
     async afterInit(namespace: Namespace): Promise<void> {
         this.namespace = namespace;
         namespace.use((socket, next) => {
@@ -97,7 +97,7 @@ export class NotesRealtimeGateway implements OnGatewayInit<Namespace>, OnGateway
             this.connections.delete(socket.id);
         });
     }
-    /** Client input never chooses recipient/user rooms and exposes no content-write messages. */
+    /** La entrada del cliente no elige la sala del destinatario ni trae mensajes que escriban contenido. */
     handleConnection(socket: Socket): void {
         if (!this.connections.has(socket.id)) {
             socket.disconnect(true);
@@ -144,7 +144,7 @@ export class NotesRealtimeGateway implements OnGatewayInit<Namespace>, OnGateway
             return { ok: false, code: "unavailable" };
         }
     }
-    /** All user devices receive authorized invalidations. Redis rooms are never treated as permission evidence. */
+    /** Todos los dispositivos del usuario reciben las invalidaciones autorizadas. Una sala de Redis no es prueba de permiso. */
     async publish(userId: string, activity: NotesRealtimeActivity): Promise<void> {
         if (!this.ready) throw new Error("Realtime unavailable");
         const parsed = notesRealtimeActivitySchema.parse(activity);
@@ -157,7 +157,7 @@ export class NotesRealtimeGateway implements OnGatewayInit<Namespace>, OnGateway
     private async publishLocal(userId: string, activity: NotesRealtimeActivity): Promise<void> {
         const sessions = new Map<string, Promise<NotesRealtimeIdentity>>();
         const candidates = [...this.connections.values()].filter((connection) => connection.identity.userId === userId);
-        // Bounded by eight sockets/user. Reuse only within this publication, never across events or sessions.
+        // Hay tope de ocho sockets por usuario. La reutilización vale solo dentro de esta publicación, no entre eventos ni sesiones.
         const live = await Promise.all(
             candidates.map(async (connection) => {
                 let current = sessions.get(connection.identity.sessionToken);
@@ -198,7 +198,7 @@ export class NotesRealtimeGateway implements OnGatewayInit<Namespace>, OnGateway
         if (!activity.notificationId) return false;
         return this.repository.notificationActive(userId, activity.notificationId, activity.noteId);
     }
-    /** Backstop for external permission/session changes, in addition to per-message and per-publication checks. */
+    /** Respaldo para un cambio externo de permiso o de sesión, además de la comprobación por mensaje y por publicación. */
     async revalidate(): Promise<void> {
         for (const connection of this.connections.values()) {
             try {
@@ -216,7 +216,7 @@ export class NotesRealtimeGateway implements OnGatewayInit<Namespace>, OnGateway
             connection.socket.emit("activity", { schemaVersion: 1, eventId: ulid(), kind: "note.access_revoked", occurredAt: new Date().toISOString(), noteId });
         }
     }
-    /** Graceful stop retains pending durable rows for a later process. */
+    /** El cierre ordenado deja las filas durables pendientes para un proceso posterior. */
     async onModuleDestroy(): Promise<void> {
         this.ready = false;
         if (this.timer) clearInterval(this.timer);

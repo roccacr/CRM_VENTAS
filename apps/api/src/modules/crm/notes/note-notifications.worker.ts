@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger, type OnModuleDestroy, type OnModuleInit } f
 import { NoteCollaborationService } from "./note-collaboration.service.js";
 import { NoteNotificationsRepository } from "./note-notifications.repository.js";
 import { NotesRealtimeSignal } from "./notes-realtime.signal.js";
-/** Internal bell only. The migration gate and non-overlapping bounded batches protect startup and shutdown. */
+/** Solo la campana interna. La puerta de migración y los lotes acotados, sin montarse, protegen el arranque y el cierre. */
 @Injectable()
 export class NoteNotificationsWorker implements OnModuleInit, OnModuleDestroy {
     private timer: ReturnType<typeof setInterval> | undefined;
@@ -11,13 +11,13 @@ export class NoteNotificationsWorker implements OnModuleInit, OnModuleDestroy {
     private busy = false;
     private stopped = false;
     private readonly logger = new Logger(NoteNotificationsWorker.name);
-    /** Injects the native dependencies with explicit Nest tokens. */
+    /** Dependencias nativas con tokens explícitos. */
     constructor(
         @Inject(NoteNotificationsRepository) private readonly repository: NoteNotificationsRepository,
         @Inject(NoteCollaborationService) private readonly collaboration: NoteCollaborationService,
         @Inject(NotesRealtimeSignal) private readonly signal: NotesRealtimeSignal,
     ) {}
-    /** Timers are unrefed and never start delivery until schemas044/046 are registered. */
+    /** Los temporizadores no retienen el proceso. La entrega no arranca hasta que los esquemas 044 y 046 están registrados. */
     onModuleInit(): void {
         this.unsubscribe = this.signal.subscribe(() => {
             void this.tick();
@@ -27,13 +27,13 @@ export class NoteNotificationsWorker implements OnModuleInit, OnModuleDestroy {
         }, 5000);
         this.timer.unref();
     }
-    /** Prevents new claims and releases the polling timer on module shutdown. */
+    /** Al cerrar el módulo deja de reclamar sobres y suelta el temporizador. */
     onModuleDestroy(): void {
         this.stopped = true;
         this.unsubscribe?.();
         if (this.timer) clearInterval(this.timer);
     }
-    /** At most ten envelopes per cycle; each failed envelope retains a bounded durable retry. */
+    /** Como máximo diez sobres por ciclo. Uno fallido conserva un reintento durable acotado. */
     async tick(): Promise<void> {
         if (this.busy || this.stopped) return;
         this.busy = true;

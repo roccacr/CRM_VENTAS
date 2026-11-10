@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { noteIdSchema } from "./notes.contract.js";
-/** Metadata only: strict objects prevent accidentally serializing private note or record fields. */
+/** Solo metadatos. El objeto estricto evita serializar por accidente el texto privado o campos del recurso. */
 export const notesRealtimeActivitySchema = z
     .object({
         schemaVersion: z.literal(1),

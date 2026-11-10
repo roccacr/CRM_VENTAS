@@ -14,7 +14,8 @@ import { IdentityService } from "../identity/identity.service.js";
 import { LocationsRepository } from "./locations.repository.js";
 
 /**
- * Applies Locations authorization and mutation rules through shared operations.
+ * Autorización y normalización compartidas, persistencia propia de `crm_location`.
+ * Aquí solo se acepta el código `locations`. La forma `legacy:locations:N` se deja pasar; el repositorio rechaza un N que no quepa en un entero de 32 bits con signo.
  */
 @Injectable()
 export class LocationsService extends CatalogItemOperations {

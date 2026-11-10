@@ -19,7 +19,7 @@ const views: Record<string, { module: NoteModule; permission?: string }> = {
     "audit-log": { module: "administration", permission: "role.assign" },
 };
 
-/** Only fixed menu identities and known module catalogs may become note links. */
+/** Solo las identidades fijas del menú y los catálogos conocidos del módulo pueden ser un vínculo. Una vista de otro módulo no entra. */
 export function noteViewPermissions(module: NoteModule, code: string): string[] | undefined {
     const view = Object.hasOwn(views, code) ? views[code] : undefined;
     if (view) return view.module === module ? (view.permission ? [view.permission] : []) : undefined;
@@ -28,15 +28,15 @@ export function noteViewPermissions(module: NoteModule, code: string): string[] 
     return catalog ? [getCatalogPermissionCode(module, catalog, "read")] : undefined;
 }
 
-/** Canonical registered Home identity, independent of its storage alias. */
+/** Identidad canónica del inicio registrado. No depende del alias con que se guardó. */
 export const noteHomeViewCode = (module: NoteModule): string => `${workspaces[module]}-home`;
 
-/** Explicit Home menu codes share the pre-existing omitted-code storage and hash. */
+/** El código explícito del inicio comparte el almacenamiento y el hash del código omitido. */
 export function normalizeNoteContext(module: NoteModule, context: NoteContext): NoteContext {
     return context.kind === "view" && context.code === noteHomeViewCode(module) ? { kind: "view" } : context;
 }
 
-/** URL strings and unknown or cross-module menu codes fail closed, including persisted links. */
+/** Una URL, un código desconocido o uno de otro módulo se rechazan, también si el vínculo ya estaba guardado. */
 export function authorizeNoteView(profile: Pick<IdentityProfile, "roles" | "permissions">, module: NoteModule, code: string): void {
     const permissions = noteViewPermissions(module, code);
     if (!permissions) throw new BadRequestException("Vista de notas no registrada en el modulo.");
@@ -44,7 +44,7 @@ export function authorizeNoteView(profile: Pick<IdentityProfile, "roles" | "perm
     if (permissions.length && !permissions.some((permission) => profile.permissions.some((p) => p.code === permission && p.effect === "allow") && !profile.permissions.some((p) => p.code === permission && p.effect === "deny"))) throw new ForbiddenException("Permiso de vista insuficiente.");
 }
 
-/** Personal notes reuse a view link without attaching a business resource. */
+/** La nota personal reutiliza un vínculo de vista. No adjunta un recurso de negocio. */
 export const noteViewStorageCode = (module: NoteModule, context: Extract<NoteContext, { kind: "view" | "personal" }>): string => (context.kind === "personal" ? `${module}.personal` : (context.code ?? `${module}.home`));
 
 interface PersistedNoteLink {
@@ -72,7 +72,7 @@ function decodeOrderLink(row: PersistedNoteLink): NoteContext | undefined {
     return id.success ? { kind: "sales_order", source: "legacy", id: id.data } : undefined;
 }
 
-/** Reconstructs only approved source-qualified targets; callers must also verify the stored key. */
+/** Reconstruye solo destinos aprobados y calificados por origen. Quien llama también verifica la clave guardada. */
 export function decodeNoteLink(module: NoteModule, row: PersistedNoteLink): NoteContext | undefined {
     if (row.kind === "view" && row.entity === "view") return decodeViewLink(module, row.viewCode);
     return row.entity === "sales_order" ? decodeOrderLink(row) : undefined;

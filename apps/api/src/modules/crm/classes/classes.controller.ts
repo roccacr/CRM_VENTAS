@@ -15,7 +15,8 @@ import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, U
 import { ClassesService } from "./classes.service.js";
 
 /**
- * Exposes Classes routes using the established catalog API contract.
+ * Contrato de catálogo, con cookie de sesión. El permiso de ruta es la primera puerta; el servicio vuelve a evaluar el efectivo.
+ * El cuerpo es el compartido y admite 180 en el nombre. El repositorio rechaza la clase si pasa de 100.
  */
 @ApiTags("classes")
 @Controller("catalogs/classes")
@@ -24,7 +25,7 @@ export class ClassesController {
     constructor(@Inject(ClassesService) private readonly catalogs: ClassesService) {}
 
     /**
-     * Lista clases nativas y, si el fallback está activo, los que aún no migraron.
+     * Lista clases nativas y, si el fallback está activo, las que aún no migraron.
      *
      * La cookie identifica la sesión. El permiso de lectura lo resuelve el servicio.
      */
@@ -68,6 +69,7 @@ export class ClassesController {
     /**
      * Activa o inactiva la clase.
      *
+     * La acción de ruta `status` no es un permiso: activo exige actualizar e inactivo exige inactivar.
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")

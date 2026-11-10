@@ -1,3 +1,8 @@
+/**
+ * Contrato estricto de la conversación. Un campo de más se rechaza.
+ * La bandeja nace en creadas y abiertas, con 25 por página y tope de 50. Los participantes caben en 100 y no se repiten; el acceso es leer o responder.
+ * Los inicios adicionales caben en 5. Filtrar por registro exige el origen y un id válido. La fecha inicial no puede quedar después de la final.
+ */
 import { z } from "zod";
 
 import { type relatedRecordsSchema } from "./note-related-records.contract.js";

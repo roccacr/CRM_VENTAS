@@ -10,7 +10,10 @@ function selection({ value }: { value: unknown }): unknown {
     }
 }
 
-/** Bounded server-side criteria; unfiltered inventory requests are invalid. */
+/**
+ * Criterio acotado del servidor. El inventario exige al menos un proyecto y un límite de 1 a 500; si no viene, es 50.
+ * Una selección que no es JSON se deja como llegó para que el validador la rechace.
+ */
 export class UnitFilesQueryDto {
     @IsIn(["administration", "ventas", "mercadeo", "formalizacion", "contabilidad"])
     moduleCode!: string;
@@ -89,7 +92,7 @@ export class UnitFilesQueryDto {
     paneProjectIds?: string[];
 }
 
-/** Facets are scoped and seek-paged independently of inventory pagination. */
+/** El agregado tiene su propia página por clave. No reutiliza el cursor del inventario. */
 export class UnitFilesFacetsDto extends UnitFilesQueryDto {
     @IsIn(["code", "projectIds", "housingType", "status"])
     kind!: "code" | "projectIds" | "housingType" | "status";
@@ -100,7 +103,7 @@ export class UnitFilesFacetsDto extends UnitFilesQueryDto {
     after?: string;
 }
 
-/** Distinct dropdown choices use the same bounded project criteria as inventory. */
+/** Las opciones distintas usan el mismo tope de proyectos que el inventario y no devuelven el expediente. */
 export class UnitFilesOptionsDto extends UnitFilesQueryDto {
     @IsIn(["housingType", "code"])
     kind!: "housingType" | "code";
@@ -116,7 +119,7 @@ export class UnitFilesOptionsDto extends UnitFilesQueryDto {
     after?: string;
 }
 
-/** Project metadata is small and never triggers an inventory query. */
+/** El contexto solo trae el módulo. No dispara una consulta de inventario. */
 export class UnitFilesContextDto {
     @IsIn(["administration", "ventas", "mercadeo", "formalizacion", "contabilidad"])
     moduleCode!: string;

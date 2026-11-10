@@ -12,13 +12,19 @@ const summaryFields = ["code", "housingType", "sourceStatus", "advertisedSalePri
 const identities = sql`u.id_unit_file AS position,u.public_id_unit_file AS id,u.native_code_unit_file AS nativeCode,u.id_old_produccion_unit_file AS legacyId,p.public_id_project AS projectId,p.name_project AS projectName,u.source_project_reference_unit_file AS projectReference`;
 const facetFields = { code: "u.code_unit_file", projectIds: "p.public_id_project", housingType: "u.housing_type_unit_file", status: "u.source_status_unit_file" };
 
-/** Native-only persistence boundary; no legacy imports or legacy SQL. */
+/**
+ * Persistencia solo nativa. No importa el CRM viejo ni escribe su SQL.
+ * Este repositorio no modifica expedientes.
+ */
 @Injectable()
 export class UnitFilesRepository {
-    /** Uses the existing native pool. */
+    /** Usa el pool nativo que ya existe. No abre otro. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
 
-    /** Selected bindings are filtered in SQL; omitted IDs retain the project selector contract. */
+    /**
+     * Una lista vacía de ids no consulta. Si no vienen ids, salen los proyectos no borrados.
+     * La referencia externa entra solo si está activa y no archivada.
+     */
     async projects(projectIds?: readonly string[]): Promise<UnitProjectBinding[]> {
         if (projectIds?.length === 0) return [];
         const selected = projectIds ? sql`AND p.public_id_project IN (${sql.join(projectIds)})` : sql``;
@@ -39,7 +45,10 @@ export class UnitFilesRepository {
         return [...projects.values()];
     }
 
-    /** Distinct choices are scoped before binary seek pagination; no full rows are fetched. */
+    /**
+     * Las opciones se acotan al proyecto antes de la página binaria y no traen la fila completa.
+     * `LOCATE` deja `%` y `_` como texto. El tipo de vivienda solo filtra cuando la opción es el código.
+     */
     async options(filter: UnitOptionFilter, take: number): Promise<string[]> {
         const field = sql`${sql.ref(`u.${UNIT_COLUMNS[filter.kind]}`)} COLLATE utf8mb4_bin`;
         const status = filter.status ? sql`AND u.source_status_unit_file=${filter.status}` : sql``;
@@ -53,7 +62,7 @@ export class UnitFilesRepository {
         return result.rows.map((row) => row.value);
     }
 
-    /** Seek pagination applies criteria before returning at most take rows. */
+    /** La página avanza por `id_unit_file`, después de aplicar el criterio, y devuelve como máximo las filas pedidas. */
     async list(filter: UnitFilter, after: number, take: number): Promise<UnitSeekRow[]> {
         const criteria = unitFileCriteria(filter, facetFields);
         const fields = sql.join(summaryFields.map((field) => sql`${sql.ref(`u.${UNIT_COLUMNS[field]}`)} AS ${sql.id(field)}`));
@@ -61,7 +70,7 @@ export class UnitFilesRepository {
         return result.rows.map((row) => ({ position: row.position, item: mapUnitSummary(row) }));
     }
 
-    /** Aggregate only labels/counts across the complete scope, never full inventory rows. */
+    /** El agregado devuelve etiqueta y conteo del alcance, con tope de ejecución de 1500 ms. No devuelve el inventario. */
     async facets(filter: UnitFacetFilter, take: number): Promise<UnitFacet[]> {
         const field = sql`COALESCE(${sql.ref(facetFields[filter.kind])},'') COLLATE utf8mb4_bin`;
         const after = filter.after === undefined ? sql`` : sql`AND ${field}>${filter.after}`;
@@ -73,7 +82,10 @@ export class UnitFilesRepository {
         return result.rows.map((row) => ({ value: row.value, count: Number(row.count) }));
     }
 
-    /** Full detail uses one row and one bounded reference query. */
+    /**
+     * El detalle es una fila y una consulta de referencias. El id tiene que ser 26 caracteres Crockford.
+     * Esta forma no exige que el primer carácter sea de 0 a 7.
+     */
     async detail(id: string): Promise<UnitDetail | null> {
         if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) throw new BadRequestException("Identidad de expediente invalida.");
         const fields = sql.join(Object.entries(UNIT_COLUMNS).map(([key, column]) => sql`${sql.ref(`u.${column}`)} AS ${sql.id(key)}`));
@@ -84,7 +96,10 @@ export class UnitFilesRepository {
         return mapUnitDetail(row, references.rows);
     }
 
-    /** Prevents legacy detail links from bypassing an existing native replacement. */
+    /**
+     * Si el id viejo ya tiene fila nativa, el detalle usa esa. `LIMIT 1` no elige entre varias.
+     * No filtra borrado: la fila encontrada tapa el vínculo viejo.
+     */
     async findPromotedId(legacyId: number): Promise<string | null> {
         const result = await sql<{ id: string }>`SELECT public_id_unit_file AS id FROM crm_unit_file WHERE id_old_produccion_unit_file=${legacyId} LIMIT 1`.execute(this.database.db);
         return result.rows[0]?.id ?? null;

@@ -66,7 +66,7 @@ function changes(value: unknown) {
         return [{ field, before: scalar(row.before), after: scalar(row.after), beforeExists: row.beforeExists === true, afterExists: row.afterExists === true }];
     });
 }
-/** Only known order business changes are public; raw snapshots, tokens and request metadata never leave the API. */
+/** Son públicos solo los cambios de negocio conocidos de la orden. La foto cruda, los tokens y los metadatos del request no salen de la API. */
 export function displayOrderHistory(row: Row) {
     const actor = object(row.actor);
     const before = object(row.beforeSnapshot);
@@ -156,7 +156,7 @@ function approvals(order: Identity, recordIds: string[]) {
         JSON_OBJECT('path','/type','before',e.type_code_sales_order_approval_event,'after',e.type_code_sales_order_approval_event,'beforeExists',true,'afterExists',true)) AS changes,'partial' AS coverage,NULL AS fromLabel,NULL AS toLabel
         FROM audit_sales_order_approval_event e WHERE e.sales_order_id_sales_order_approval_event=${order.id} AND ${notPreserved(recordIds, operation)}`;
 }
-/** One authorized snapshot, with deterministic keyset pagination over all available sources and deduplication by writer operation identity. */
+/** Una foto autorizada. La página es por clave, determinista, sobre las fuentes disponibles, y se deduplica por la identidad de operación del escritor. */
 export async function readOrderHistory(tx: Transaction<CrmDatabase>, source: "native" | "legacy", id: string, options: { legacyEnabled: boolean; cursor?: string; canReadAddendum?: boolean }) {
     const order = await identity(tx, source, id);
     const identityKey = source + ":" + id;

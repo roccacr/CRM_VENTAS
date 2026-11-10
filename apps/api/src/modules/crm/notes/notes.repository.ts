@@ -36,17 +36,17 @@ const orderContextReferences = (context: NoteContext, aliases: readonly NoteRela
 
 const noteListOrigin = (access: NoteAccess, modules: readonly NoteModule[], acrossModules: boolean) => (acrossModules ? sql`n.origin_module_code_note IN (${sql.join(modules)})` : sql`n.origin_module_code_note=${access.moduleCode}`);
 
-/** Native-only transactions. Author, note, receipt, audit and pending deliveries share one commit. */
+/** Transacciones solo nativas. Autor, nota, acuse, bitácora y entregas pendientes comparten un commit. */
 @Injectable()
 export class NotesRepository {
-    /** Inject the native database and central audit writer. */
+    /** Base nativa y escritor central de bitácora. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(RecordAuditService) private readonly audit: RecordAuditService,
         @Inject(NotesRealtimeEventsRepository) private readonly realtime: NotesRealtimeEventsRepository,
     ) {}
 
-    /** Read one note through module and author or participant visibility. */
+    /** Lee una nota por módulo y por visibilidad de autor o participante. */
     async find(access: NoteAccess, publicId: string, executor: Executor = this.database.db, lock = false): Promise<NoteRecord> {
         const rows = await sql<NoteRecord>`SELECT ${projection} FROM crm_note n JOIN sec_user a ON a.id_user=n.author_user_id_note WHERE n.public_id_note=${publicId} AND n.origin_module_code_note=${access.moduleCode} AND ${acl(access)} ${lock ? sql`FOR UPDATE` : sql``}`.execute(executor);
         const note = rows.rows[0];
@@ -54,7 +54,7 @@ export class NotesRepository {
         return note;
     }
 
-    /** Decode immutable linked identity independently of resource lifecycle; presentation checks current access. */
+    /** Decodifica la identidad vinculada, que no cambia con el ciclo del recurso. La presentación comprueba el acceso actual. */
     async context(note: NoteRecord, executor: Executor = this.database.db): Promise<NoteContext> {
         const result = await sql<{
             kind: string;
@@ -75,8 +75,8 @@ export class NotesRepository {
         return context;
     }
 
-    /** List one validated context with a consistent count and page. */
-    // Preserve the established positional list contract while adding confirmed resource aliases.
+    /** Lista un contexto ya validado. El total y la página salen de la misma foto. */
+    // Se conserva el contrato posicional de la lista y se agregan los alias de recurso ya confirmados.
     // eslint-disable-next-line max-params
     async list(access: NoteAccess, query: NoteList, context: NoteContext, modules: readonly NoteModule[] = [access.moduleCode], aliases: readonly NoteRelatedReference[] = []): Promise<{ items: NoteRecord[]; total: number }> {
         const resources = orderContextReferences(context, aliases);
@@ -107,7 +107,7 @@ export class NotesRepository {
             .transaction()
             .setIsolationLevel("repeatable read")
             .execute(async (tx) => {
-                // Order identity is shared across workspaces; existing origin-scoped hashes remain valid for view links.
+                // La identidad de la orden se comparte entre espacios. Los hash ya guardados por origen siguen valiendo para los vínculos de vista.
                 const locationsEnabled = context.kind === "view" && (await sql`SELECT migration_name_schema_migration FROM conf_schema_migration WHERE migration_name_schema_migration='202610280052_notes_locations'`.execute(tx)).rows.length === 1;
                 const origin = noteListOrigin(access, modules, context.kind === "sales_order" || locationsEnabled);
                 const secondary = resources.length ? sql`(l.is_primary_note_link=0 AND l.target_key_note_link IN (${sql.join(resources.map(noteRelatedRecordKey))}))` : sql`1=0`;
@@ -120,7 +120,7 @@ export class NotesRepository {
             });
     }
 
-    /** Batch layout reads avoid one query per sticky note; actor and ACL are still enforced. */
+    /** La disposición se lee en lote, no una consulta por nota. El actor y la ACL se siguen comprobando. */
     async placements(access: NoteAccess, notes: readonly NoteRecord[]) {
         type Placement = { noteId: string; viewportClass: string; anchorMode: string; x: number | string; y: number | string; width: number; height: number; collapsed: number; hidden: number; layoutVersion: number };
         const result = new Map<string, { viewportClass: string; anchorMode: string; x: number; y: number; width: number; height: number; collapsed: boolean; hidden: boolean; layoutVersion: number }[]>();
@@ -136,12 +136,12 @@ export class NotesRepository {
         }
         return result;
     }
-    /** Read the current actor personal placements for a visible note. */
+    /** Lee las posiciones personales del actor para una nota que ya puede ver. */
     async placement(access: NoteAccess, note: NoteRecord) {
         return (await this.placements(access, [note])).get(note.publicId) ?? [];
     }
 
-    /** Read bounded central history for an already authorized note. */
+    /** Lee la historia central acotada de una nota ya autorizada. */
     async history(note: NoteRecord, actorPublicId: string) {
         const rows = await sql<{
             id: string;
@@ -156,7 +156,7 @@ export class NotesRepository {
         return rows.rows;
     }
 
-    /** Create the note, primary context, audit, deliveries and receipt atomically. */
+    /** Crea la nota, el contexto principal, la bitácora, las entregas y el acuse en el mismo commit. */
     async create(access: NoteAccess, input: CreateNote, context: NoteContext, authorizeRelated?: () => Promise<readonly NoteRelatedReference[] | undefined>): Promise<NoteResult> {
         return this.command({ access, action: "create", id: null, input }, async (tx, actor) => {
             const relatedRecords = (await authorizeRelated?.()) ?? input.relatedRecords;
@@ -171,7 +171,7 @@ export class NotesRepository {
         });
     }
 
-    /** Edit only an open note owned by the actor at the expected version. */
+    /** Edita solo una nota abierta del actor, con la versión esperada. */
     async edit(access: NoteAccess, id: string, input: EditNote): Promise<NoteResult> {
         return this.command({ access, action: "edit", id, input }, async (tx, actor, note) => {
             if (!note) throw new NotFoundException();
@@ -187,7 +187,7 @@ export class NotesRepository {
         });
     }
 
-    /** Apply author-only completion, reopening or archival atomically. */
+    /** Completar, reabrir o archivar lo hace solo el autor, en un solo commit. */
     async lifecycle(access: NoteAccess, id: string, input: NoteState, action: NoteLifecycle): Promise<NoteResult> {
         return this.command({ access, action, id, input }, async (tx, actor, note) => {
             if (!note) throw new NotFoundException();
@@ -206,7 +206,7 @@ export class NotesRepository {
         });
     }
 
-    /** Persist personal layout without changing content or its version. */
+    /** Guarda la disposición personal. El contenido y su versión no cambian. */
     async move(access: NoteAccess, id: string, input: NotePlacement): Promise<NoteResult> {
         return this.command({ access, action: "move", id, input }, async (tx, actor, note) => {
             if (!note) throw new NotFoundException();
@@ -231,7 +231,7 @@ export class NotesRepository {
         });
     }
 
-    /** Resolve only existing native targets or registered external systems in the native transaction. */
+    /** Resuelve solo destinos nativos existentes o sistemas externos registrados, dentro de la transacción nativa. */
     private async linkContext(tx: Tx, note: NoteRecord, context: NoteContext): Promise<void> {
         let kind = "view";
         let entity = "view";
@@ -257,7 +257,7 @@ export class NotesRepository {
         await sql`INSERT INTO crm_note_link (note_id_note_link,target_key_note_link,target_kind_note_link,entity_type_note_link,view_code_note_link,sales_order_id_note_link,external_system_id_note_link,external_id_note_link,is_primary_note_link) VALUES (${note.internalId},${noteContextKey(note.moduleCode, context)},${kind},${entity},${viewCode},${orderId},${externalSystemId},${externalId},1)`.execute(tx);
     }
 
-    /** Archived notes are terminal; completion metadata is reset only by reopening. */
+    /** Una nota archivada es terminal. Los metadatos de completada solo se limpian al reabrir. */
     private transition(note: NoteRecord, action: NoteLifecycle, actor: number) {
         const allowed = { complete: ["open"], reopen: ["completed"], archive: ["open", "completed"] };
         if (!allowed[action].includes(note.status)) throw new ConflictException("Cambio de estado no disponible.");
@@ -274,12 +274,12 @@ export class NotesRepository {
         if (note.version !== expected || expected >= 4294967295) throw new ConflictException("La nota cambio; recargue antes de guardar.");
     }
 
-    /** Lock the actor first to serialize their operation IDs, including concurrent creates. */
+    /** Bloquea primero al actor para serializar sus operationId, también en altas concurrentes. */
     private async command(command: NoteCommand, execute: (tx: Tx, actor: number, note?: NoteRecord) => Promise<NoteResult>): Promise<NoteResult> {
         const { access, action, id, input } = command;
         if (!this.audit.enabled) throw new ServiceUnavailableException("Notas requiere auditoria central habilitada.");
         const hash = digest({ action, id, input });
-        // Authorization after waiting for a note must observe the latest committed invitation state.
+        // La autorización, después de esperar la nota, tiene que ver la invitación ya confirmada, no la foto de antes de la espera.
         return retryNoteDeadlock(() =>
             this.database.db
                 .transaction()
@@ -300,7 +300,7 @@ export class NotesRepository {
         );
     }
 
-    /** Recheck resource visibility, immutable authorship and supported context under the note lock. */
+    /** Bajo el bloqueo de la nota vuelve a comprobar la visibilidad del recurso, que el autor no cambió y que el contexto está soportado. */
     private async lockCommandNote(tx: Tx, { access, action, id }: NoteCommand): Promise<NoteRecord | undefined> {
         if (!id) return undefined;
         const note = await this.find(access, id, tx, true);
@@ -323,7 +323,7 @@ export class NotesRepository {
         await this.audit.append(tx, { source: { schema: "CRM_THINK_V2", table: "crm_note", entity: "note", id: after.publicId }, actor: capture, action, module: after.moduleCode, before: before ? snapshot(before, context) : null, after: next, allowedFields: Object.keys(next), operationId, correlationId: operationId, snapshotScope: "partial" });
     }
 
-    /** Only references leave the transaction; no notification or legacy worker is activated. */
+    /** De la transacción salen solo referencias. No se activa un worker de aviso ni uno legacy. */
     private async enqueue(tx: Tx, access: NoteAccess, note: NoteRecord, eventType: string): Promise<void> {
         const payload = JSON.stringify({ schemaVersion: 1, noteId: note.publicId, moduleCode: note.moduleCode, actorPublicId: access.actorPublicId, version: note.version });
         for (const destination of ["notification", "legacy_projection"]) await sql`INSERT INTO int_event_outbox (public_id_event_outbox,aggregate_type_event_outbox,aggregate_public_id_event_outbox,aggregate_version_event_outbox,event_type_event_outbox,destination_code_event_outbox,payload_event_outbox) VALUES (${ulid()},'note',${note.publicId},${note.version},${eventType},${destination},${payload})`.execute(tx);

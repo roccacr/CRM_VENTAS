@@ -2,9 +2,9 @@ import { BadRequestException } from "@nestjs/common";
 import { plainToInstance, Type } from "class-transformer";
 import { IsIn, IsInt, IsOptional, Matches, Max, MaxLength, Min, validateSync } from "class-validator";
 
-/** Contract queue: orders to send, or sent and awaiting signature. */
+/** Cola de contrato: órdenes por enviar, o enviadas y pendientes de firma. */
 export type ContractQueue = "send" | "signature";
-/** Order as returned to the client. */
+/** Orden tal como se devuelve al cliente. */
 export interface ContractOrderItem {
     source: "native" | "legacy";
     id: string;
@@ -12,12 +12,12 @@ export interface ContractOrderItem {
     state: "contract_pending_send" | "contract_pending_signature";
     sequence: number;
 }
-/** Item plus the cursor key used to continue the page. */
+/** Ítem más la clave del cursor para continuar la página. */
 export interface ContractOrderPageRow extends ContractOrderItem {
     sortId: string;
 }
 
-/** Bounded, phase-keyset listing; cursors select rows but never grant access. */
+/** Listado acotado por clave de fase. El cursor elige filas y no concede acceso. */
 export class ContractOrdersQuery {
     @IsIn(["send", "signature"])
     queue!: ContractQueue;
@@ -34,7 +34,7 @@ export class ContractOrdersQuery {
     cursor?: string;
 }
 
-/** Reused by services so internal callers cannot bypass query bounds. */
+/** Lo reutilizan los servicios para que un llamador interno no se salte los límites de la consulta. */
 export function validateContractOrdersQuery(input: unknown): ContractOrdersQuery {
     if (input === null || typeof input !== "object" || Array.isArray(input)) throw new BadRequestException("Invalid contract orders query");
     const query = plainToInstance(ContractOrdersQuery, input);
@@ -43,7 +43,7 @@ export function validateContractOrdersQuery(input: unknown): ContractOrdersQuery
     return query;
 }
 
-/** Decimal text preserves BIGINT identity precision without accepting arbitrary SQL names. */
+/** El texto decimal conserva la precisión del BIGINT. No acepta un nombre SQL arbitrario. */
 export function parseContractCursor(cursor?: string): { source: "native" | "legacy"; id: string } {
     if (!cursor) return { source: "native", id: "0" };
     const [source, id] = cursor.split(":");

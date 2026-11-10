@@ -4,12 +4,12 @@ import { sql, type Transaction } from "kysely";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { ContractOrderPageRow, ContractQueue } from "./contract-orders.dto.js";
 
-/** Native-only query; shared snapshot ownership belongs to the summary repository. */
+/** Consulta solo nativa. La foto compartida la abre el repositorio del resumen. */
 @Injectable()
 export class ContractOrdersRepository {
-    /** Latest sequence supplies the optimistic version; historical signed flags are unrelated. */
+    /** La última secuencia aporta la versión optimista. Las banderas históricas de firma no la definen. */
     async page(tx: Transaction<CrmDatabase>, queue: ContractQueue, after: string, limit: number): Promise<ContractOrderPageRow[]> {
-        // Eligible = active, not cancelled/deleted and approved by Formalization;
+        // Elegible: activa, no cancelada ni borrada, y aprobada por formalización.
         // the stage is the latest journal event, defaulting to "pending send" when none exists.
         const stage = queue === "send" ? sql`stage IN ('contract_pending_send','unclassified','pending_approval')` : sql`stage='contract_pending_signature'`;
         const result = await sql<{ sortId: string; id: string; businessId: string; sequence: number }>`

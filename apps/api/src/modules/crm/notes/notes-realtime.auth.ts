@@ -11,19 +11,19 @@ export interface NotesRealtimeIdentity {
     sessionToken: string;
     expiresAt: number;
 }
-/** Socket-specific BFF boundary; HTTP guards cannot authenticate Engine.IO messages. */
+/** Frontera BFF propia del socket. Los guards HTTP no autentican mensajes de Engine.IO. */
 @Injectable()
 export class NotesRealtimeAuth {
-    /** Injects existing native application dependencies. */
+    /** Dependencias nativas de la aplicación. */
     constructor(
         @Inject(ConfigService) private readonly config: ConfigService,
         @Inject(IdentityService) private readonly identity: IdentityService,
     ) {}
-    /** Exact same configured frontend allowlist as HTTP, including rejection of absent Origin. */
+    /** La misma lista permitida del frontend que HTTP. Un Origin ausente se rechaza. */
     allowedOrigin(origin: unknown): boolean {
         return typeof origin === "string" && [this.config.getOrThrow<string>("FRONTEND_ORIGIN"), ...(this.config.get<string>("FRONTEND_ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim())].includes(origin);
     }
-    /** Reuses signed double-submit proof and opaque session. Duplicate credential cookies fail closed. */
+    /** Reutiliza la prueba firmada de doble envío y la sesión opaca. Una cookie de credencial duplicada se cierra. */
     async authenticate(socket: Socket): Promise<NotesRealtimeIdentity> {
         if (!this.allowedOrigin(socket.handshake.headers.origin)) throw new UnauthorizedException();
         const auth = notesRealtimeAuthSchema.safeParse(socket.handshake.auth);
@@ -50,7 +50,7 @@ export class NotesRealtimeAuth {
         }
         return cookies;
     }
-    /** Fresh profile read enforces logout, expiry, account state and permission-version invalidation. */
+    /** Una lectura fresca del perfil exige cierre de sesión, vencimiento, estado de la cuenta y la versión de permisos. */
     async current(sessionToken: string): Promise<NotesRealtimeIdentity> {
         const profile = await this.identity.getCurrentUser(sessionToken);
         const expiresAt = Date.parse(profile.session.expiresAt);

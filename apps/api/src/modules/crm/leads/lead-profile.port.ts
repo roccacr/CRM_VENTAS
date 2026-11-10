@@ -1,3 +1,7 @@
+/**
+ * Puerto de lectura del perfil viejo. El dominio no nombra esa conexión.
+ * `enabled` apagado deja el perfil en lo nativo. Las lecturas reciben la transacción nativa para compartir la misma foto, y este puerto no escribe.
+ */
 import type { Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../../database/database.types.js";

@@ -21,7 +21,7 @@ export interface LocationLegacyPayload {
 }
 
 /**
- * Lectura y escritura dla ubicación viejo dentro de la transacción nativa.
+ * Lectura y escritura de la ubicación vieja dentro de la transacción nativa.
  *
  * `create` devuelve el id de producción viejo, o `null` si no se insertó.
  * `enabled` en `false` deja el agregado solo en `crm_location`.

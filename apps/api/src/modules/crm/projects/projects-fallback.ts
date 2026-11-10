@@ -13,6 +13,7 @@ import type { CatalogItemsResponse } from "../catalogs/catalogs.types.js";
  *
  * El offset del fallback resta el total nativo. Mientras la página todavía
  * cae en filas nativas, ese offset queda en cero y no se salta legado de más.
+ * Aunque la página nativa llene el límite, igual se consulta el viejo para sumar su total; las filas de más se descartan.
  *
  * @param primary - Lector nativo que conoce los ids ya migrados
  * @param input - Límite, offset y filtros pedidos por el cliente

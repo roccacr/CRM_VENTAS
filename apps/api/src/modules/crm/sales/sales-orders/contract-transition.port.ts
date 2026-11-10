@@ -4,15 +4,15 @@ import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { AuditActorSnapshot } from "../../audit/audit-actor.js";
 import type { PurchaseFundsOrigin } from "./contract-transition.dto.js";
 
-/** Injection token for the legacy contract-transition adapter. */
+/** Token del adaptador viejo de transición de contrato. */
 export const CONTRACT_TRANSITION_LEGACY = Symbol("CONTRACT_TRANSITION_LEGACY");
-/** Locked order snapshot; `active` and `approved` gate whether a transition is allowed at all. */
+/** Foto bloqueada de la orden. `active` y `approved` deciden si la transición está permitida. */
 export interface ContractOrder {
     id: string;
     businessId: string;
     active: boolean;
     approved: boolean;
-    /** Available excludes deleted/inactive records, independently of the lost-sale checkbox. */
+    /** Disponible excluye borrados e inactivos, con independencia de la casilla de venta perdida. */
     available?: boolean;
     saleLost?: boolean;
     contractSigned: boolean;
@@ -22,32 +22,32 @@ export interface ContractOrder {
     unitDelivered: boolean | null;
     purchaseFundsOrigin?: PurchaseFundsOrigin | null;
 }
-/** One entry of the stage journal; `sequence` is the optimistic-concurrency version. */
+/** Una entrada del diario de etapas. `sequence` es la versión del control optimista. */
 export interface ContractEvent {
     sequence: number;
     state: string;
     actor: string | null;
     reason: string;
 }
-/** New journal entry; `operationId` makes retries idempotent and `correlationId` ties it to audit. */
+/** Entrada nueva del diario. `operationId` hace idempotente el reintento y `correlationId` la ata a la bitácora. */
 export interface ContractEventWrite extends ContractEvent {
     actor: string;
     from: string | null;
     operationId: string;
     correlationId: string;
-    /** New API writes capture attribution; historical entries may have no evidence. */
+    /** Una escritura nueva de la API guarda la atribución. Una entrada histórica puede no tener evidencia. */
     actorSnapshot?: AuditActorSnapshot;
     responsibleSnapshot?: AuditActorSnapshot;
     purchaseFundsOrigin?: PurchaseFundsOrigin | undefined;
 }
 
-/** Adapter uses ONLY the provided canonical transaction; never a separate writable pool. */
+/** El adaptador usa solo la transacción canónica que le pasan. No abre otro pool de escritura. */
 export interface ContractTransitionLegacy {
     lock(tx: Transaction<CrmDatabase>, id: string, readOnly?: boolean): Promise<ContractOrder | undefined>;
-    /** Resolve a unique live native owner under the caller's transaction; ambiguity returns null. */
+    /** Resuelve un dueño nativo vivo y único dentro de la transacción de quien llama. Si hay ambigüedad, devuelve nulo. */
     owner(tx: Transaction<CrmDatabase>, id: string): Promise<string | null>;
     event(tx: Transaction<CrmDatabase>, id: string, operationId?: string): Promise<ContractEvent | undefined>;
     append(tx: Transaction<CrmDatabase>, id: string, event: ContractEventWrite): Promise<void>;
-    /** Classification only: never creates a stage visit. Uses the same gated transaction. */
+    /** Solo clasifica. No crea una visita de etapa. Usa la misma transacción ya autorizada. */
     updatePurchaseFunds(tx: Transaction<CrmDatabase>, id: string, origin: PurchaseFundsOrigin): Promise<void>;
 }

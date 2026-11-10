@@ -858,8 +858,9 @@ describe("App", () => {
         view.rerender(<AppRouteContent {...props} path="/home/formalization" />);
         expect(screen.queryByRole("heading", { name: "Acceso no autorizado" })).not.toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
-        // El shell consulta las notificaciones del calendario; sin grants no debe pedir datos de Formalización.
-        expect(fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => !url.endsWith("/calendar/notifications"))).toEqual([]);
+        // El shell puede consultar avisos propios, incluso cuando el perfil no tiene acceso al listado de órdenes.
+        const noticeUrls = [buildApiUrl("/calendar/notifications"), buildApiUrl("/formalization/orders/netsuite/import/notices")];
+        expect(fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => !noticeUrls.includes(url))).toEqual([]);
         expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/identity/session"), expect.anything());
         expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/identity/me"), expect.anything());
     });

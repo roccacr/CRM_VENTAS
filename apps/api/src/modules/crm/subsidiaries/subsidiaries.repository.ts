@@ -45,7 +45,8 @@ const validatePagination = (limit: number, offset: number): void => {
 const isDuplicateKeyError = (error: unknown): boolean => error instanceof Error && "code" in error && error.code === "ER_DUP_ENTRY";
 
 /**
- * Persists Subsidiaries and provider references within audited transactions.
+ * Alta, edición y estado quedan en `crm_subsidiary`, con las referencias y la bitácora en la misma transacción.
+ * El código nativo sale del ULID. El cliente no lo elige. El cuerpo admite 250 y el repositorio vuelve a rechazar un nombre más largo, antes de abrir la transacción.
  */
 @Injectable()
 export class SubsidiariesRepository {
@@ -73,7 +74,8 @@ export class SubsidiariesRepository {
     /**
      * Lista solo `crm_subsidiary` y sus referencias vivas.
      *
-     * La búsqueda también mira el id externo, pero no devuelve referencias ya archivadas.
+     * La búsqueda también mira el id externo vivo. Una referencia archivada no entra, y en el texto `%` y `_` siguen siendo comodines.
+     * Si no viene límite, la página es de 100.
      */
     async listCatalogItems(input: CatalogReadInput): Promise<CatalogItemsResponse> {
         const limit = input.limit ?? 100;
@@ -96,8 +98,9 @@ export class SubsidiariesRepository {
     /**
      * Crea la subsidiaria nativa, sus referencias y la auditoría en una transacción.
      *
-     * Si el puerto legacy está activo, primero inserta allá y guarda ese id en
-     * `id_old_produccion_subsidiary`. El ULID sigue siendo la identidad del CRM nuevo.
+     * Si el puerto está activo, primero inserta en el CRM viejo y guarda ese id en
+     * `id_old_produccion_subsidiary`. Si está apagado, el vínculo queda nulo.
+     * El ULID sigue siendo la identidad.
      */
     async createCatalogItem(input: CatalogMutationInput): Promise<CatalogItem> {
         if (input.name.length > 250) throw new BadRequestException("Subsidiary name exceeds 250 characters.");
@@ -144,7 +147,8 @@ export class SubsidiariesRepository {
     /**
      * Cambia el estado nativo y, si hay pareja vieja, el estado legacy.
      *
-     * Inactivar guarda quién y cuándo. Reactivar limpia esos dos campos.
+     * Inactivar guarda quién y cuándo con el reloj de la aplicación. Reactivar limpia esos dos campos.
+     * `updated_at` sigue siendo `CURRENT_TIMESTAMP(3)`. El estado de la subsidiaria no archiva sus referencias.
      */
     async updateCatalogItemStatus(input: CatalogStatusMutationInput): Promise<CatalogItem | null> {
         return this.database.db.transaction().execute(async (transaction) => {
@@ -225,8 +229,10 @@ export class SubsidiariesRepository {
         return { publicId: row.publicId, nativeCode: row.nativeCode, name: row.name, detail: row.detail, status: row.status, updatedAt: new Date(row.updatedAt).toISOString(), externalReferences: references, ...(row.legacyId === null ? {} : { id_old_produccion: row.legacyId }) };
     }
 
-    /** Referencias activas de la página, agrupadas por subsidiaria para no consultar una por fila. */
-    // Mutation snapshots need current reads even when an earlier actor lookup established REPEATABLE READ.
+    /**
+     * Referencias activas, agrupadas por subsidiaria para no consultar una por fila.
+     * En una mutación se bloquean con `FOR UPDATE OF r`: el snapshot tiene que ver el estado actual, no la foto de la lectura anterior del actor.
+     */
     private async loadReferences(ids: readonly number[], executor: DatabaseService["db"], lock = false): Promise<Map<number, CatalogExternalReference[]>> {
         const grouped = new Map<number, CatalogExternalReference[]>();
         if (ids.length === 0) return grouped;

@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { COMPLETION_STAGES, formalizationCompletionTarget } from "./formalization-completion.policy.js";
 
-/** Queue names are provider-neutral and shared by both read adapters. */
+/** Los nombres de cola no nombran al proveedor y los comparten los dos adaptadores de lectura. */
 export const followUpQueues = ["all", "approvals", "contracts", "send", "signature", "bank", "balance", "transfer", "signed", "closed", "addendum"] as const;
 export type FollowUpQueue = (typeof followUpQueues)[number];
 const boundedInteger = (max: number, fallback: number) => z.preprocess((value) => (value === undefined ? fallback : typeof value === "string" && /^[1-9][0-9]*$/.test(value) ? Number(value) : value), z.number().int().min(1).max(max));
 const projectIdentity = z.string().regex(/^(?:[0-9A-HJKMNP-TV-Z]{26}|legacy-project:[1-9][0-9]{0,19})$/);
 const selections = <T extends z.ZodType>(item: T, max: number) => z.preprocess((value) => (typeof value === "string" ? value.split(",") : value), z.array(item).max(max)).optional();
-/** Strict query limits prevent unbounded reads and reject misspelled filters. */
+/** Los límites estrictos evitan una lectura sin tope y rechazan un filtro mal escrito. */
 export const followUpQuery = z
     .object({
         recordId: z
@@ -32,7 +32,7 @@ export type FollowUpQuery = z.infer<typeof followUpQuery>;
 export type FollowUpRead = FollowUpQuery & { offset: number; limit: number };
 export type FollowUpCounts = Record<Exclude<FollowUpQueue, "addendum">, number> & { addendum?: number; bankInProgress?: number };
 export interface FollowUpAccess {
-    /** Independent order-read grant, never inferred from a queue grant. */
+    /** Permiso propio de leer la orden. No se deduce del permiso de una cola. */
     finiquito?: boolean;
     exactOrderSearch?: boolean;
     queues?: Partial<Record<FollowUpQueue, boolean>>;
@@ -47,7 +47,7 @@ export interface FollowUpPeriod {
 }
 const named = z.object({ id: z.string().min(1), name: z.string().min(1) });
 const stateCodes = ["unclassified", "pending_approval", "contract_pending_send", "contract_pending_signature", "bank_management", "bank_management_in_progress", "pending_balance", "pending_transfer", "transfer_signed", "closed"] as const;
-/** Only the requested projection crosses the boundary; only the explicitly requested client email, never raw contact payload. */
+/** Cruza el límite solo la proyección pedida. Del cliente sale el correo pedido de forma explícita, no el contacto crudo. */
 const optionalOrderCheck = z
     .union([z.boolean(), z.literal(0), z.literal(1)])
     .nullable()
@@ -131,7 +131,7 @@ export interface FollowUpSourcePage {
     projects: { id: string; name: string }[];
     items: FollowUpDatabaseRow[];
 }
-/** Labels/next steps describe the process, never authorize or execute a transition. */
+/** Las etiquetas y el paso siguiente describen el proceso. No autorizan ni ejecutan una transición. */
 const descriptions: Record<FollowUpDatabaseRow["stateCode"], readonly [string, string]> = {
     unclassified: ["Sin etapa de Formalización", "Completar las aprobaciones previas"],
     pending_approval: ["Pendiente de aprobación", "Revisar la aprobación de Formalización"],
@@ -145,7 +145,7 @@ const descriptions: Record<FollowUpDatabaseRow["stateCode"], readonly [string, s
     closed: ["Formalización cerrada", "Proceso finalizado"],
 };
 const completionGuidance = { pending_transfer: "Cuotas pagadas: pasar a Traspasos pendientes", transfer_signed: "Traspaso confirmado: pasar a Traspaso firmado", closed: "Unidad entregada: pasar a Formalización cerrada" };
-/** Guidance never changes the stored stage and unknown flags cannot stand in for unchecked values. */
+/** La guía no cambia la etapa guardada. Una bandera desconocida no sustituye un valor que no fue marcado. */
 function followUpNextStep(row: FollowUpDatabaseRow, description: string): string {
     const target = formalizationCompletionTarget(row);
     if (row.stateCode === "pending_balance") {
@@ -158,7 +158,7 @@ function followUpNextStep(row: FollowUpDatabaseRow, description: string): string
     if (target && COMPLETION_STAGES.indexOf(target) > currentCompletionIndex) return completionGuidance[target];
     return "Avance bloqueado: revisar los indicadores de cuotas, traspaso, llaves y entrega en NetSuite; la etapa guardada se conserva";
 }
-/** Unknown effective dates remain null: importing/observing a row is not a stage transition. */
+/** Una fecha efectiva desconocida queda nula. Importar u observar una fila no es una transición de etapa. */
 export function presentFollowUpRow(row: FollowUpDatabaseRow, observedAt: Date) {
     const { stateCode, stateSince, ...identity } = row;
     const [label, description] = descriptions[stateCode];
@@ -175,5 +175,5 @@ export interface FollowUpResponse {
     items: FollowUpItem[];
     sources: { native: { total: number }; legacy: { total: number; enabled: boolean } };
 }
-/** Zero source only when the legacy integration is explicitly disabled, never after a read failure. */
+/** La fuente queda en cero solo si la integración vieja está apagada de forma explícita. Un fallo de lectura no se informa como cero. */
 export const emptyFollowUpSource = (): FollowUpSourcePage => ({ total: 0, counts: { ...Object.fromEntries(followUpQueues.map((queue) => [queue, 0])), bankInProgress: 0 } as FollowUpCounts, projects: [], items: [] });

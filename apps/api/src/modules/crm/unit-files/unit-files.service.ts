@@ -5,7 +5,10 @@ import { decodeUnitCursor, encodeUnitCursor, mergeUnitFacets, type UnitFacetFilt
 import { UnitFilesRepository } from "./unit-files.repository.js";
 import { UNIT_FILES_LEGACY, type UnitFilesLegacy, type UnitSeekRow } from "./unit-files-legacy.port.js";
 
-/** Encodes the source of the final returned row, never the look-ahead row. */
+/**
+ * El cursor siguiente sale de la última fila devuelta, no de la fila de adelanto.
+ * Si la página sigue dentro de lo nativo, la fase queda `native`. Si ya entra lo viejo, pasa a `legacy`.
+ */
 function pageResult(rows: UnitSeekRow[], limit: number, nativeCount: number, cursor: { key: string; phase: string }): UnitPage {
     const selected = rows.slice(0, limit);
     const last = selected.at(-1);
@@ -15,20 +18,22 @@ function pageResult(rows: UnitSeekRow[], limit: number, nativeCount: number, cur
 }
 
 /**
- * Authenticated native-first reader. Missing/disabled legacy never blocks native operation.
- * User/project authorization scope remains pending an approved scope model; project filters
- * and existence checks below are search constraints, not user/project access enforcement.
+ * Lector autenticado, primero nativo. Si el puerto viejo falta o está apagado, la lectura nativa sigue.
+ * El alcance por usuario y proyecto todavía no es un control de acceso: filtrar o comprobar que el proyecto existe es una restricción de búsqueda.
  */
 @Injectable()
 export class UnitFilesService {
-    /** Reuses session authorization and injects legacy only through the optional port. */
+    /** La sesión entra por identidad. El CRM viejo solo llega por el puerto opcional. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(UnitFilesRepository) private readonly repository: UnitFilesRepository,
         @Optional() @Inject(UNIT_FILES_LEGACY) private readonly legacy?: UnitFilesLegacy,
     ) {}
 
-    /** Owner skips module membership only; the exact effective grant and deny still apply. */
+    /**
+     * El código es `${module}.catalog_file.read`. Hace falta un allow y un deny gana.
+     * Un Owner activo se salta solo la membresía de la unidad. No se salta el permiso.
+     */
     private async authorize(session: string | undefined, moduleCode: string): Promise<void> {
         const profile = await this.identity.getCurrentUser(session);
         const owner = profile.roles.some((role) => role.code === "owner" && role.status === "active");
@@ -39,27 +44,33 @@ export class UnitFilesService {
         if ((!owner && !active) || !allowed || denied) throw new ForbiddenException("Permiso insuficiente.");
     }
 
-    /** No inventory query is performed for project options. */
+    /** Las opciones de proyecto no consultan unidades. */
     async projects(session: string | undefined, moduleCode: string) {
         await this.authorize(session, moduleCode);
         return { items: (await this.repository.projects()).map(({ id, name }) => ({ id, name })) };
     }
 
-    /** A bounded, binary-ordered union supports distinct choice continuation across both sources. */
+    /**
+     * Une las dos fuentes, quita duplicados y ordena en binario para poder continuar la lista.
+     * Si algún id pedido no existe, responde que el proyecto no está. Eso no autoriza el proyecto.
+     */
     async options(session: string | undefined, filter: UnitOptionFilter) {
         await this.authorize(session, filter.moduleCode);
         const projects = await this.repository.projects(filter.projectIds);
         if (projects.length !== filter.projectIds.length) throw new NotFoundException("Proyecto CRM no encontrado.");
         const native = await this.repository.options(filter, filter.limit + 1);
         const legacy = this.legacy?.enabled() ? await this.legacy.options(filter, filter.limit + 1) : [];
-        // Both SQL sources use binary ordering; the bounded union keeps duplicates out of pagination.
+        // Las dos fuentes vienen ordenadas en binario. El conjunto acotado evita repetir un valor en la página.
         const all = [...new Set([...native, ...legacy])].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
         const items = all.slice(0, filter.limit);
         const hasNext = all.length > filter.limit;
         return { items, hasNext, nextAfter: hasNext ? (items.at(-1) ?? null) : null };
     }
 
-    /** Aggregated choices share authorization, native precedence and the global legacy gate. */
+    /**
+     * Los agregados usan la misma autorización. Lo viejo entra solo si el puerto está activo y expone `facets`.
+     * La suma supone que esa página vieja no trae filas ya migradas.
+     */
     async facets(session: string | undefined, filter: UnitFacetFilter) {
         await this.authorize(session, filter.moduleCode);
         const projects = await this.repository.projects(filter.projectIds);
@@ -69,7 +80,10 @@ export class UnitFilesService {
         return mergeUnitFacets([...native, ...legacy], filter.limit);
     }
 
-    /** Native-first keyset paging with one look-ahead row and bounded legacy anti-join. */
+    /**
+     * La página es por clave, primero nativa, con una fila de adelanto.
+     * Lo viejo completa solo el espacio que falta y recibe los proyectos nativos para no repetir lo ya migrado.
+     */
     async list(session: string | undefined, filter: UnitFilter): Promise<UnitPage> {
         await this.authorize(session, filter.moduleCode);
         const key = unitFilterKey(filter);
@@ -88,7 +102,10 @@ export class UnitFilesService {
         return pageResult(rows, filter.limit, nativeCount, cursor);
     }
 
-    /** Native replacement wins even when the incoming link still uses a legacy identity. */
+    /**
+     * `legacy:unit-files:N` abre el nativo si ya hay reemplazo. Un entero que no es seguro cae en la identidad nativa y se rechaza.
+     * Si el reemplazo existe y su detalle no, no se rellena con el CRM viejo.
+     */
     async detail(session: string | undefined, id: string, moduleCode: string) {
         await this.authorize(session, moduleCode);
         const match = /^legacy:unit-files:([1-9]\d*)$/.exec(id);

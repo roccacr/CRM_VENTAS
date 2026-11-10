@@ -13,7 +13,10 @@ import { ProjectsController } from "./projects.controller.js";
 import { ProjectsRepository } from "./projects.repository.js";
 import { ProjectsService } from "./projects.service.js";
 
-/** Registra el agregado de proyectos y sus dependencias de identidad y auditoria. */
+/**
+ * Agregado propio. Identidad y bitácora entran como dependencias.
+ * Este módulo no registra el lector ni el escritor del CRM viejo, y no exporta otro pool.
+ */
 @Module({
     imports: [AuditModule, IdentityModule],
     controllers: [ProjectsController],

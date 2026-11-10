@@ -6,18 +6,18 @@ import type { CrmDatabase } from "../../../../database/database.types.js";
 import { formalizationClosedThisYear } from "./formalization-closure.query.js";
 import { type HomeSummaryPeriod, type RecentOrderActivity, type StageAggregateRow, stageCountsFromRow } from "./home-summary.types.js";
 
-/** Reads current stage truth and confirmed contract signature without cached counters. */
+/** Lee la etapa vigente y la firma confirmada del contrato. No usa contadores cacheados. */
 @Injectable()
 export class HomeSummaryRepository {
-    /** Uses the canonical pool for both schema reads. */
+    /** Las dos lecturas de esquema usan el pool canónico. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
 
-    /** One snapshot assumes the two schemas are on the same InnoDB instance. */
+    /** Una sola foto supone que los dos esquemas están en la misma instancia InnoDB. */
     readSnapshot<T>(read: (tx: Transaction<CrmDatabase>) => Promise<T>): Promise<T> {
         return this.database.db.transaction().setIsolationLevel("repeatable read").setAccessMode("read only").execute(read);
     }
 
-    /** Actor/time index bounds a personal feed; no user ID, limit or source comes from a request. */
+    /** El índice de actor y tiempo acota el feed personal. El id de usuario, el límite y la fuente no vienen del request. */
     async recentActivity(tx: Transaction<CrmDatabase>, actor: string): Promise<RecentOrderActivity[]> {
         const result = await sql<RecentOrderActivity>`
             SELECT e.id_record_event AS id,
@@ -37,7 +37,7 @@ export class HomeSummaryRepository {
         return result.rows;
     }
 
-    /** Resolve native labels for the same six events; no legacy access leaks into the core repository. */
+    /** Resuelve las etiquetas nativas de los mismos seis eventos. El repositorio de núcleo no abre el CRM viejo. */
     async nativeOrderLabels(tx: Transaction<CrmDatabase>, ids: readonly string[]) {
         if (!ids.length) return [];
         if (ids.length > 6 || !ids.every((id) => /^[1-9][0-9]*$/.test(id) && Number.isSafeInteger(Number(id)))) throw new Error("Invalid native activity IDs");
@@ -45,7 +45,7 @@ export class HomeSummaryRepository {
         return result.map((row) => ({ id: String(row.id), number: row.number }));
     }
 
-    /** Approvals gate contracts only. Any effective closure this year credits an eligible order once, even after reopening. */
+    /** La aprobación solo abre el contrato. Un cierre efectivo de este año acredita la orden elegible una vez, aunque después se reabra. */
     async aggregate(tx: Transaction<CrmDatabase>, period: HomeSummaryPeriod) {
         const result = await sql<StageAggregateRow>`
             SELECT /*+ MAX_EXECUTION_TIME(1500) */

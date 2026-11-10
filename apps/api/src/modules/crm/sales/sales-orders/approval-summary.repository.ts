@@ -4,18 +4,18 @@ import { sql, type Transaction } from "kysely";
 import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 
-/** Queries the canonical database without changing lifecycle or audit records. */
+/** Consulta la base canónica. No cambia el ciclo de vida ni los registros de bitácora. */
 @Injectable()
 export class ApprovalSummaryRepository {
-    /** Reuses the application database pool. */
+    /** Reutiliza el pool de la aplicación. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
 
-    /** Prevent concurrent migration from changing native precedence halfway through a count. */
+    /** Evita que una migración concurrente cambie la precedencia nativa a la mitad del conteo. */
     readSnapshot<T>(read: (tx: Transaction<CrmDatabase>) => Promise<T>): Promise<T> {
         return this.database.db.transaction().setIsolationLevel("repeatable read").setAccessMode("read only").execute(read);
     }
 
-    /** Unknown approvals never qualify as explicitly not approved. */
+    /** Una aprobación desconocida no cuenta como no aprobada de forma explícita. */
     async countPending(executor = this.database.db): Promise<number> {
         const result = await sql<{ total: string | number }>`
             SELECT /*+ MAX_EXECUTION_TIME(1500) */ COUNT(*) AS total FROM crm_sales_order o
@@ -29,7 +29,7 @@ export class ApprovalSummaryRepository {
         return Number(result.rows[0]?.total ?? 0);
     }
 
-    /** All migrated rows shadow legacy, even if no longer active or pending. */
+    /** Toda fila migrada tapa lo viejo, aunque ya no esté activa ni pendiente. */
     async migratedIds(ids: number[], executor = this.database.db): Promise<number[]> {
         const rows = await executor.selectFrom("crm_sales_order").select("id_old_produccion_sales_order").where("id_old_produccion_sales_order", "in", ids).execute();
         return rows.map((row) => Number(row.id_old_produccion_sales_order));

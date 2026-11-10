@@ -10,7 +10,7 @@ export const CATALOG_STATUSES = ["active", "inactive"] as const;
 /** Estado operativo. No hay borrado físico en el contrato público. */
 export type CatalogStatus = (typeof CATALOG_STATUSES)[number];
 
-/** Segmento de ruta. Proyectos está en la lista, pero su persistencia es propia. */
+/** Segmento de ruta. Estar en esta lista no guarda el catálogo aquí: solo expedientes sigue en la tabla compartida. */
 export type CatalogRouteCode = "banks" | "brokers" | "campaigns" | "classes" | "files" | "locations" | "projects" | "subsidiaries";
 
 /**
@@ -30,7 +30,7 @@ export const CATALOG_CONTEXT_MODULES = ["ventas", "mercadeo", "formalizacion", "
 
 export type CatalogContextModuleCode = (typeof CATALOG_CONTEXT_MODULES)[number];
 
-/** Orden del menú. Agregar un catálogo aquí también genera sus permisos. */
+/** Orden del menú. Agregar un catálogo aquí lo incluye en los códigos que estas funciones enumeran. No aplica migraciones ni concede el permiso. */
 export const CATALOG_DEFINITIONS: readonly CatalogDefinition[] = [
     { itemLabel: "banco", label: "Bancos", moduleCode: "catalog_bank", routeCode: "banks" },
     { itemLabel: "proyecto", label: "Proyectos", moduleCode: "catalog_project", routeCode: "projects" },

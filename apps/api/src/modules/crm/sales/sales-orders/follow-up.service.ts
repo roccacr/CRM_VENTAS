@@ -11,7 +11,7 @@ import { HomeSummaryRepository } from "./home-summary.repository.js";
 import { orderTimingIdentity } from "./order-timing.contract.js";
 import type { ProjectDistributionResponse } from "./project-distribution.contract.js";
 
-/** Formalization action grants cover the module regardless of supported scope metadata; denies still win. */
+/** El permiso de la acción de formalización cubre el módulo aunque el metadato de alcance no esté soportado. Un deny sigue ganando. */
 export function formalizationPermissionScope(profile: Pick<IdentityProfile, "permissions">, code: string): { allowed: boolean; ownOnly: boolean } {
     const grants = profile.permissions.filter((permission) => permission.code === code);
     const allows = grants.filter((grant) => grant.effect === "allow");
@@ -27,17 +27,17 @@ function visibleAddendum(row: FollowUpDatabaseRow, allowed: boolean): FollowUpDa
     return visible;
 }
 
-/** A single global JSON, never copied orders or cached counts. */
+/** Un solo JSON global. No copia órdenes ni usa conteos cacheados. */
 @Injectable()
 export class FollowUpService {
-    /** Separates authorization, native projection and the optional legacy adapter. */
+    /** Separa la autorización, la proyección nativa y el adaptador viejo opcional. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(FollowUpRepository) private readonly repository: FollowUpRepository,
         @Inject(FOLLOW_UP_LEGACY_READER) private readonly legacy: FollowUpLegacyReader,
         @Inject(HomeSummaryRepository) private readonly snapshot: HomeSummaryRepository,
     ) {}
-    /** Restores only one authoritative active record; banner lists and summaries retain separate grants. */
+    /** Restaura un solo registro activo con autoridad. Las listas y los resúmenes del banner conservan permisos distintos. */
     async record(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("No tiene permiso para consultar esta orden.");
@@ -66,7 +66,7 @@ export class FollowUpService {
             throw new ServiceUnavailableException("No fue posible consultar la orden de Formalizacion.");
         }
     }
-    /** Global authorized banner memberships, independent of list search, selection and pagination. */
+    /** Membresías globales del banner ya autorizadas. No dependen de la búsqueda, la selección ni la página de la lista. */
     async projectDistribution(session: string | undefined, input: unknown): Promise<ProjectDistributionResponse> {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationStages(profile)) throw new ForbiddenException("Se requiere Formalizacion y permiso de lectura de etapas.");
@@ -85,7 +85,7 @@ export class FollowUpService {
             throw new ServiceUnavailableException("No fue posible consultar la distribucion por proyecto.");
         }
     }
-    /** Validates both role and live permissions before consulting either source. */
+    /** Valida el rol y el permiso vivo antes de consultar cualquiera de las dos fuentes. */
     async list(session: string | undefined, input: unknown): Promise<FollowUpResponse> {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationStages(profile)) throw new ForbiddenException("Se requiere Formalizacion y permiso de lectura de etapas.");

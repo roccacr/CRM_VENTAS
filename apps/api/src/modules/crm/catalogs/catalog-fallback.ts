@@ -62,8 +62,8 @@ const mergeStrategies: Partial<Record<CatalogRouteCode, typeof mergeProjects>> =
 /**
  * Devuelve la página nativa y, si aplica, la completa con el CRM viejo.
  *
- * Los dominios registrados delegan en su estrategia de merge. Los demas dominios
- * permanecen exclusivamente en su almacenamiento nativo.
+ * Los dominios registrados delegan en su estrategia de mezcla. Expedientes y bancos no tienen estrategia: un lector encendido no les inventa página vieja.
+ * Los demás dominios permanecen en su almacenamiento nativo.
  *
  * @param primary - Repositorio del CRM nuevo
  * @param input - Código, página y filtros

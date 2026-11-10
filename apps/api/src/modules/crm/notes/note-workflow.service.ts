@@ -11,10 +11,10 @@ import { noteIdSchema } from "./notes.contract.js";
 import { canUseCollaboration } from "./notes.permissions.js";
 import { NotesRealtimeSignal } from "./notes-realtime.signal.js";
 
-/** Workflow reads and commands reuse live note permissions and invitation ACL. */
+/** Lecturas y comandos de flujo reutilizan el permiso vivo de la nota y la ACL de la invitación. */
 @Injectable()
 export class NoteWorkflowService {
-    /** Injects native identity, collaboration, transactional persistence and delivery signals. */
+    /** Identidad nativa, colaboración, persistencia transaccional y señales de entrega. */
     // eslint-disable-next-line max-params
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
@@ -23,18 +23,18 @@ export class NoteWorkflowService {
         @Inject(NoteWorkflowRepository) private readonly repository: NoteWorkflowRepository,
         @Inject(NotesRealtimeSignal) private readonly signal: NotesRealtimeSignal,
     ) {}
-    /** Returns workflow state only to a current authorized reader. */
+    /** El estado del flujo sale solo para un lector autorizado ahora. */
     async read(session: string | undefined, id: string) {
         const profile = await this.profile(session, id);
         const state = await this.notes.load(profile.user.publicId, id);
         const result = await this.repository.read(profile.user.publicId, state);
         return { ...result, canManage: result.canManage && canUseCollaboration(profile, state.note.moduleCode, "edit_own", false) };
     }
-    /** Only the immutable note author may change task assignment or its due date. */
+    /** Solo el autor de la nota, que no cambia, puede cambiar la asignación o la fecha. */
     async task(session: string | undefined, id: string, body: unknown) {
         return this.command(session, id, { ...this.parse(taskSchema, body), kind: "task" });
     }
-    /** Each reader owns an independent persisted reminder, including snooze and cancellation. */
+    /** Cada lector tiene su recordatorio persistido. Posponerlo o cancelarlo no toca el de otro. */
     async reminder(session: string | undefined, id: string, body: unknown) {
         return this.command(session, id, { ...this.parse(reminderSchema, body), kind: "reminder" });
     }
@@ -50,7 +50,7 @@ export class NoteWorkflowService {
         this.signal.notify();
         return { ...result, canManage };
     }
-    /** Counts only current authorized assigned open tasks; truncation is explicit rather than misleading. */
+    /** Cuenta solo tareas abiertas asignadas y autorizadas ahora. Si el conteo se corta, se dice. */
     async overview(session: string | undefined, query: unknown = {}) {
         const { timeZone } = this.parse(workflowOverviewSchema, query);
         const profile = await this.identity.getCurrentUser(session);

@@ -66,7 +66,7 @@ function legacyCohort(row: ReportLead, unique: boolean, ambiguousAlias: boolean,
     const eligible = unique && !ambiguousAlias;
     return { row: { ...row, hasEstimate: eligible && row.hasEstimate === true, hasSalesOrder: eligible && row.hasSalesOrder === true }, native: false, events: leadEvents(row, eligible, events), ambiguous: !unique || ambiguousAlias };
 }
-/** Exact legacy PK links are independent of ambiguous provider references. */
+/** El vínculo por la llave vieja entra aunque la referencia del proveedor sea ambigua. Esa referencia ambigua no arrastra citas de otro lead. */
 function leadEvents(row: ReportLead, unique: boolean, events: Map<string, ReportEvent[]>): ReportEvent[] {
     return [...referencedEvents(row.providerId ?? "", unique, events), ...(events.get(`legacy-pk:${row.id}`) ?? [])];
 }
@@ -86,12 +86,18 @@ function cohortStatus(events: ReportEvent[]): "completed" | "scheduled" | "noApp
     return events.some((event) => event.status === "scheduled") ? "scheduled" : "noAppointment";
 }
 
-/** Manual native authority is retained; only uniquely linked commercial evidence is merged. */
+/**
+ * Califica la marca nativa, una cita con fecha programada o completada, un estimado o una orden.
+ * En la fila vieja, el estimado y la orden solo llegan si la referencia era única. Una cita sin fecha no califica.
+ */
 function effectiveQualified(cohort: Cohort): boolean {
     return cohort.row.qualified === true || cohortStatus(cohort.events.filter((event) => !event.invalidDate)) !== "noAppointment" || cohort.row.hasEstimate === true || cohort.row.hasSalesOrder === true;
 }
 
-/** Per-created-lead cohorts: completed > scheduled > none; attribution always comes from the authoritative lead. */
+/**
+ * Una cohorte por lead creado. Completada gana a programada, y programada gana a ninguna.
+ * La atribución sale del lead que manda: si ya existe en nativo, no se vuelve a contar por aparecer en las dos bases.
+ */
 export function buildMarketingLeadsReport(native: ReportSource, legacy: ReportSource, context: ReportContext): MarketingLeadsReport {
     const window = createMarketingWindow(context.period === "all" ? "month" : context.period, context.now);
     const identities = reportIdentityResolvers(native, legacy);

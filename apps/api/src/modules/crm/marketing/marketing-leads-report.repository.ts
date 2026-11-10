@@ -6,7 +6,7 @@ import type { MarketingExternalIdentity, NativeMarketingProject, NativeMarketing
 import type { ReportEvent, ReportLead, ReportSource } from "./marketing-leads-report.contract.js";
 
 export const REPORT_READ_PAGE_SIZE = 10000;
-/** Every internal page is consumed in one stable snapshot; no cap can silently truncate a report. */
+/** Cada página interna se consume en la misma foto. Una página corta termina la lectura; el reporte no se recorta en silencio. */
 export async function readReportPages<T>(readPage: (offset: number) => Promise<T[]>): Promise<T[]> {
     const rows: T[] = [];
     for (let offset = 0; ; offset += REPORT_READ_PAGE_SIZE) {
@@ -15,10 +15,13 @@ export async function readReportPages<T>(readPage: (offset: number) => Promise<T
         if (page.length < REPORT_READ_PAGE_SIZE) return rows;
     }
 }
-/** Native acquisition evidence, without customer contact data or activity-state filters. */
+/**
+ * Evidencia nativa de captación, sin datos de contacto.
+ * No filtra por estado ni por baja. La fecha resta seis horas al alta. El motivo de pérdida es solo la última transición a `lost`, y sin nombre no se informa.
+ */
 @Injectable()
 export class MarketingLeadsReportRepository {
-    /** Native source is always read before the optional legacy adapter. */
+    /** Solo lo nativo. Quien llama lee esto antes del adaptador viejo. */
     async readNative(tx: Transaction<CrmDatabase>): Promise<ReportSource> {
         const leads = await readReportPages(
             async (offset) =>

@@ -1,3 +1,7 @@
+/**
+ * Referencias de lead u orden, como máximo 20 y sin repetir la misma identidad.
+ * El id nativo usa la forma pública de la nota. El id viejo es un entero de 1 a 2147483647. La búsqueda cabe en 120.
+ */
 import { z } from "zod";
 
 import { CATALOG_CONTEXT_MODULES } from "../catalogs/catalogs.constants.js";

@@ -14,7 +14,8 @@ import { SubsidiariesRepository } from "./subsidiaries.repository.js";
 import { SubsidiariesService } from "./subsidiaries.service.js";
 
 /**
- * Registers the independent Subsidiaries domain and its audited dependencies.
+ * Agregado propio. Identidad y bitácora entran como dependencias.
+ * Este módulo no registra el lector ni el escritor del CRM viejo, y no exporta otro pool.
  */
 @Module({
     imports: [AuditModule, IdentityModule],

@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 
 import { BadRequestException } from "@nestjs/common";
 
-/** Lossless business projection; identity and project/provider links live separately. */
+/**
+ * Proyección de negocio sin pérdida. La identidad y los vínculos de proyecto o proveedor viven aparte.
+ * `source` es el nombre guardado, con su ortografía: `precioVentaUncio_exp`, `areaDeMezzanieM2_exp`, `areacomunLibe_exp`.
+ */
 export const UNIT_FIELDS = {
     code: { source: "codigo_exp", length: 100 },
     projectNameSnapshot: { source: "proyectoPrincipal_exp", length: 50 },
@@ -83,7 +86,7 @@ export interface UnitFacet {
     value: string;
     count: number;
 }
-/** Native and unmigrated legacy groups form disjoint rows, so matching label counts add. */
+/** Los grupos nativos y los viejos no migrados no se pisan, así que el conteo de una misma etiqueta se suma. */
 export function mergeUnitFacets(rows: UnitFacet[], limit: number) {
     const counts = new Map<string, number>();
     for (const row of rows) counts.set(row.value, (counts.get(row.value) ?? 0) + row.count);
@@ -105,26 +108,32 @@ export interface UnitPage {
     items: UnitSummary[];
     pagination: { limit: number; returned: number; hasNext: boolean; nextCursor: string | null };
 }
-/** Source text is retained even when it cannot be normalized. */
+/**
+ * Devuelve uno de los siete códigos conocidos. Un texto que no está en esa lista queda `unknown`.
+ * El texto original sigue en `sourceStatus`.
+ */
 export function unitStatus(value: string | null): string {
     const statuses: Record<string, string> = { "0. No Disponible": "unavailable", "1. Disponible para Venta": "available", "2. Pre-Reservada": "pre_reserved", "3. Reservado": "reserved", "4. Vendida": "sold", "5. Entregada": "delivered", "6. Traspasada": "transferred" };
     return statuses[value ?? ""] ?? "unknown";
 }
-/** Cursor binding includes permission context, criteria and batch size, never secrets. */
+/** La clave del cursor ata el módulo, los proyectos, el límite y el criterio. No guarda secretos. */
 export function unitFilterKey(filter: UnitFilter): string {
     return createHash("sha256")
         .update(JSON.stringify([filter.moduleCode, [...filter.projectIds].sort(), filter.limit, filter.status ?? "", filter.housingType ?? "", filter.code ?? "", filter.codeMatch ?? "", ...[filter.codes, filter.housingTypes, filter.statuses, filter.paneProjectIds].map((values) => [...(values ?? [])].sort())]))
         .digest("hex");
 }
-/** Opaque seek position, not an authorization grant. */
+/** Posición opaca de la página. No concede permiso. */
 export function encodeUnitCursor(cursor: UnitCursor): string {
     return Buffer.from(JSON.stringify(cursor)).toString("base64url");
 }
-/** Validates the untrusted seek position separately from its search binding. */
+/** La fase solo puede ser nativa o vieja, y la posición un entero seguro mayor o igual que cero. */
 function validSeek(item: UnitCursor): boolean {
     return ["native", "legacy"].includes(item.phase) && Number.isSafeInteger(item.after) && item.after >= 0;
 }
-/** Treats cursor contents as untrusted and rejects filter/source/range changes. */
+/**
+ * El cursor llega sin confianza. Si falta, empieza en nativo y en cero.
+ * Otra búsqueda, otra fase o una posición inválida comparten el mismo rechazo, antes de consultar.
+ */
 export function decodeUnitCursor(cursor: string | undefined, key: string): UnitCursor {
     if (!cursor) return { key, phase: "native", after: 0 };
     try {

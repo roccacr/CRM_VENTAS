@@ -14,7 +14,8 @@ import { LocationsRepository } from "./locations.repository.js";
 import { LocationsService } from "./locations.service.js";
 
 /**
- * Registers the independent Locations domain and its audited dependencies.
+ * Agregado propio. Identidad y bitácora entran como dependencias.
+ * Este módulo no registra el lector ni el escritor del CRM viejo, y no exporta otro pool.
  */
 @Module({
     imports: [AuditModule, IdentityModule],

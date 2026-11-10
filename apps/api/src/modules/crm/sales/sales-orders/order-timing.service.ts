@@ -9,22 +9,22 @@ import { orderTimingIdentity, orderTimingQuery } from "./order-timing.contract.j
 import { ORDER_TIMING_LEGACY_READER, type OrderTimingLegacyReader } from "./order-timing.port.js";
 import { OrderTimingRepository } from "./order-timing.repository.js";
 
-/** Reads one authoritative order's visit history, with independent order detail permission. */
+/** Lee la historia de visitas de una orden con autoridad. El permiso de detalle de la orden es independiente. */
 @Injectable()
 export class OrderTimingService {
-    /** Uses one shared read-only snapshot, not a query/connection per history row. */
+    /** Usa una foto compartida de solo lectura. No abre una consulta ni una conexión por fila de historia. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(OrderTimingRepository) private readonly repository: OrderTimingRepository,
         @Inject(ORDER_TIMING_LEGACY_READER) private readonly legacy: OrderTimingLegacyReader,
         @Inject(HomeSummaryRepository) private readonly snapshot: HomeSummaryRepository,
     ) {}
-    /** Source-specific identities and pagination are validated before SQL. */
+    /** La identidad de cada fuente y la paginación se validan antes del SQL. */
     async read(session: string | undefined, identity: unknown, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         return this.authorizeForProfile(profile, identity, input);
     }
-    /** Reuses identical live resource gates for server-derived target profiles. */
+    /** Reutiliza las mismas puertas vivas del recurso para un perfil de destino armado en el servidor. */
     async authorizeForProfile(profile: IdentityAuthorizationProfile, identity: unknown, input: unknown) {
         if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("Permiso insuficiente para consultar tiempos de Formalizacion.");
         const target = orderTimingIdentity.safeParse(identity);

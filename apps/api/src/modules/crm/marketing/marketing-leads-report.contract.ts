@@ -29,7 +29,7 @@ export interface ReportEvent {
     status: AppointmentState;
     invalidDate: boolean;
 }
-/** Internal read evidence, never serialized directly to clients. */
+/** Evidencia interna de lectura. No se serializa tal cual al cliente. */
 export interface ReportSource {
     leads: ReportLead[];
     events: ReportEvent[];

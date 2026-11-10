@@ -7,20 +7,19 @@ import type { IdentityProfile } from "../identity/identity.types.js";
 import { readNativeAppointments } from "./marketing-appointments.repository.js";
 import { marketingCount, type MarketingDailyRow, type MarketingExternalIdentity, type MarketingWindow, type NativeMarketingData, type NativeMarketingProject, type NativeMarketingUser } from "./marketing-home.contract.js";
 
-/** Native data is read first, inside one repeatable-read/read-only report snapshot. */
+/** Lo nativo se lee primero, en una foto de lectura repetible y de solo lectura. */
 @Injectable()
 export class MarketingHomeRepository {
-    /**
-     *
-     */
+    /** La base nativa. Esta lectura no abre el pool del CRM viejo. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
-    /**
-     *
-     */
+    /** La foto es `repeatable read` y de solo lectura. Un escritor no entra por este camino. */
     readSnapshot<T>(read: (tx: Transaction<CrmDatabase>) => Promise<T>): Promise<T> {
         return this.database.db.transaction().setIsolationLevel("repeatable read").setAccessMode("read only").execute(read);
     }
-    /** Resolve permitted sellers by active organizational membership; unresolved legacy owners never gain area access. */
+    /**
+     * Vendedores visibles por membresía activa. La persona de la sesión siempre entra.
+     * `own_area_and_children` baja a las unidades hijas y se detiene si hay un ciclo. Un dueño viejo sin usuario nativo no gana el área.
+     */
     async visibleSellers(tx: Transaction<CrmDatabase>, profile: IdentityProfile, scopes: readonly string[]): Promise<ReadonlySet<string>> {
         const visible = new Set([profile.user.publicId]);
         if (!scopes.some((scope) => scope === "own_area" || scope === "own_area_and_children")) return visible;
@@ -41,7 +40,8 @@ export class MarketingHomeRepository {
         return visible;
     }
     /**
-     *
+     * Agregado nativo del inicio. La fecha resta seis horas al alta.
+     * Más de 50000 filas agrupadas es un error. No se entrega un resumen recortado.
      */
     async readNative(tx: Transaction<CrmDatabase>, window: MarketingWindow): Promise<NativeMarketingData> {
         const start = new Date(window.startEpoch * 1000).toISOString().slice(0, 23).replace("T", " ");
@@ -64,7 +64,7 @@ export class MarketingHomeRepository {
     }
 }
 
-/** Iterative closure also terminates if historical organizational data contains a cycle. */
+/** Cierra las unidades hijas por iteración. Si los datos históricos tienen un ciclo, la vuelta se detiene cuando ya no entra nadie nuevo. */
 export function includeDescendants(units: readonly { id_org_unit: number; parent_org_unit_id_org_unit: number | null }[], permitted: Set<number>): void {
     let changed = true;
     while (changed) {

@@ -16,7 +16,10 @@ const startOfMonth = (value: string) => `${value.slice(0, 7)}-01`;
 const startOfYear = (value: string) => `${value.slice(0, 4)}-01-01`;
 const elapsed = (from: string, to: string) => Math.round((utcDay(to).getTime() - utcDay(from).getTime()) / DAY);
 
-/** Equal elapsed calendar dates; a shorter previous month/year ends at its actual last day. */
+/**
+ * El periodo anterior dura los mismos días corridos.
+ * Un mes o un año más corto termina en su último día real. El 29 de febrero que no existe cae en el día anterior.
+ */
 function previousRange(period: MarketingPeriod, selected: MarketingDateRange): MarketingDateRange {
     if (period === "day") return { start: shift(selected.start, -1), end: shift(selected.end, -1) };
     if (period === "week") return { start: shift(selected.start, -7), end: shift(selected.end, -7) };
@@ -33,7 +36,10 @@ function previousRange(period: MarketingPeriod, selected: MarketingDateRange): M
     return { start, end: closedMonth || end > previousEnd ? previousEnd : end };
 }
 
-/** UTC-6 calendar bounds are independent of the Node/MySQL session timezone. No DST in Costa Rica. */
+/**
+ * Los límites salen del calendario de Costa Rica, no de la zona de Node ni de la sesión de MySQL.
+ * No hay horario de verano. La semana empieza el lunes y la medianoche local es las 06:00 UTC.
+ */
 export function createMarketingWindow(period: MarketingPeriod, now = new Date()) {
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Costa_Rica", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
     const weekday = utcDay(today).getUTCDay();

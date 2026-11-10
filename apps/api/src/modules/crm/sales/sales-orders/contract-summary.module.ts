@@ -9,13 +9,13 @@ import { ApprovalSummaryModule } from "./approval-summary.module.js";
 import { ContractSummaryRepository } from "./contract-summary.repository.js";
 import { ContractSummaryService } from "./contract-summary.service.js";
 
-/** Home counts only; no list or mutation endpoints are enabled in this cut. */
+/** Solo conteos del inicio. En este corte no hay lista ni endpoints de mutación. */
 @Controller("formalization/contracts")
 export class ContractSummaryController {
-    /** Delegates resource-independent membership checks to the use case. */
+    /** Delega en el caso de uso la membresía, que no depende del recurso. */
     constructor(@Inject(ContractSummaryService) private readonly service: ContractSummaryService) {}
 
-    /** Global aggregate JSON for the permitted banner. */
+    /** JSON agregado global del banner permitido. */
     @Get("summary")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "formalization-read" })
@@ -25,6 +25,6 @@ export class ContractSummaryController {
     }
 }
 
-/** Reuses native identity-shadow lookup from approvals. */
+/** Reutiliza la búsqueda de aprobaciones en la que la identidad nativa tapa lo viejo. */
 @Module({ imports: [IdentityModule, ApprovalSummaryModule], controllers: [ContractSummaryController], providers: [ContractSummaryRepository, ContractSummaryService] })
 export class ContractSummaryModule {}

@@ -12,10 +12,10 @@ import { NotesRepository } from "./notes.repository.js";
 import { authorizeNoteView, normalizeNoteContext, noteHomeViewCode } from "./notes-context.js";
 import { NotesRealtimeSignal } from "./notes-realtime.signal.js";
 
-/** Native stage2 commands. Shared editing, replies and deliveries are deliberately absent. */
+/** Comandos nativos de la nota propia. En este servicio no hay edición compartida, respuestas ni entregas. */
 @Injectable()
 export class NotesService {
-    /** Injects existing identity, native persistence and authorized order-context reads. */
+    /** Identidad, persistencia nativa y lectura autorizada del contexto de la orden. */
     // eslint-disable-next-line max-params
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
@@ -25,7 +25,7 @@ export class NotesService {
         @Inject(NoteRelatedRecordsService) private readonly related: NoteRelatedRecordsService,
     ) {}
 
-    /** Authorizes a single context before returning bounded notes and own placements. */
+    /** Autoriza un solo contexto antes de devolver las notas acotadas y las posiciones propias. */
     async list(session: string | undefined, input: unknown) {
         const profile = await this.authorize(session, input, "read");
         const query = this.parse(listNotesSchema, input);
@@ -44,20 +44,20 @@ export class NotesService {
         return { schemaVersion: 1, page: { number: query.page, size: query.pageSize, total: data.total }, items: data.items.map((note) => ({ ...presentNote(profile, note), myPlacements: placements.get(note.publicId) ?? [], relatedRecords: related.get(note.publicId) ?? [] })) };
     }
 
-    /** Rechecks the persisted module and context before exposing any private content. */
+    /** Vuelve a comprobar el módulo y el contexto guardados antes de mostrar contenido privado. */
     async read(session: string | undefined, id: string, input: unknown) {
         const { profile, access, note, context } = await this.load(session, id, input);
         const related = await this.related.summariesForNotes(profile, [note]);
         return { schemaVersion: 1, note: { ...presentNote(profile, note), context, myPlacements: await this.repository.placement(access, note), relatedRecords: related.get(note.publicId) ?? [] } };
     }
 
-    /** Returns only the metadata audit of a note the current user may still read. */
+    /** Devuelve solo la bitácora de metadatos de una nota que el usuario todavía puede leer. */
     async history(session: string | undefined, id: string, input: unknown) {
         const { note, profile } = await this.load(session, id, input);
         return { schemaVersion: 1, contentRestorationAvailable: false, items: await this.repository.history(note, profile.user.publicId) };
     }
 
-    /** Creates an author-owned private note; stage4 sharing fields are rejected. */
+    /** Crea una nota privada del autor. Los campos de compartir se rechazan. */
     async create(session: string | undefined, input: unknown) {
         const profile = await this.authorize(session, input, "create");
         const command = this.parse(createNoteSchema, input);
@@ -78,7 +78,7 @@ export class NotesService {
         return result;
     }
 
-    /** Checks live permission and immutable author before the transactional command. */
+    /** Comprueba el permiso vivo y que el autor no cambió antes del comando transaccional. */
     async edit(session: string | undefined, id: string, input: unknown) {
         const profile = await this.authorize(session, input, "edit_own");
         const command = this.parse(editNoteSchema, input);
@@ -89,7 +89,7 @@ export class NotesService {
         return result;
     }
 
-    /** Completes, reopens or archives only the original author's note. */
+    /** Completar, reabrir o archivar solo lo hace el autor original. */
     async lifecycle(session: string | undefined, id: string, input: unknown, action: NoteLifecycle) {
         const profile = await this.authorize(session, input, action === "archive" ? "archive_own" : "resolve_own");
         const command = this.parse(noteStateSchema, input);
@@ -100,7 +100,7 @@ export class NotesService {
         return result;
     }
 
-    /** Changes the caller's layout without changing authorship or content. */
+    /** Cambia la disposición de quien llama. El autor y el contenido siguen. */
     async move(session: string | undefined, id: string, input: unknown) {
         const command = this.parse(placementSchema, input);
         const { access } = await this.load(session, id, { moduleCode: command.moduleCode }, false);
@@ -160,7 +160,7 @@ export class NotesService {
     }
 }
 
-/** Presents authorized note content; callers must enforce note ACL and redact linked resources separately. */
+/** Presenta el contenido ya autorizado. Quien llama aplica la ACL de la nota y redacta los recursos vinculados por su lado. */
 export function presentNote(profile: Pick<IdentityProfile, "user" | "permissions">, n: NoteRecord) {
     const own = n.authorPublicId === profile.user.publicId;
     const allowed = (action: NoteAction) => own && canUseNotes(profile, n.moduleCode, action);

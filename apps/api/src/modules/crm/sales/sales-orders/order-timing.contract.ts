@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const nativeId = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
-/** Legacy URL identity is a CRM source ID, not an ERP transaction number. */
+/** La identidad de la URL vieja es el id de origen del CRM, no el número de transacción del ERP. */
 export const orderTimingIdentity = z.discriminatedUnion("source", [
     z.object({ source: z.literal("native"), id: z.string().regex(nativeId) }),
     z.object({
@@ -64,7 +64,7 @@ function parseJsonOrNull(text: string): unknown {
         return null;
     }
 }
-/** Snapshots preserve historical names. Reference-only legacy evidence is not attributed by guesswork. */
+/** La foto conserva los nombres históricos. Una evidencia vieja que solo es referencia no se atribuye por adivinación. */
 export function timingPerson(snapshot: unknown, reference: unknown): TimingPerson | null {
     // Un snapshot historico danado (texto no JSON) no debe tumbar toda la lectura del historial: se trata como sin datos.
     const value = typeof snapshot === "string" ? parseJsonOrNull(snapshot) : snapshot;

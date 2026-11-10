@@ -9,7 +9,10 @@ import { historyEntrySchema } from "./lead-history.contract.js";
 const querySchema = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50), cursor: z.string().max(256).optional() }).strict();
 const cursorSchema = z.object({ recordId: z.string(), before: z.number().int().positive() }).strict();
 
-/** Bounded cursor tied to one record; a cursor for another lead is never reusable. */
+/**
+ * Cursor atado a un solo registro. El de otro lead se rechaza antes de consultar.
+ * El id tiene que ser ULID. El límite va de 1 a 100 y, si no viene, es 50. Un token mal formado responde lo mismo que uno de otro registro.
+ */
 export function readHistoryQuery(recordId: string, value: unknown) {
     if (!isValid(recordId)) throw new BadRequestException("Invalid history record");
     const parsed = querySchema.safeParse(value);
@@ -27,24 +30,27 @@ export function readHistoryQuery(recordId: string, value: unknown) {
     return { limit: parsed.data.limit, before };
 }
 
-/** Only approved display fields leave the archive; raw source and actor identifiers stay internal. */
+/** Solo salen los campos aprobados. Si el archivo no cumple el contrato, la entrada es nula y no se responde 500. El origen crudo y los ids del actor se quedan adentro. */
 export function displayHistoryEntry(value: unknown) {
     const decoded: unknown = typeof value === "string" ? JSON.parse(value) : value;
     const parsed = z.object({ historyEntry: historyEntrySchema }).safeParse(decoded);
     return parsed.success ? parsed.data.historyEntry : null;
 }
 
-/** Native-only read model; works after the legacy adapter and its connection are removed. */
+/** Lectura solo nativa. Sigue funcionando cuando se quite el adaptador viejo y su conexión. */
 export class LeadHistoryReader {
-    /** No legacy dependency is required to read preserved history. */
+    /** Leer lo ya conservado no exige el CRM viejo. */
     constructor(private readonly database: Pick<DatabaseService, "db">) {}
 
-    /** Read one authorized record in descending evidence sequence with a bounded cursor. */
+    /**
+     * Lee un registro ya autorizado, del más reciente al más antiguo.
+     * También acepta el archivo `lead_history_unresolved`. Pide una fila de más solo para marcar si hay otra página.
+     */
     async timeline(recordId: string, rawQuery: unknown = {}) {
         const query = readHistoryQuery(recordId, rawQuery);
         const record = await this.database.db.selectFrom("audit_record").select(["id_record as publicId", "entity_type_record as entity"]).where("id_record", "=", recordId).where("entity_type_record", "in", ["lead", "lead_history_unresolved"]).executeTakeFirst();
         if (!record) throw new NotFoundException("Lead history unavailable");
-        // DATETIME stores UTC without a zone. Format in SQL so mysql2's local timezone cannot shift it.
+        // El DATETIME guarda UTC sin zona. Se formatea en SQL para que la zona local de mysql2 no lo corra.
         let read = this.database.db
             .selectFrom("audit_record_event")
             .select(["id_record_event as publicId", "sequence_record_event as sequence", sql<string>`DATE_FORMAT(recorded_at_record_event,'%Y-%m-%dT%H:%i:%s.%fZ')`.as("recordedAt"), "after_record_event as snapshot", "actor_snapshot_record_event as actor", "snapshot_scope_record_event as coverage"])

@@ -7,13 +7,16 @@ import { RequirePermission } from "../../../common/security/require-permission.d
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { MarketingLeadsReportService } from "./marketing-leads-report.service.js";
 
-/** Protected acquisition report; Marketing Home's independent contract stays intact. */
+/**
+ * Reporte de captación. La cookie identifica la sesión y la respuesta no se cachea.
+ * El permiso de ruta es `mercadeo.leads.read`. El del inicio es otro y no abre esta consulta.
+ */
 @ApiTags("Marketing")
 @Controller("marketing/leads")
 export class MarketingLeadsReportController {
-    /** Explicit injection supports the tsx/Vitest runtime. */
+    /** Inyección explícita. El servicio vuelve a evaluar el permiso efectivo. */
     constructor(@Inject(MarketingLeadsReportService) private readonly service: MarketingLeadsReportService) {}
-    /** Read captured-lead cohorts with native authority and optional legacy evidence. */
+    /** Lee cohortes de leads captados. Lo nativo manda y la evidencia vieja entra solo si su puerto está activo. */
     @Get("report")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "all", codes: ["mercadeo.leads.read"] })

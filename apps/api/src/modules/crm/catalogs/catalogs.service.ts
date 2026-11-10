@@ -2,8 +2,9 @@
  * Caso de uso de los catálogos de tabla compartida.
  *
  * La autorización, el módulo de contexto y el rechazo de ids `legacy:` viven
- * en `CatalogItemOperations`. Este servicio solo ata identidad, repositorio y
- * el lector opcional del CRM viejo.
+ * en `CatalogItemOperations`. Este servicio no deja pasar un id `legacy:`:
+ * aquí no hay promoción. Solo ata identidad, el repositorio compartido y el
+ * lector opcional del CRM viejo.
  */
 import { Inject, Injectable, Optional } from "@nestjs/common";
 

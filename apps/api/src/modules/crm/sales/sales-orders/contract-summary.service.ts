@@ -9,7 +9,7 @@ import { ApprovalSummaryRepository } from "./approval-summary.repository.js";
 import { CONTRACT_SUMMARY_LEGACY_READER, type ContractCounts, type ContractSummaryLegacyReader, type LegacyContractRow } from "./contract-summary.port.js";
 import { ContractSummaryRepository } from "./contract-summary.repository.js";
 
-/** Tallies one legacy page, skipping migrated ids. Unknown/later stages contribute to neither queue; both queue totals remain exclusive. */
+/** Cuenta una página vieja y omite los ids ya migrados. Una etapa desconocida o posterior no entra en ninguna cola. Los dos totales siguen siendo excluyentes. */
 function addLegacyRows(counts: ContractCounts, rows: LegacyContractRow[], migrated: Set<number>): void {
     for (const row of rows) {
         if (migrated.has(row.id)) continue;
@@ -18,10 +18,10 @@ function addLegacyRows(counts: ContractCounts, rows: LegacyContractRow[], migrat
     }
 }
 
-/** Native identity shadows legacy even when its current native row no longer qualifies. */
+/** La identidad nativa tapa lo viejo aunque la fila nativa actual ya no califique. */
 @Injectable()
 export class ContractSummaryService {
-    /** Uses existing authorization and migrated-identity lookup, without another native pool. */
+    /** Usa la autorización existente y la búsqueda de identidades migradas. No abre otro pool nativo. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(ContractSummaryRepository) private readonly repository: ContractSummaryRepository,
@@ -29,7 +29,7 @@ export class ContractSummaryService {
         @Inject(CONTRACT_SUMMARY_LEGACY_READER) private readonly legacy: ContractSummaryLegacyReader,
     ) {}
 
-    /** Authorize before either source and return aggregate counts only. */
+    /** Autoriza antes de cualquiera de las dos fuentes y devuelve solo conteos agregados. */
     async summary(session?: string) {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationQueue(profile, "contracts")) throw new ForbiddenException("Se requiere el rol activo Formalizacion y el permiso de lectura de sus banners.");
@@ -46,7 +46,7 @@ export class ContractSummaryService {
         }
     }
 
-    /** Pages the legacy journal by keyset, discarding ids already migrated to native so nothing counts twice. */
+    /** Pagina el diario viejo por clave y descarta los ids ya migrados, para que nada se cuente dos veces. */
     private async legacyCount(tx: Transaction<CrmDatabase>) {
         const counts: ContractCounts = { toSend: 0, pendingSignature: 0 };
         let duplicates = 0;

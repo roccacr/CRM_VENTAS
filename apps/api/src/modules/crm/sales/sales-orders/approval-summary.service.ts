@@ -7,17 +7,17 @@ import { IdentityService } from "../../identity/identity.service.js";
 import { APPROVAL_LEGACY_READER, type ApprovalLegacyReader, SALES_ORDER_SUMMARY_PAGE_SIZE } from "./approval-summary.port.js";
 import { ApprovalSummaryRepository } from "./approval-summary.repository.js";
 
-/** Canonical count: native data takes precedence over matching legacy identities. */
+/** Conteo canónico. Lo nativo prevalece sobre la identidad vieja que coincide. */
 @Injectable()
 export class ApprovalSummaryService {
-    /** Authorization precedes access to either database. */
+    /** La autorización va antes de acceder a cualquiera de las dos bases. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(ApprovalSummaryRepository) private readonly repository: ApprovalSummaryRepository,
         @Inject(APPROVAL_LEGACY_READER) private readonly legacy: ApprovalLegacyReader,
     ) {}
 
-    /** Returns no personal data and never treats source failure as zero. */
+    /** No devuelve datos personales. Un fallo de la fuente no se informa como cero. */
     async summary(session?: string) {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationQueue(profile, "approvals")) throw new ForbiddenException("No tiene permiso para ver pendientes de aprobacion.");
@@ -32,7 +32,7 @@ export class ApprovalSummaryService {
         }
     }
 
-    /** Bounded keyset reads avoid an unbounded identity list in memory. */
+    /** La lectura por clave está acotada. No acumula en memoria una lista de identidades sin tope. */
     private async legacyCount(tx: Transaction<CrmDatabase>) {
         let count = 0;
         let duplicates = 0;

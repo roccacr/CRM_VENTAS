@@ -15,11 +15,11 @@ import { canUseCollaboration, canUseNotes, type NoteAction, type NoteModule } fr
 import { presentNote } from "./notes.service.js";
 import { authorizeNoteView, noteHomeViewCode } from "./notes-context.js";
 import { NotesRealtimeSignal } from "./notes-realtime.signal.js";
-/** Explicit invitations grant conversation access; linked resources are authorized separately. */
+/** Una invitación explícita abre la conversación. El recurso vinculado se autoriza aparte. */
 @Injectable()
 export class NoteCollaborationService {
-    /** Injects existing authorization and native persistence collaborators. */
-    // Explicit signal dependency wakes delivery only after the command commits.
+    /** Autorización existente y persistencia nativa. */
+    // El aviso despierta la entrega solo después de que el comando confirmó.
     // eslint-disable-next-line max-params
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
@@ -29,13 +29,13 @@ export class NoteCollaborationService {
         @Inject(NotesRealtimeSignal) private readonly realtime: NotesRealtimeSignal,
         @Inject(NoteRelatedRecordsService) private readonly related: NoteRelatedRecordsService,
     ) {}
-    /** Consumer facade returns references only and fails closed for revoked, inactive or unauthorized recipients. */
+    /** La fachada devuelve solo referencias. Un destinatario revocado, inactivo o sin permiso se cierra. */
     async authorizeUserRead(userPublicId: string, noteId: string) {
         const profile = await this.profiles.findAuthorizationByUserPublicId(userPublicId);
         if (!profile) return null;
         return this.authorizeProfileRead(profile, noteId);
     }
-    /** Rechecks a server-derived profile without constructing a login session. */
+    /** Vuelve a leer el perfil armado en el servidor. No fabrica una sesión de login. */
     async authorizeProfileRead(profile: IdentityAuthorizationProfile, noteId: string) {
         try {
             const state = await this.load(profile, noteId);
@@ -45,7 +45,7 @@ export class NoteCollaborationService {
             throw error;
         }
     }
-    /** Note-only ACL for reminders/counts; record resolution must not delay personal collaboration. */
+    /** Recordatorios y conteos usan solo la ACL de la nota. Resolver el registro no retrasa la colaboración personal. */
     async authorizeProfileNoteAccess(profile: IdentityAuthorizationProfile, noteId: string) {
         try {
             const state = await this.load(profile, noteId);
@@ -55,12 +55,12 @@ export class NoteCollaborationService {
             throw error;
         }
     }
-    /** Resolves the live native account before note-only scheduled delivery. */
+    /** Resuelve la cuenta nativa viva antes de una entrega programada que solo toca la nota. */
     async authorizeUserNoteAccess(userPublicId: string, noteId: string) {
         const profile = await this.profiles.findAuthorizationByUserPublicId(userPublicId);
         return profile ? this.authorizeProfileNoteAccess(profile, noteId) : null;
     }
-    /** Returns only currently authorized notes in the requested inbox. */
+    /** Devuelve solo las notas que ahora están autorizadas en la bandeja pedida. */
     async inbox(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const query = this.parse(collaborationInboxSchema, input);
@@ -83,13 +83,13 @@ export class NoteCollaborationService {
         );
         return { schemaVersion: 1 as const, items: await Promise.all(authorized.map((state) => this.present(profile, state, related.get(state.note.publicId) ?? []))), page: { number: query.page, size: query.pageSize, total: Math.max(0, page.total - page.items.length + authorized.length) } };
     }
-    /** Complete author filter options without disclosing unrelated directory accounts. */
+    /** Las opciones de autor salen de las notas visibles. No revela cuentas del directorio ajenas a ellas. */
     async inboxAuthors(session: string | undefined) {
         const profile = await this.identity.getCurrentUser(session);
         const modules = CATALOG_CONTEXT_MODULES.filter((module) => canUseCollaboration(profile, module, "read", true));
         return { schemaVersion: 1 as const, items: await this.repository.inboxAuthors(profile.user.publicId, modules) };
     }
-    /** Loads one authorized conversation with a bounded reply page. */
+    /** Carga una conversación autorizada con una página acotada de respuestas. */
     async thread(session: string | undefined, id: string, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const query = this.parse(collaborationThreadSchema, input);
@@ -117,7 +117,7 @@ export class NoteCollaborationService {
             following: state.participants.find((p) => p.userId === profile.user.publicId)?.following ?? true,
         };
     }
-    /** Visible history is metadata only and follows the current note ACL. */
+    /** La historia visible es solo metadatos y sigue la ACL actual de la nota. */
     async activity(session: string | undefined, id: string, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const state = await this.load(profile, id);
@@ -151,7 +151,7 @@ export class NoteCollaborationService {
             }),
         };
     }
-    /** Additional Homes are display references, independently checked for each viewer. */
+    /** Los inicios adicionales son referencias de presentación. Cada lector se comprueba por su lado. */
     async locations(session: string | undefined, id: string) {
         const profile = await this.identity.getCurrentUser(session);
         const state = await this.load(profile, id);
@@ -171,13 +171,13 @@ export class NoteCollaborationService {
             }
         });
     }
-    /** One versioned command changes references, never copies the note or grants record access. */
+    /** Un comando versionado cambia referencias. No copia la nota ni concede el registro. */
     async replaceLocations(session: string | undefined, id: string, input: unknown) {
         const command = this.parse(locationsSchema, input);
         if (command.locations.some((location) => location.code !== noteHomeViewCode(location.moduleCode))) throw new BadRequestException("Solo se admiten Homes registrados.");
         return this.mutate(session, id, { ...command, kind: "locations" });
     }
-    /** Lists eligible recipients after owner sharing authorization. */
+    /** Lista destinatarios posibles después de autorizar que el dueño comparte. */
     async eligibleUsers(session: string | undefined, id: string, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const state = await this.load(profile, id);
@@ -186,7 +186,7 @@ export class NoteCollaborationService {
         const query = this.parse(collaborationSearchSchema, input);
         return this.directory(profile, state.note.moduleCode, query);
     }
-    /** Validates prospective note context before listing eligible recipients. */
+    /** Valida el contexto previsto de la nota antes de listar destinatarios. */
     async eligibleDraftUsers(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const raw = this.parse(z.object({ moduleCode: z.unknown(), contextType: z.unknown().optional(), viewCode: z.unknown().optional(), recordSource: z.unknown().optional(), recordId: z.unknown().optional(), search: z.string().trim().max(100).default(""), page: collaborationSearchSchema.shape.page }).strict(), input);
@@ -212,29 +212,29 @@ export class NoteCollaborationService {
         }
         return { items, hasMore: candidates.length > 100 };
     }
-    /** Replaces explicit participants using optimistic collaboration concurrency. */
+    /** Reemplaza participantes explícitos con la versión esperada de la colaboración. */
     async participants(session: string | undefined, id: string, input: unknown) {
         return this.mutate(session, id, { ...this.parse(participantsSchema, input), kind: "participants" });
     }
-    /** Loads or changes structured mentions within the authorized conversation. */
+    /** Carga o cambia menciones estructuradas dentro de la conversación autorizada. */
     async mentions(session: string | undefined, id: string, input: unknown) {
         return this.mutate(session, id, { ...this.parse(mentionsSchema, input), kind: "mentions" });
     }
-    /** Publishes an attributed reply after checking current reply access. */
+    /** Publica una respuesta atribuida después de comprobar el acceso actual a responder. */
     async reply(session: string | undefined, id: string, input: unknown) {
         return this.mutate(session, id, { ...this.parse(replySchema, input), kind: "reply" });
     }
-    /** Edits only the caller authored reply with its expected version. */
+    /** Edita solo la respuesta de quien llama, con su versión esperada. */
     async editReply(session: string | undefined, id: string, replyId: string, input: unknown) {
         this.parse(noteIdSchema, replyId);
         return this.mutate(session, id, { ...this.parse(editReplySchema, input), kind: "editReply", replyId });
     }
-    /** Withdraws only the caller authored reply without deleting attribution. */
+    /** Retira solo la respuesta de quien llama. La atribución queda. */
     async withdrawReply(session: string | undefined, id: string, replyId: string, input: unknown) {
         this.parse(noteIdSchema, replyId);
         return this.mutate(session, id, { ...this.parse(withdrawReplySchema, input), kind: "withdrawReply", replyId });
     }
-    /** Updates only the authenticated caller following preference. */
+    /** Cambia solo la preferencia de seguimiento de quien está autenticado. */
     async following(session: string | undefined, id: string, input: unknown) {
         return this.mutate(session, id, { ...this.parse(followingSchema, input), kind: "following" });
     }
@@ -298,7 +298,7 @@ export class NoteCollaborationService {
         this.require(profile, state, "read");
         return state;
     }
-    /** Invitation reveals conversation only; the original resource remains independently protected. */
+    /** La invitación muestra la conversación. El recurso original sigue protegido por su propio permiso. */
     private async visibleContext(profile: IdentityAuthorizationProfile, state: CollaborationNote): Promise<NoteContext | null> {
         try {
             await this.context(profile, state.note.moduleCode, state.context);

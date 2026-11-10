@@ -14,16 +14,16 @@ import { orderTimingIdentity } from "./order-timing.contract.js";
 
 const approvalRequest = z.strictObject({ source: z.enum(["native", "legacy"]), id: z.string().max(26), expectedSequence: z.number().int().min(0).max(4294967294), operationId: z.uuid() });
 
-/** Authorizes the live session before resolving either database or confirming the ERP check. */
+/** Autoriza la sesión viva antes de resolver cualquiera de las dos bases o confirmar la marca del ERP. */
 @Injectable()
 export class FormalizationApprovalService {
-    /** Internal callers must also use a live session; neither role names nor client flags can grant approval. */
+    /** Un llamador interno también usa la sesión viva. Ni el nombre del rol ni una bandera del cliente conceden la aprobación. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(FormalizationApprovalRepository) private readonly repository: FormalizationApprovalRepository,
     ) {}
 
-    /** The banner read grant never authorizes this mutation; individual denies still prevail. */
+    /** El permiso de leer el banner no autoriza esta mutación. Un deny individual sigue ganando. */
     async approve(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         if (!formalizationPermissionScope(profile, "formalizacion.orders.approve").allowed) throw new ForbiddenException("No tiene permiso para aprobar Formalización.");
@@ -35,14 +35,14 @@ export class FormalizationApprovalService {
     }
 }
 
-/** Global session, CSRF and permission guards apply before the command service. */
+/** Sesión, CSRF y permiso globales corren antes del servicio del comando. */
 @ApiTags("Formalization orders")
 @Controller("formalization/orders")
 export class FormalizationApprovalController {
-    /** Reuses the live application authorization for HTTP and internal calls. */
+    /** Reutiliza la autorización viva de la aplicación para HTTP y para llamadas internas. */
     constructor(@Inject(FormalizationApprovalService) private readonly service: FormalizationApprovalService) {}
 
-    /** Confirms the ERP check first, then commits the local approval and audit together. */
+    /** Confirma primero la marca del ERP y después confirma juntas la aprobación local y la bitácora. */
     @Post("approve")
     @HttpCode(200)
     @Header("Cache-Control", "no-store")

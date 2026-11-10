@@ -5,10 +5,10 @@ import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { TimingOrder, TimingPagination } from "./order-timing.contract.js";
 import { readOrderTiming } from "./order-timing.query.js";
 
-/** Native aliases remain authoritative, including inactive or deleted orders. */
+/** El alias nativo sigue siendo la autoridad, también si la orden está inactiva o borrada. */
 @Injectable()
 export class OrderTimingRepository {
-    /** No legacy access: one explicit lookup includes just the resource authorization projection. */
+    /** No abre el CRM viejo. Una búsqueda explícita trae solo la proyección que autoriza el recurso. */
     async find(tx: Transaction<CrmDatabase>, source: "native" | "legacy", id: string): Promise<TimingOrder | undefined> {
         const where = source === "native" ? sql`o.public_id_sales_order=${id}` : sql`o.id_old_produccion_sales_order=${Number(id)}`;
         const year = Number(new Intl.DateTimeFormat("en", { timeZone: "America/Costa_Rica", year: "numeric" }).format(new Date()));
@@ -29,7 +29,7 @@ export class OrderTimingRepository {
         const row = result.rows[0];
         return row ? { ...row, active: row.active === 1, pendingApproval: row.pendingApproval === 1 } : undefined;
     }
-    /** Source ID is resolved internally, never supplied as a SQL identifier. */
+    /** El id de origen se resuelve adentro. No se usa como identificador SQL. */
     read(tx: Transaction<CrmDatabase>, id: string, page: TimingPagination) {
         return readOrderTiming(tx, { view: sql.table("audit_sales_order_state_duration"), states: sql.table("conf_sales_order_state") }, id, page);
     }

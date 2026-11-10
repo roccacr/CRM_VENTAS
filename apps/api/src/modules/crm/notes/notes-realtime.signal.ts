@@ -1,17 +1,17 @@
 import { Injectable, Logger } from "@nestjs/common";
-/** Post-commit optimization only. Durable polling remains the recovery authority. */
+/** Aviso posterior al commit. La recuperación sigue siendo el sondeo durable. */
 @Injectable()
 export class NotesRealtimeSignal {
     private readonly logger = new Logger(NotesRealtimeSignal.name);
     private readonly listeners = new Set<() => void | Promise<void>>();
-    /** Both notification and realtime workers subscribe without a circular dependency. */
+    /** La campana y el tiempo real se suscriben aquí, sin depender uno del otro en el arranque. */
     subscribe(listener: () => void | Promise<void>): () => void {
         this.listeners.add(listener);
         return () => {
             this.listeners.delete(listener);
         };
     }
-    /** Call only after the mutation transaction resolves successfully. */
+    /** Se llama solo después de que la transacción de la mutación confirmó. Un fallo del aviso no revierte el cambio. */
     notify(): void {
         for (const listener of this.listeners) {
             try {

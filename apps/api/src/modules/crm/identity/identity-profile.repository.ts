@@ -72,7 +72,7 @@ export class IdentityProfileRepository {
         @Inject(EffectivePermissionService) private readonly permissions: EffectivePermissionService,
     ) {}
 
-    /** Resolves current persisted user policy for internal resource checks, without impersonating a session. */
+    /** Política persistida del usuario para comprobaciones internas. No fabrica una sesión ni suplanta a la persona. */
     async findAuthorizationByUserPublicId(publicId: string): Promise<IdentityAuthorizationProfile | null> {
         const user = await this.database.db.selectFrom("sec_user").select(["id_user as id", "public_id_user as publicId", "display_name_user as displayName", "email_user as email", "status_user as status", "permission_version_user as permissionVersion"]).where("public_id_user", "=", publicId).where("status_user", "=", ACTIVE_STATUS).where("deleted_at_user", "is", null).executeTakeFirst();
         if (!user) return null;
@@ -287,7 +287,7 @@ export class IdentityProfileRepository {
             .execute();
     }
 
-    /** Owner's global module access is virtual; root membership never hides all operational menus. */
+    /** El acceso global de Owner es virtual. La membresía de raíz no esconde los menús operativos. */
     private async effectiveOrgUnits(access: ModuleRoleAccess, assigned: readonly IdentityOrgUnit[]): Promise<IdentityOrgUnit[]> {
         if (!access.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === ACTIVE_STATUS)) return assigned.filter((unit) => access.moduleCodes === null || access.moduleCodes.includes(unit.code));
         const modules = await this.database.db.selectFrom("sec_org_unit").select(["code_org_unit as code", "name_org_unit as name", "public_id_org_unit as publicId", "status_org_unit as status"]).where("status_org_unit", "=", ACTIVE_STATUS).where("deleted_at_org_unit", "is", null).orderBy("sort_order_org_unit", "asc").execute();
@@ -349,17 +349,17 @@ export class IdentityProfileRepository {
         };
     }
 
-    /** Personal notes are self-only within existing effective modules; live overrides still win. */
+    /** Las notas personales quedan en alcance propio y solo en los módulos efectivos. Un override vivo sigue ganando. */
     private async findPersonalNotesPermissions(orgUnits: readonly IdentityOrgUnit[]): Promise<PermissionInput[]> {
         const modules = orgUnits.map((unit) => unit.code).filter((code) => CATALOG_CONTEXT_MODULES.some((module) => module === code));
         if (modules.length === 0) return [];
         const codes = modules.flatMap((module) => NOTE_ACTIONS.map((action) => `${module}.notes.${action}`));
         const rows = await this.database.db.selectFrom("sec_permission").select(["code_permission as code", "module_code_permission as moduleCode"]).where("status_permission", "=", ACTIVE_STATUS).where("code_permission", "in", codes).where("module_code_permission", "in", modules).execute();
-        // Exact matching also prevents a misconfigured definition from borrowing another module.
+        // La coincidencia exacta evita que una definición mal armada tome el permiso de otro módulo.
         return rows.filter((row) => modules.includes(row.moduleCode) && NOTE_ACTIONS.some((action) => row.code === `${row.moduleCode}.notes.${action}`)).map((row) => ({ code: row.code, scope: DEFAULT_DIRECT_OVERRIDE_SCOPE }));
     }
 
-    /** A grant cannot borrow another role's ceiling or survive its own role revocation. */
+    /** Un permiso no toma el techo de otro rol ni sobrevive a la revocación del suyo. */
     private restrictGrantingRoles<T extends { code: string; roleCode?: string; moduleCode?: string }>(inputs: readonly T[], access: ModuleRoleAccess): T[] {
         if (access.moduleCodes === null) return [...inputs];
         const roles = new Set(access.roles.map((role) => role.code));
@@ -371,14 +371,14 @@ export class IdentityProfileRepository {
         });
     }
 
-    /** The profile is the common boundary for HTTP, services and internal callers. */
+    /** El mismo recorte vale para HTTP, servicios y llamadores internos. */
     private restrictToModules<T extends { code: string; scope: string; moduleCode?: string }>(inputs: readonly T[], modules: readonly string[] | null, orgUnits: readonly IdentityOrgUnit[]): T[] {
         if (modules === null) return [...inputs];
         return inputs
             .filter((input) => input.code === LEAD_PROFILE_PERMISSION || (input.moduleCode !== undefined && modules.includes(normalizePermissionModule(input.moduleCode))))
             .map((input) => {
                 const membership = orgUnits.find((unit) => unit.code === normalizePermissionModule(input.moduleCode ?? ""));
-                // A direct allow retains its narrow scope; it never widens the role grant.
+                // Un allow directo conserva su alcance estrecho. No ensancha el permiso del rol.
                 return { ...input, scope: input.scope === DEFAULT_DIRECT_OVERRIDE_SCOPE ? input.scope : (membership?.scope ?? DEFAULT_DIRECT_OVERRIDE_SCOPE) };
             });
     }

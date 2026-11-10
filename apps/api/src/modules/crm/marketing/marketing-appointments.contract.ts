@@ -1,3 +1,7 @@
+/**
+ * Contrato de citas del reporte. Los estados son programada, completada, cancelada o desconocida.
+ * La asistencia solo es asistió o faltó; otro valor queda nulo al leer. Si falta una de las dos evidencias, el resultado es no disponible.
+ */
 import type { MarketingEntity } from "./marketing-home.contract.js";
 
 export type AppointmentState = "scheduled" | "completed" | "cancelled" | "unknown";

@@ -7,10 +7,10 @@ import type { CreateIdentitySessionInput, RefreshProviderValidation, RevokeOwnSe
 import type { IdentityActiveSession } from "./identity.types.js";
 import { ACTIVE_STATUS, earliestDate, EXPIRED_STATUS, hasUpdatedRows, IDENTITY_RUNTIME_AUDIT_SOURCE, type IdentityTransaction, REUSED_STATUS, REVOKED_STATUS, ROTATED_STATUS } from "./identity-repository.shared.js";
 
-/** Why a refresh token cannot be rotated. */
+/** Por qué no se rota el refresh: vencido, inválido o reusado. El reuso se trata como posible robo. */
 type RefreshRotationFailureStatus = "expired" | "invalid" | "reused";
 
-/** Refresh token with its session, identity and user state, read under lock. */
+/** Refresh con su sesión, identidad y usuario, leídos bajo bloqueo para que dos rotaciones no usen el mismo token. */
 type RefreshRotationRow = {
     authIdentityId: number;
     providerCode: string;
@@ -390,12 +390,12 @@ export class IdentitySessionRepository {
         return null;
     }
 
-    /** A token already rotated or flagged reused signals possible theft. */
+    /** Un token ya rotado o marcado como reusado señala posible robo. No se emite otro par. */
     private isRefreshTokenReuse(refresh: RefreshValidationRow): boolean {
         return refresh.refreshStatus === ROTATED_STATUS || refresh.refreshStatus === REUSED_STATUS;
     }
 
-    /** Session, user or identity not active, or session expired. */
+    /** Sesión, usuario o identidad inactivos, o sesión vencida. No se rota. */
     private isRefreshSessionInvalid(refresh: RefreshValidationRow, now: Date): boolean {
         return refresh.sessionStatus !== ACTIVE_STATUS || new Date(refresh.sessionExpiresAt) <= now || refresh.userStatus !== ACTIVE_STATUS || refresh.identityStatus !== ACTIVE_STATUS || refresh.userDeletedAt != null || refresh.identityDeletedAt != null;
     }

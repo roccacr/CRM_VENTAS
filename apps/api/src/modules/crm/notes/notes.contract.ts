@@ -1,3 +1,8 @@
+/**
+ * Contrato estricto de la nota propia. Un campo de más se rechaza.
+ * El id público tiene 26 caracteres Crockford y empieza en 0-7. El texto cabe en 10000, no queda vacío al recortarlo y rechaza controles salvo tab y salto de línea.
+ * La orden vieja es un entero de 1 a 2147483647. La versión esperada va de 1 a 4294967294 para que el siguiente valor siga cabiendo. La lista trae 25 por defecto y como máximo 100.
+ */
 import { z } from "zod";
 
 import { CATALOG_CONTEXT_MODULES } from "../catalogs/catalogs.constants.js";

@@ -5,7 +5,7 @@ import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsOptional, IsString, Matche
 const PERMISSION_CODE_PATTERN = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/u;
 const AUDIT_REASON_PATTERN = /\S+\s+\S+/u;
 
-/** Trims text before validation; other types pass through to be rejected by the validators. */
+/** Recorta el texto antes de validar. Otro tipo sigue y lo rechaza el validador; no se convierte en texto. */
 const toTrimmedString = ({ value }: { readonly value: unknown }): unknown => (typeof value === "string" ? value.trim() : value);
 
 /**

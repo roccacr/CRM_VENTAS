@@ -6,27 +6,27 @@ import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.cons
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { NoteRelatedRecordsService } from "./note-related-records.service.js";
 
-/** Resource captions and writes are additionally checked against note ACL and business permissions. */
+/** Títulos y escrituras se vuelven a comprobar contra la ACL de la nota y el permiso de negocio. */
 @ApiTags("note-related-records")
 @Controller()
 export class NoteRelatedRecordsController {
-    /** Injects the existing-note relation application service. */
+    /** Servicio de relaciones de una nota que ya existe. */
     constructor(@Inject(NoteRelatedRecordsService) private readonly records: NoteRelatedRecordsService) {}
-    /** Searches both configured sources without exposing database choices to users. */
+    /** Busca en las dos fuentes configuradas. El usuario no ve qué base se eligió. */
     @Get("notes/related-record-options")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     options(@Req() req: CookieRequest, @Query() query: unknown) {
         return this.records.options(req.cookies[SESSION_COOKIE_NAME], query);
     }
-    /** Returns only currently authorized related-record captions. */
+    /** Devuelve solo los títulos de registros relacionados que ahora están autorizados. */
     @Get("note-collaboration/notes/:id/related-records")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     read(@Req() req: CookieRequest, @Param("id") id: string) {
         return this.records.read(req.cookies[SESSION_COOKIE_NAME], id);
     }
-    /** Changes an author's secondary business links atomically with version, audit and realtime intent. */
+    /** Cambia los vínculos secundarios del autor en un commit, con versión, bitácora e intención de tiempo real. */
     @Put("note-collaboration/notes/:id/related-records")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")

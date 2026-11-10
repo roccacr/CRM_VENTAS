@@ -39,7 +39,7 @@ type Source = NoteRelatedReference["source"];
 const activeOrder = sql`o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL`;
 const nativeLeadOrder = sql`EXISTS(SELECT 1 FROM crm_sales_order no WHERE no.lead_id_sales_order=l.id_lead AND no.status_sales_order='active' AND no.cancelled_sales_order='no' AND no.deleted_at_sales_order IS NULL)`;
 const legacyLeadOrder = sql`(NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.leads")} sibling WHERE sibling.idinterno_lead=l.idinterno_lead AND sibling.id_lead<>l.id_lead) AND EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.ordenventa")} lo WHERE lo.id_ov_lead=l.idinterno_lead AND lo.status_ov=1 AND lo.caida_ov=0))`;
-// Provider IDs never become owner authorization unless both legacy admin and email bridge are unique.
+// Un id de proveedor no autoriza al dueño. Solo entra si el administrador legacy y el puente de correo son únicos.
 const legacyOwner = sql<
     string | null
 >`(SELECT nu.public_id_user FROM ${sql.table("crmdatabase-api.admins")} a JOIN sec_user nu ON nu.normalized_email_user COLLATE utf8mb4_bin=NULLIF(LOWER(TRIM(a.email_admin)),'') COLLATE utf8mb4_bin AND nu.deleted_at_user IS NULL WHERE a.idnetsuite_admin=l.id_empleado_lead AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.admins")} sibling WHERE sibling.idnetsuite_admin=a.idnetsuite_admin AND sibling.id_admin<>a.id_admin) AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.admins")} sibling WHERE NULLIF(LOWER(TRIM(sibling.email_admin)),'') COLLATE utf8mb4_bin=NULLIF(LOWER(TRIM(a.email_admin)),'') COLLATE utf8mb4_bin AND sibling.id_admin<>a.id_admin) LIMIT 1)`;
@@ -98,19 +98,19 @@ function searchWhere(kind: Kind, source: Source, search: string, access: Related
     return source === "native" ? sql`l.status_lead='active' AND l.deleted_at_lead IS NULL AND ${allowed} AND (COALESCE(c.full_name_contact,'') LIKE ${like} ESCAPE '!' OR COALESCE(l.company_name_lead,'') LIKE ${like} ESCAPE '!')` : sql`l.estado_lead=1 AND ${allowed} AND COALESCE(l.nombre_lead,'') LIKE ${like} ESCAPE '!' AND ${unmappedLegacy(kind)}`;
 }
 
-/** Bounded read-only projections; legacy stays optional and never supplies native FK values. */
+/** Proyecciones acotadas y de solo lectura. El legado es opcional y no aporta las llaves foráneas nativas. */
 @Injectable()
 export class NoteRelatedRecordsReader {
-    /** Reuses the native pool and the configured legacy switch; never opens a writable legacy connection. */
+    /** Reutiliza el pool nativo y el interruptor legacy configurado. No abre una conexión legacy de escritura. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(ConfigService) private readonly config: ConfigService,
     ) {}
-    /** Whether querying the old schema was explicitly configured. */
+    /** Dice si consultar el esquema viejo quedó configurado de forma explícita. */
     legacyEnabled(): boolean {
         return this.config.get<string>("LEGACY_CRM_DB_NAME") === "crmdatabase-api";
     }
-    /** Loads direct native identities and explicit legacy aliases, including unavailable tombstones. */
+    /** Carga identidades nativas directas y alias legacy explícitos, incluidas las lápidas no disponibles. */
     async readNative(references: readonly NoteRelatedReference[]): Promise<RelatedResourceRow[]> {
         return this.snapshot(async (tx) => {
             const result: RelatedResourceRow[] = [];
@@ -121,7 +121,7 @@ export class NoteRelatedRecordsReader {
             return result;
         });
     }
-    /** Legacy lookups always use PKs, never provider IDs. Callers must first prove native absence. */
+    /** La búsqueda legacy usa la llave primaria. No usa el id del proveedor. Quien llama demuestra antes que no hay fila nativa. */
     async readLegacy(references: readonly NoteRelatedReference[]): Promise<RelatedResourceRow[]> {
         return this.snapshot(async (tx) => {
             const result: RelatedResourceRow[] = [];
@@ -133,18 +133,18 @@ export class NoteRelatedRecordsReader {
             return result;
         });
     }
-    /** Confirm only the relationship of mapped native clients to existing readable legacy orders. */
+    /** Confirma solo la relación de clientes nativos ya mapeados con órdenes legacy que se pueden leer. */
     async legacyOrderClients(references: readonly NoteRelatedReference[]): Promise<string[]> {
         const ids = references.filter((reference) => reference.kind === "lead" && reference.source === "legacy").map((reference) => Number(reference.id));
         if (!ids.length) return [];
         return this.snapshot(async (tx) => (await sql<{ id: string }>`SELECT CAST(l.id_lead AS CHAR) AS id FROM ${sql.table("crmdatabase-api.leads")} l WHERE l.id_lead IN (${sql.join(ids)}) AND l.estado_lead=1 AND ${legacyLeadOrder}`.execute(tx)).rows.map((row) => row.id));
     }
-    /** Native candidates are scoped before pagination. */
+    /** Los candidatos nativos se acotan antes de paginar. */
     // eslint-disable-next-line max-params
     searchNative(kind: Kind, search: string, offset: number, limit: number, access: RelatedResourceAccess) {
         return this.search({ kind, source: "native", search, offset, limit, access });
     }
-    /** Native mappings suppress stale legacy copies even if the native row is inactive or inaccessible. */
+    /** Un mapeo nativo oculta la copia legacy vieja, aunque la fila nativa esté inactiva o no sea accesible. */
     // eslint-disable-next-line max-params
     searchLegacy(kind: Kind, search: string, offset: number, limit: number, access: RelatedResourceAccess) {
         return this.search({ kind, source: "legacy", search, offset, limit, access });

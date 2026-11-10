@@ -20,7 +20,7 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
     if (!result.success) throw new BadRequestException("Solicitud bancaria inválida.");
     return result.data;
 }
-/** Authorizes against the current profile and existing catalog capabilities. */
+/** Autoriza contra el perfil actual y las capacidades de catálogo que ya existen. */
 @Injectable()
 export class OrderBankAssignmentService {
     /** Usa servicios inyectados para conservar los límites de identidad, catálogo y auditoría. */
@@ -63,7 +63,7 @@ export class OrderBankAssignmentService {
         }
     }
 }
-/** Central assignment only; never mutates commercial order fields. */
+/** Solo la asignación central. No muta los campos comerciales de la orden. */
 @Controller("formalization/orders/:source/:id/bank-assignment")
 export class OrderBankAssignmentController {
     /** Usa servicios inyectados para conservar los límites de identidad, catálogo y auditoría. */

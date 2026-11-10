@@ -4,7 +4,7 @@ import { NoteCollaborationService } from "./note-collaboration.service.js";
 import { NoteWorkflowRepository } from "./note-workflow.repository.js";
 import { NotesRealtimeSignal } from "./notes-realtime.signal.js";
 
-/** Durable UTC scheduling works while browsers are offline and recovers expired process leases. */
+/** La agenda durable en UTC sigue con el navegador cerrado y recupera arrendamientos vencidos. */
 @Injectable()
 export class NoteWorkflowWorker implements OnModuleInit, OnModuleDestroy {
     private timer: ReturnType<typeof setInterval> | undefined;
@@ -12,13 +12,13 @@ export class NoteWorkflowWorker implements OnModuleInit, OnModuleDestroy {
     private busy = false;
     private stopped = false;
     private readonly logger = new Logger(NoteWorkflowWorker.name);
-    /** Uses the existing note authorization facade before every scheduled delivery. */
+    /** Antes de cada entrega programada usa la fachada de autorización de la nota. */
     constructor(
         @Inject(NoteWorkflowRepository) private readonly repository: NoteWorkflowRepository,
         @Inject(NoteCollaborationService) private readonly collaboration: NoteCollaborationService,
         @Inject(NotesRealtimeSignal) private readonly signal: NotesRealtimeSignal,
     ) {}
-    /** Starts a bounded poll; the schema ledger remains the activation gate. */
+    /** Arranca un sondeo acotado. El libro del esquema sigue siendo la puerta de activación. */
     onModuleInit(): void {
         this.unsubscribe = this.signal.subscribe(() => {
             void this.tick();
@@ -28,13 +28,13 @@ export class NoteWorkflowWorker implements OnModuleInit, OnModuleDestroy {
         }, 5000);
         this.timer.unref();
     }
-    /** Stops new leases and releases all process-local scheduling resources. */
+    /** Deja de tomar arrendamientos nuevos y suelta los recursos de agenda de este proceso. */
     onModuleDestroy(): void {
         this.stopped = true;
         this.unsubscribe?.();
         if (this.timer) clearInterval(this.timer);
     }
-    /** Processes at most ten schedules without overlapping a prior cycle. */
+    /** Procesa como máximo diez agendas y no monta un ciclo sobre el anterior. */
     async tick(): Promise<void> {
         if (this.busy || this.stopped) return;
         this.busy = true;

@@ -114,7 +114,12 @@ it.each([
     expect(markOrderAddendumPending).not.toHaveBeenCalled();
 });
 it("single-flights a double click and preserves the exact command/note when a write is uncertain", async () => {
-    vi.mocked(markOrderAddendumPending).mockRejectedValueOnce(new Error("secret transport"));
+    let rejectWrite: (error: Error) => void = () => {};
+    vi.mocked(markOrderAddendumPending).mockReturnValueOnce(
+        new Promise((_resolve, reject) => {
+            rejectWrite = reject;
+        }),
+    );
     render(<FormalizationMarkAddendum item={item} permissions={permissions} />);
     await open();
     fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Nota original" } });
@@ -123,11 +128,16 @@ it("single-flights a double click and preserves the exact command/note when a wr
         fireEvent.click(save);
         fireEvent.click(save);
     });
-    expect(await screen.findByRole("alert")).not.toHaveTextContent("secret transport");
     expect(markOrderAddendumPending).toHaveBeenCalledTimes(1);
+    await act(async () => {
+        rejectWrite(new Error("secret transport"));
+    });
+    expect(screen.getByRole("alert")).not.toHaveTextContent("secret transport");
     expect(screen.getByLabelText("Motivo")).toBeDisabled();
     await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Reintentar la misma marcación" })).toBeEnabled();
+        const retry = screen.getByRole("button", { name: "Reintentar la misma marcación" });
+        expect(retry).toBeEnabled();
+        expect(retry).not.toHaveClass("ant-btn-loading");
     });
     fireEvent.click(screen.getByRole("button", { name: "Reintentar la misma marcación" }));
     await waitFor(() => {

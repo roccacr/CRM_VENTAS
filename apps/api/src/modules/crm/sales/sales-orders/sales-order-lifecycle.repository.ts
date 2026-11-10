@@ -9,7 +9,7 @@ import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { AuditActorSnapshot } from "../../audit/audit-actor.js";
 import { RecordAuditService } from "../../audit/record-audit.service.js";
 
-/** Who, why and which operation: the reason and ids are stored in the audit trail. */
+/** Quién, por qué y qué operación. El motivo y los ids quedan en la bitácora. */
 export interface LifecycleContext {
     readonly orderId: string;
     readonly actor: AuditActorSnapshot;
@@ -18,7 +18,7 @@ export interface LifecycleContext {
     readonly correlationId: string;
 }
 
-/** Reason and ids must be non-empty and within column limits. */
+/** El motivo y los ids no pueden ir vacíos y tienen que caber en la columna. */
 const assertContext = (context: LifecycleContext): void => {
     const fields = [
         [context.reason, 500],
@@ -28,34 +28,34 @@ const assertContext = (context: LifecycleContext): void => {
     if (!fields.every(([value, maximum]) => value.trim().length > 0 && value.length <= maximum)) throw new BadRequestException("Motivo e identificadores de operacion requeridos");
 };
 
-/** An operationId reused with different content is a conflict, not a replay. */
+/** Reusar un operationId con otro contenido es conflicto. No es una repetición. */
 const assertReplay = (actual: readonly unknown[], expected: readonly unknown[]): void => {
     if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new ConflictException("Operacion reutilizada con otro contenido");
 };
 
-/** Internal persistence only. Callers must authenticate/authorize; no HTTP route exposes this repository. */
+/** Persistencia interna. Quien llama autentica y autoriza. Ninguna ruta HTTP expone este repositorio. */
 @Injectable()
 export class SalesOrderLifecycleRepository {
-    /** Only uses the canonical database pool. */
+    /** Usa solo el pool canónico de la base. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(RecordAuditService) private readonly recordAudit: RecordAuditService = new RecordAuditService(database),
     ) {}
 
-    /** Locks the parent before inspecting the ledger, serializing state and approval writes. */
+    /** Bloquea el padre antes de mirar el libro. Así serializa las escrituras de estado y de aprobación. */
     private async lockOrder(tx: Transaction<CrmDatabase>, context: LifecycleContext) {
         assertContext(context);
         const order = await tx.selectFrom("crm_sales_order").select(["id_sales_order", "native_code_sales_order", "id_old_produccion_sales_order", "status_sales_order", "cancelled_sales_order"]).where("public_id_sales_order", "=", context.orderId).where("deleted_at_sales_order", "is", null).forUpdate().executeTakeFirstOrThrow();
         if (order.status_sales_order !== "active" || order.cancelled_sales_order !== "no") throw new ConflictException("La orden no esta activa o esta caida");
         const actor = await tx.selectFrom("sec_user").select("id_user").where("public_id_user", "=", context.actor.publicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).executeTakeFirstOrThrow();
-        // Capture before any mutation; caller-provided names and roles are not trusted.
+        // Captura el actor antes de mutar. No se confía en nombres ni roles enviados por quien llama.
         const actorSnapshot = this.recordAudit.enabled ? await this.recordAudit.captureActor(tx, actor.id_user) : context.actor;
         const nativeSource = { schema: "CRM_THINK_V2", entity: "sales_order", table: "crm_sales_order", id: String(order.id_sales_order) } as const;
         const auditSource = order.id_old_produccion_sales_order === null ? { source: nativeSource } : { source: { schema: "crmdatabase-api", entity: "sales_order", table: "ordenventa", id: String(order.id_old_produccion_sales_order) } as const, effectiveSource: { schema: nativeSource.schema, table: nativeSource.table, id: nativeSource.id } };
         return { id: order.id_sales_order, actorId: actor.id_user, actorSnapshot, businessId: order.native_code_sales_order, auditSource };
     }
 
-    /** Records each visit independently, rejects stale callers and never overwrites history. */
+    /** Registra cada visita por separado, rechaza un llamador vencido y no reescribe la historia. */
     async transition(context: LifecycleContext & { readonly state: string; readonly expectedSequence: number }): Promise<number> {
         return this.database.db.transaction().execute(async (tx) => {
             const order = await this.lockOrder(tx, context);
@@ -102,7 +102,7 @@ export class SalesOrderLifecycleRepository {
                     before: { businessId: order.businessId, state: last.to_state_code_sales_order_state_event, version: sequence },
                     after: { businessId: order.businessId, state: context.state, version: sequence + 1 },
                     allowedFields: ["businessId", "state", "version"],
-                    // Central uniqueness spans state and every independent approval type.
+                    // La unicidad central cubre el estado y cada tipo independiente de aprobación.
                     operationId: createHash("sha256")
                         .update(JSON.stringify(["sales_order", "state", context.operationId]))
                         .digest("hex"),
@@ -115,7 +115,7 @@ export class SalesOrderLifecycleRepository {
         });
     }
 
-    /** Approval projection and its before/after evidence commit together under the same lock. */
+    /** La proyección de aprobación y la evidencia de antes y después confirman juntas, bajo el mismo bloqueo. */
     async recordApproval(context: LifecycleContext & { readonly type: string; readonly status: "approved" | "not_approved"; readonly expectedVersion: number }): Promise<number> {
         return this.database.db.transaction().execute(async (tx) => {
             const order = await this.lockOrder(tx, context);

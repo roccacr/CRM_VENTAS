@@ -180,14 +180,14 @@ export class IdentityAccessManagementService {
         };
     }
 
-    /** A permission counts only if allowed and not denied. */
+    /** El permiso cuenta solo con allow y sin deny. Un deny y la falta de allow responden igual. */
     private assertCan(profile: IdentityProfile, permissionCode: string): void {
         if (profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny") || !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {
             throw new ForbiddenException("Permiso insuficiente.");
         }
     }
 
-    /** An active Owner cannot remove their own Owner role or deny themselves permissions, which would lock the system out. */
+    /** Un Owner activo no puede quitarse ese rol ni denegarse permisos. Si no, el sistema se queda sin quien administre. */
     private assertOwnerSelfProtection(profile: IdentityProfile, targetPublicId: string, payload: ReplaceIdentityUserAccessDto): void {
         const isActiveOwner = profile.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === "active");
         const isSelfChange = normalizeCaseInsensitiveIdentifier(profile.user.publicId) === normalizeCaseInsensitiveIdentifier(targetPublicId);
@@ -205,7 +205,7 @@ export class IdentityAccessManagementService {
         }
     }
 
-    /** Administration permissions belong only to the Owner role. */
+    /** Los permisos administrativos solo se entregan al rol Owner. Otro rol no los recibe. */
     private assertOnlyOwnerReceivesAdministrationPermissions(roleCode: string, permissionCodes: readonly string[]): void {
         if (roleCode === OWNER_ROLE_CODE) {
             return;
@@ -216,7 +216,7 @@ export class IdentityAccessManagementService {
         }
     }
 
-    /** Direct administration permissions require the Administration unit unless the user is Owner. */
+    /** Un allow administrativo directo exige la unidad Administración, salvo que la persona sea Owner. */
     private assertUserAdministrationScope(payload: ReplaceIdentityUserAccessDto): void {
         const roleCodes = payload.roleCodes.map((code) => code.trim().toLowerCase());
 

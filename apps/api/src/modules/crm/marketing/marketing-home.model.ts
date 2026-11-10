@@ -1,7 +1,7 @@
 import { buildMarketingAppointments } from "./marketing-appointments.model.js";
 import { inMarketingRange, type LegacyMarketingData, marketingCount, type MarketingDailyRow, type MarketingEntity, type MarketingHomeSummary, type MarketingWindow, type NativeMarketingData } from "./marketing-home.contract.js";
 
-/** Repeated keys stay unresolved instead of allowing last-row-wins identity matching. */
+/** Una clave repetida queda sin resolver. La última fila no gana la identidad. */
 function uniqueIds<T>(rows: readonly T[], key: (row: T) => string, id: (row: T) => string) {
     const result = new Map<string, string | null>();
     for (const row of rows) {
@@ -15,7 +15,10 @@ const normalizedEmail = (value: string) => value.trim().toLowerCase();
 const aliasKey = (system: string, externalId: string) => JSON.stringify([system, externalId]);
 const countIn = (rows: readonly { date: string; leads: number }[], range: { start: string; end: string }) => marketingCount(rows.filter((row) => inMarketingRange(row.date, range)).reduce((sum, row) => sum + row.leads, 0));
 
-/** Native identity wins; only an exact unambiguous source email may bridge an absent configured alias. */
+/**
+ * La identidad nativa gana. El correo solo une cuando el alias configurado no resuelve a un usuario.
+ * Un correo repetido entre usuarios nativos no elige a ninguno. El proyecto no se puentea por correo.
+ */
 function identityResolvers(native: NativeMarketingData, legacy: LegacyMarketingData) {
     const users = new Map(native.users.map((user) => [user.id, user]));
     const projects = new Map(native.projects.map((project) => [project.id, project]));
@@ -53,7 +56,7 @@ function identityResolvers(native: NativeMarketingData, legacy: LegacyMarketingD
     };
 }
 
-/** One JSON of aggregate evidence. No business records, emails or appointment guesses leave this model. */
+/** Un JSON de agregados. De aquí no salen registros de negocio, correos ni citas adivinadas. */
 export function buildMarketingHome(native: NativeMarketingData, legacy: LegacyMarketingData, window: MarketingWindow, context: { observedAt: Date; legacyEnabled: boolean; sellerScope?: ReadonlySet<string> }): MarketingHomeSummary {
     const { observedAt, legacyEnabled, sellerScope } = context;
     const identities = identityResolvers(native, legacy);

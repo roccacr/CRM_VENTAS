@@ -16,7 +16,7 @@ interface ResolvedLead {
     project: MarketingEntity;
 }
 
-/** Preserve ambiguous provider identities rather than assigning another lead's appointment. */
+/** Una referencia ambigua se queda sin lead nativo. La cita no se asigna a otro lead. */
 function leadResolvers(sources: Sources, identities: AppointmentIdentityResolvers) {
     const aliases = new Map<string, NativeAppointmentAlias | null>();
     for (const alias of sources.native?.aliases ?? []) {
@@ -33,7 +33,7 @@ function leadResolvers(sources: Sources, identities: AppointmentIdentityResolver
 
 type EventRow = Pick<MarketingAppointmentEvent, "date" | "status" | "attendance"> & { eventId: string };
 
-/** Keeps source rows internal while separating event identity from captured-lead conversion. */
+/** Las filas de origen se quedan adentro. La identidad del evento no es la conversión del lead captado. */
 class AppointmentAccumulator {
     readonly sellers = new Map<string, MarketingEntity>();
     readonly projects = new Map<string, MarketingEntity>();
@@ -83,7 +83,10 @@ class AppointmentAccumulator {
     }
 }
 
-/** Unique events and unique lead cohorts retain native precedence and the authorized lead-owner scope. */
+/**
+ * Eventos y cohortes únicos. Lo nativo prevalece y el alcance es el del dueño del lead.
+ * Si falta una de las dos evidencias, las citas quedan no disponibles. Una lectura con alcance no publica los contadores globales de vínculos sin resolver ni de fechas inválidas.
+ */
 export function buildMarketingAppointments(sources: Sources, identities: AppointmentIdentityResolvers, context: Context): { data: MarketingAppointments; sellers: MarketingEntity[]; projects: MarketingEntity[] } {
     if (!sources.native || !sources.legacy) return { data: { available: false }, sellers: [], projects: [] };
     const resolve = leadResolvers(sources, identities);
@@ -91,7 +94,7 @@ export function buildMarketingAppointments(sources: Sources, identities: Appoint
     for (const row of sources.native.cohorts) state.cohort(resolve.native(row), row.date);
     for (const row of sources.legacy.cohorts) {
         const lead = resolve.legacy(row);
-        // Native creation time is authoritative even when it falls outside the reporting coverage.
+        // La fecha de alta nativa manda. Un lead ya nativo no toma la fecha vieja, aunque esa caiga fuera de la cobertura.
         if (!lead.key.startsWith("native:")) state.cohort(lead, row.date);
     }
     for (const row of sources.native.events) state.append(row, resolve.native(row), "native");

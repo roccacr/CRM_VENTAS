@@ -6,10 +6,10 @@ import type { FollowUpAccess, FollowUpPeriod, FollowUpRead } from "./follow-up.c
 import { followUpSourceQuery, readFollowUpRecord, readFollowUpSource, readProjectDistribution } from "./follow-up.query.js";
 import { formalizationClosedThisYear } from "./formalization-closure.query.js";
 
-/** Native relationships use native PKs. Provider transaction numbers are labels, never identity. */
+/** Las relaciones nativas usan la llave nativa. El número de transacción del proveedor es una etiqueta, no la identidad. */
 @Injectable()
 export class FollowUpRepository {
-    /** Includes inactive/deleted aliases so authoritative native records can never fall back to legacy. */
+    /** Incluye alias inactivos y borrados para que un registro nativo con autoridad no caiga al CRM viejo. */
     async findRecordAuthority(tx: Transaction<CrmDatabase>, source: "native" | "legacy", id: string) {
         const where = source === "native" ? sql`o.public_id_sales_order=${id}` : sql`o.id_old_produccion_sales_order=${Number(id)}`;
         const result = await sql<{ publicId: string; active: number }>`
@@ -19,22 +19,22 @@ export class FollowUpRepository {
         const row = result.rows[0];
         return row ? { publicId: row.publicId, active: row.active === 1 } : undefined;
     }
-    /** One bounded SELECT: joins project/contact/seller through the order's explicit lead FK. */
+    /** Un SELECT acotado. Une proyecto, contacto y vendedor por la llave explícita del lead de la orden. */
     read(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, access: FollowUpAccess) {
         return readFollowUpSource(tx, followUpSourceQuery(this.base(period), query, access));
     }
-    /** Federates source rows before permissions, filters and the bounded global page. */
+    /** Federa las filas de origen antes de los permisos, los filtros y la página global acotada. */
     readCombined(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, options: { access: FollowUpAccess; legacy?: RawBuilder<unknown> }) {
         const { access, legacy } = options;
         const base = legacy ? sql`${this.base(period)} UNION ALL ${legacy}` : this.base(period);
         return readFollowUpSource(tx, followUpSourceQuery(base, query, access));
     }
-    /** Uses the same native authority and optional legacy projection inside one snapshot. */
+    /** Usa la misma autoridad nativa y la proyección vieja opcional dentro de una sola foto. */
     projectDistribution(tx: Transaction<CrmDatabase>, period: FollowUpPeriod, options: { access: FollowUpAccess; legacy?: RawBuilder<unknown> }) {
         const base = options.legacy ? sql`${this.base(period)} UNION ALL ${options.legacy}` : this.base(period);
         return readProjectDistribution(tx, base, options.access);
     }
-    /** Bounds the source projection to the requested identity before classification. */
+    /** Acota la proyección de origen a la identidad pedida antes de clasificar. */
     readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
         return readFollowUpRecord(tx, this.base(period, id));
     }

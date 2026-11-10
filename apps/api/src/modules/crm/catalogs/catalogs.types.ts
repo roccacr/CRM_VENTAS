@@ -3,7 +3,7 @@
  *
  * `publicId` es la identidad del CRM. El id de un sistema externo viaja en
  * `externalReferences` y no la reemplaza. `id_old_produccion` solo aparece
- * cuando la fila ya se vinculó con el CRM viejo.
+ * cuando un agregado propio ya vinculó la fila con el CRM viejo. La tabla compartida no lo devuelve.
  */
 import type { AuditActorSnapshot } from "../audit/security-audit.service.js";
 import type { CatalogContextModuleCode, CatalogRouteCode, CatalogStatus } from "./catalogs.constants.js";

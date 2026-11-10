@@ -1,26 +1,26 @@
 import { CATALOG_CONTEXT_MODULES } from "../catalogs/catalogs.constants.js";
 import type { IdentityRole } from "./identity.types.js";
 
-/** Modules a user can be scoped to; administration is excluded because it is never granted by module selection. */
+/** Módulos a los que se puede acotar a una persona. Administración no entra: no se concede eligiendo módulos. */
 export const OPERATIONAL_MODULE_CODES = CATALOG_CONTEXT_MODULES.filter((code) => code !== "administration");
 /** `selected_modules` intersects the editable role template with the employee's selected modules. */
 export type PermissionInheritance = "assigned" | "selected_modules";
-/** A directly assigned role plus how its permissions are inherited. */
+/** Rol asignado directo y cómo hereda permisos. */
 export type AssignedModuleRole = IdentityRole & { permissionInheritance?: PermissionInheritance };
-/** Role-to-module relation row, including the lifecycle state of the relation and of the module. */
+/** Relación rol-módulo, con el estado de la relación y el del módulo. */
 export type RoleModuleMapping = AssignedModuleRole & { moduleCode: string; mappingStatus: string; moduleStatus: string; moduleDeleted: Date | string | null };
-/** Effective result: usable roles and the module ceiling (`null` means unrestricted by modules). */
+/** Roles usables y el techo de módulos. `null` significa que los módulos no acotan. */
 export type ModuleRoleAccess = { roles: IdentityRole[]; moduleCodes: string[] | null; permissionInheritance: PermissionInheritance; roleModuleCodes?: ReadonlyMap<string, readonly string[]> };
 
-/** Administration uses legacy permission namespaces, not separate employee modules. */
+/** Administración usa los espacios viejos `user`, `role` y `org`. No son módulos de empleado. */
 export const normalizePermissionModule = (moduleCode: string): string => (["user", "role", "org"].includes(moduleCode) ? "administration" : moduleCode);
 
-/** Expands "administration" to the legacy permission namespaces (user, role, org) that back it. */
+/** Expande administración a `user`, `role` y `org`, que son los que de verdad respaldan ese permiso. */
 export const permissionModuleCodes = (modules: readonly string[]): string[] => [...new Set(modules.flatMap((code) => (code === "administration" ? [code, "user", "role", "org"] : [code])))];
 
-/** Projects only the fields safe to expose to the caller. */
+/** Solo salen código, nombre y estado. La herencia y el mapeo no se cuelan al llamador. */
 const publicRole = ({ code, name, status }: IdentityRole): IdentityRole => ({ code, name, status });
-/** A mapping counts only while the relation and its module are active and not soft-deleted. */
+/** El mapeo cuenta solo si la relación y el módulo están activos y el módulo no está borrado. */
 const activeMapping = (mapping: RoleModuleMapping): boolean => mapping.mappingStatus === "active" && mapping.moduleStatus === "active" && mapping.moduleDeleted === null;
 
 /**
@@ -30,7 +30,7 @@ const activeMapping = (mapping: RoleModuleMapping): boolean => mapping.mappingSt
 function inheritModuleRoles(direct: readonly AssignedModuleRole[], mappings: readonly RoleModuleMapping[], allowed: readonly string[], general: boolean): IdentityRole[] {
     const roleMappings = new Map<string, RoleModuleMapping[]>();
     for (const mapping of mappings) roleMappings.set(mapping.code, [...(roleMappings.get(mapping.code) ?? []), mapping]);
-    /** A mapped role is eligible only if every active module it maps to is selected and available. */
+    /** Un rol mapeado entra solo si cada módulo activo al que apunta está elegido y disponible. */
     const eligible = (code: string): boolean => {
         const entries = (roleMappings.get(code) ?? []).filter((entry) => entry.mappingStatus === "active");
         return entries.length > 0 && entries.every((entry) => activeMapping(entry) && allowed.includes(entry.moduleCode));
@@ -44,7 +44,7 @@ function inheritModuleRoles(direct: readonly AssignedModuleRole[], mappings: rea
     return roles.map(publicRole);
 }
 
-/** A persisted relation is a ceiling even when revoked; clearing it must not reopen global access. */
+/** Una relación guardada sigue siendo techo aunque se revoque. Vaciar la selección no reabre el acceso global. */
 export function resolveModuleRoleAccess(assigned: readonly AssignedModuleRole[], mappings: readonly RoleModuleMapping[], selectedModules: readonly string[]): ModuleRoleAccess {
     const direct = assigned.filter((role) => role.status === "active");
     const general = direct.some((role) => role.permissionInheritance === "selected_modules");

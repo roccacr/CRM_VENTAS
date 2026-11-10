@@ -7,19 +7,21 @@ import { MARKETING_HOME_LEGACY_READER, type MarketingHomeLegacyReader } from "./
 import { MarketingHomeRepository } from "./marketing-home.repository.js";
 import { hasGlobalMarketingRead } from "./marketing-read.policy.js";
 
-/** Authorizes before either source; reads native first and never falls back to fictitious or partial counters. */
+/**
+ * Autoriza `mercadeo.home.read` antes de cualquiera de las dos fuentes.
+ * Hace falta un allow y ningún deny. Lee primero lo nativo. Si la foto falla, responde 503 y no inventa un conteo parcial.
+ */
 @Injectable()
 export class MarketingHomeService {
-    /**
-     *
-     */
+    /** La identidad resuelve la sesión. El repositorio abre la foto y el puerto viejo solo se consulta si `enabled` está activo. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(MarketingHomeRepository) private readonly repository: MarketingHomeRepository,
         @Inject(MARKETING_HOME_LEGACY_READER) private readonly legacy: MarketingHomeLegacyReader,
     ) {}
     /**
-     *
+     * Resumen del inicio. Un alcance desconocido se rechaza. `mercadeo.reports.read_all` o el alcance `all_areas` no filtran vendedores; los demás alcances usan la unidad activa.
+     * El puerto apagado deja filas y dueños vacíos. No completa el resumen con conteos inventados.
      */
     async summary(session: string | undefined, query: unknown): Promise<MarketingHomeSummary> {
         const profile = await this.identity.getCurrentUser(session);

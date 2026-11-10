@@ -117,6 +117,7 @@ export class CreateCatalogItemDto {
     @MaxLength(255)
     reason!: string;
 
+    /** Como máximo doce. Una de más se rechaza; no se recorta la lista. */
     @ApiPropertyOptional({ description: "Referencias externas opcionales.", type: [CatalogExternalReferenceDto] })
     @IsOptional()
     @IsArray()

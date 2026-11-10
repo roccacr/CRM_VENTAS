@@ -1,3 +1,7 @@
+/**
+ * Forma de `crm_unit_file` y de su referencia externa.
+ * `public_id_unit_file` es la identidad. `id_old_produccion_unit_file` solo vincula. Las fechas de alta y cambio las genera la base.
+ */
 import type { ColumnType, Generated } from "kysely";
 
 import type { UNIT_COLUMNS } from "./unit-files.columns.js";

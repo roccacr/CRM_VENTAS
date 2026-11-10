@@ -2,8 +2,8 @@
  * Autorización y normalización compartidas por los catálogos.
  *
  * No escribe SQL. Comprueba sesión, módulo de contexto y permiso efectivo, y
- * deja la persistencia en el repositorio de cada agregado. Un id `legacy:` no
- * se edita por aquí: primero tiene que promoverse a una fila nativa.
+ * deja la persistencia en el repositorio de cada agregado. El caso base rechaza
+ * todo id `legacy:`. Un catálogo concreto puede dejar pasar su forma para promoverla.
  */
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
@@ -14,7 +14,7 @@ import type { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemD
 import { type IdentityRequestAuditContext, type IdentityService } from "../identity/identity.service.js";
 import type { IdentityProfile } from "../identity/identity.types.js";
 
-/** Owner skips context membership only; every operation still requires its effective grant. */
+/** El owner activo salta la membresía del módulo, no el permiso. Un deny sigue ganando, y un owner inactivo no salta nada. */
 const OWNER_ROLE_CODE = "owner";
 
 /** Lo que cualquier repositorio de catálogo debe ofrecer. No nombra tablas ni sistemas externos. */
@@ -96,7 +96,8 @@ export class CatalogItemOperations {
     /**
      * Lista si el perfil puede leer ese catálogo desde el módulo indicado.
      *
-     * La respuesta puede completarse con el CRM viejo. Eso no concede permiso de edición.
+     * Si no vienen límite ni desplazamiento, el repositorio aplica su página. Un valor fuera de 1 a 500, o un desplazamiento que no cabe en un entero de MySQL, no consulta.
+     * El CRM viejo solo completa los catálogos que tienen estrategia y un lector encendido. Ver esa fila no concede editarla.
      */
     async listCatalogItems(sessionToken: string | undefined, catalogCode: string, query: ListCatalogItemsQueryDto) {
         const definition = this.resolveCatalog(catalogCode);
@@ -123,6 +124,7 @@ export class CatalogItemOperations {
      * Crea un valor nativo.
      *
      * El actor de la auditoría es el usuario de la sesión, no un id recibido en el cuerpo.
+     * Una referencia sin id se descarta. El mismo par sistema e id, repetido en el formulario, es conflicto antes de abrir la transacción.
      */
     async createCatalogItem(sessionToken: string | undefined, catalogCode: string, payload: CreateCatalogItemDto, context: IdentityRequestAuditContext = {}) {
         const definition = this.resolveCatalog(catalogCode);
@@ -146,7 +148,7 @@ export class CatalogItemOperations {
     /**
      * Edita un valor nativo.
      *
-     * Un `publicId` legacy se rechaza antes de abrir la transacción. Proyectos puede ampliar esa regla para promover la fila.
+     * Un `publicId` que empiece por `legacy:` se rechaza antes de abrir la transacción. Un catálogo concreto puede dejar pasar su forma para promover la fila.
      */
     // eslint-disable-next-line max-params -- Caso de uso HTTP: itemPublicId y payload se mantienen explicitos para claridad del controller.
     async updateCatalogItem(sessionToken: string | undefined, catalogCode: string, itemPublicId: string, payload: UpdateCatalogItemDto, context: IdentityRequestAuditContext = {}) {
@@ -211,7 +213,7 @@ export class CatalogItemOperations {
         assertNativeIdentity(publicId);
     }
 
-    /** Traduce el segmento de la URL a la definición. Un código fuera de la lista no se adivina. */
+    /** Traduce el segmento de la URL a la definición. Un código fuera de la lista no se adivina. Bancos está en la lista y aun así se rechaza: tiene módulo propio. */
     protected resolveCatalog(catalogCode: string): CatalogDefinition {
         const definition = findCatalogDefinition(catalogCode);
 
@@ -237,9 +239,8 @@ export class CatalogItemOperations {
 
     /**
      * Autoriza con el perfil que acaba de devolver identidad.
-     *
-     * Every profile needs an exact allow without deny. Active Owner only skips
-     * module membership; other profiles also need the active context area.
+     * Hace falta un allow exacto y ningún deny. Las dos faltas responden igual, así que no se revela cuál falló.
+     * El owner tiene que estar activo para saltar la unidad. Los demás necesitan esa unidad activa, con el código del módulo de contexto.
      */
     private assertCan(profile: IdentityProfile, moduleCode: CatalogContextModuleCode, permissionCode: string): void {
         if (profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny") || !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {

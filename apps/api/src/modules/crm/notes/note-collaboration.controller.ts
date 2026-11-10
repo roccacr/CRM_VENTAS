@@ -5,83 +5,83 @@ import type { CookieRequest } from "../../../common/security/cookie-request.type
 import { SESSION_COOKIE_NAME } from "../../../common/security/http-security.constants.js";
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { NoteCollaborationService } from "./note-collaboration.service.js";
-/** Authentication is mandatory; every operation also rechecks live capability and persisted resource ACL in the service. */
+/** La autenticación es obligatoria. Cada operación vuelve a comprobar en el servicio la capacidad viva y la ACL persistida del recurso. */
 @ApiTags("note-collaboration")
 @Controller("note-collaboration")
 export class NoteCollaborationController {
-    /** Injects existing authorization and native persistence collaborators. */
+    /** Autorización existente y persistencia nativa. */
     constructor(@Inject(NoteCollaborationService) private readonly collaboration: NoteCollaborationService) {}
-    /** Lists only notes the current session can still read. */
+    /** Lista solo las notas que la sesión actual todavía puede leer. */
     @Get("inbox")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     inbox(@Req() req: CookieRequest, @Query() query: unknown) {
         return this.collaboration.inbox(req.cookies[SESSION_COOKIE_NAME], query);
     }
-    /** Author choices are scoped to the caller's currently readable notes. */
+    /** Las opciones de autor salen de las notas que quien llama puede leer ahora. */
     @Get("inbox/authors")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     inboxAuthors(@Req() req: CookieRequest) {
         return this.collaboration.inboxAuthors(req.cookies[SESSION_COOKIE_NAME]);
     }
-    /** Reads current-access attributed metadata without exposing old note contents. */
+    /** Lee metadatos atribuidos del acceso actual. El contenido viejo de la nota no sale. */
     @Get("notes/:id/activity")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     activity(@Req() req: CookieRequest, @Param("id") id: string, @Query() query: unknown) {
         return this.collaboration.activity(req.cookies[SESSION_COOKIE_NAME], id, query);
     }
-    /** Reads independently authorized Home display references. */
+    /** Lee referencias de presentación del inicio, autorizadas por su lado. */
     @Get("notes/:id/locations")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     locations(@Req() req: CookieRequest, @Param("id") id: string) {
         return this.collaboration.locations(req.cookies[SESSION_COOKIE_NAME], id);
     }
-    /** Author-only versioned replacement; transaction rechecks invitation and target access. */
+    /** Reemplazo versionado solo del autor. La transacción vuelve a comprobar la invitación y el acceso al destino. */
     @Put("notes/:id/locations")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     replaceLocations(@Req() req: CookieRequest, @Param("id") id: string, @Body() body: unknown) {
         return this.collaboration.replaceLocations(req.cookies[SESSION_COOKIE_NAME], id, body);
     }
-    /** Searches draft invitees without granting access or creating a note. */
+    /** Busca invitados de borrador. No concede acceso ni crea una nota. */
     @Get("eligible-users")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     eligibleDraftUsers(@Req() req: CookieRequest, @Query() query: unknown) {
         return this.collaboration.eligibleDraftUsers(req.cookies[SESSION_COOKIE_NAME], query);
     }
-    /** Loads the authorized conversation and actor-specific capabilities. */
+    /** Carga la conversación autorizada y las capacidades de este actor. */
     @Get("notes/:id")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     thread(@Req() req: CookieRequest, @Param("id") id: string, @Query() query: unknown) {
         return this.collaboration.thread(req.cookies[SESSION_COOKIE_NAME], id, query);
     }
-    /** Owner-only directory of active or dormant invitees; inviting never grants linked-resource access. */
+    /** Directorio solo del dueño, con invitados activos o dormidos. Invitar no concede el recurso vinculado. */
     @Get("notes/:id/eligible-users")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     eligibleUsers(@Req() req: CookieRequest, @Param("id") id: string, @Query() query: unknown) {
         return this.collaboration.eligibleUsers(req.cookies[SESSION_COOKIE_NAME], id, query);
     }
-    /** Replaces participants only after owner and target authorization. */
+    /** Reemplaza participantes solo después de autorizar al dueño y al destino. */
     @Put("notes/:id/participants")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     participants(@Req() req: CookieRequest, @Param("id") id: string, @Body() body: unknown) {
         return this.collaboration.participants(req.cookies[SESSION_COOKIE_NAME], id, body);
     }
-    /** Updates original-note mentions without implicitly inviting anyone. */
+    /** Actualiza menciones de la nota original. Mencionar no invita. */
     @Put("notes/:id/mentions")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     mentions(@Req() req: CookieRequest, @Param("id") id: string, @Body() body: unknown) {
         return this.collaboration.mentions(req.cookies[SESSION_COOKIE_NAME], id, body);
     }
-    /** Adds an authored reply with an idempotent operation key. */
+    /** Agrega una respuesta atribuida. La misma clave de operación no la duplica. */
     @Post("notes/:id/replies")
     @HttpCode(200)
     @RouteSecurity("authenticated")
@@ -89,14 +89,14 @@ export class NoteCollaborationController {
     reply(@Req() req: CookieRequest, @Param("id") id: string, @Body() body: unknown) {
         return this.collaboration.reply(req.cookies[SESSION_COOKIE_NAME], id, body);
     }
-    /** Edits only the current actor’s own reply. */
+    /** Edita solo la respuesta del actor actual. */
     @Patch("notes/:id/replies/:replyId")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")
     editReply(@Req() req: CookieRequest, @Param("id") id: string, @Param("replyId") replyId: string, @Body() body: unknown) {
         return this.collaboration.editReply(req.cookies[SESSION_COOKIE_NAME], id, replyId, body);
     }
-    /** Withdraws only the current actor’s own reply while preserving history. */
+    /** Retira solo la respuesta del actor actual. La historia queda. */
     @Post("notes/:id/replies/:replyId/withdraw")
     @HttpCode(200)
     @RouteSecurity("authenticated")
@@ -104,7 +104,7 @@ export class NoteCollaborationController {
     withdrawReply(@Req() req: CookieRequest, @Param("id") id: string, @Param("replyId") replyId: string, @Body() body: unknown) {
         return this.collaboration.withdrawReply(req.cookies[SESSION_COOKIE_NAME], id, replyId, body);
     }
-    /** Changes only the current actor’s response-notification preference. */
+    /** Cambia solo la preferencia de avisos de respuesta del actor actual. */
     @Put("notes/:id/my-following")
     @RouteSecurity("authenticated")
     @Header("Cache-Control", "no-store")

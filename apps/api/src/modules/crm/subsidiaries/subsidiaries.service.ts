@@ -14,7 +14,8 @@ import { IdentityService } from "../identity/identity.service.js";
 import { SubsidiariesRepository } from "./subsidiaries.repository.js";
 
 /**
- * Applies Subsidiaries authorization and mutation rules through shared operations.
+ * Autorización y normalización compartidas, persistencia propia de `crm_subsidiary`.
+ * Aquí solo se acepta el código `subsidiaries`. La forma `legacy:subsidiaries:N` se deja pasar; el repositorio rechaza un N que no quepa en un entero de 32 bits con signo.
  */
 @Injectable()
 export class SubsidiariesService extends CatalogItemOperations {

@@ -10,10 +10,10 @@ import { validateFiniquitoInput } from "./finiquito.policy.js";
 import { formalizationPermissionScope } from "./follow-up.service.js";
 import { validatePurchaseFunds } from "./purchase-funds.dto.js";
 
-/** Both HTTP and internal callers must present a live session; no caller-supplied actors. */
+/** HTTP y los llamadores internos presentan una sesión viva. El actor no viene de quien llama. */
 @Injectable()
 export class ContractTransitionService {
-    /** Read and mutation use live order grants; only confirmed ERP flags authorize the branch. */
+    /** Lectura y mutación usan el permiso vivo de la orden. La rama la autorizan solo las banderas confirmadas del ERP. */
     async finiquito(session: string | undefined, input: unknown, write = false, context: { ipAddress?: string; userAgent?: string } = {}) {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("No tiene permiso para consultar esta orden.");
@@ -24,7 +24,7 @@ export class ContractTransitionService {
         return { ...data, canUpdate: scope.allowed };
     }
 
-    /** Versioned edit form is restricted by the same live grant as its mutation. */
+    /** El formulario versionado exige el mismo permiso vivo que su mutación. */
     async purchaseFundsSnapshot(session: string | undefined, source: string, id: string) {
         const profile = await this.identity.getCurrentUser(session);
         const scope = formalizationPermissionScope(profile, "formalizacion.orders.stage.update");
@@ -32,20 +32,20 @@ export class ContractTransitionService {
         const identity = validateContractTransition({ source, id, expectedSequence: 0, operationId: ulid() }, "send");
         return this.repository.purchaseFundsSnapshot({ source: identity.source, id: identity.id, expectedSequence: identity.expectedSequence, operationId: identity.operationId, action: "send", actorPublicId: profile.user.publicId, ownOnly: scope.ownOnly, reason: "", correlationId: ulid() });
     }
-    /** Independent classification uses the live edit grant and preserves the stage journal. */
+    /** La clasificación independiente usa el permiso vivo de edición y conserva el diario de etapas. */
     async updatePurchaseFunds(session: string | undefined, input: unknown, context: { ipAddress?: string; userAgent?: string } = {}) {
         const profile = await this.identity.getCurrentUser(session);
         const scope = formalizationPermissionScope(profile, "formalizacion.orders.stage.update");
         if (!scope.allowed) throw new ForbiddenException("No tiene permiso para editar los fondos de compra");
         return this.repository.updatePurchaseFunds({ ...validatePurchaseFunds(input), action: "set", actorPublicId: profile.user.publicId, ownOnly: scope.ownOnly, reason: "", correlationId: ulid(), ...context });
     }
-    /** Reuses the live identity service and transactional persistence collaborator. */
+    /** Reutiliza la identidad viva y el colaborador de persistencia transaccional. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(ContractTransitionRepository) private readonly repository: ContractTransitionRepository,
     ) {}
 
-    /** Authorizes before accessing either business source. Explicit denies always win. */
+    /** Autoriza antes de tocar cualquiera de las dos fuentes de negocio. Un deny explícito gana. */
     async transition(session: string | undefined, action: ContractAction, input: ContractTransitionDto, context: { ipAddress?: string; userAgent?: string } = {}) {
         const profile = await this.identity.getCurrentUser(session);
         const permission = action === "set" ? "formalizacion.orders.stage.update" : `formalizacion.contracts.${action}`;
@@ -77,7 +77,7 @@ export class ContractTransitionService {
         return target.ownOnly || (skip.allowed && skip.ownOnly);
     }
 
-    /** Destination authorization is independent of the selector grant. */
+    /** Autorizar el destino es independiente del permiso del selector. */
     private targetScope(profile: IdentityProfile, action: ContractAction, dto: ContractTransitionDto, original: { ownOnly: boolean }) {
         if (action !== "set") return original;
         const scope = formalizationPermissionScope(profile, `formalizacion.orders.stage.${dto.targetState ?? ""}`);
@@ -85,7 +85,7 @@ export class ContractTransitionService {
         return { ownOnly: original.ownOnly || scope.ownOnly };
     }
 
-    /** The broader selector grant never overrides an explicit denial of the matching contract action. */
+    /** El permiso amplio del selector no anula un deny explícito de la acción de contrato que corresponde. */
     private assertTargetDenials(profile: IdentityProfile, action: ContractAction, dto: ContractTransitionDto): void {
         if (action !== "set") return;
         const corresponding: Partial<Record<string, string>> = { contract_pending_signature: "formalizacion.contracts.send", contract_pending_send: "formalizacion.contracts.revert" };

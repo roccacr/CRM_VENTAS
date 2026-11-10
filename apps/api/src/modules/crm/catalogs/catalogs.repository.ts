@@ -1,10 +1,11 @@
 /**
  * Persistencia de `crm_catalog_item` y sus referencias.
  *
- * Varios catálogos comparten estas tablas y se distinguen por
- * `catalog_code_catalog_item`. Proyectos no: tiene agregado propio y esta
- * clase lo rechaza para no escribirlo en la tabla genérica. Alta, edición,
- * estado y auditoría van en la misma transacción.
+ * Varios códigos comparten estas tablas y se distinguen por
+ * `catalog_code_catalog_item`. Bancos, corredores, proyectos, campañas, clases,
+ * ubicaciones y subsidiarias tienen agregado propio y se rechazan antes de leer
+ * o escribir aquí. Expedientes sigue en esta tabla. Alta, edición, estado y
+ * auditoría van en la misma transacción, con el reloj de la aplicación.
  */
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import type { Kysely } from "kysely";
@@ -74,7 +75,7 @@ const normalizeLimit = (limit?: number): number => {
     return limit;
 };
 
-/** Persists remaining shared catalogs and their transactional changelog. */
+/** Persistencia de los catálogos que todavía comparten tabla, y de su bitácora en la misma transacción. */
 @Injectable()
 export class CatalogsRepository {
     /**
@@ -89,7 +90,7 @@ export class CatalogsRepository {
     /**
      * Lista un catálogo compartido.
      *
-     * Proyectos se rechaza para no devolverlos como si vivieran en `crm_catalog_item`.
+     * Cada agregado propio se rechaza con su mensaje, para no devolverlo como si viviera en `crm_catalog_item`.
      */
     async listCatalogItems(input: { catalogCode: CatalogRouteCode; limit?: number; offset?: number; search?: string; status?: CatalogStatus }): Promise<CatalogItemsResponse> {
         if (input.catalogCode === "banks") throw new BadRequestException("Use the Banks module.");
@@ -102,7 +103,10 @@ export class CatalogsRepository {
         return this.listSharedCatalogItems(input);
     }
 
-    /** Filtra por código, estado y texto. La búsqueda también mira ids externos que no estén archivados. */
+    /**
+     * Filtra por código, estado y texto. La búsqueda también mira ids externos que no estén archivados.
+     * En el texto, `%` y `_` siguen siendo comodines. Si no viene límite, la página es de 100.
+     */
     private async listSharedCatalogItems(input: { catalogCode: CatalogRouteCode; limit?: number; offset?: number; search?: string; status?: CatalogStatus }): Promise<CatalogItemsResponse> {
         const definition = findCatalogDefinition(input.catalogCode);
 
@@ -150,7 +154,8 @@ export class CatalogsRepository {
     /**
      * Inserta el valor, sus referencias y la auditoría.
      *
-     * El ULID es la identidad pública. El código nativo solo la repite con el prefijo del catálogo.
+     * El ULID es la identidad pública. El código nativo lo repite con el prefijo del catálogo; el cliente no lo elige.
+     * Alta, referencias y bitácora usan el mismo instante de la aplicación.
      */
     async createCatalogItem(input: CatalogMutationInput): Promise<CatalogItem> {
         if (input.catalogCode === "banks") throw new BadRequestException("Use the Banks module.");
@@ -264,7 +269,7 @@ export class CatalogsRepository {
     /**
      * Cambia el estado sin tocar las referencias.
      *
-     * Inactivar guarda actor y fecha. Reactivar los limpia para no dejar un cierre vigente.
+     * Inactivar guarda actor y fecha. Reactivar los limpia para no dejar un cierre vigente. Las referencias no se tocan.
      */
     async updateCatalogItemStatus(input: CatalogStatusMutationInput): Promise<CatalogItem | null> {
         if (input.catalogCode === "banks") throw new BadRequestException("Use the Banks module.");
@@ -332,6 +337,7 @@ export class CatalogsRepository {
      * Comprueba sistemas activos y que el id externo no sea de otro valor del mismo catálogo.
      *
      * `excludedItemId` permite conservar las referencias que ya pertenecen al valor que se edita.
+     * Una fila archivada de otro valor también bloquea: archivar no deja libre el id externo.
      */
     private async assertExternalReferencesAreAvailable(executor: CatalogExecutor, catalogCode: CatalogRouteCode, references: readonly CatalogExternalReferenceInput[], excludedItemId?: number): Promise<void> {
         const seen = new Set<string>();
@@ -429,7 +435,7 @@ export class CatalogsRepository {
             return null;
         }
 
-        // Read the committed predecessor after waiting for the parent lock, not an older MVCC snapshot.
+        // Después del bloqueo del padre se leen las referencias con `FOR UPDATE`, no una foto anterior.
         const references = await this.findExternalReferencesByItemIds([row.id], executor, true);
         return this.mapCatalogItem(row, references.get(row.id) ?? []);
     }

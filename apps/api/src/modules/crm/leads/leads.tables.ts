@@ -3,7 +3,7 @@ import type { ColumnType, Generated } from "kysely";
 type DateTime = ColumnType<Date, Date | string, Date | string>;
 type ActivityStatus = "active" | "inactive";
 
-/** Native stage configuration; a code is stable while labels remain editable. */
+/** Etapa nativa. El código queda fijo; el nombre se puede editar. */
 export interface ConfLeadStatusTable {
     code_lead_status: string;
     name_lead_status: string;
@@ -13,7 +13,7 @@ export interface ConfLeadStatusTable {
     updated_at_lead_status: Generated<DateTime>;
 }
 
-/** Reasons are independent of stages, activities and external provider identifiers. */
+/** Motivo propio. No es una etapa, ni una actividad, ni un id de un proveedor externo. */
 export interface ConfActionReasonTable {
     code_action_reason: string;
     name_action_reason: string;
@@ -23,7 +23,7 @@ export interface ConfActionReasonTable {
     updated_at_action_reason: Generated<DateTime>;
 }
 
-/** Which reasons can be selected when entering each stage. */
+/** Qué motivos se pueden elegir al entrar a cada etapa. Un motivo suelto no autoriza el cambio. */
 export interface ConfActionReasonStatusTable {
     status_code_action_reason_status: string;
     reason_code_action_reason_status: string;
@@ -32,7 +32,7 @@ export interface ConfActionReasonStatusTable {
     updated_at_action_reason_status: Generated<DateTime>;
 }
 
-/** Acquisition channels, separate from the technical integration that carries a lead. */
+/** Canal de captación. No es la integración técnica que trajo el lead. */
 export interface ConfLeadSourceTable {
     code_lead_source: string;
     name_lead_source: string;
@@ -41,7 +41,7 @@ export interface ConfLeadSourceTable {
     updated_at_lead_source: Generated<DateTime>;
 }
 
-/** Interest classification does not replace the commercial stage. */
+/** Clasificación de interés. No sustituye la etapa comercial. */
 export interface ConfLeadInterestTable {
     code_lead_interest: string;
     name_lead_interest: string;
@@ -50,7 +50,7 @@ export interface ConfLeadInterestTable {
     updated_at_lead_interest: Generated<DateTime>;
 }
 
-/** Person data may be shared by several commercial leads. */
+/** Datos de la persona. Varios leads comerciales pueden compartir el mismo contacto. */
 export interface CrmContactTable {
     id_contact: Generated<number>;
     public_id_contact: string;
@@ -68,7 +68,7 @@ export interface CrmContactTable {
     deleted_at_contact: DateTime | null;
 }
 
-/** All relationships use native identities; owner is not an external ERP reference. */
+/** Las relaciones usan identidades nativas. El dueño es un usuario del CRM, no una referencia del ERP. */
 export interface CrmLeadTable {
     id_lead: Generated<number>;
     public_id_lead: string;
@@ -88,7 +88,7 @@ export interface CrmLeadTable {
     initial_comment_lead: string | null;
     initial_contact_template_sent_lead: Generated<0 | 1>;
     has_related_lead_lead: Generated<0 | 1>;
-    /** Explicit qualification flag; independent from commercial status or interest. */
+    /** Marca explícita de calificación. No se deduce del estado comercial ni del interés. */
     is_qualified_lead: Generated<0 | 1>;
     version_lead: Generated<number>;
     source_created_at_lead: DateTime | null;
@@ -101,7 +101,7 @@ export interface CrmLeadTable {
     deleted_at_lead: DateTime | null;
 }
 
-/** A system-scoped alias never becomes the identity used in native relationships. */
+/** Alias de un sistema externo. No sustituye el `public_id` que usan las relaciones nativas. */
 export interface CrmLeadExternalReferenceTable {
     id_lead_external_reference: Generated<number>;
     lead_id_lead_external_reference: number;
@@ -112,7 +112,7 @@ export interface CrmLeadExternalReferenceTable {
     updated_at_lead_external_reference: Generated<DateTime>;
 }
 
-/** Append-only through future commands; the schema alone does not enforce write authorization. */
+/** Evento de etapa. Se agrega; no se reescribe. El esquema no autoriza quién puede escribirlo. */
 export interface AuditLeadStatusEventTable {
     id_lead_status_event: Generated<number>;
     public_id_lead_status_event: string;

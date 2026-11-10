@@ -8,13 +8,13 @@ import { IdentityModule } from "../../identity/identity.module.js";
 import { ApprovalSummaryRepository } from "./approval-summary.repository.js";
 import { ApprovalSummaryService } from "./approval-summary.service.js";
 
-/** Only the summary read endpoint is exposed, not lifecycle mutations. */
+/** Solo se expone la lectura del resumen. No hay mutaciones del ciclo de vida. */
 @Controller("formalization/approvals")
 export class ApprovalSummaryController {
-    /** Delegates authentication and authorization to the use case. */
+    /** Delega autenticación y autorización en el caso de uso. */
     constructor(@Inject(ApprovalSummaryService) private readonly service: ApprovalSummaryService) {}
 
-    /** Aggregate response shared by all configured sources. */
+    /** Respuesta agregada que comparten todas las fuentes configuradas. */
     @Get("summary")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "all", codes: ["formalizacion.home.approvals.read"] })
@@ -24,6 +24,6 @@ export class ApprovalSummaryController {
     }
 }
 
-/** Minimal wiring for the authorized approval banner. */
+/** Cableado mínimo del banner de aprobación ya autorizado. */
 @Module({ imports: [IdentityModule], controllers: [ApprovalSummaryController], providers: [ApprovalSummaryService, ApprovalSummaryRepository], exports: [ApprovalSummaryRepository] })
 export class ApprovalSummaryModule {}

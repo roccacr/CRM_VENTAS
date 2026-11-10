@@ -3,7 +3,7 @@ import { z } from "zod";
 import { noteIdSchema } from "./notes.contract.js";
 
 const operationId = z.string().regex(/^[A-Za-z0-9_-]{16,100}$/);
-// An explicit UTC suffix avoids interpreting a browser's wall clock as server time.
+// El sufijo UTC explícito evita tomar el reloj de pared del navegador como hora del servidor. La fecha cabe entre el año 1000 y cinco años adelante.
 export const workflowDateSchema = z.iso.datetime({ offset: false }).refine((v) => v.endsWith("Z") && Date.parse(v) >= Date.UTC(1000, 0, 1) && Date.parse(v) < Date.now() + 5 * 366 * 86400000);
 export const taskSchema = z.object({ operationId, expectedVersion: z.number().int().min(0).max(4294967294), assigneeUserId: noteIdSchema.nullable(), dueAt: workflowDateSchema.nullable() }).strict();
 export const reminderSchema = z.object({ operationId, remindAt: workflowDateSchema.nullable() }).strict();

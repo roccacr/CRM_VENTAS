@@ -1,7 +1,7 @@
 import type { LegacyMarketingOwner, MarketingExternalIdentity, NativeMarketingUser } from "./marketing-home.contract.js";
 import type { ReportLead, ReportSource } from "./marketing-leads-report.contract.js";
 
-/** Collisions remain unresolved; never let row order choose an identity. */
+/** Una colisión queda sin resolver. El orden de las filas no elige la identidad. */
 export function uniqueReportIdentities(rows: readonly MarketingExternalIdentity[]): Map<string, string | null> {
     const result = new Map<string, string | null>();
     for (const row of rows) {
@@ -14,7 +14,10 @@ const aliasKey = (id: string) => JSON.stringify(["netsuite", id]);
 const scoped = (source: string, kind: string, id: string) => JSON.stringify([source, kind, id || "missing"]);
 const normalizedEmail = (email: string) => email.trim().toLowerCase();
 
-/** Seller email bridging is allowed only when no configured alias exists and both sides are unique. */
+/**
+ * El correo del vendedor solo une si no hay alias de NetSuite para ese id y las dos partes son únicas.
+ * Si el alias existe, aunque haya chocado, no se usa el correo. Una fila nativa no se puentea: ya trae su usuario.
+ */
 export function reportIdentityResolvers(native: ReportSource, legacy: ReportSource) {
     const project = catalogResolver(native, legacy, "project");
     const campaign = catalogResolver(native, legacy, "campaign");

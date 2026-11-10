@@ -4,7 +4,7 @@ import { sql, type Transaction } from "kysely";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import { readOrderDetail } from "./order-detail.query.js";
 
-// Explicit business-column allowlists: schema additions never become public automatically.
+// Lista cerrada de columnas de negocio. Una columna nueva del esquema no se vuelve pública sola.
 const nativeOrder =
     "id_sales_order public_id_sales_order native_code_sales_order id_old_produccion_sales_order unit_file_id_sales_order subsidiary_id_sales_order owner_user_id_sales_order status_sales_order cancelled_sales_order currency_code_sales_order transaction_date_sales_order list_price_sales_order net_sale_price_sales_order sale_price_sales_order advisor_commission_sales_order contract_signed_sales_order commercial_closure_signed_sales_order advisor_commission_calculated_sales_order advisor_commission_paid_sales_order source_created_at_sales_order created_at_sales_order created_by_user_id_sales_order updated_at_sales_order updated_by_user_id_sales_order deleted_at_sales_order lead_id_sales_order unit_delivered_sales_order unit_transferred_sales_order keys_delivered_sales_order trust_down_payment_validated_sales_order commission_approved_sales_order broker_commission_calculated_sales_order installments_fully_paid_sales_order cancellation_marked_on_sales_order";
 const nativeLead =
@@ -18,7 +18,7 @@ const legacyLead =
     "id_lead id_admin_lead id_empleado_lead id_rol_lead idnetsuite_lead idinterno_lead nombre_lead email_lead telefono_lead codigo_lead proyecto_lead idproyecto_lead subsidiaria_lead idsubsidaria_lead idestadointeresado_lead estadointeresado_lead comentario_lead campana_lead idcampana_lead empresa_lead referencia_lead idreferencia_lead moneda_lead contribucion_lead estado_lead creado_lead actualizado_lead accion_lead actualizadaaccion_lead segimineto_lead id_Caida valor_segimineto_lead id_corredor seguimiento_calendar whatsapp_template_contact_sent custentityaccion_campana";
 const legacyUnit =
     "id_expediente ID_interno_expediente codigo_exp proyectoPrincipal_exp idProyectoPrincipal_exp tipoDeVivienda_exp loteM2_exp estado_exp precioVentaUncio_exp m2Habitables_exp areaTotalM2_exp cuotaMantenimientoAprox_exp planosDeUnidad_exp entregaEstimada areaDeBodegaM2_exp areaDeMezzanieM2_exp areaDeBalconM2_exp areaDePlantaBaja_exp areaDePlantaAlta_exp areaDeAmpliacion_exp areaDeTerraza_exp precioPorM2_exp tercerNivelSotano_exp areaDeParqueoAprox areaExternaJardin_exp jardinConTalud_exp areacomunLibe_exp precioDeVentaMinimo fecha_mod cron_value";
-/** Public business fields shared with the read-only audit projection; new DB columns remain private. */
+/** Campos públicos de negocio compartidos con la proyección de solo lectura de la bitácora. Una columna nueva de la base sigue privada. */
 export const ORDER_RECORD_FIELDS = [...nativeOrder.split(" "), ...legacyOrder.split(" ")];
 
 type Row = Record<string, unknown>;
@@ -84,8 +84,8 @@ function entity(row: Row | null, fields: { id: string; code?: string }, source: 
     if (!row) return null;
     return { id: source === "legacy" ? "legacy:" + String(row[fields.id]) : row[fields.id], ...(fields.code ? { code: row[fields.code] } : {}), sourceFields: row };
 }
-/** Complete business snapshots in a common envelope; unconfirmed source fields stay separate until mapped explicitly. */
-// Optional gate preserves the existing four-argument reader contract.
+/** Fotos completas de negocio en un sobre común. Un campo de origen no confirmado sigue aparte hasta mapearlo de forma explícita. */
+// La puerta opcional conserva el contrato actual del lector de cuatro argumentos.
 // eslint-disable-next-line max-params
 export async function readOrderRecord(tx: Transaction<CrmDatabase>, source: "native" | "legacy", internalId: string, publicId: string, options: { legacyEnabled?: boolean } = {}) {
     const config = tables[source];

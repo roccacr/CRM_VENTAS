@@ -1,4 +1,7 @@
-/** Native SQL names obey the entity-suffix rule; public DTO keys remain provider-agnostic. */
+/**
+ * El nombre SQL lleva el sufijo de la entidad. La clave pública no nombra al proveedor.
+ * El mapa es cerrado: una columna nueva no sale sola.
+ */
 export const UNIT_COLUMNS = {
     code: "code_unit_file",
     projectNameSnapshot: "project_name_snapshot_unit_file",

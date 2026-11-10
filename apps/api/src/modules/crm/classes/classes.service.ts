@@ -14,7 +14,8 @@ import { IdentityService } from "../identity/identity.service.js";
 import { ClassesRepository } from "./classes.repository.js";
 
 /**
- * Applies Classes authorization and mutation rules through shared operations.
+ * Autorización y normalización compartidas, persistencia propia de `crm_class`.
+ * Aquí solo se acepta el código `classes`. La forma `legacy:classes:N` se deja pasar; el repositorio rechaza un N que no quepa en un entero de 32 bits con signo.
  */
 @Injectable()
 export class ClassesService extends CatalogItemOperations {

@@ -40,7 +40,7 @@ const DEFAULT_SYSTEM_USER_ACCESS_METHODS: readonly CreateSystemUserAccessMethod[
 export const MICROSOFT_ACCOUNT_NOT_ASSIGNED_MESSAGE = "Cuenta Microsoft no asignada al CRM.";
 export const MICROSOFT_ACCOUNT_NOT_AUTHORIZED_MESSAGE = "Usuario CRM no autorizado para iniciar sesión.";
 
-/** Tokens and expiry produced by a login; the cookies are set by the caller. */
+/** Tokens y vencimiento del login. Las cookies las pone quien llama; este resultado no las escribe. */
 export interface AuthenticatedSessionResult {
     refreshToken: string;
     refreshTokenExpiresAt: Date;
@@ -55,10 +55,10 @@ export interface ProfileImageResult {
     mimeType: string;
 }
 
-/** Access-related fields shared by user create and update. */
+/** Campos de acceso que comparten el alta y la edición. El cliente no manda el id interno. */
 type SystemUserAccessMutationPayload = Pick<CreateSystemUserDto | UpdateSystemUserDto, "accessMethods" | "orgUnitCode" | "orgUnitCodes" | "roleCode" | "roleCodes">;
 
-/** Turns legacy single-value fields into the list form used internally. */
+/** El cuerpo viejo trae un solo rol o unidad. Aquí se vuelve lista, sin vacíos ni duplicados. */
 const normalizeSystemUserAccessMutation = (payload: SystemUserAccessMutationPayload): { accessMethods: readonly CreateSystemUserAccessMethod[]; orgUnitCodes: readonly string[]; roleCodes: readonly string[] } => {
     const orgUnitCodes = [...new Set((payload.orgUnitCodes ?? (payload.orgUnitCode ? [payload.orgUnitCode] : [])).map((orgUnitCode) => orgUnitCode.trim()).filter((orgUnitCode) => orgUnitCode.length > 0))];
     const roleCodes = [...new Set((payload.roleCodes ?? [payload.roleCode]).map((roleCode) => roleCode.trim()).filter((roleCode) => roleCode.length > 0))];
@@ -77,7 +77,7 @@ export interface IdentityRequestAuditContext {
     userAgent?: string | undefined;
 }
 
-/** Data needed to record a failed local login and apply lockout. */
+/** Lo que hace falta para auditar un login local fallido y aplicar el bloqueo. No dice si el correo existe. */
 interface LocalLoginFailureContext {
     ipAddress: string | undefined;
     normalizedEmail: string;
@@ -429,7 +429,7 @@ export class IdentityService {
             throw new UnauthorizedException("No autenticado.");
         }
 
-        // A later access edit must not discard tokens already rotated successfully.
+        // Una edición de acceso posterior no descarta tokens que ya rotaron. El reuso sigue siendo no autenticado.
         return this.buildAuthenticatedSessionResult(rotation.snapshot, { ...nextSession, sessionExpiresAt: rotation.sessionExpiresAt }, { ...nextRefresh, refreshExpiresAt: rotation.refreshExpiresAt });
     }
 
@@ -702,7 +702,7 @@ export class IdentityService {
         }
     }
 
-    /** Initial assignment never changes existing users and requires an explicit effective grant. */
+    /** La clave inicial no cambia usuarios que ya existen y exige el permiso efectivo. Sin acceso local no se guarda. */
     private async hashAssignedInitialPassword(profile: IdentityProfile, password: string | undefined, accessMethods: readonly CreateSystemUserAccessMethod[]): Promise<string | undefined> {
         if (password === undefined) return undefined;
         this.assertCan(profile, USER_ASSIGN_PASSWORD_PERMISSION);
@@ -721,22 +721,22 @@ export class IdentityService {
         }
     }
 
-    /** A permission counts only if allowed and not denied. */
+    /** El permiso cuenta solo con allow y sin deny. Las dos faltas responden igual. */
     private assertCan(profile: IdentityProfile, permissionCode: string): void {
         if (!this.hasEffectivePermission(profile, permissionCode)) {
             throw new ForbiddenException("Permiso insuficiente.");
         }
     }
 
-    /** Effective permission check where deny wins. */
+    /** Hay permiso efectivo si existe un allow y ningún deny. El deny gana. */
     private hasEffectivePermission(profile: IdentityProfile, permissionCode: string): boolean {
         return profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny");
     }
 
-    /** Data-only edits need no assignment grant; the writer rechecks the locked snapshot. */
+    /** Editar datos no exige el permiso de asignar. Si cambian roles o unidades, sí, y el escritor vuelve a mirar la fila bloqueada. */
     private async assertAssignmentChangeAllowed(profile: IdentityProfile, current: SystemUserDirectoryItem, roleCodes: readonly string[], orgUnitCodes: readonly string[]): Promise<void> {
         const currentOrgUnits = current.orgUnits ?? (current.orgUnit ? [current.orgUnit] : []);
-        /** Canonical form of a code list to compare assignments. */
+        /** Forma canónica para comparar asignaciones: sin duplicados, sin distinguir mayúsculas y en orden. */
         const codes = (values: readonly string[]): string => JSON.stringify([...new Set(values.map(normalizeCaseInsensitiveIdentifier))].sort());
         const changed = [codes(roleCodes) !== codes(current.roles.map((role) => role.code)), codes(orgUnitCodes) !== codes(currentOrgUnits.map((unit) => unit.code))].includes(true);
         if (changed) {

@@ -11,7 +11,7 @@ const boolean = z.union([z.boolean(), z.literal(0), z.literal(1)]).transform(Boo
 const jsonValue = (value: unknown): unknown => (typeof value === "string" ? (JSON.parse(value) as unknown) : value);
 const summarySchema = z.object({ startedAt: nullableDate, finishedAt: nullableDate, totalSeconds: seconds, knownSeconds: z.number().nonnegative().max(Number.MAX_SAFE_INTEGER), complete: boolean });
 const visitSchema = z.object({ sequence: z.number().int().positive(), code: z.string(), label: z.string(), enteredAt: nullableDate, leftAt: nullableDate, seconds, isCurrent: boolean, recordedAt: z.iso.datetime(), actorSnapshot: z.unknown(), actorReference: z.unknown(), responsibleSnapshot: z.unknown(), responsibleReference: z.unknown() });
-/** Window calculations stay in SQL across the full record; only the requested visit page crosses HTTP. */
+/** Las ventanas se calculan en SQL sobre el registro completo. Por HTTP sale solo la página de visitas pedida. */
 export async function readOrderTiming(tx: Transaction<CrmDatabase>, tables: { view: RawBuilder<unknown>; states: RawBuilder<unknown> }, id: string, page: TimingPagination): Promise<TimingPage> {
     const { view, states } = tables;
     const result = await sql<Record<string, unknown>>`

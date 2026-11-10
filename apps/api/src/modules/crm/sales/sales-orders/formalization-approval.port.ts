@@ -5,7 +5,7 @@ import type { ContractTransitionLegacy } from "./contract-transition.port.js";
 
 export const FORMALIZATION_APPROVAL_ERP = Symbol("FORMALIZATION_APPROVAL_ERP");
 export const FORMALIZATION_APPROVAL_LEGACY = Symbol("FORMALIZATION_APPROVAL_LEGACY");
-/** A transport success alone is never an approval confirmation. */
+/** Un transporte exitoso no confirma la aprobación. */
 export interface FormalizationApprovalConfirmation {
     id: string;
     approved: true;
@@ -22,7 +22,7 @@ export interface LegacyApprovalOrder {
     prerequisitesApproved: boolean;
     formalization: "approved" | "not_approved" | "unknown";
 }
-/** Every write uses the canonical transaction; there is no second writable pool. */
+/** Toda escritura usa la transacción canónica. No hay un segundo pool de escritura. */
 export interface FormalizationApprovalLegacy extends Pick<ContractTransitionLegacy, "owner" | "event" | "append"> {
     lockApproval(tx: Transaction<CrmDatabase>, id: string): Promise<LegacyApprovalOrder | undefined>;
     approveFormalization(tx: Transaction<CrmDatabase>, id: string): Promise<void>;

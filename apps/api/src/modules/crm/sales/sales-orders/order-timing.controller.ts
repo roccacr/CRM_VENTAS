@@ -6,12 +6,12 @@ import { RequirePermission } from "../../../../common/security/require-permissio
 import { RouteSecurity } from "../../../../common/security/route-security.decorator.js";
 import { OrderTimingService } from "./order-timing.service.js";
 
-/** Read-only history; neither a GET nor the timing view records inferred state entries. */
+/** Historia de solo lectura. Ni el GET ni la vista de tiempos registran entradas de estado inferidas. */
 @Controller("formalization/orders")
 export class OrderTimingController {
-    /** The use case owns authorization, resource identity and paging. */
+    /** El caso de uso es dueño de la autorización, la identidad del recurso y la página. */
     constructor(@Inject(OrderTimingService) private readonly service: OrderTimingService) {}
-    /** Lists repeat visits separately and exposes full-record totals independent of page size. */
+    /** Lista las visitas repetidas por separado y expone los totales del registro completo, sin depender del tamaño de página. */
     @Get(":source/:id/timing")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "formalization-order-read" })

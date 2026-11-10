@@ -51,7 +51,7 @@ async function identification(tx: Transaction<CrmDatabase>, reference: unknown, 
     const row = await unique(tx, { table: "crmdatabase-api.info_extra_lead", columns: "cedula_lead", key: "id_lead_fk", id: reference, relation: "client.identification" }, warnings);
     return text(row?.cedula_lead);
 }
-// Each optional relation is independent; missing data stays null.
+// Cada relación opcional es independiente. Un dato ausente queda nulo.
 // eslint-disable-next-line complexity
 async function nativeRelations(tx: Transaction<CrmDatabase>, data: Snapshot, relations: Relations) {
     const order = data.order.sourceFields;
@@ -79,7 +79,7 @@ async function legacyRelations(tx: Transaction<CrmDatabase>, data: Snapshot, rel
     relations.advisor = text(advisor?.name_admin);
     relations.identification = await identification(tx, lead?.idinterno_lead, relations.warnings);
 }
-/** Explicit active provider references and history links are the only cross-source identity evidence. */
+/** La única evidencia de identidad entre fuentes son las referencias activas del proveedor y los vínculos de historia, ambos explícitos. */
 async function nativeCandidates(tx: Transaction<CrmDatabase>, legacy: Row): Promise<Row[]> {
     return (
         await sql<Row>`SELECT DISTINCT l.id_lead,l.public_id_lead,l.primary_contact_id_lead,l.owner_user_id_lead FROM crm_lead l WHERE l.deleted_at_lead IS NULL AND (
@@ -94,7 +94,7 @@ async function legacyCandidates(tx: Transaction<CrmDatabase>, native: Row): Prom
         OR EXISTS (SELECT 1 FROM int_lead_history_link h JOIN audit_record r ON r.id_record=h.record_id_lead_history_link WHERE h.lead_id_lead_history_link=${native.id_lead} AND r.entity_type_record='lead' AND r.source_schema_record='crmdatabase-api' AND r.source_table_record='leads' AND r.source_id_record=CAST(l.id_lead AS CHAR))) LIMIT 2`.execute(tx)
     ).rows;
 }
-// Missing optional contact fields are mapped independently after identity proof.
+// Los campos opcionales de contacto que faltan se mapean por separado, después de probar la identidad.
 // eslint-disable-next-line complexity
 async function nativeReferenceClient(tx: Transaction<CrmDatabase>, data: Snapshot, relations: Relations) {
     const reference = data.order.sourceFields.id_ov_lead;
@@ -106,7 +106,7 @@ async function nativeReferenceClient(tx: Transaction<CrmDatabase>, data: Snapsho
         relations.warnings.push("client.link:ambiguous");
         return;
     }
-    // A missing old row may resolve through its explicit ERP reference, never through a name or a PK guess.
+    // Una fila vieja ausente puede resolverse por su referencia explícita del ERP. No por el nombre ni por adivinar la llave.
     if ((await legacyCandidates(tx, native)).length !== 0) {
         relations.warnings.push("client.link:conflicting");
         return;
@@ -116,7 +116,7 @@ async function nativeReferenceClient(tx: Transaction<CrmDatabase>, data: Snapsho
     relations.client = { name: text(contact?.full_name_contact), email: text(contact?.email_contact), phone: text(contact?.phone_contact), identification: null, advisor: text(advisor?.display_name_user), identity: { source: "native", id: String(native.public_id_lead) } };
     relations.warnings.push("client:native_reference_only");
 }
-/** Reciprocal uniqueness rejects competing provider/history links before any field fallback. */
+/** La unicidad recíproca rechaza vínculos competidores de proveedor o de historia antes de cualquier respaldo de campo. */
 async function linkedSources(tx: Transaction<CrmDatabase>, source: Source, own: Row, warnings: string[]) {
     const readers = { native: [legacyCandidates, nativeCandidates], legacy: [nativeCandidates, legacyCandidates] } as const;
     const [findLinked, findReciprocal] = readers[source];
@@ -134,7 +134,7 @@ async function linkedSources(tx: Transaction<CrmDatabase>, source: Source, own: 
     }
     return source === "native" ? { native: own, legacy: linked } : { native: linked, legacy: own };
 }
-// Field fallbacks apply only after reciprocal identity proof; they are independent display fields.
+// El respaldo de campos corre solo después de probar la identidad en los dos sentidos. Son campos de presentación independientes.
 // eslint-disable-next-line complexity
 async function crossSourceClient(tx: Transaction<CrmDatabase>, data: Snapshot, relations: Relations) {
     const own = data.lead?.sourceFields;
@@ -174,8 +174,8 @@ function orderNumber(data: Snapshot, warnings: string[]): string | null {
     }
     return numbers[0] ?? text(data.order.sourceFields.native_code_sales_order);
 }
-/** Business-only projection preserves decimal/source date text; legacy currency is never inferred from the lead. */
-// The projection lists independent nullable fields, not business transition branches.
+/** La proyección de negocio conserva el texto decimal y la fecha de origen. La moneda vieja no se deduce del lead. */
+// La proyección lista campos anulables independientes. No son ramas de transición de negocio.
 // eslint-disable-next-line complexity
 export function buildOrderDetail(data: Snapshot, relations: Relations): OrderDetail {
     const native = data.source === "native";
@@ -238,7 +238,7 @@ export function buildOrderDetail(data: Snapshot, relations: Relations): OrderDet
     ]);
     return { sections: fields, currency: native ? text(order.currency_code_sales_order) : null, client: relations.client ?? client(data, relations), warnings: [...new Set([...data.warnings, ...relations.warnings])] };
 }
-/** Bounded reads reuse the already authorized order snapshot; no lead profile/history or writes are performed here. */
+/** Las lecturas acotadas reutilizan la foto de la orden ya autorizada. Aquí no se lee el perfil ni la historia del lead, y no se escribe. */
 export async function readOrderDetail(tx: Transaction<CrmDatabase>, data: Snapshot, options: { legacyEnabled?: boolean }): Promise<OrderDetail> {
     const relations: Relations = { project: null, subsidiary: null, seller: null, advisor: null, identification: null, approvals: [], warnings: [] };
     if (data.source === "native") await nativeRelations(tx, data, relations);

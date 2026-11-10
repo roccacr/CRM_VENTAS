@@ -14,15 +14,21 @@ const commandSchema = z.discriminatedUnion("kind", [z.object({ ...common, kind: 
 type Command = z.infer<typeof commandSchema>;
 type Lead = { id: number; version: number; stage: string; status: string; deleted: Date | null };
 
-/** Internal commands, not HTTP handlers. Callers must authorize the resource before invocation. */
+/**
+ * Comandos internos, no rutas HTTP. Quien llama autoriza el lead antes de invocarlos.
+ * El mismo `operationId` devuelve el evento anterior si el comando coincide. Otro contenido es conflicto y no reescribe.
+ */
 export class LeadHistoryCommands {
-    /** Reuses the native database and the existing transactional audit writer. */
+    /** Usa la base nativa y el escritor de auditoría que ya entra en la transacción. */
     constructor(
         private readonly database: Pick<DatabaseService, "db">,
         private readonly audit: Pick<RecordAuditService, "captureActor" | "append">,
     ) {}
 
-    /** Validate an authorized internal command before opening its business transaction. */
+    /**
+     * La forma se valida antes de abrir la transacción. El detalle se recorta y cabe entre 1 y 60000.
+     * La actividad puede omitir el motivo; el cambio de etapa no. `legacy_observation` no es una actividad nueva. El lead se bloquea adentro: si está borrado o inactivo, no se encuentra.
+     */
     async execute(value: unknown) {
         const parsed = commandSchema.safeParse(value);
         if (!parsed.success) throw new BadRequestException("Invalid lead history command");
@@ -155,7 +161,10 @@ export class LeadHistoryCommands {
             .execute();
     }
 
-    /** Explicit promotion hook, called inside the authorized import transaction before new native events. */
+    /**
+     * Enganche de promoción, dentro de la transacción de importación ya autorizada y antes de los eventos nativos nuevos.
+     * Exige el lead, el archivo viejo de `leads` y que todavía no exista una historia nativa partida. Si falta alguna, no vincula.
+     */
     async linkNative(tx: Transaction<CrmDatabase>, leadId: number, recordId: string): Promise<void> {
         const lead = await tx.selectFrom("crm_lead").select("id_lead").where("id_lead", "=", leadId).forUpdate().executeTakeFirst();
         const record = await tx.selectFrom("audit_record").select("id_record").where("id_record", "=", recordId).where("entity_type_record", "=", "lead").where("source_schema_record", "=", "crmdatabase-api").where("source_table_record", "=", "leads").forUpdate().executeTakeFirst();

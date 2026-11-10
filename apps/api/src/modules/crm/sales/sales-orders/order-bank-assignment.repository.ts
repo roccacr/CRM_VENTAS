@@ -16,7 +16,7 @@ export interface AssignmentChange {
     actorPublicId: string;
 }
 export type AssignmentUnlink = Pick<AssignmentChange, "expectedVersion" | "reason" | "actorPublicId">;
-/** Order lock serializes first assignments; CAS and audit share the same transaction. */
+/** El bloqueo de la orden serializa la primera asignación. El control optimista y la bitácora comparten la transacción. */
 @Injectable()
 export class OrderBankAssignmentRepository {
     /** Usa servicios inyectados para conservar los límites de identidad, catálogo y auditoría. */
@@ -42,7 +42,7 @@ export class OrderBankAssignmentRepository {
         if (order) order = lock ? await this.native(tx, identity, true) : order;
         else if (identity.source === "legacy") {
             const old = await this.legacy.read(tx, identity.id, lock);
-            // Promotion locks the old order first; a current read prevents stale fallback writes.
+            // La promoción bloquea primero la orden vieja. Una lectura actual evita escribir sobre una copia ya retirada.
             order = lock ? ((await this.native(tx, identity, true)) ?? old) : old;
         }
         if (!order?.active) throw new NotFoundException("Orden disponible no encontrada.");

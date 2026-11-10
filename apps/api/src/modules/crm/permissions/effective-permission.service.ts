@@ -17,7 +17,12 @@ type EffectivePermissionMap = Map<string, EffectivePermission>;
  *
  * Delegacion no forma parte de este servicio todavia. Cuando se apruebe, debe
  * entrar como input explicito nuevo en vez de mezclarse silenciosamente con
- * overrides directos.
+ * overrides directos. Este calculo tampoco emite el origen `system`.
+ *
+ * Un codigo de rol repetido reemplaza la fila anterior. No conserva el alcance
+ * mas amplio: esa ampliacion solo ocurre cuando un allow directo se encuentra
+ * con un allow que ya esta en el mapa. Un codigo ausente y un deny hacen que
+ * `can` sea falso.
  */
 @Injectable()
 export class EffectivePermissionService {
@@ -57,7 +62,10 @@ export class EffectivePermissionService {
     }
 
     /**
-     * Agrega al mapa de trabajo un permiso allow derivado de rol.
+     * Agrega al mapa un allow de rol.
+     *
+     * Si el mismo codigo ya entro, esta fila lo sustituye completo, alcance
+     * incluido.
      */
     private applyRolePermission(effective: EffectivePermissionMap, permission: PermissionInput): void {
         effective.set(permission.code, {
@@ -71,9 +79,10 @@ export class EffectivePermissionService {
     /**
      * Aplica un allow especifico de usuario despues de permisos por rol.
      *
-     * Un allow directo no debe reducir un scope ya otorgado por rol. Si el rol
-     * concede `all_areas` y el override directo usa el scope minimo por defecto,
-     * el resultado conserva el scope mas amplio.
+     * Un allow directo no reduce un alcance que el rol ya otorgo. Si el rol
+     * concede `all_areas` y el override trae `self`, queda el mas amplio y el
+     * origen pasa a `override`. Si no habia allow previo, se guarda el alcance
+     * recibido, aunque sea un texto desconocido.
      */
     private applyDirectAllow(effective: EffectivePermissionMap, override: PermissionOverrideInput): void {
         const current = effective.get(override.code);
@@ -104,7 +113,7 @@ export class EffectivePermissionService {
     }
 
     /**
-     * Retorna una lista deterministica para respuestas API y pruebas.
+     * Ordena por codigo para que la respuesta y las pruebas no dependan del orden de la base.
      */
     private sortPermissions(effective: EffectivePermissionMap): EffectivePermission[] {
         return [...effective.values()].sort((left, right) => left.code.localeCompare(right.code));

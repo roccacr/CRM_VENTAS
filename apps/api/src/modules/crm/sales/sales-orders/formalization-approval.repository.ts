@@ -28,10 +28,10 @@ interface ApprovalChange {
 }
 const PENDING_SEND = "contract_pending_send";
 
-/** Locks authority across ERP confirmation; local check, state and audit share one commit. */
+/** Bloquea la autoridad durante la confirmación del ERP. La marca local, el estado y la bitácora comparten un commit. */
 @Injectable()
 export class FormalizationApprovalRepository {
-    /** One canonical transaction plus domain ports for ERP and legacy persistence. */
+    /** Una transacción canónica y los puertos del dominio para el ERP y la persistencia vieja. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(RecordAuditService) private readonly audit: RecordAuditService,
@@ -39,7 +39,7 @@ export class FormalizationApprovalRepository {
         @Inject(FORMALIZATION_APPROVAL_ERP) private readonly erp: FormalizationApprovalErp,
     ) {}
 
-    /** ERP cannot join a MySQL transaction. A postconfirmation failure explicitly requires reconciliation. */
+    /** El ERP no entra en la transacción de MySQL. Un fallo después de confirmar exige una conciliación explícita. */
     async approve(command: FormalizationApprovalCommand) {
         if (!this.audit.enabled) throw new ServiceUnavailableException("La aprobación requiere bitácora habilitada.");
         const progress = { erpConfirmed: false };
@@ -68,7 +68,7 @@ export class FormalizationApprovalRepository {
         const confirmation = await this.erp.approveFormalization(order.netsuiteId);
         if (confirmation.id !== order.netsuiteId) throw new ServiceUnavailableException("NetSuite no confirmó la aprobación de esta orden.");
         progress.erpConfirmed = true;
-        // Even an already synchronized check records this external confirmation without inventing a stage change.
+        // Aunque la marca ya estaba sincronizada, se registra esta confirmación externa. No se inventa un cambio de etapa.
         const localChange = order.formalization !== "approved" || recordStage;
         const reason = `Aprobación de Formalización confirmada en NetSuite ${confirmation.environment}; ID ${order.netsuiteId}; ${confirmation.alreadyApproved ? "ya estaba aprobada" : "marcada por el CRM"}.`;
         const change = { order, actorId: actor.id_user, actor: snapshot, command, sequence, previousState, reason };
@@ -138,7 +138,7 @@ export class FormalizationApprovalRepository {
         return data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
     }
 
-    /** A native alias, including inactive/deleted, always shadows legacy. Promotion must lock the legacy parent first. */
+    /** Un alias nativo, incluso inactivo o borrado, tapa lo viejo. Promover bloquea primero el padre viejo. */
     private async resolve(tx: Transaction<CrmDatabase>, command: FormalizationApprovalCommand): Promise<ResolvedApproval> {
         let legacy: LegacyApprovalOrder | undefined;
         if (command.source === "legacy") {

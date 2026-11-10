@@ -25,7 +25,7 @@ interface RelatedRow {
     system: string | null;
 }
 
-/** A business identity is independent of the workspace where its note was created. */
+/** La identidad de negocio no depende del espacio donde se creó la nota. */
 export const noteRelatedRecordKey = (reference: NoteRelatedReference): string =>
     createHash("sha256")
         .update(JSON.stringify(["note-related-record", reference.kind, reference.source, reference.id]))
@@ -41,7 +41,7 @@ function decodeRelatedRow(row: RelatedRow): StoredNoteRelatedRecord {
     return { linkId: row.linkId, primary: row.primary === 1, reference: reference.data };
 }
 
-/** Batch references contain no business captions; callers must authorize summaries separately. */
+/** El lote de referencias no trae títulos de negocio. Quien llama autoriza los resúmenes aparte. */
 export async function readNoteRelatedRecords(executor: Executor, notes: readonly Pick<NoteRecord, "internalId">[]): Promise<Map<number, StoredNoteRelatedRecord[]>> {
     const result = new Map<number, StoredNoteRelatedRecord[]>();
     if (!notes.length) return result;
@@ -55,7 +55,7 @@ export async function readNoteRelatedRecords(executor: Executor, notes: readonly
     return result;
 }
 
-/** Existing principal and inaccessible secondary relations must never be deleted by a restricted editor. */
+/** Un editor restringido no borra el principal ni las relaciones secundarias que no puede ver. */
 export async function persistNoteRelatedRecords(executor: Executor, note: Pick<NoteRecord, "internalId">, references: readonly NoteRelatedReference[], preservedLinkIds: readonly number[] = []): Promise<void> {
     const stored = (await readNoteRelatedRecords(executor, [note])).get(note.internalId) ?? [];
     const preserve = preservedLinkIds.length ? sql`AND id_note_link NOT IN (${sql.join(preservedLinkIds)})` : sql``;
@@ -94,12 +94,12 @@ async function lockNativeReference(executor: Executor, reference: NoteRelatedRef
     return row.id;
 }
 
-/** One batch per list page; no per-card SQL lookup. Writes reuse the caller's audited transaction. */
+/** Un lote por página de lista. No hay SQL por ficha. La escritura reutiliza la transacción auditada de quien llama. */
 @Injectable()
 export class NoteRelatedRecordsRepository {
-    /** Injects the existing native pool. */
+    /** Usa el pool nativo que ya existe. No abre otro. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
-    /** Returns source-qualified references for already authorized notes. */
+    /** Devuelve referencias calificadas por origen para notas ya autorizadas. */
     referencesForNotes(notes: readonly Pick<NoteRecord, "internalId">[], executor: Executor = this.database.db) {
         return readNoteRelatedRecords(executor, notes);
     }

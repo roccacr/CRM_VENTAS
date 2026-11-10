@@ -1,6 +1,6 @@
 import { UNIT_FIELDS, type UnitDetail, unitStatus, type UnitSummary, type UnitValues } from "./unit-files.contract.js";
 
-/** Database aliases isolate physical source columns from the public contract. */
+/** Los alias de la base separan la columna física del contrato público. */
 export interface UnitReadRow extends Record<string, unknown> {
     position: number;
     id: string;
@@ -10,14 +10,17 @@ export interface UnitReadRow extends Record<string, unknown> {
     projectName: string;
     projectReference?: number | null;
 }
-/** Preserve unknown and placeholder values; never coerce invalid money to zero. */
+/**
+ * Conserva el texto de origen, también un precio que no es número.
+ * Una fecha pasa a ISO. Un objeto o un arreglo no se convierte en cero: es un error de tipo.
+ */
 export function unitText(value: unknown): string | null {
     if (value === null || value === undefined) return null;
     if (value instanceof Date) return value.toISOString();
     if (typeof value === "string" || typeof value === "number" || typeof value === "bigint" || typeof value === "boolean") return String(value);
     throw new TypeError("Unexpected structured Unit Files source value");
 }
-/** Lightweight table projection, without plans or full geometry. */
+/** Proyección corta de la tabla. No trae planos ni el resto de las áreas. */
 export function mapUnitSummary(row: UnitReadRow): UnitSummary {
     return {
         id: row.id,
@@ -37,7 +40,7 @@ export function mapUnitSummary(row: UnitReadRow): UnitSummary {
         updatedAt: unitText(row.modifiedAt),
     };
 }
-/** Every source business field is represented, including nulls and source metadata. */
+/** El detalle representa cada campo de negocio, nulo incluido, más el metadato de origen y las referencias. */
 export function mapUnitDetail(row: UnitReadRow, references: UnitDetail["externalReferences"]): UnitDetail {
     const values = Object.fromEntries(Object.keys(UNIT_FIELDS).map((key) => [key, unitText(row[key])])) as UnitValues;
     return { ...mapUnitSummary(row), values, sourceMetadata: { projectReference: unitText(row.projectReference) }, externalReferences: references };

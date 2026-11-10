@@ -2,19 +2,19 @@ import { BadRequestException } from "@nestjs/common";
 import { plainToInstance } from "class-transformer";
 import { IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, validateSync } from "class-validator";
 
-/** ULID-style public id of native orders (Crockford base32, 26 chars, first char <= 7). */
+/** Id público de la orden nativa, estilo ULID: Crockford, 26 caracteres y el primero no pasa de 7. */
 const publicIdPattern = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
-/** Idempotency key: either a ULID or a UUID supplied by the client. */
+/** Clave de idempotencia: un ULID o un UUID que trae el cliente. */
 const operationPattern = /^(?:[0-7][0-9A-HJKMNP-TV-Z]{25}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
-/** Transitions available from the contract queues. */
+/** Transiciones disponibles desde las colas de contrato. */
 export type ContractAction = "send" | "revert" | "set";
-/** Ordered CRM stages after Formalization approval; this order also determines reversals. */
+/** Etapas ordenadas del CRM después de la aprobación de formalización. Ese orden también define las reversas. */
 export const FORMALIZATION_STAGE_CODES = ["contract_pending_send", "contract_pending_signature", "bank_management", "bank_management_in_progress", "pending_balance", "pending_transfer", "transfer_signed", "closed"] as const;
 
 export const PURCHASE_FUNDS_ORIGINS = ["own_funds", "bank_financing"] as const;
 export type PurchaseFundsOrigin = (typeof PURCHASE_FUNDS_ORIGINS)[number];
 
-/** The route fixes the action; source IDs never permit arbitrary SQL identifiers. */
+/** La ruta fija la acción. El id de origen no se vuelve un identificador SQL arbitrario. */
 export class ContractTransitionDto {
     @IsIn(["native", "legacy"])
     source!: "native" | "legacy";
@@ -47,7 +47,7 @@ export class ContractTransitionDto {
     targetState?: (typeof FORMALIZATION_STAGE_CODES)[number] | undefined;
 }
 
-/** Fixed contract actions retain their destination; the selector accepts only known postapproval stages. */
+/** Las acciones fijas de contrato conservan su destino. El selector acepta solo etapas posteriores conocidas. */
 export function contractTarget(command: { action: ContractAction; targetState?: string | undefined }): string {
     switch (command.action) {
         case "send":
@@ -62,7 +62,7 @@ export function contractTarget(command: { action: ContractAction; targetState?: 
     throw new BadRequestException("Invalid target stage");
 }
 
-/** Internal callers receive the same validation as HTTP consumers, including source-specific IDs. */
+/** Un llamador interno recibe la misma validación que HTTP, incluido el id propio de cada fuente. */
 export function validateContractTransition(input: unknown, action: ContractAction): ContractTransitionDto {
     if (input === null || typeof input !== "object" || Array.isArray(input)) throw new BadRequestException("Invalid contract transition");
     const dto = plainToInstance(ContractTransitionDto, input);
@@ -74,7 +74,7 @@ export function validateContractTransition(input: unknown, action: ContractActio
     return dto;
 }
 
-/** Native ids are public ULIDs; legacy ids are positive INT values. Reversals must explain themselves. */
+/** El id nativo es un ULID público. El id viejo es un entero positivo. Una reversa tiene que explicar el motivo. */
 function assertContractIdentity(dto: ContractTransitionDto, action: ContractAction): void {
     const validId = dto.source === "native" ? publicIdPattern.test(dto.id) : /^[1-9]\d{0,9}$/.test(dto.id) && Number(dto.id) <= 2147483647;
     if (!validId) throw new BadRequestException("Invalid order identity");

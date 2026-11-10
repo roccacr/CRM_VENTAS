@@ -16,10 +16,9 @@ it("explains each order card on focus using the same conditions as Home", async 
     for (const card of cards) expect(screen.getByRole("button", { name: `Condiciones de ${card.title}` })).toBeInTheDocument();
     fireEvent.focus(screen.getByRole("button", { name: "Condiciones de Formalizaciones cerradas este año" }));
     const tooltip = await screen.findByRole("tooltip");
-    expect(tooltip.textContent).toContain("Unidad entregada y contrato firmado: sí");
-    expect(tooltip.textContent).toContain("Cierre registrado este año");
-    expect(tooltip.textContent).toContain("Cuotas, traspaso y llaves no condicionan el cierre");
-    expect(cards.find((card) => card.id === "transfer")?.helpText).toContain("Llaves: cualquiera");
+    expect(tooltip.textContent).toContain("Contrato firmado y fecha de entrega de NetSuite de este año");
+    expect(tooltip.textContent).toContain("Si NetSuite no tiene fecha, se usa el cierre registrado en Habita");
+    expect(cards.find((card) => card.id === "transfer")?.helpText).toContain("Contrato firmado, cuotas pagadas y etapa Traspasos pendientes");
     expect(cards.find((card) => card.id === "signed")?.helpText).toContain("Entrega de llaves y Unidad entregada: no");
 });
 it("groups the contract subcounts once without duplicating their aggregate as another figure", () => {

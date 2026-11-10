@@ -8,7 +8,10 @@ export interface UnitSeekRow {
     position: number;
     item: UnitSummary;
 }
-/** Optional read boundary: native runtime has no concrete legacy dependency. */
+/**
+ * Puerto de solo lectura. El runtime nativo no nombra una implementación vieja.
+ * `enabled` en falso deja las lecturas en el CRM nuevo. `facets` puede no existir.
+ */
 export interface UnitFilesLegacy {
     enabled(): boolean;
     facets?(filter: UnitFacetFilter, take: number): Promise<UnitFacet[]>;
