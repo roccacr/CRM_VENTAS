@@ -25,6 +25,14 @@ en la BD vieja. Reutiliza la fila nativa migrada o crea proyecto y referencia
 en la BD nueva. Si falta en la vieja, usa el nombre confirmado por NetSuite.
 Una referencia archivada o ambigua requiere conciliación y no genera duplicados.
 
+Verificación en producción del 10 de noviembre de 2026
+AVI200 quedó importada con AVIVA (ID NetSuite `23`) recuperado del catálogo
+legado. AVI192 quedó importada con la campaña de sistema Llamada (ID `-3`,
+fila legacy `432`). En ambos casos se verificaron los vínculos en la BD nueva
+y el aviso Completada. Sus responsables siguen pendientes de conciliar con
+cuentas de Habita. La lectura de `projectName` requiere instalar la librería
+local `2026.11.10.8` en NetSuite.
+
 La biblioteca local fija la URL base de producción en
 `https://api-habita.rdghub.com/integrations/netsuite/production`.
 El UE añade `/order-events`; el dominio autorizado del secreto en ese
