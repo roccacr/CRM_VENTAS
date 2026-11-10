@@ -39,14 +39,14 @@ const BANK_CATALOG = ADMINISTRATION_CATALOGS.find((catalog) => catalog.code === 
 if (!BANK_CATALOG) throw new Error("Falta la definición del catálogo Bancos.");
 const bankCatalog = BANK_CATALOG;
 const identityKey = (profile: IdentityProfile): string => `${profile.user.publicId}:${profile.session.publicId}`;
-// A delayed profile belonging to another account/session cannot authorize this page's draft.
+// Un perfil tardío de otra cuenta o sesión no autoriza el borrador de esta página.
 const snapshotPermissions = (profile: IdentityProfile, context: CatalogContextModuleCode, identity: string): CatalogPermissions => (identityKey(profile) === identity ? getCatalogPermissions(profile, bankCatalog, context) : NO_CATALOG_PERMISSIONS);
 const EMPTY_BANKS: BankPage<Bank> = { items: [], total: 0 };
 const EMPTY_ADVISORS: BankPage<BankAdvisor> = { items: [], total: 0 };
 type Filters = { search: string; status: "all" | "active" | "inactive"; page: number };
 const INITIAL_FILTERS: Filters = { search: "", status: "all", page: 1 };
 const labelStatus = (status: string) => (status === "active" ? "Activo" : "Inactivo");
-/** Same status pill the other catalogs use. */
+/** La misma pastilla de estado que usan los demás catálogos. */
 const StatusPill = ({ status }: { readonly status: string }) => <span className={`catalog-items-status catalog-items-status--${status === "active" ? "active" : "inactive"}`}>{labelStatus(status)}</span>;
 const messageFor = (error: unknown, fallback: string): string => {
     if (!(error instanceof ApiClientError) || !error.responseBody || typeof error.responseBody !== "object" || !("message" in error.responseBody)) return fallback;
@@ -111,7 +111,7 @@ function canSubmit(target: BankDialog, permissions: CatalogPermissions): boolean
     return target.item ? permissions.update : permissions.create;
 }
 
-/** Dedicated native banks flow. Session/context epochs discard stale reads and prevent delayed preflights from writing. */
+/** Flujo nativo propio de bancos. La época de sesión y de contexto descarta lecturas viejas y evita que un preflight tardío escriba. */
 function useBanks(contextModuleCode: CatalogContextModuleCode) {
     const epoch = useRef(0);
     const identity = useRef("");
@@ -372,7 +372,7 @@ function BankAccessNotice({ failed, onRetry }: { readonly failed: boolean; reado
         </section>
     );
 }
-/** Header with breadcrumb, total and actions, laid out like every other catalog. */
+/** Encabezado con ruta, total y acciones, con la misma disposición que el resto de catálogos. */
 function BankHeader({ label, loading, total, canCreate, onRefresh, onCreate }: { readonly label: string; readonly loading: boolean; readonly total: number; readonly canCreate: boolean; readonly onRefresh: () => void; readonly onCreate: () => void }) {
     return (
         <section className="global-home-page-header administration-users-page-header" aria-labelledby="banks-page-title">
@@ -408,7 +408,7 @@ function BankHeader({ label, loading, total, canCreate, onRefresh, onCreate }: {
         </section>
     );
 }
-/** Bank and executive workspace retains native identity and exact action grants. */
+/** El espacio de banco y ejecutivo conserva la identidad nativa y el permiso exacto de cada acción. */
 export function BanksPage({ contextLabel = "Administración", contextModuleCode = "administration" }: { readonly contextLabel?: string; readonly contextModuleCode?: CatalogContextModuleCode }) {
     const model = useBanks(contextModuleCode);
     const { permissions, authorizing, authorizationFailed, retryAuthorization, banks, loading, dialog, saving, formError, blocked, closeDialog, openDialog, reload, save } = model;

@@ -11,8 +11,8 @@ const LOCAL_DEVELOPMENT_HOST_ALIASES = new Set(["127.0.0.1"]);
 /**
  * Acepta solo un origin.
  *
- * Un path, query o hash apuntaría a otra ruta del BFF sin que el resto del
- * cliente lo note. La barra final se ignora para no rechazar un origin válido.
+ * Un path, query, hash o usuario en la URL apuntaria a otra ruta del BFF sin que
+ * el resto del cliente lo note. La barra final se ignora para no rechazar un origin valido.
  */
 const normalizeOrigin = (value: string): string => {
     const parsedUrl = new URL(value);
@@ -33,9 +33,10 @@ const readCurrentHref = (): string | null => {
 };
 
 /**
- * En `vite dev`, si la app se abre por IP de red local, el API debe usar esa
- * misma IP con el puerto del BFF. Si no, un telefono u otra PC intentaria
- * llamar a su propio `localhost:3000`.
+ * En `vite dev`, si la app se abre por IP de red local y el API sigue en
+ * `localhost` o `127.0.0.1`, el API toma esa IP y conserva el puerto del BFF.
+ * Si no, un telefono u otra PC llamaria a su propio `localhost:3000`.
+ * Abrir ya en localhost, o un API que no es loopback, deja el origin configurado.
  */
 export const getDevelopmentNetworkApiOrigin = (apiOrigin: string, currentHref: string | null, isDevelopment = import.meta.env.DEV): string | null => {
     if (!isDevelopment || !currentHref) {
@@ -58,7 +59,8 @@ export const getDevelopmentNetworkApiOrigin = (apiOrigin: string, currentHref: s
  * Resuelve el origin del BFF al cargar el módulo.
  *
  * Fuera de desarrollo y test no hay valor por defecto: un build sin origin
- * no debe llamar a localhost en silencio.
+ * no debe llamar a localhost en silencio. El texto exacto `same-origin` usa el
+ * origin de la pagina y no pasa por la normalizacion ni por el cambio de IP.
  */
 const resolveApiOrigin = (): string => {
     const configuredOrigin = import.meta.env.VITE_API_ORIGIN?.trim();
@@ -82,7 +84,7 @@ const resolveApiOrigin = (): string => {
 /** Origin ya validado. Se calcula una vez para que todas las llamadas usen el mismo BFF. */
 export const API_ORIGIN = resolveApiOrigin();
 
-/** Une origin y path con una sola barra, aunque el path llegue sin ella. */
+/** Une origin y path con una sola barra, aunque el path llegue sin ella. Un texto que ya trae otro origen queda como ruta del BFF, no como destino externo. */
 export const buildApiUrl = (path: string): string => `${API_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
 
 /**
@@ -90,6 +92,7 @@ export const buildApiUrl = (path: string): string => `${API_ORIGIN}${path.starts
  *
  * `127.0.0.1` y `localhost` son origenes distintos para CORS, cookies y
  * postMessage; Microsoft y el API local estan configurados contra localhost.
+ * Solo se reescribe `127.0.0.1`. Una IP de red se queda, y se conservan puerto, ruta, query y hash.
  */
 export const getCanonicalLocalDevelopmentUrl = (currentHref: string, isDevelopment = import.meta.env.DEV): string | null => {
     if (!isDevelopment) {

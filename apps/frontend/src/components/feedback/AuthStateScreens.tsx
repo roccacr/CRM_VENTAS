@@ -34,6 +34,7 @@ const ACCESS_PROBLEM_COPY: Record<AccessProblemKind, { readonly description: str
     },
 };
 
+/** Nombre visible: el nombre de perfil, si está vacío el correo, y si tampoco hay correo un rótulo genérico. */
 const getDisplayName = (user: IdentityUser): string => user.displayName.trim() || user.email.trim() || "Usuario actual";
 
 /** Iniciales de respaldo; si el nombre es un correo se ignora el dominio. */
@@ -54,7 +55,7 @@ const getInitials = (user: IdentityUser): string => {
         .join("");
 };
 
-/** El API puede devolver la foto como ruta relativa al BFF o como URL absoluta. */
+/** El API puede devolver la foto como ruta relativa al BFF o como URL absoluta. Un valor que empieza por `http` se usa tal cual, así que también cubre `https`. */
 const buildPhotoUrl = (profileImageUrl: string): string => new URL(profileImageUrl.startsWith("http") ? profileImageUrl : buildApiUrl(profileImageUrl)).toString();
 
 /** Foto del usuario; si no carga, cae a iniciales sin romper la pantalla. */
@@ -130,7 +131,7 @@ interface AuthStateCardProps {
     readonly title: string;
 }
 
-/** Tarjeta común de las pantallas de acceso: una acción principal y, opcionalmente, un reintento. */
+/** Tarjeta común de las pantallas de acceso. El reintento aparece solo si hay manejador y texto. Quién llama decide si ese botón queda deshabilitado. */
 function AuthStateCard({ description, isSecondaryActionDisabled = false, onPrimaryAction, onSecondaryAction, primaryActionLabel, secondaryActionLabel, supportMessage, title }: AuthStateCardProps) {
     return (
         <main className="app-auth-state">

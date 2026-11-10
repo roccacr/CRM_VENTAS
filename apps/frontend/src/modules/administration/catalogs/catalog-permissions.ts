@@ -10,7 +10,7 @@ export interface CatalogPermissions {
 }
 export const NO_CATALOG_PERMISSIONS: CatalogPermissions = { read: false, create: false, update: false, inactivate: false };
 
-/** Owner bypasses only module membership; every action still requires its exact effective grant. */
+/** Un Owner activo se salta solo la membresía del módulo. Cada acción sigue exigiendo su allow efectivo y un deny lo quita. En bancos, sin lectura no quedan las demás acciones. */
 export function getCatalogPermissions(profile: IdentityProfile, catalog: AdministrationCatalogDefinition, context: CatalogContextModuleCode): CatalogPermissions {
     const owner = profile.roles.some(({ code, status }) => code === "owner" && status === "active");
     if (!owner && !profile.orgUnits.some(({ code, status }) => code === context && status === "active")) return NO_CATALOG_PERMISSIONS;

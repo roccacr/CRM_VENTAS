@@ -115,7 +115,7 @@ const getErrorMessage = (error: unknown): string => {
     return error instanceof Error ? error.message : "No se pudo completar la acción.";
 };
 
-/** Only the effective API grant authorizes editing; an explicit deny always wins. */
+/** Solo el permiso efectivo del API autoriza la edición. Un deny explícito gana. */
 const hasEffectivePermission = (profile: IdentityProfile, code: string): boolean => profile.permissions.some((permission) => permission.code === code && permission.effect === "allow") && !profile.permissions.some((permission) => permission.code === code && permission.effect === "deny");
 const isActiveOwner = (profile: IdentityProfile): boolean => Array.isArray(profile.roles) && profile.roles.some((role: IdentityProfile["roles"][number]) => role.code === OWNER_ROLE_CODE && role.status === "active");
 const meetsEditorRequirements = (access: { readonly canListUsers: boolean; readonly canManageGeneral: boolean }, requirements: { readonly requireUserList: boolean; readonly requireOwner: boolean }): boolean => (!requirements.requireUserList || access.canListUsers) && (!requirements.requireOwner || access.canManageGeneral);
@@ -129,7 +129,7 @@ const getRole = (roles: readonly RoleCatalogItem[], code: string): RoleCatalogIt
 
 type RolesLoadState = { status: "loading" } | { status: "error"; message: string } | { status: "empty" } | { status: "ready"; catalog: IdentitySecurityCatalog; canListUsers: boolean; canManageGeneral: boolean };
 
-/** Fail closed before mounting the editor and after any failed permission revalidation. */
+/** Si el permiso no se confirma, el editor no se monta. Si una revalidación falla, también se cierra. */
 export function RolesSecurityPage() {
     const [state, setState] = useState<RolesLoadState>({ status: "loading" });
     const mounted = useRef(false);
@@ -574,7 +574,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
 
     const isGeneralViewEnabled = (view: PermissionSectionView): boolean => !isGeneralTemplate || view.moduleCode === "lead" || generalModules.has(view.moduleCode);
 
-    /** Catalog grants remain authoritative even when the role template is locked. */
+    /** El permiso de catálogo sigue mandando aunque la plantilla del rol esté bloqueada. */
     const getGrantedCodes = (view: PermissionSectionView): ReadonlySet<string> => {
         if (!isGeneralViewEnabled(view)) return new Set();
         if (isUserMode && !isUserModuleAssigned(view.moduleCode)) return new Set();
@@ -610,7 +610,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
         });
     };
 
-    /** Scoped roles change membership only; legacy menu visibility keeps its existing overrides. */
+    /** Un rol con alcance cambia solo la membresía. La visibilidad vieja del menú conserva sus excepciones. */
     const toggleUserModuleVisibility = (moduleCode: string) => {
         if (isAccessEditorBusy) return;
         const enabled = userOrgUnitCodes.has(moduleCode);
@@ -628,7 +628,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
 
             return next;
         });
-        // A scope change is not an employee exception: preserve explicit allows and denies.
+        // Cambiar el alcance no es una excepción del empleado. Se conservan los allow y los deny explícitos.
         if (userModuleScope !== null) return;
         setUserPermissionOverrides((current) => {
             let next = current;
@@ -725,7 +725,7 @@ function RolesSecurityEditor({ catalog, canListUsers, canManageGeneral, isRevali
         }
     };
 
-    /** Persists one atomic template and replaces drafts with the canonical response. */
+    /** Guarda una sola plantilla atómica y sustituye los borradores por la respuesta canónica. */
     const saveRolePermissions = async (reason: string) => {
         const response = await replaceIdentityRolePermissions(selectedRoleCode, {
             permissionCodes: getRolePermissionCodesForModules(

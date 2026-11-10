@@ -133,7 +133,7 @@ const getModalCopy = (catalog: AdministrationCatalogDefinition, isEdit: boolean)
 /** Proyectos arranca con dos líneas y crece con el texto, para que el formulario quepa sin scroll en escritorio. */
 const getTextAreaSizes = (projectView: boolean) => (projectView ? { detail: { autoSize: { minRows: 2, maxRows: 6 } }, reason: { autoSize: { minRows: 2, maxRows: 4 } } } : { detail: { rows: 3 }, reason: { rows: 4 } });
 
-/** Same numbered section as the user drawer, so every create/edit form reads the same way. */
+/** La misma sección numerada del panel de usuarios, para que alta y edición se lean igual. */
 function CatalogFormSection({ step, title, children }: { readonly step: number; readonly title: string; readonly children: ReactNode }) {
     const headingId = `catalog-form-section-${String(step)}`;
     return (
@@ -337,7 +337,7 @@ function logCatalogCache(catalog: string, page: number, pageSize: number, rows: 
     if (import.meta.env.DEV && import.meta.env.MODE !== "test") console.info("[Habita Catálogos] caché", JSON.stringify({ catalog, page, pageSize, rows }));
 }
 
-/** One API-backed pager; DataTables renders only this page, never a second local page. */
+/** Una sola paginación del API. DataTables pinta esta página y no pagina otra vez el lote. */
 function CatalogPagination({ page, pageSize, total, loaded, disabled, isLoading, onChange }: { readonly page: number; readonly pageSize: number; readonly total: number; readonly loaded: number; readonly disabled: boolean; readonly isLoading: boolean; readonly onChange: (page: number, pageSize: number) => void }) {
     const lastPage = Math.max(1, Math.ceil(total / pageSize));
     const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -405,7 +405,7 @@ function CatalogPagination({ page, pageSize, total, loaded, disabled, isLoading,
     );
 }
 
-/** Domain-aware header actions; block refresh while a request or mutation is active. */
+/** Las acciones del encabezado dependen del catálogo. Mientras hay una petición o un guardado, no se refresca. */
 function CatalogHeaderActions({ canRead, canCreate, catalogCode, isLoading, isSaving, isSavingStatus, onRefresh, onCreate }: { readonly canRead: boolean; readonly canCreate: boolean; readonly catalogCode: string; readonly isLoading: boolean; readonly isSaving: boolean; readonly isSavingStatus: boolean; readonly onRefresh: () => void; readonly onCreate: () => void }) {
     const presentation = getCatalogPresentation(catalogCode);
     const refreshLabel = presentation.refresh;
@@ -426,7 +426,7 @@ function CatalogHeaderActions({ canRead, canCreate, catalogCode, isLoading, isSa
     );
 }
 
-/** Projects shows the API total beside the title; it counts every record, not only the loaded batch. */
+/** Proyectos muestra junto al título el total del API. Cuenta todos los registros, no solo el lote cargado. */
 function CatalogPageTitle({ catalog, isLoading, total }: { readonly catalog: AdministrationCatalogDefinition; readonly isLoading: boolean; readonly total: number }) {
     const presentation = getCatalogPresentation(catalog.code);
     const title = <h1 id="catalog-items-page-title">{catalog.label}</h1>;
@@ -444,7 +444,7 @@ function CatalogPageTitle({ catalog, isLoading, total }: { readonly catalog: Adm
     );
 }
 
-/** Approved catalog opt-ins announce list updates without changing other catalogs. */
+/** Los catálogos que optaron anuncian la actualización de su lista. Los demás no cambian. */
 function CatalogListPanel({ catalog, isLoading, children }: { readonly catalog: AdministrationCatalogDefinition; readonly isLoading: boolean; readonly children: ReactNode }) {
     return (
         <section className="catalog-items-panel" aria-label={`Listado de ${catalog.label}`} aria-busy={getCatalogPresentation(catalog.code).enhanced ? isLoading : undefined}>
@@ -493,9 +493,9 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     const [visibleOrder, setVisibleOrder] = useState<readonly string[] | null>(null);
     const navigationItems = getNavigationItems(items, visibleOrder, selectedItem, projectView);
     const selectedIndex = navigationItems.findIndex((item) => item === selectedItem);
-    // A late response from an older filter/context must not replace the visible details.
+    // Una respuesta tardía de otro filtro o contexto no reemplaza el detalle visible.
     const loadSequence = useRef(0);
-    // Session-local batches only: never persist CRM data or share it between mounted users.
+    // Los lotes viven en la sesión. No se guardan datos del CRM ni se comparten entre usuarios montados.
     const pageCache = useRef(new Map<string, Awaited<ReturnType<typeof listCatalogItems>>>());
     const editingRef = useRef(editingItem);
     editingRef.current = editingItem;
@@ -558,7 +558,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                         return;
                     }
                     pageCache.current.set(key, response);
-                    // Bound retained batches to 8 (at most 4,000 records).
+                    // Se conservan como máximo 8 lotes, 4.000 registros.
                     if (pageCache.current.size > 8) {
                         const oldest = pageCache.current.keys().next().value;
                         if (oldest !== undefined) pageCache.current.delete(oldest);
@@ -582,7 +582,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     );
 
     useEffect(() => {
-        // Dialog targets cannot carry over into another catalog or module.
+        // El objetivo de un diálogo no pasa a otro catálogo ni a otro módulo.
         setDialogScope(null);
         setIsFormOpen(false);
         setEditingItem(null);

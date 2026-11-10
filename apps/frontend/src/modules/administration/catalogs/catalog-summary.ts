@@ -4,7 +4,7 @@ import type { CatalogItem } from "../../../services/catalogs/catalog-service";
 export type CatalogBannerIcon = "total" | "active" | "inactive" | "linked" | "projects" | "loaded" | "selected" | "people" | "pending" | "blocked" | "contract" | "send" | "bank";
 export type CatalogBannerTone = "neutral" | "success" | "pending" | "danger";
 
-/** One summary card at the top of a catalog page. Values are text so a missing figure can show as a dash, never as zero. */
+/** Una tarjeta de resumen arriba del catálogo. El valor es texto para que una cifra ausente sea una raya y no un cero. */
 export interface CatalogBannerData {
     readonly helpText?: string;
     readonly metrics?: readonly { readonly label: string; readonly value: string }[];
@@ -18,7 +18,7 @@ export interface CatalogBannerData {
 
 const count = new Intl.NumberFormat("es-CR");
 
-/** A value counts as integrated when at least one external system holds its identifier. */
+/** Un valor cuenta como integrado cuando al menos un sistema externo tiene su identificador. */
 const hasExternalReference = (item: CatalogItem): boolean => item.externalReferences.some((reference) => reference.externalId.trim() !== "");
 
 /**
@@ -38,7 +38,7 @@ export function buildCatalogItemCards({ label, items, total, ready }: { readonly
     ];
 }
 
-/** Cards for the banks list; `total` covers every bank, the rest is counted over the loaded rows and says so when paged. */
+/** Tarjetas de bancos. `total` cubre todos. El resto se cuenta sobre las filas cargadas y lo dice si hay más páginas. */
 export function buildBankCards({ items, total, ready }: { readonly items: readonly { readonly status: string; readonly advisorCount: number }[]; readonly total: number; readonly ready: boolean }): CatalogBannerData[] {
     const figure = (value: number): string => (ready ? count.format(value) : "—");
     const scope = (whole: string): string => (items.length >= total ? whole : `En esta página (${count.format(items.length)} de ${count.format(total)})`);
@@ -50,7 +50,7 @@ export function buildBankCards({ items, total, ready }: { readonly items: readon
     ];
 }
 
-/** Cards for the unit-file search, from state the page already holds. */
+/** Tarjetas de la búsqueda de expedientes, con el estado que la página ya tiene. */
 export function buildUnitFileCards({ projects, loaded, selected, hasSearched }: { readonly projects: number; readonly loaded: number; readonly selected: number; readonly hasSearched: boolean }): CatalogBannerData[] {
     return [
         { id: "projects", title: "Proyectos disponibles", value: count.format(projects), caption: "Para filtrar la búsqueda", icon: "projects", tone: "neutral" },

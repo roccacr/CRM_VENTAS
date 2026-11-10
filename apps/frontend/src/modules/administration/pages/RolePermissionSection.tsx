@@ -78,7 +78,7 @@ interface RolePermissionSectionProps {
     /** Solo en modo empleado: de dónde sale cada permiso. */
     readonly getOrigin?: ((code: string) => string) | undefined;
     readonly isBusy: boolean;
-    /** Protected template: read-only; granted permissions still come from the API catalog. */
+    /** Plantilla protegida: solo lectura. Los permisos concedidos siguen saliendo del catálogo del API. */
     readonly isLocked: boolean;
     readonly menuVisibility?: MenuVisibilityControl | undefined;
     readonly moduleName: string;

@@ -35,7 +35,7 @@ const ICONS: Readonly<Record<CatalogBannerIcon, ReactNode>> = {
     bank: <BankOutlined />,
 };
 
-/** Same card anatomy as the Home pages. A card only reports a figure: filtering is done with the list's own filters. */
+/** La misma tarjeta que las páginas de inicio. La tarjeta informa una cifra. El filtro lo hace la lista. */
 function CatalogBanner({ title, value, caption, icon, tone, metrics, helpText }: Omit<CatalogBannerData, "id">) {
     return (
         <article className={`catalog-banner catalog-banner--${tone}`}>
@@ -76,7 +76,7 @@ function CatalogBanner({ title, value, caption, icon, tone, metrics, helpText }:
     );
 }
 
-/** Summary row shared by every catalog view, whichever area opens it. */
+/** Fila de resumen compartida por cada vista de catálogo, cualquiera que sea el área que la abre. */
 export function CatalogBanners({ cards, label }: { readonly cards: readonly CatalogBannerData[]; readonly label: string }) {
     return (
         <section className="catalog-banners" aria-label={label}>

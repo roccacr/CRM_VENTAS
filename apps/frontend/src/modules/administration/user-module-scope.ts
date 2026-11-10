@@ -1,4 +1,4 @@
-/** Optional API catalog scope; direct role assignments remain distinct from effective roles. */
+/** Alcance opcional que trae el catálogo del API. La asignación directa del rol no es el rol efectivo. */
 export interface RoleModuleScope {
     readonly code: string;
     readonly moduleCodes?: readonly string[];
@@ -8,15 +8,15 @@ export interface RoleModuleScope {
 
 /** Security catalog aliases share one Administration ceiling. */
 export const normalizeAccessModuleCode = (code: string): string => (["user", "role", "org"].includes(code) ? "administration" : code);
-/** Administration and company modules are never granted through module selection. */
+/** Administración y empresa no se conceden eligiendo módulos. */
 export const isOperationalAccessModule = (code: string): boolean => ["ventas", "mercadeo", "formalizacion", "contabilidad"].includes(normalizeAccessModuleCode(code));
 
-/** Owner always keeps full access; any other assigned role flagged `selected_modules` makes permissions follow the chosen modules. */
+/** Owner conserva el acceso completo. Cualquier otro rol asignado con `selected_modules` hace que los permisos sigan los módulos elegidos. */
 export const hasSelectedModuleInheritance = (roleCodes: readonly string[], roles: readonly RoleModuleScope[]): boolean => !roleCodes.includes("owner") && roles.some((role) => roleCodes.includes(role.code) && role.permissionInheritance === "selected_modules");
 
 /**
- * Modules a user may be given. Selected modules are intersected with the ceiling of the assigned roles.
- * Null preserves legacy/Owner behavior; a present empty set means no module access. */
+ * Módulos que se le pueden dar a una persona. Los elegidos se cruzan con el techo de los roles asignados.
+ * Nulo conserva el comportamiento de Owner y del legado. Un conjunto presente y vacío significa que no hay acceso a módulos. */
 export function getUserModuleScope(roleCodes: readonly string[], roles: readonly RoleModuleScope[], selectedModules: readonly string[]): ReadonlySet<string> | null {
     if (roleCodes.includes("owner")) return null;
     const assigned = roles.filter((role) => roleCodes.includes(role.code));
@@ -36,7 +36,7 @@ export function getUserModuleScope(roleCodes: readonly string[], roles: readonly
     return new Set(selected.filter((code) => ceiling.has(code)));
 }
 
-/** Restrict each role's contribution before union, so another role cannot lend it a ceiling. */
+/** El aporte de cada rol se recorta antes de unirlo. Otro rol no le presta su techo. */
 function canRoleGrantScopedModule(roleCode: string, roles: readonly RoleModuleScope[], moduleCode: string, selectedModules: readonly string[] = [moduleCode]): boolean {
     const scope = getUserModuleScope([roleCode], roles, selectedModules);
     if (scope === null) return true;

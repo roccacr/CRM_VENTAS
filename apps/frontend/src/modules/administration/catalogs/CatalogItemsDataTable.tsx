@@ -45,10 +45,10 @@ const getTableLayout = (layout: DataTableSearchPanesConfig["layout"], projectVie
     return { ...layout, top1Start: null, top: { features: ["search", { searchPanes: { ...searchPanes, orderable: false } }], rowClass: PROJECT_TOOLBAR_ROW_CLASS } };
 };
 
-/** An empty title lets Projects hide the counter until a filter is active. */
+/** Un título vacío deja que Proyectos oculte el contador hasta que haya un filtro activo. */
 const getFilterTitle = (projectView: boolean) => (projectView ? { 0: "", _: FILTER_TITLE } : FILTER_TITLE);
 
-/** Screen-reader and tooltip strings that DataTables and SearchPanes otherwise announce in English. */
+/** Textos de lector de pantalla y tooltips que DataTables y SearchPanes anunciarían en inglés. */
 const PROJECT_ARIA_LANGUAGE = {
     aria: {
         orderable: ": activar para ordenar",
@@ -66,10 +66,10 @@ const getPaneLanguage = (projectView: boolean) => (projectView ? PROJECT_PANE_LA
 const shouldDeferPanes = (rowCount: number, requested: boolean): boolean => rowCount > 200 && !requested;
 const canMountPanes = (deferred: boolean): boolean => import.meta.env.MODE !== "test" && !deferred;
 
-/** Compact grid placeholder; screen readers and search still receive "Sin asignar". */
+/** En la grilla compacta el hueco es visual. El lector de pantalla y la búsqueda siguen recibiendo "Sin asignar". */
 const PROJECT_EMPTY_VALUE = '<span class="projects-view-empty" title="Sin asignar"><span aria-hidden="true">—</span><span class="administration-users-visually-hidden">Sin asignar</span></span>';
 
-// DataTables inserts display strings as HTML, so escape all catalog values at this boundary.
+// DataTables inserta el texto como HTML. En este límite se escapan todos los valores del catálogo.
 const escapeCell = (value: string): string => DT.util.escapeHtml(value);
 
 type TableApi = NonNullable<ReturnType<DataTableRef["dt"]>>;
@@ -86,7 +86,7 @@ function redrawCatalogRows(api: TableApi, root: HTMLElement | null): boolean {
         return false;
     }
     api.draw(false);
-    // Closed, unused panes can wait until the next interaction with the filter toolbar.
+    // Un panel cerrado y sin uso espera a la siguiente interacción con la barra de filtros.
     return Boolean(searchPanes);
 }
 
@@ -113,13 +113,13 @@ function refreshLoadedRows(loaded: { current: LoadedRows | null }, api: TableApi
     }
 }
 
-/** Missing providers are read-only placeholders, shared by display and search; never mutation data. */
+/** Un proveedor ausente es un texto de solo lectura, igual en la celda y en la búsqueda. No es un dato para guardar. */
 function projectReferences(references: CatalogItem["externalReferences"]) {
     return [...references, ...CATALOG_REFERENCE_PROVIDERS.filter((provider) => !references.some((reference) => reference.systemCode === provider.systemCode)).map((provider) => ({ ...provider, externalId: null }))];
 }
 
 interface CatalogItemsDataTableProps {
-    /** Exact current-context update/inactivate grants; omitted grants fail closed. */
+    /** Actualizar e inactivar salen del permiso exacto del contexto actual. Si no vienen, quedan cerrados. */
     readonly canEdit?: boolean;
     readonly canInactivate?: boolean;
     readonly entityLabel: string;
@@ -136,7 +136,7 @@ interface CatalogItemsDataTableProps {
     readonly onVisibleOrderChange?: (publicIds: readonly string[]) => void;
 }
 
-/** Keep the outgoing loader mounted only for its crossfade; requests are never delayed. */
+/** El cargador que sale se queda solo para el fundido. La petición no espera. */
 export function CatalogItemsDataTable(props: CatalogItemsDataTableProps) {
     const pending = props.isLoading;
     const [showLoader, setShowLoader] = useState(pending);
@@ -171,7 +171,7 @@ export function CatalogItemsDataTable(props: CatalogItemsDataTableProps) {
     );
 }
 
-/** Uses the users table's SearchPanes, layout and persistence without sharing catalog state. */
+/** Usa los SearchPanes, el layout y la persistencia de la tabla de usuarios. El estado del catálogo no se comparte. */
 function CatalogItemsTableContent({ canEdit: editPermission, canInactivate: inactivatePermission, projectView = false, entityLabel, items, label, isLoading, storageKey, selectedPublicId, onSelect, onEdit, onStatusAction, onVisibleOrderChange }: CatalogItemsDataTableProps) {
     const canEdit = editPermission === true;
     const canInactivate = inactivatePermission === true;
@@ -180,7 +180,7 @@ function CatalogItemsTableContent({ canEdit: editPermission, canInactivate: inac
         const saved = readDataTableState(storageKey)?.searchPanes as { selectionList?: unknown[] } | undefined;
         return Boolean(saved?.selectionList?.length);
     });
-    // Building hidden SearchPanes on a large first page can block the main thread.
+    // Armar paneles ocultos en una primera página grande puede bloquear el hilo principal.
     const filtersDeferred = shouldDeferPanes(data.length, filtersRequested);
     const enablePanes = canMountPanes(filtersDeferred);
     const container = useRef<HTMLDivElement>(null);
@@ -199,10 +199,10 @@ function CatalogItemsTableContent({ canEdit: editPermission, canInactivate: inac
             ({
                 autoWidth: false,
                 data,
-                // Pane labels need escaped text, not the DOM nodes returned by React display slots.
+                // La etiqueta del panel necesita texto escapado, no el nodo que devuelve el slot de React.
                 columnDefs: enablePanes ? [{ targets: [0, 2, 3], searchPanes: { show: true, orthogonal: { display: "pane", search: "filter", sort: "filter", type: "filter" } } }, ...(panes.columnDefs ?? [])] : [],
                 layout: { ...getTableLayout(panes.layout, projectView, enablePanes), bottomStart: null, bottomEnd: null },
-                // The page owns API pagination; never paginate this batch a second time.
+                // La página es dueña de la paginación del API. Este lote no se pagina otra vez.
                 paging: false,
                 lengthMenu: [10, 25, 50, 100],
                 pageLength: 10,
@@ -245,7 +245,7 @@ function CatalogItemsTableContent({ canEdit: editPermission, canInactivate: inac
         const headers = Array.from(root.querySelectorAll<HTMLTableCellElement>("table.administration-users-datatable > thead > tr > th"));
         const bounds = headers.map((header) => header.getBoundingClientRect());
         const first = bounds[0];
-        // Measure the actual columns, including the scrollbar gutter, rather than duplicate their widths.
+        // Se miden las columnas reales, canal de la barra incluido, en vez de copiar sus anchos.
         if (!first || bounds.some((bound) => bound.width <= 0)) return;
         const updateTrack = (property: string, value: string): void => {
             if (root.style.getPropertyValue(property) !== value) root.style.setProperty(property, value);
@@ -290,7 +290,7 @@ function CatalogItemsTableContent({ canEdit: editPermission, canInactivate: inac
     useEffect(() => {
         selected.current = selectedPublicId;
         syncRows();
-        // The initial draw runs before the wrapper exposes its DataTables API.
+        // El primer dibujo ocurre antes de que el wrapper exponga la API de DataTables.
         reportVisibleOrder();
     });
     const refreshStaleFilters = (target: EventTarget): void => {
@@ -302,7 +302,7 @@ function CatalogItemsTableContent({ canEdit: editPermission, canInactivate: inac
         getSearchPanes(current.api)?.rebuildPane(undefined, true);
     };
 
-    // SearchPanes initializes with data; later batches update the same mounted table.
+    // SearchPanes arranca con datos. Los lotes siguientes actualizan la misma tabla montada.
     if (data.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={isLoading ? "Cargando catálogo…" : "Sin resultados"} />;
 
     return (
@@ -454,7 +454,7 @@ function CatalogItemsTableContent({ canEdit: editPermission, canInactivate: inac
     );
 }
 
-/** Only authorized actions enter the menu; reactivation uses update, never inactivate. */
+/** Al menú entran solo las acciones autorizadas. Reactivar usa actualizar. Inactivar no reactiva. */
 function ActiveCatalogActions({ target, data, isLoading, close, ...props }: Pick<CatalogItemsDataTableProps, "projectView" | "canEdit" | "canInactivate" | "onEdit" | "onStatusAction" | "isLoading"> & { readonly target: CatalogActionTarget | null; readonly data: CatalogItem[]; readonly close: () => void }) {
     if (!target || target.data !== data || isLoading) return null;
     return createPortal(<CatalogRowActions {...props} item={target.item} close={close} />, target.anchor);

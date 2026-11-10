@@ -15,8 +15,10 @@ export interface Cooldown {
  * Bloqueo temporal de una acción repetible, como "Reintentar conexión".
  *
  * Evita que el usuario dispare ráfagas de peticiones contra un servicio que
- * acaba de fallar. Las funciones devueltas son estables para poder usarlas
- * como dependencias de efectos.
+ * acaba de fallar. No arranca solo: al montar la acción sigue habilitada.
+ * `hold` y `release` mantienen su identidad. `start` cambia si cambia el plazo,
+ * y un temporizador que ya está corriendo conserva la duración con la que empezó.
+ * Volver a llamar `start` o `hold` cancela el plazo anterior. `hold` no se suelta solo.
  */
 export function useCooldown(durationMs: number): Cooldown {
     const [isActive, setIsActive] = useState(false);
@@ -47,6 +49,7 @@ export function useCooldown(durationMs: number): Cooldown {
         }, durationMs);
     }, [durationMs, hold]);
 
+    // Al desmontar se cancela el plazo para que no actualice el estado de un componente que ya no está.
     useEffect(() => clearTimer, [clearTimer]);
 
     return { hold, isActive, release, start };

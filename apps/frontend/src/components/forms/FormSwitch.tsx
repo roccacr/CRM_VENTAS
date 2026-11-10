@@ -13,7 +13,12 @@ interface Props {
     readonly onChange: (checked: boolean) => void;
 }
 
-/** Row with icon, title, optional hint and a switch. It stays a native checkbox so keyboard, forms and assistive tech keep working. */
+/**
+ * Fila con ícono, título, ayuda opcional e interruptor.
+ * Sigue siendo un checkbox nativo: el teclado, el formulario y el lector de pantalla lo usan sin un control propio.
+ * El `id` generado une la etiqueta con el input. El valor lo guarda quien llama; aquí solo se reenvía el booleano.
+ * El ícono es decorativo. `data-checked` pinta el estado y no sustituye al checkbox. Una ayuda vacía no muestra el ícono de ayuda.
+ */
 export function FormSwitch({ icon, label, hint, checked, disabled, onChange }: Props) {
     const id = useId();
     return (

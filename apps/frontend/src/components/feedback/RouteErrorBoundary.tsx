@@ -9,21 +9,24 @@ interface RouteErrorBoundaryProps {
     readonly resetKey?: string;
 }
 
-/** Contains render/chunk failures without exposing internal errors or reloading automatically. */
+/**
+ * Contiene un fallo de render o de carga del módulo sin mostrar el error interno ni recargar la página.
+ * Recuperar exige el botón. Un fallo que se repite no dispara un ciclo de recargas.
+ */
 export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, { readonly failed: boolean }> {
     state = { failed: false };
 
-    /** Stores only the failure flag, never sensitive error contents. */
+    /** Guarda solo que falló. El mensaje, el stack y la URL del módulo no entran al estado ni a la pantalla. */
     static getDerivedStateFromError(): { readonly failed: boolean } {
         return { failed: true };
     }
 
-    /** Navigation can recover from a failed view without remounting a healthy shell. */
+    /** Cambiar `resetKey` limpia el fallo de esta vista. El shell sano no se vuelve a montar. */
     componentDidUpdate(previous: RouteErrorBoundaryProps): void {
         if (this.state.failed && previous.resetKey !== this.props.resetKey) this.setState({ failed: false });
     }
 
-    /** Keeps recovery explicit so persistent failures cannot trigger reload loops. */
+    /** Reintentar avisa al padre, si lo pidió, y vuelve a mostrar los hijos. No llama a recargar el navegador. */
     render() {
         if (!this.state.failed) return this.props.children;
         return (

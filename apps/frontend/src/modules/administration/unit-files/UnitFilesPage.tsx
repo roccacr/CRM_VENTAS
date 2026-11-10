@@ -76,7 +76,7 @@ function remember<T>(cache: Map<string, Cached<T>>, key: string, value: T, maxim
     cache.set(key, { at: Date.now(), value });
 }
 
-/** Criteria-first, bounded read view; caches are instance-local and expire to limit external drift. */
+/** Lectura acotada que exige criterio antes de pedir inventario. La caché vive en esta instancia y caduca para no arrastrar datos de otra sesión. */
 export function UnitFilesPage({ contextModuleCode = "administration", contextLabel = "Administración" }: { readonly contextModuleCode?: CatalogContextModuleCode; readonly contextLabel?: string }) {
     return (
         <ConfigProvider theme={PROJECTS_THEME}>
@@ -85,7 +85,7 @@ export function UnitFilesPage({ contextModuleCode = "administration", contextLab
     );
 }
 
-// Conditional JSX reflects independent loading/empty/detail states, not a branching domain algorithm.
+// El JSX separa carga, vacío y detalle. No es una regla de negocio ramificada.
 // eslint-disable-next-line complexity
 function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contextModuleCode: CatalogContextModuleCode; readonly contextLabel: string }) {
     const [projects, setProjects] = useState<UnitProject[]>([]);
@@ -132,7 +132,7 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
         };
     }, [contextModuleCode]);
 
-    // Cache, request ownership and independent metadata loading are separate UI states.
+    // La caché, quién es dueño de la petición y la carga de metadatos son estados de pantalla distintos.
     // eslint-disable-next-line complexity, sonarjs/cognitive-complexity
     async function load(filter: UnitFilter, nextIndex: number, history: (string | undefined)[], { refresh = false, loadChoices = false } = {}) {
         const request = ++sequence.current;
@@ -253,7 +253,7 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
             if (selection[pane].length) next[field] = selection[pane];
         }
         const local = localUnitPaneData([...inventory.current.values()], baseChoices.current, selection);
-        // Preserve server cursor boundaries for larger sets; never filter only the visible page.
+        // El cursor del servidor marca el límite del conjunto. No se filtra solo la página visible.
         if (local && local.items.length <= next.limit) {
             sequence.current++;
             const result: UnitPage = { items: local.items, pagination: { limit: next.limit, returned: local.items.length, hasNext: false, nextCursor: null } };
@@ -269,7 +269,7 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
         const request = sequence.current + 1;
         const result = await load(next, 0, [undefined], { loadChoices: true });
         if (!result && request === sequence.current) {
-            // Do not leave old inventory under newly selected criteria after a failed request.
+            // Si la petición falla, no se deja el inventario anterior bajo el criterio nuevo.
             setPage(undefined);
             setActive(undefined);
             setPaneChoices(undefined);

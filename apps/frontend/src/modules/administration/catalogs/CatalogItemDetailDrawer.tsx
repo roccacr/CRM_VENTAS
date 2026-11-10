@@ -121,7 +121,7 @@ const formatUpdatedAt = (value: string, projectView: boolean): string => new Dat
 
 /** Datos del valor abierto y las acciones que la página todavía tiene que confirmar. */
 interface CatalogItemDetailDrawerProps {
-    /** Exact current-context grants. Reactivation requires update (canEdit). */
+    /** Permisos exactos del contexto actual. Reactivar exige actualizar. */
     readonly canEdit?: boolean;
     readonly canInactivate?: boolean;
     readonly projectView?: boolean;
@@ -146,7 +146,7 @@ function CatalogDetailActions({ canEdit, canInactivate, item, error, isLoading, 
     return <CatalogRecordActions item={item} canEdit={canEdit === true} canInactivate={canInactivate === true} onEdit={onEdit} onStatusAction={onStatusAction} />;
 }
 
-/** Permission visibility and the existing legacy immutability constraint are independent. */
+/** Mostrar una acción por permiso y el bloqueo de un registro viejo son reglas distintas. */
 function CatalogRecordActions({ item, canEdit, canInactivate, onEdit, onStatusAction }: { readonly item: CatalogItem; readonly canEdit: boolean; readonly canInactivate: boolean; readonly onEdit: (item: CatalogItem) => void; readonly onStatusAction: (item: CatalogItem, status: CatalogItemStatus) => void }) {
     const active = item.status === "active";
     const canChangeStatus = active ? canInactivate : canEdit;
@@ -197,7 +197,7 @@ function CatalogDetailFooter({ canEdit = false, canInactivate = false, item, err
     );
 }
 
-/** Projects uses sparse label/value lines; other catalogs keep their existing loader. */
+/** Proyectos usa líneas sueltas de etiqueta y valor. Los demás catálogos conservan su cargador. */
 function CatalogDetailLoading({ projectView }: { readonly projectView: boolean | undefined }) {
     return (
         <div role="status" aria-label="Cargando detalle" className={projectView ? "projects-view-detail-loading" : undefined}>

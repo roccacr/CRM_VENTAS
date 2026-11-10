@@ -19,7 +19,7 @@ export interface BankFormValues {
     area: string;
     reason: string;
 }
-/** Same numbered section as the other catalogs' create/edit panels. */
+/** La misma sección numerada de los paneles de alta y edición de los demás catálogos. */
 export function Section({ step, title, children }: { readonly step: number; readonly title: string; readonly children: ReactNode }) {
     return (
         <section className="create-user-drawer__section">
@@ -33,7 +33,7 @@ export function Section({ step, title, children }: { readonly step: number; read
         </section>
     );
 }
-/** Name, plus contact data for an executive. */
+/** Nombre, y los datos de contacto cuando el registro es un ejecutivo. */
 function BankFields({ advisor }: { readonly advisor: boolean }) {
     return (
         <Section step={1} title={`Información ${advisor ? "del ejecutivo" : "del banco"}`}>
@@ -69,7 +69,7 @@ function dialogTitle(dialog: BankDialog): string {
     const advisor = dialog.kind === "advisor";
     return status ? `${dialog.item.status === "active" ? "Inactivar" : "Reactivar"} ${"bankPublicId" in dialog.item ? "ejecutivo" : "banco"}` : `${dialog.item ? "Editar" : "Nuevo"} ${advisor ? "ejecutivo" : "banco"}`;
 }
-/** Audit reasons are entered afresh; contact fields never acquire fabricated defaults. */
+/** El motivo de auditoría se escribe de nuevo. Un campo de contacto no recibe un valor inventado. */
 export function BankFormDrawer({ dialog, saving, error, blocked, onClose, onSubmit }: { readonly dialog: BankDialog; readonly saving: boolean; readonly error: string | null; readonly blocked: boolean; readonly onClose: () => void; readonly onSubmit: (values: BankFormValues) => void }) {
     const [form] = Form.useForm<BankFormValues>();
     const status = dialog.kind === "status";

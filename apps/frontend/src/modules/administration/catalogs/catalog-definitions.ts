@@ -23,7 +23,7 @@ export const CATALOG_REFERENCE_PROVIDERS = [
     { systemCode: "odoo", systemName: "Odoo" },
 ] as const;
 
-/** Approved opt-ins reuse the Projects design without changing catalog identity or permissions. */
+/** Quienes optaron reutilizan el diseño de Proyectos. La identidad del catálogo y sus permisos no cambian. */
 export function getCatalogPresentation(code: string) {
     const presentations: Record<string, { enhanced: boolean; scopeClass: string; entity: string; create: string; refresh: string }> = {
         projects: { enhanced: true, scopeClass: "catalog-items-page--projects", entity: "Proyecto", create: "Nuevo proyecto", refresh: "Actualizar proyectos" },

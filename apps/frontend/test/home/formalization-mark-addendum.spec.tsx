@@ -129,10 +129,10 @@ it("single-flights a double click and preserves the exact command/note when a wr
         fireEvent.click(save);
     });
     expect(markOrderAddendumPending).toHaveBeenCalledTimes(1);
-    await act(async () => {
+    act(() => {
         rejectWrite(new Error("secret transport"));
     });
-    expect(screen.getByRole("alert")).not.toHaveTextContent("secret transport");
+    expect(await screen.findByRole("alert")).not.toHaveTextContent("secret transport");
     expect(screen.getByLabelText("Motivo")).toBeDisabled();
     await waitFor(() => {
         const retry = screen.getByRole("button", { name: "Reintentar la misma marcación" });

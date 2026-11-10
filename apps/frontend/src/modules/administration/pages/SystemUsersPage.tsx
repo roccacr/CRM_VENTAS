@@ -208,7 +208,7 @@ const getNavigationUsers = (users: readonly SystemUserListItem[], visibleOrder: 
     return visibleOrder.flatMap((email) => byEmail.get(email) ?? []);
 };
 
-/** Directory-wide counts by status, shown only to people who may read the list. They are counters, not controls. */
+/** Conteos de todo el directorio por estado. Solo los ve quien puede leer la lista. Son cifras, no controles. */
 function UsersSummaryBanners({ enabled, summary, ready }: { readonly enabled: boolean; readonly summary: SystemUsersSummary; readonly ready: boolean }) {
     return enabled ? <CatalogBanners label="Resumen de usuarios" cards={buildUserCards({ summary, ready })} /> : null;
 }
