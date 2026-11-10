@@ -263,7 +263,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     function requestPayload(route: (typeof routes)[number]) {
-        if (route.name === "importOrder") return 202;
+        if (route.name === "importOrder") return { tranid: "BC448" };
         if (route.name === "synchronize") return {};
         if (route.path.startsWith("/catalogs/banks/")) return banksPayload(route);
         return route.path.startsWith("/formalization/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression", ...(route.path === "/formalization/orders/stage" ? { targetState: "bank_management" } : {}) } : { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" };
