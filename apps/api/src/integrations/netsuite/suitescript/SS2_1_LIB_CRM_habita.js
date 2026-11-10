@@ -1,5 +1,5 @@
 /**
- * Versión: 2026.11.10.7 — Nombre de la campaña NetSuite en la ficha de importación.
+ * Versión: 2026.11.10.8 — Proyecto del expediente para importar relaciones faltantes.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
  * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
  * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
@@ -777,6 +777,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                     id: String(request.id),
                     code: String(code || ""),
                     projectId: String(projectId || ""),
+                    projectName: unit.getText({ fieldId: "custrecord_163_csegix_proyectos" }) || null,
                 });
             }
             return fail(400, "INVALID_RELATION", "Tipo de relación no permitido.");

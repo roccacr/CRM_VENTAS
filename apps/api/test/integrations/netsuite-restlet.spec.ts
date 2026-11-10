@@ -457,12 +457,14 @@ it.each([
 it("loads the unit by internal ID and returns its code and principal project ID", () => {
     const record = recordMock();
     const getValue = vi.fn(({ fieldId }) => (fieldId === "name" ? "TEST-FF01" : 1805));
-    record.load.mockReturnValue({ getValue } as never);
+    const getText = vi.fn(() => "Proyecto de prueba");
+    record.load.mockReturnValue({ getValue, getText } as never);
     const restlet = load(undefined, undefined, record);
     expect(restlet.get?.({ module: "salesOrders", action: "importRelation", kind: "unitFile", id: "8771" })).toEqual({
         status: 200,
-        data: { id: "8771", code: "TEST-FF01", projectId: "1805" },
+        data: { id: "8771", code: "TEST-FF01", projectId: "1805", projectName: "Proyecto de prueba" },
     });
     expect(record.load).toHaveBeenCalledExactlyOnceWith({ type: "customrecord_ix_record_exp_unidades", id: "8771" });
     expect(getValue).toHaveBeenCalledWith({ fieldId: "custrecord_163_csegix_proyectos" });
+    expect(getText).toHaveBeenCalledWith({ fieldId: "custrecord_163_csegix_proyectos" });
 });

@@ -7,7 +7,7 @@ import { nativeRelationReferences, readOrderRelationValues } from "./netsuite-or
 
 type Tx = Transaction<CrmDatabase>;
 type Domain = keyof typeof nativeRelationReferences;
-export type ImportUnit = { code: string; projectId: string };
+export type ImportUnit = { code: string; projectId: string; projectName?: string | null | undefined };
 type Customer = { fullName: string; email: string | null; phone: string | null; company: string | null; campaign: string | null; campaignName?: string | null | undefined };
 
 async function one<T>(tx: Tx, query: RawBuilder<T>, label: string): Promise<T | undefined> {
@@ -75,17 +75,7 @@ async function importUnit(tx: Tx, id: string, fetched?: ImportUnit) {
     const native = await existingImportUnit(tx, id);
     if (native) return native.id;
     if (!fetched) throw new ConflictException("Falta la ficha NetSuite del expediente " + id + ".");
-    const project = await one(
-        tx,
-        sql<{ id: number }>`SELECT p.id_project AS id FROM crm_project p
-        JOIN crm_project_external_reference r ON r.project_id_project_external_reference=p.id_project
-        JOIN int_external_system s ON s.id_external_system=r.external_system_id_project_external_reference
-        WHERE s.code_external_system='netsuite' AND s.status_external_system='active' AND r.status_project_external_reference='active'
-        AND r.deleted_at_project_external_reference IS NULL AND p.deleted_at_project IS NULL
-        AND r.external_id_project_external_reference=${fetched.projectId} LIMIT 2`,
-        "El proyecto del expediente",
-    );
-    if (!project) throw new ConflictException("Falta vincular en Habita el proyecto NetSuite " + fetched.projectId + " del expediente " + id + ".");
+    const project = await importProject(tx, fetched);
     const legacy = await one(
         tx,
         sql<{ id: number }>`SELECT id_expediente AS id FROM ${sql.table("crmdatabase-api.expedientes")}
@@ -93,7 +83,54 @@ async function importUnit(tx: Tx, id: string, fetched?: ImportUnit) {
         "El expediente anterior",
     );
     const result = await sql`INSERT INTO crm_unit_file (public_id_unit_file,native_code_unit_file,id_old_produccion_unit_file,project_id_unit_file,source_project_reference_unit_file,code_unit_file)
-        VALUES (${ulid()},${"NETSUITE-UNIT-" + id},${legacy?.id ?? null},${project.id},${fetched.projectId},${fetched.code})`.execute(tx);
+        VALUES (${ulid()},${"NETSUITE-UNIT-" + id},${legacy?.id ?? null},${project},${fetched.projectId},${fetched.code})`.execute(tx);
+    return Number(result.insertId);
+}
+
+/** El ID de NetSuite se resuelve antes del ID interno. El bloqueo del sistema externo serializa las altas. */
+async function importProject(tx: Tx, unit: ImportUnit) {
+    const project = await one(
+        tx,
+        sql<{ id: number; active: number }>`SELECT p.id_project AS id,
+        (r.status_project_external_reference='active' AND r.deleted_at_project_external_reference IS NULL AND p.deleted_at_project IS NULL) AS active FROM crm_project p
+        JOIN crm_project_external_reference r ON r.project_id_project_external_reference=p.id_project
+        JOIN int_external_system s ON s.id_external_system=r.external_system_id_project_external_reference
+        WHERE s.code_external_system='netsuite' AND s.status_external_system='active'
+        AND r.external_id_project_external_reference=${unit.projectId} LIMIT 2`,
+        "El proyecto del expediente",
+    );
+    if (project) {
+        if (!project.active) throw new ConflictException("La referencia del proyecto NetSuite está inactiva.");
+        return project.id;
+    }
+    const projectId = await reconcileProjectRecord(tx, unit);
+    const system = await tx.selectFrom("int_external_system").select("id_external_system").where("code_external_system", "=", "netsuite").where("status_external_system", "=", "active").executeTakeFirstOrThrow();
+    await sql`INSERT INTO crm_project_external_reference (project_id_project_external_reference,external_system_id_project_external_reference,external_id_project_external_reference)
+        VALUES (${projectId},${system.id_external_system},${unit.projectId})`.execute(tx);
+    return projectId;
+}
+
+async function reconcileProjectRecord(tx: Tx, unit: ImportUnit) {
+    const legacy = await one(
+        tx,
+        sql<{ id: number; name: string }>`SELECT id_proyecto AS id,Nombre_proyecto AS name
+        FROM ${sql.table("crmdatabase-api.proyectos")} WHERE id_ProNetsuite=${unit.projectId} LIMIT 2`,
+        "El proyecto en la base anterior",
+    );
+    if (legacy) {
+        const native = await tx.selectFrom("crm_project").select(["id_project", "deleted_at_project"]).where("id_old_produccion_project", "=", legacy.id).executeTakeFirst();
+        if (native) {
+            if (native.deleted_at_project) throw new ConflictException("El proyecto conciliado está archivado.");
+            return native.id_project;
+        }
+    }
+    return insertProject(tx, unit.projectId, unit.projectName || legacy?.name, legacy?.id);
+}
+
+async function insertProject(tx: Tx, externalId: string, name?: string | null, legacyId?: number) {
+    if (!name || name.length > 180) throw new ConflictException("No se confirmó el nombre del proyecto NetSuite " + externalId + ".");
+    const result = await sql`INSERT INTO crm_project (public_id_project,native_code_project,id_old_produccion_project,name_project)
+        VALUES (${ulid()},${"NETSUITE-PROJECT-" + externalId},${legacyId ?? null},${name})`.execute(tx);
     return Number(result.insertId);
 }
 

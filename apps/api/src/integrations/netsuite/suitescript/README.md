@@ -2,7 +2,7 @@
 
 ## Corte local — 2026-11-10
 
-La cabecera de la librería local identifica `2026.11.10.7`. El RESTlet añade
+La cabecera de la librería local identifica `2026.11.10.8`. El RESTlet añade
 `GET module=salesOrders&action=findByTranId&tranid=<número>` para resolver
 el ID interno de una orden con coincidencia exacta. Se incorpora
 `custbody_fecha_unidad_entregada` a la proyección.
@@ -14,6 +14,13 @@ buscar la referencia externa de la campaña. Si falta, concilia por
 guarda el vínculo en la BD nueva dentro de la transacción de importación.
 Cuando el cliente carece de un origen comercial conciliado, Habita usa o crea
 el origen de respaldo `netsuite` («Importado desde NetSuite»).
+
+La ficha de expediente devuelve también `projectName` mediante `getText` del
+mismo campo que entrega `projectId`. El importador resuelve primero el vínculo
+NetSuite del proyecto en la BD nueva, después busca `proyectos.id_ProNetsuite`
+en la BD vieja. Reutiliza la fila nativa migrada o crea proyecto y referencia
+en la BD nueva. Si falta en la vieja, usa el nombre confirmado por NetSuite.
+Una referencia archivada o ambigua requiere conciliación y no genera duplicados.
 
 La biblioteca local fija la URL base de producción en
 `https://api-habita.rdghub.com/integrations/netsuite/production`.

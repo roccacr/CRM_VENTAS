@@ -131,6 +131,7 @@ export class NetsuiteRestletClient {
                 data: z.object({
                     id: z.string(),
                     code: z.string().trim().min(1).max(255),
+                    projectName: z.string().trim().min(1).max(180).nullable().optional(),
                     projectId: z
                         .string()
                         .regex(/^[1-9][0-9]{0,9}$/)
