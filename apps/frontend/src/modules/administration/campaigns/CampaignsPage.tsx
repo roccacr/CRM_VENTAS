@@ -2,7 +2,7 @@ import type { CatalogContextModuleCode } from "../../../services/catalogs/catalo
 import { CatalogItemsPage } from "../catalogs/CatalogItemsPage";
 import { CAMPAIGNS_CATALOG } from "./campaigns-definition";
 
-/** Campaign-owned route; the shared view guarantees exact Projects interaction and visual parity. */
+/** Ruta propia de campañas. La vista compartida conserva la interacción y el aspecto de Proyectos. La identidad y los permisos siguen siendo de este catálogo. */
 export function CampaignsPage({ contextLabel = "Administración", contextModuleCode = "administration" }: { readonly contextLabel?: string; readonly contextModuleCode?: CatalogContextModuleCode }) {
     return <CatalogItemsPage catalog={CAMPAIGNS_CATALOG} contextLabel={contextLabel} contextModuleCode={contextModuleCode} />;
 }

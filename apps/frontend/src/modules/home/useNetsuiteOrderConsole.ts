@@ -11,7 +11,7 @@ function locationIdentity(): NetsuiteOrderIdentity | null {
     const id = query.get("orderId");
     return id && (source === "native" || source === "legacy") ? { source, id } : null;
 }
-/** Only our query keys are changed; module path, unrelated filters and browser history state survive. */
+/** Solo cambian nuestras claves de consulta. La ruta del módulo, los filtros ajenos y el estado del historial del navegador se quedan. */
 function writeLocation(identity: NetsuiteOrderIdentity | null, netsuiteId?: string): void {
     const url = new URL(window.location.href);
     for (const key of ["orderSource", "orderId", "netsuiteId"]) url.searchParams.delete(key);
@@ -29,7 +29,7 @@ interface OrderRead {
     errorMessage?: string | undefined;
 }
 
-/** Reuses the authorized reads for console diagnostics and primary fields; stale/refreshing payloads never render. */
+/** Reutiliza las lecturas autorizadas para el diagnóstico y los campos primarios. Una carga vieja o en refresco no se pinta. */
 export function useNetsuiteOrderConsole(record: NetsuiteOrderIdentity | null, enabled: boolean, refreshVersion = 0): OrderRead {
     const [initial] = useState(locationIdentity);
     const target = record ?? initial;
@@ -82,7 +82,7 @@ function currentRead(available: boolean, key: string, settled: (OrderRead & { ke
     return { status: settled.status, primary: settled.status === "success" ? settled.primary : null, errorMessage: settled.errorMessage };
 }
 
-/** A timeout or generic 404 does not prove that the provider record is absent. */
+/** Un tiempo agotado o un 404 genérico no prueban que el registro del proveedor no exista. */
 function missingOrderMessage(failure: unknown): string | undefined {
     if (!(failure instanceof ApiClientError) || failure.status !== 404) return undefined;
     const body = failure.responseBody;

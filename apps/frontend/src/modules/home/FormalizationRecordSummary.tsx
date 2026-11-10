@@ -51,7 +51,7 @@ function canReadBankAssignment(permissions: readonly { readonly code: string; re
     return entries.some((permission) => permission.effect === "allow") && !entries.some((permission) => permission.effect === "deny");
 }
 
-/** One small icon per title, so a part is recognised before it is read. Decorative: the words stay the accessible name. */
+/** Un ícono pequeño por título, para reconocer la parte antes de leerla. Es decorativo: las palabras siguen siendo el nombre accesible. */
 const TITLE_ICONS: Readonly<Record<string, ReactNode>> = {
     "bank-assignment": <BankOutlined />,
     primary: <FileTextOutlined />,
@@ -96,24 +96,24 @@ const show = (value: string | number | null | undefined, kind?: "money"): string
     return kind === "money" && typeof value === "number" ? money.format(value) : String(value);
 };
 
-// Hidden by explicit product decision until the provider field IDs are confirmed.
+// Oculto por decisión de producto hasta confirmar los identificadores de campo del proveedor.
 const unconfirmedAuthorizationFields = new Set(["Comentario de autorización de venta", "Avisos importantes"]);
 
-/** Only approved NetSuite chapters are mapped; values never come from the presentation fixture. */
+/** Solo se mapean los capítulos de NetSuite aprobados. Los valores no salen del ejemplo de presentación. */
 function withOrder(chapters: readonly RecordChapterData[], primary: Partial<NetsuitePrimary> | null): readonly RecordChapterData[] {
     return chapters.map((chapter) => {
         const values = chapterValues(chapter.id, primary);
         return { ...chapter, ...(chapter.groups ? { groups: chapter.groups.map((group) => ({ ...group, fields: group.fields.filter((field) => chapter.id !== "authorization" || !unconfirmedAuthorizationFields.has(field.label)).map((field) => ({ ...field, value: values[field.label] ?? null })) })) } : {}) };
     });
 }
-/** Fast Refresh can retain a snapshot from before a newly mapped chapter existed. */
+/** Una recarga en caliente puede conservar una foto de antes de que existiera un capítulo recién mapeado. */
 function chapterValues(id: string, data: Partial<NetsuitePrimary> | null): Readonly<Record<string, string | null>> {
     if (!data) return {};
     const values: Readonly<Record<string, Readonly<Record<string, string | null>> | undefined>> = { primary: data.fields, sales: data.sales, authorization: data.authorization, articles: data.articles, reservation: data.reservation, payment: data.payment };
     return values[id] ?? {};
 }
 
-/** Only the five authorized highlights, from the API's native-first database projection. */
+/** Solo los cinco destacados autorizados, desde la proyección nativa del API. */
 function Highlights({ item, onOpenClient, onOpenUnit }: { readonly item: FollowUpItem; readonly onOpenClient: () => void; readonly onOpenUnit: () => void }) {
     const facts = [
         ["Cliente", item.client],
@@ -146,15 +146,15 @@ function Highlights({ item, onOpenClient, onOpenUnit }: { readonly item: FollowU
 }
 
 /**
- * How much room a value needs, judged by the value and not by the field: a short answer takes one column even in a "long text" field, a sentence
- * takes two, a paragraph takes the whole row. The grid backfills, so a row is never left with one lonely fact and a blank beside it.
+ * Cuánto espacio necesita un valor, juzgado por el valor y no por el campo. Una respuesta corta ocupa una columna aunque el campo sea de texto largo,
+ * una oración ocupa dos y un párrafo ocupa la fila. La grilla rellena, así que una fila no queda con un dato solo y un blanco al lado.
  */
 function spanOf(shown: string): "1" | "2" | "full" {
     if (shown.length > 90 || shown.includes("\n")) return "full";
     return shown.length > 34 ? "2" : "1";
 }
 
-/** Keep the existing layout and render only explicitly mapped field values. */
+/** Conserva el layout y pinta solo los valores de campo mapeados de forma explícita. */
 function FieldGroup({ group }: { readonly group: RecordGroup }) {
     const filled = group.fields;
     if (filled.length === 0) return null;
@@ -272,8 +272,8 @@ function StatusFlag({ label, checked }: { readonly label: string; readonly check
 }
 
 /**
- * A sticky side column taller than the screen would hide its lower half. So it sticks with its top at 56px when it fits, and, when it does not,
- * with its BOTTOM at the screen's bottom: scrolling the page then walks through the whole column, with no scroll of its own to fight with.
+ * Una columna lateral fija más alta que la pantalla escondería su mitad de abajo. Si cabe, se fija con el tope a 56 px.
+ * Si no cabe, se fija por su base al borde inferior: al desplazar la página se recorre toda la columna, sin un scroll propio que compita.
  */
 function useStickyRail(ref: RefObject<HTMLElement | null>): void {
     useEffect(() => {
@@ -293,7 +293,7 @@ function useStickyRail(ref: RefObject<HTMLElement | null>): void {
     }, [ref]);
 }
 
-/** The chapter being read: the first one under the sticky bar. Without observer support (tests) the first one stays. */
+/** El capítulo que se está leyendo es el primero bajo la barra fija. Sin soporte de observer, como en pruebas, se queda el primero. */
 function useActiveChapter(chapterKey: string): string {
     const [active, setActive] = useState(RECORD_EXAMPLE.chapters[0]?.id ?? "");
     useEffect(() => {
@@ -364,7 +364,7 @@ function SectionBar({ chapters, closed, active, onGo, onAll, onHistory }: { read
     );
 }
 
-/** The order's article lines, as a table in the same frame as the sections. */
+/** Las líneas de artículo de la orden, como tabla en el mismo marco que las secciones. */
 function OrderItems({ primary }: { readonly primary: Partial<NetsuitePrimary> | null }) {
     return (
         <section className="record-chapter record-items" aria-label="Líneas de artículos">
@@ -436,7 +436,7 @@ export function FormalizationRecordSummary({ item, primary = null, effectivePerm
         },
         [],
     );
-    // Going to a part: open it if it is closed, glide down to it once it is drawn, and tint it a little greyer for a moment so it is the one you see.
+    // Ir a una parte: se abre si está cerrada, se desliza hasta ella cuando ya está dibujada y se tinta un momento para que sea la que se ve.
     const go = (id: string) => {
         setClosed((current) => {
             const next = new Set(current);

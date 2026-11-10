@@ -41,7 +41,7 @@ const toolbar = { start: "prev,next today title", end: "dayGridMonth,timeGridWor
 const WEEKEND = [0, 6];
 const TOOLBAR_BUTTONS = { timeGridWorkWeek: { text: "Semana laboral", hint: "Vista de la semana laboral" } };
 const timeViews = (selectable: boolean) => ({ timeGridWeek: { selectable }, timeGridDay: { selectable }, timeGridWorkWeek: { type: "timeGrid", duration: { weeks: 1 }, hiddenDays: WEEKEND, selectable } });
-/** Slot times from the grid, as Costa Rica wall time for the form. */
+/** Horas del hueco en la grilla, como hora de pared de Costa Rica para el formulario. */
 const wallTime = (iso: string) => (/[zZ]$|[+-]\d\d:\d\d$/.test(iso) ? utcToLocal(new Date(iso).toISOString()).slice(0, 16) : iso.slice(0, 16));
 const EVENT_TIME = { hour: "2-digit", minute: "2-digit", hour12: false } as const;
 const DAY_HEADER = { weekday: "long" } as const;
@@ -55,15 +55,15 @@ interface Selection {
     editing?: boolean;
     event: CalendarEvent | null;
     date: string;
-    /** Start and end picked on the time grid, as local wall time. */
+    /** Inicio y fin marcados en la grilla, como hora de pared local. */
     range?: { readonly start: string; readonly end: string } | undefined;
-    /** Where the clicked event sits on screen, so Outlook events open as a card beside it. */
+    /** Dónde quedó el evento en pantalla, para que uno de Outlook abra su tarjeta al lado. */
     anchor?: DOMRect | undefined;
-    /** Outlook events: the right-side detail panel instead of the quick card. */
+    /** Eventos de Outlook: el panel de detalle a la derecha, en lugar de la tarjeta rápida. */
     expanded?: boolean | undefined;
 }
 type CalendarData = ReturnType<typeof useCalendarData>;
-/** Each route uses one shared calendar, with current-module defaults and independent read grants. */
+/** Cada ruta usa el mismo calendario, con los valores del módulo actual y un permiso de lectura propio. */
 export function SharedCalendarPage({ moduleCode, effectivePermissions = noPermissions, onNavigate }: Props) {
     const readable = useMemo(() => CALENDAR_MODULES.filter((module) => canReadCalendar(effectivePermissions, module)), [effectivePermissions]);
     if (!readable.includes(moduleCode)) return <p role="alert">No tienes permiso para ver el calendario de {CALENDAR_CONTEXT[moduleCode].label}.</p>;
@@ -74,12 +74,12 @@ function initialSelection() {
     const date = query.get("date") ?? "";
     return { date: /^\d{4}-\d\d-\d\d$/.test(date) && Number.isFinite(Date.parse(date)) ? date : calendarToday(), eventId: query.get("event") };
 }
-/** Creating needs the create grant on the current module's calendar and a type served by the general form. */
+/** Crear exige el permiso de alta del calendario de este módulo y un tipo que atienda el formulario general. */
 function canCreateIn(calendars: readonly CalendarDescriptor[], moduleCode: CalendarModule): boolean {
     const current = calendars.find((calendar) => calendar.moduleCode === moduleCode);
     return Boolean(current?.canCreate && current.types.some((type) => type.formKey === `${moduleCode}.general.v1`));
 }
-/** A link with ?event=… opens that event once, until the person opens or closes anything else. */
+/** Un enlace con ?event= abre ese evento una vez, hasta que la persona abra o cierre otra cosa. */
 function deepLinkedSelection(initial: { date: string; eventId: string | null }, opened: boolean, events: readonly CalendarEvent[]): Selection | null {
     const event = !opened && initial.eventId ? events.find((entry) => entry.id === initial.eventId) : undefined;
     return event ? { event, date: initial.date } : null;
@@ -316,7 +316,7 @@ function CalendarSurface({ data, events, moduleCode, date, open, selectedId, can
         </section>
     );
 }
-/** An Outlook event opens as a quick card beside it, or expanded as the right-hand panel. */
+/** Un evento de Outlook se abre como tarjeta al lado, o ampliado en el panel derecho. */
 function OutlookSelection({ selection, event, onClose, onExpand, moduleCode, onSaved }: { readonly moduleCode: CalendarModule; readonly onSaved: () => void; readonly selection: Selection; readonly event: CalendarEvent; readonly onClose: () => void; readonly onExpand: (selection: Selection) => void }) {
     if (selection.expanded || !selection.anchor) return <OutlookEventDrawer event={event} onClose={onClose} moduleCode={moduleCode} onSaved={onSaved} />;
     return (
@@ -365,15 +365,15 @@ function invitationCalendar(event: CalendarEvent | null): CalendarDescriptor | n
     if (!event?.originModule) return null;
     return { moduleCode: event.originModule, label: CALENDAR_CONTEXT[event.originModule].label, color: "", canCreate: false, canUpdate: false, types: [] };
 }
-/** Marketing route adapter preserves the same global-calendar contract. */
+/** Adaptador de Mercadeo. Conserva el mismo contrato del calendario global. */
 export function MarketingCalendarPage(props: Omit<Props, "moduleCode">) {
     return <SharedCalendarPage {...props} moduleCode="mercadeo" />;
 }
-/** Sales route adapter. */
+/** Adaptador de Ventas. */
 export function SalesCalendarPage(props: Omit<Props, "moduleCode">) {
     return <SharedCalendarPage {...props} moduleCode="ventas" />;
 }
-/** Accounting route adapter. */
+/** Adaptador de Contabilidad. */
 export function AccountingCalendarPage(props: Omit<Props, "moduleCode">) {
     return <SharedCalendarPage {...props} moduleCode="contabilidad" />;
 }

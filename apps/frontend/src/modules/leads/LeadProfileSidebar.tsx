@@ -6,10 +6,11 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { LeadProfileResult } from "../../services/leads/lead-profile-service";
 import { fieldValue, type ProfileTab } from "./lead-profile-model";
 
-/** Copies a value and confirms for a moment. The clipboard may be blocked, in which case nothing changes. */
+/** Copia un valor y lo confirma un momento. Si el portapapeles está bloqueado, nada cambia y no se muestra un error técnico. */
 function CopyValue({ label, value }: { readonly label: string; readonly value: string }) {
     const [copied, setCopied] = useState(false);
     const timer = useRef<number | undefined>(undefined);
+    // Al salir se cancela el aviso de copiado para no actualizar un botón desmontado.
     useEffect(
         () => () => {
             window.clearTimeout(timer.current);
@@ -88,7 +89,7 @@ const EXTRA: readonly (readonly [string, string])[] = [
     ["relatedEmail", "Correo"],
 ];
 
-/** What is looked up while working in any section: contact, commercial facts, the additional person and where the documents will be. */
+/** Lo que se consulta mientras se trabaja en cualquier sección: contacto, datos comerciales, la persona adicional y dónde quedarán los documentos. */
 export function LeadProfileSidebar({ data, onOpenTab }: { readonly data: LeadProfileResult; readonly onOpenTab: (tab: ProfileTab) => void }) {
     return (
         <aside className="profile-side" aria-label="Datos del cliente">

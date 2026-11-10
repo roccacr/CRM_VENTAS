@@ -12,7 +12,7 @@ export interface UnitPaneOption {
 }
 export type UnitPaneChoices = Record<UnitPaneKey, UnitPaneOption[]>;
 const fields = ["code", "projectIds", "housingType", "status"] as const;
-/** Only filter locally when aggregate totals prove the required inventory is complete. */
+/** El filtro local solo corre cuando los totales demuestran que el inventario pedido está completo. */
 export function localUnitPaneData(items: UnitSummary[], base: UnitPaneChoices | undefined, selection: UnitPaneSelection): UnitTableData | undefined {
     if (!base) return undefined;
     const value = (item: UnitSummary, key: UnitPaneKey) => ({ code: item.code, projectIds: item.project.id, housingType: item.housingType, status: item.sourceStatus })[key] ?? "";
@@ -57,11 +57,11 @@ export interface UnitPaneAjaxResponse {
     searchPanes: ReturnType<typeof unitPaneResponse>;
 }
 
-/** Preserve existing page-local header sorting without issuing another database query. */
+/** El orden del encabezado sigue siendo local a la página. No dispara otra consulta. */
 function orderUnitPage(items: UnitSummary[], order: AjaxData["order"]) {
     const collator = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
     const rows = items.map((item) => ({ item, values: ["", item.code, item.project.name, item.housingType, item.advertisedSalePrice, item.sourceStatus, item.estimatedDelivery, item.totalArea, item.lotArea, item.approximateParkingArea] }));
-    // Null values, numeric/text comparison and direction are independent presentation states.
+    // Los nulos, la comparación numérica o de texto y la dirección son estados de presentación distintos.
     // eslint-disable-next-line complexity
     rows.sort((a, b) => {
         for (const sort of order) {
@@ -84,7 +84,7 @@ function paneTableResponse(result: UnitTableData | undefined, current: UnitTable
     return { draw: request.draw ?? 0, data: orderUnitPage(data.items, request.order ?? []), recordsTotal: choices.projectIds.reduce((sum, option) => sum + option.total, 0), recordsFiltered: result ? filtered : 0, searchPanes: unitPaneResponse(choices) };
 }
 
-/** Coalesce native clear-all redraws and share in-flight requests with sorting/redraw events. */
+/** Varios redibujos de limpiar todo se juntan en uno y comparten la petición en curso con ordenar y redibujar. */
 export function createUnitPaneAjax(getCurrent: () => UnitTableData & { choices: UnitPaneChoices; onFilterChange: (selection: UnitPaneSelection) => Promise<UnitTableData | undefined> | undefined }, onDraw: (items: UnitSummary[]) => void) {
     let accepted = JSON.stringify(unitPaneSelection());
     let pending: { signature: string; promise: Promise<UnitTableData | undefined> } | undefined;
@@ -93,8 +93,8 @@ export function createUnitPaneAjax(getCurrent: () => UnitTableData & { choices: 
         const draw = ++generation;
         const selection = unitPaneSelection(request.searchPanes);
         const signature = JSON.stringify(selection);
-        // SearchPanes may draw once per cleared pane. Query only the final synchronous state.
-        // Stale draws, accepted selections and shared in-flight work are independent protocol states.
+        // SearchPanes puede dibujar una vez por cada panel limpiado. Se consulta solo el estado final sincrónico.
+        // Un dibujo viejo, una selección aceptada y el trabajo compartido en curso son estados distintos del protocolo.
         // eslint-disable-next-line complexity
         async function respond() {
             if (draw !== generation) return;
@@ -122,12 +122,12 @@ export function createUnitPaneAjax(getCurrent: () => UnitTableData & { choices: 
     };
 }
 
-/** Server-side SearchPanes uses OR within each pane and AND across panes. */
+/** En el servidor, dentro de un panel los valores son un OR y entre paneles un AND. */
 export function unitPaneSelection(searchPanes: Record<string, Record<string, string> | string[]> = {}): UnitPaneSelection {
     return Object.fromEntries(fields.map((key) => [key, [...new Set(Object.values(searchPanes[key === "projectIds" ? "project.name" : key === "status" ? "sourceStatus" : key] ?? {}))].sort()])) as UnitPaneSelection;
 }
 
-/** Read bounded aggregate pages only; base totals remain stable while cascaded counts change. */
+/** Se leen solo páginas acotadas del agregado. El total base se queda mientras cambian los conteos en cascada. */
 export async function loadUnitFilePaneChoices(filter: UnitFilter, moduleCode: string, projects: UnitProject[] = [], base?: UnitPaneChoices): Promise<UnitPaneChoices> {
     async function read(kind: UnitPaneKey): Promise<Map<string, number>> {
         const counts = new Map<string, number>();
@@ -159,7 +159,7 @@ export async function loadUnitFilePaneChoices(filter: UnitFilter, moduleCode: st
     ) as UnitPaneChoices;
 }
 
-/** DataTables keys pane options by the column's data source, not its visible title. */
+/** DataTables identifica las opciones del panel por el origen de la columna, no por el título visible. */
 export function unitPaneResponse(choices: UnitPaneChoices) {
     return { options: { code: choices.code, "project.name": choices.projectIds, housingType: choices.housingType, sourceStatus: choices.status } };
 }

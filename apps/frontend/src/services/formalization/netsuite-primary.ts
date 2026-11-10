@@ -16,7 +16,7 @@ export interface NetsuitePrimary {
 function object(value: unknown): Record<string, unknown> {
     return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
-/** RESTlet display names are JSON-encoded strings, not numeric select IDs. Never execute or render source HTML. */
+/** Los nombres que muestra el RESTlet son textos codificados en JSON, no ids numéricos de un selector. No se ejecuta ni se pinta HTML de la fuente. */
 function text(value: unknown): string | null {
     if (typeof value !== "string") return null;
     const raw = value.trim();
@@ -33,7 +33,7 @@ function checked(value: unknown): boolean | null {
     if (value === "F" || value === false) return false;
     return null;
 }
-/** Add grouping without converting decimal strings through floating point or inventing a currency. */
+/** Agrupa sin pasar los decimales por punto flotante ni inventar una moneda. */
 function amount(value: unknown): string | null {
     const raw = typeof value === "number" ? String(value) : text(value);
     if (!raw || !/^-?\d+(?:\.\d+)?$/.test(raw)) return null;
@@ -56,7 +56,7 @@ function sales(detail: Record<string, unknown>, fields: Record<string, unknown>)
         "Motivo de cancelación de reserva o venta caída": text(detail.MOTIVO_CANCE),
         "Entrega estimada": text(fields.custbody114),
         "Fecha de entrega contractual": text(fields.custbody140),
-        // The source ID for Fecha adenda is not confirmed; do not borrow another date.
+        // El id de origen de Fecha adenda no está confirmado. No se toma otra fecha.
         "Fecha adenda": null,
         "Comentarios cancelación de reserva": text(fields.custbody116),
         "Precio de venta": amount(fields.custbody_ix_total_amount),
@@ -81,7 +81,7 @@ function authorization(detail: Record<string, unknown>, fields: Record<string, u
         "Comisión del asesor %": text(fields.custbody20),
         "Monto de comisión del asesor": amount(fields.custbody21),
         "Monto de comisión segundo asesor": amount(fields.custbody71),
-        // UNIDAD is a different relation from Expediente / Unidad expediente ligado VTA.
+        // UNIDAD es otra relación, distinta de Expediente y de Unidad expediente ligado VTA.
         "Unidad expediente ligado": text(detail.UNIDAD),
         "Comentario de autorización de venta": null,
         "Tipo de cambio": text(fields.exchangerate),
@@ -92,14 +92,14 @@ function authorization(detail: Record<string, unknown>, fields: Record<string, u
 function articles(fields: Record<string, unknown>) {
     return { "Monto descuento directo": amount(fields.custbody132), "Monto reserva": amount(fields.custbody52), "Prima total": amount(fields.custbody39), "Diferencia de extras sobre el precio de lista": amount(fields.custbody185) };
 }
-// Confirmed custbody188 catalog from the legacy reservation editor; it is NOT custbody75 / METODO_PAGO.
+// El catálogo confirmado es custbody188, el del editor de reserva anterior. No es custbody75 ni METODO_PAGO.
 const reservationMethods: Readonly<Record<string, string>> = { "1": "Transferencia", "2": "Efectivo", "3": "Cheque", "4": "Paypal", "5": "Tarjeta de crédito", "6": "Tarjeta de débito" };
 function reservation(fields: Record<string, unknown>) {
     return { "Medio de pago": reservationMethods[text(fields.custbody188) ?? ""] ?? null, "Número de transacción": text(fields.custbody189), "Monto reserva aplicada": amount(fields.custbody207), "Fecha de reserva aplicada": text(fields.custbody208), "Monto pre reserva": amount(fields.custbody191), "Fecha de pre reserva": text(fields.custbody206), "Observaciones confirma reserva": text(fields.custbody190) };
 }
 function payment(fields: Record<string, unknown>) {
     return {
-        // Empty fields without confirmed source IDs stay unknown; never derive dates, tract counts or observations from other sections.
+        // Un campo vacío sin id de origen confirmado queda desconocido. No se derivan fechas, conteos de tractos ni observaciones de otras secciones.
         "Cantidad de tractos": null,
         "Monto prima": amount(fields.custbody_ix_salesorder_monto_prima),
         "Observaciones prima": null,
@@ -150,7 +150,7 @@ const flags: Readonly<Record<string, string>> = {
     "No paga traspaso S.A.": "custbody141",
     "No paga cesión de acciones": "custbody157",
 };
-/** Approved read-only chapters only; no provider values mutate CRM workflow. */
+/** Solo los capítulos de lectura aprobados. Un valor del proveedor no cambia el flujo del CRM. */
 export function readNetsuitePrimary(result: NetsuiteOrderResult): NetsuitePrimary {
     const detail = object(result.data);
     const record = object(detail.data);
@@ -176,7 +176,7 @@ export function readNetsuitePrimary(result: NetsuiteOrderResult): NetsuitePrimar
             Departamento: text(detail.Departamento),
             Clase: text(detail.Clase),
             Ubicación: text(detail.Ubi),
-            // No confirmed source field for these values in the current payload. Do not substitute shipping or estimated dates.
+            // El payload actual no trae un campo de origen confirmado para estos valores. No se sustituyen por la fecha de envío ni por la estimada.
             "Traspaso / entrega de llaves": null,
             "Lectura del medidor de agua": null,
             Nota: text(fields.memo),

@@ -9,7 +9,7 @@ function restoreRequest(initialTarget: string | null, options: RestoreOptions) {
     return { target, key: String(target) + ":" + String(options.refreshVersion ?? 0) };
 }
 
-/** Rehydrate an exact, authorized resource from the URL, never from a provider ID or browser storage. */
+/** Rehidrata un recurso exacto y autorizado desde la URL. No usa un id de proveedor ni el almacenamiento del navegador. */
 export function useRestoredFormalizationOrder(enabled: boolean, onRestore: (item: FollowUpItem) => void, options: RestoreOptions = {}) {
     const [initialTarget, setInitialTarget] = useState(() => {
         const query = new URLSearchParams(window.location.search);

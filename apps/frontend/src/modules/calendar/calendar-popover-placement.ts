@@ -3,8 +3,8 @@ const GAP = 6;
 const MARGIN = 12;
 
 /**
- * Places the event card beside the event (right first, left when the right edge would clip it) and aligned to its top, so siblings in the same day stay visible.
- * Events in the last columns (sábado, domingo) therefore open to the left. Only when neither side has room does it fall back to below or above the event.
+ * Coloca la tarjeta al lado del evento, primero a la derecha y a la izquierda si el borde derecho no cabe, alineada arriba para que los eventos del mismo día sigan visibles.
+ * Los de las últimas columnas, sábado y domingo, abren a la izquierda. Solo si ningún lado tiene sitio baja o sube respecto del evento.
  */
 export function placeOutlookPopover(anchor: DOMRect | null, height: number, viewport: { readonly width: number; readonly height: number } = { width: window.innerWidth, height: window.innerHeight }): { top: number; left: number } {
     if (!anchor) return { top: MARGIN, left: MARGIN };

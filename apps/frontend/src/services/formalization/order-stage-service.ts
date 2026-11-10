@@ -20,7 +20,7 @@ export interface StageCommand {
     readonly reason?: string;
     readonly purchaseFundsOrigin?: "own_funds" | "bank_financing" | null;
 }
-/** Uses the BFF's existing cookie/CSRF client; business conflicts never trigger automatic replay. */
+/** Usa el cliente de cookies y CSRF del BFF. Un conflicto de negocio no dispara una repetición automática. */
 export async function updateOrderStage(command: StageCommand) {
     const id = command.source === "legacy" ? command.id.replace(/^legacy:/, "") : command.id;
     const result = await apiRequest<unknown>("/formalization/orders/stage", { method: "POST", body: { ...command, id }, retryOnUnauthorized: false });

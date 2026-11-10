@@ -16,16 +16,16 @@ import { CALENDAR_TIME_ZONE, calendarToday } from "./calendar-time";
 
 interface Props {
     readonly event: CalendarEvent;
-    /** Viewport rectangle of the clicked event; the card opens next to it. */
+    /** Rectángulo del evento en la ventana. La tarjeta se abre a su lado. */
     readonly anchor: DOMRect | null;
     readonly onClose: () => void;
-    /** Opens the full detail panel on the right. */
+    /** Abre el panel de detalle completo a la derecha. */
     readonly onExpand: () => void;
 }
 
 const endFormat = new Intl.DateTimeFormat("es-CR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: CALENDAR_TIME_ZONE });
 
-/** Keeps the card beside its event and closes it on Esc, on a click outside or when the window changes size. */
+/** Mantiene la tarjeta junto a su evento y la cierra con Esc, con un clic afuera o si cambia el tamaño de la ventana. */
 function useFloatingCard(anchor: DOMRect | null, event: CalendarEvent, onClose: () => void): { card: RefObject<HTMLDivElement | null>; position: { top: number; left: number } } {
     const card = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState(() => placeOutlookPopover(anchor, 220));
@@ -83,7 +83,7 @@ function CardBody({ event }: { readonly event: CalendarEvent }) {
     );
 }
 
-/** Quick view of an Outlook event, like Outlook's own: a card beside the event, read-only, closed by Esc, the X or a click outside. */
+/** Vista rápida de un evento de Outlook: una tarjeta al lado, de solo lectura, que se cierra con Esc, la X o un clic afuera. */
 export function OutlookEventPopover({ event, anchor, onClose, onExpand }: Props) {
     const { card, position } = useFloatingCard(anchor, event, onClose);
     const webLink = event.outlookDetail?.webLink;

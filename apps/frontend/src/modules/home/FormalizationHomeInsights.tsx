@@ -13,8 +13,8 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ORDER_STAGES } from "../../services/formalization/order-stage-service";
 import { getRecentOrderActivity, type RecentOrderActivity } from "../../services/formalization/recent-activity-service";
 
-/** Mount the personal reader only in the visible, authorized Home; returning Home always reads fresh data. */
-/** The feed holds only the signed-in person's own actions (the server picks the actor), so the actor shown is that person. */
+/** El lector personal se monta solo en el Inicio visible y autorizado. Volver a Inicio lee datos frescos. */
+/** El feed trae solo las acciones de la persona autenticada. El servidor elige al actor, así que quien se muestra es esa persona. */
 export function FormalizationHomeInsights({ enabled = false, visible = true, refreshVersion = 0, actorName = "" }: { readonly enabled?: boolean; readonly visible?: boolean; readonly refreshVersion?: number; readonly actorName?: string }) {
     return (
         <section className="formalization-card formalization-activity" aria-labelledby="preview-activity-title">
@@ -95,7 +95,7 @@ function RecentActivity({ actorName }: { readonly actorName: string }) {
     );
 }
 
-/** One icon per kind of movement, so the list can be scanned before it is read. */
+/** Un ícono por tipo de movimiento, para recorrer la lista antes de leerla. */
 const ACTION_ICONS: ReadonlyMap<string, ReactNode> = new Map<string, ReactNode>([
     ["approval_change", <CheckCircleOutlined key="a" />],
     ["state_change", <SwapOutlined key="s" />],

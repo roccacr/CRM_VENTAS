@@ -49,19 +49,19 @@ function workflow(value: unknown): NoteWorkflow {
     if (reminder && !["pending", "delivered", "suppressed", "cancelled"].includes(text(reminder.status))) invalid();
     return { schemaVersion: 1, version: integer(r.version, 0), assignee: r.assignee === null ? null : actor(r.assignee), dueAt: nullableTime(r.dueAt), reminder: reminder ? { remindAt: time(reminder.remindAt), status: reminder.status as "pending" | "delivered" | "suppressed" | "cancelled" } : null, canManage: bool(r.canManage) };
 }
-/** Reads only the caller's reminder and authorized task metadata. */
+/** Lee solo el recordatorio de quien llama y el metadato autorizado de la tarea. */
 export async function getNoteWorkflow(noteId: string): Promise<NoteWorkflow> {
     return workflow(await apiRequest<unknown>(path(noteId)));
 }
-/** The original operation key must survive uncertain responses. */
+/** La clave original de la operación sobrevive a una respuesta incierta. */
 export async function saveNoteTask(noteId: string, body: { operationId: string; expectedVersion: number; assigneeUserId: string | null; dueAt: string | null }): Promise<void> {
     await apiRequest<unknown>(`${path(noteId)}/task`, { method: "PUT", body, retryOnUnauthorized: false });
 }
-/** Null cancels only the current reader's reminder. */
+/** Un nulo cancela solo el recordatorio de quien está leyendo. */
 export async function saveNoteReminder(noteId: string, body: { operationId: string; remindAt: string | null }): Promise<void> {
     await apiRequest<unknown>(`${path(noteId)}/reminder`, { method: "PUT", body, retryOnUnauthorized: false });
 }
-/** Display locations never replace the note's canonical record identity or share access. */
+/** Los lugares donde se muestra no reemplazan la identidad canónica del registro ni comparten el acceso. */
 export async function getNoteLocations(noteId: string): Promise<NoteLocations> {
     const r = record(await apiRequest<unknown>(`/note-collaboration/notes/${id(noteId)}/locations`));
     if (r.schemaVersion !== 1 || !Array.isArray(r.locations) || r.locations.length > 5) invalid();
@@ -69,11 +69,11 @@ export async function getNoteLocations(noteId: string): Promise<NoteLocations> {
     const availableLocations = r.availableLocations === undefined ? [] : parseAvailableLocations(r.availableLocations);
     return { schemaVersion: 1, version: integer(r.version), locations, availableLocations, canManage: bool(r.canManage) };
 }
-/** Atomically replaces display references against the shown collaboration version. */
+/** Reemplaza de forma atómica las referencias de presentación, contra la versión de colaboración mostrada. */
 export async function saveNoteLocations(noteId: string, body: { operationId: string; expectedCollaborationVersion: number; locations: NoteLocation[] }): Promise<void> {
     await apiRequest<unknown>(`/note-collaboration/notes/${id(noteId)}/locations`, { method: "PUT", body, retryOnUnauthorized: false });
 }
-/** Reads sanitized event metadata; no previous note text is exposed. */
+/** Lee metadato saneado del evento. No expone el texto anterior de la nota. */
 export async function getNoteActivity(noteId: string, page = 1): Promise<{ items: NoteActivity[]; page: { number: number; size: number; total: number } }> {
     const r = record(await apiRequest<unknown>(`/note-collaboration/notes/${id(noteId)}/activity?page=${String(integer(page))}`));
     if (r.schemaVersion !== 1 || !Array.isArray(r.items) || r.items.length > 100) invalid();
@@ -111,7 +111,7 @@ export interface NoteWorkflowOverview {
     truncated: boolean;
     timeZone: string;
 }
-/** Counts use the requested IANA time zone returned by the server. */
+/** Los conteos usan la zona IANA pedida que devolvió el servidor. */
 export async function getNoteWorkflowOverview(timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone): Promise<NoteWorkflowOverview> {
     const r = record(await apiRequest<unknown>(`/note-workflow/overview?${new URLSearchParams({ timeZone })}`)),
         counts = record(r.counts);

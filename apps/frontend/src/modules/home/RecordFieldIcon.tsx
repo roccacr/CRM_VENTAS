@@ -29,7 +29,7 @@ import UserOutlined from "@ant-design/icons/UserOutlined";
 import WalletOutlined from "@ant-design/icons/WalletOutlined";
 import type { ReactNode } from "react";
 
-/** First match wins, so the specific labels come before the general ones. */
+/** Gana la primera coincidencia, así que las etiquetas específicas van antes que las generales. */
 const RULES: readonly (readonly [RegExp, ReactNode])[] = [
     [/^N\.º de pedido|^Número de transacción/, <NumberOutlined />],
     [/^Cantidad de tractos/, <OrderedListOutlined />],
@@ -63,7 +63,7 @@ const RULES: readonly (readonly [RegExp, ReactNode])[] = [
     [/^Monto|^Prima|^Hito|^Cargos|^Cashback|^Diferencia/, <DollarOutlined />],
 ];
 
-/** One small icon in front of each field name. Decorative: the name stays the accessible text. */
+/** Un ícono pequeño delante de cada nombre de campo. Es decorativo: el nombre sigue siendo el texto accesible. */
 export function RecordFieldIcon({ label }: { readonly label: string }) {
     const icon = RULES.find(([pattern]) => pattern.test(label))?.[1] ?? <FileTextOutlined />;
     return (

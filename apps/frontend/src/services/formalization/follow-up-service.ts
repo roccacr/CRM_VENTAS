@@ -24,7 +24,7 @@ export interface FollowUpItem {
     readonly project: { id: string; name: string } | null;
     readonly unit: string | null;
     readonly responsible: { id: string | null; name: string } | null;
-    /** Salesperson and change author are distinct from the recorded stage assignee. */
+    /** El vendedor y quien hizo el cambio son distintos de la persona asignada a la etapa registrada. */
     readonly seller?: { id: string | null; name: string } | null;
     readonly changedBy?: { id: string | null; name: string } | null;
     readonly state: { code: string; label: string; since: string | null; days: number | null };
@@ -98,7 +98,7 @@ function responsible(value: unknown): NonNullable<FollowUpItem["responsible"]> {
     const data = record(value);
     return { id: nullable(data.id, text), name: text(data.name) };
 }
-/** A single valid recipient only; rejects header injection and address lists. */
+/** Solo un destinatario válido. Rechaza inyección de encabezados y listas de direcciones. */
 function clientEmail(value: unknown): string | null {
     if (typeof value !== "string") return null;
     const email = value.trim();
@@ -169,7 +169,7 @@ function positive(value: unknown, maximum = Number.MAX_SAFE_INTEGER): number {
     if (result < 1 || result > maximum) throw invalid();
     return result;
 }
-/** Validates and reconstructs the canonical contract, excluding arbitrary provider/contact fields. */
+/** Valida y reconstruye el contrato canónico. Deja fuera campos arbitrarios del proveedor o del contacto. */
 export async function getFollowUp(filters: FollowUpFilters): Promise<FollowUp> {
     positive(filters.page);
     positive(filters.pageSize, 100);
@@ -195,12 +195,12 @@ export async function getFollowUp(filters: FollowUpFilters): Promise<FollowUp> {
         sources: { native: { total: count(native.total) }, legacy: { total: count(legacy.total), enabled: bool(legacy.enabled) } },
     };
     if (result.items.length > result.page.size) throw invalid();
-    // Log only the validated canonical JSON; credentials and raw provider/contact fields are never copied.
+    // El registro lleva solo el JSON canónico validado. No se copian credenciales ni campos crudos del proveedor o del contacto.
     if (import.meta.env.DEV) console.log("[Formalization API: home/follow-up]", JSON.stringify({ ...result, items: result.items.map(({ clientEmail: _clientEmail, ...entry }) => entry) }));
     return result;
 }
 
-/** Exact record projection, without banner counts, project catalogs or provider reads. */
+/** Proyección exacta del registro, sin conteos de banner, catálogos de proyecto ni lecturas del proveedor. */
 export async function getFormalizationOrderRecord(source: FollowUpItem["source"], id: string): Promise<FollowUpItem> {
     const valid = source === "legacy" ? /^[1-9][0-9]{0,9}$/.test(id) : /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(id);
     if (!valid) throw invalid();

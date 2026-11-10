@@ -16,7 +16,7 @@ function recordCaption(item: NoteRelatedRecord): string {
     if (item.restricted) return `${captions[item.kind]} vinculado sin acceso`;
     return `${captions[item.kind]}: ${item.label ?? "Registro"}`;
 }
-/** One authorized summary is reused in cards, floating sheets and the conversation. */
+/** Un resumen autorizado se reutiliza en las tarjetas, las hojas flotantes y la conversación. */
 export function NoteRelatedRecordsSummary({ records = [], compact = false }: { readonly records?: readonly NoteRelatedRecord[] | undefined; readonly compact?: boolean }) {
     if (!records.length) return null;
     const limit = compact ? 2 : records.length;
@@ -53,7 +53,7 @@ interface PickerProps {
     readonly onChange: (items: NoteRelatedRecord[]) => void;
     readonly disabled: boolean;
 }
-/** Selection preserves server-issued identities; the user only sees business labels. */
+/** La selección conserva las identidades que emitió el servidor. La persona solo ve etiquetas de negocio. */
 export function NoteRelatedRecordsPicker(props: PickerProps) {
     return (
         <div className="note-related-records__picker">
@@ -223,7 +223,7 @@ function RecordSearch({ moduleCode, selected, onChange, disabled, kind }: Picker
         </fieldset>
     );
 }
-/** Existing links render without extra card requests; only authors open the versioned editor. */
+/** Los vínculos existentes se pintan sin pedir tarjetas extra. Solo el autor abre el editor versionado. */
 export function NoteRelatedRecordsSection({ noteId, moduleCode, records, canEdit, onChanged }: { readonly noteId: string; readonly moduleCode: NoteModule; readonly records: NoteRelatedRecord[]; readonly canEdit: boolean; readonly onChanged: () => void }) {
     const [expanded, setExpanded] = useState(false);
     return (

@@ -77,7 +77,7 @@ function lossReasons(value: unknown, lost: number): CaptureLossReason[] {
     return result;
 }
 
-/** Validate the entire aggregate before any counter or catalog can become visible. */
+/** Valida el agregado completo antes de que un contador o un catálogo pueda verse. */
 export function parseCaptureReport(value: unknown, period: CaptureApiPeriod, qualification: CaptureQualification = "all"): CaptureApiReport {
     const data = record(value),
         source = record(data.sources),
@@ -116,7 +116,7 @@ function validateEvidence(report: CaptureApiReport): void {
 function validateSources(report: CaptureApiReport): void {
     if (!report.sources.legacyEnabled && report.sources.legacy > 0) throw invalid();
 }
-/** The existing BFF owns session cookies and permissions; this endpoint is read only. */
+/** El BFF existente es dueño de las cookies de sesión y de los permisos. Este endpoint es de solo lectura. */
 export async function getCaptureReport(period: CaptureApiPeriod, qualification: CaptureQualification = "all"): Promise<CaptureApiReport> {
     return parseCaptureReport(await apiRequest<unknown>(`/marketing/leads/report?period=${period}${qualification === "all" ? "" : `&qualification=${qualification}`}`), period, qualification);
 }

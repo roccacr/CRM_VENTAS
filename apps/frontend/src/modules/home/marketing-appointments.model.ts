@@ -1,7 +1,7 @@
 import type { MarketingAppointmentEvent } from "../../services/marketing/home-summary-service";
 import { type MarketingRange, toISODate } from "./marketing-home-preview.model";
 
-/** Match both dimensions on the same lead link; one event is counted once despite copied participants or several leads. */
+/** Las dos dimensiones coinciden en el mismo vínculo de lead. Un evento se cuenta una vez aunque tenga participantes copiados o varios leads. */
 export function summarizeAppointmentEvents(events: readonly MarketingAppointmentEvent[], period: MarketingRange, scope: { sellers: readonly string[]; projects: readonly string[] }) {
     const start = toISODate(period.start);
     const end = toISODate(period.end);

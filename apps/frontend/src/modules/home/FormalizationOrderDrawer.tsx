@@ -1,4 +1,4 @@
-/** Canonical order detail with a permission-gated stage editor. Outlook opens a draft only; it never sends mail or changes stage. */
+/** Detalle canónico de la orden, con el editor de etapa detrás de su permiso. Outlook abre solo un borrador: no envía correo ni cambia la etapa. */
 import "../administration/components/UserDetailDrawer.css";
 import "../administration/catalogs/CatalogItemsPage.css";
 import "../administration/catalogs/ProjectsView.css";
@@ -29,7 +29,7 @@ import { FormalizationRecordProgress } from "./FormalizationRecordProgress";
 import { StageChip } from "./FormalizationStageChip";
 import { FormalizationStageEditor } from "./FormalizationStageEditor";
 
-/** Text when the API has no value. Shown quiet so it is never mistaken for a saved value. */
+/** Texto cuando el API no trae valor. Se muestra atenuado para no confundirlo con un dato guardado. */
 const MISSING = "Sin dato";
 
 function Value({ children }: { readonly children: string | null | undefined }) {
@@ -106,7 +106,7 @@ function OrderTitle({ item, markers }: { readonly item: FollowUpItem | null; rea
     );
 }
 
-/** Up/Down walk the page unless the focus is in a field or menu, so typing never jumps rows. */
+/** Arriba y abajo recorren la página, salvo si el foco está en un campo o un menú. Escribir no salta de fila. */
 function walkWithArrows(event: React.KeyboardEvent, previous: () => void, next: () => void) {
     // Un evento lateral usa un portal: sus flechas no deben cambiar la orden detrás del formulario.
     if (!event.currentTarget.contains(event.target as Node)) return;

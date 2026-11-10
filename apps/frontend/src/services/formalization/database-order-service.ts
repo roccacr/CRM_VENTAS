@@ -99,7 +99,7 @@ function parseHistory(value: unknown): ClientHistoryPage {
     });
     return { items, hasMore: page.hasMore, nextCursor: page.nextCursor, ...(typeof page.legacyAvailable === "boolean" ? { legacyAvailable: page.legacyAvailable } : {}) };
 }
-/** Same authorized CRM identity as the provider call. No copied records or browser persistence. */
+/** La misma identidad CRM autorizada que la llamada al proveedor. No hay registros copiados ni persistencia en el navegador. */
 export async function getDatabaseOrder(identity: NetsuiteOrderIdentity, historyCursor?: string): Promise<DatabaseOrderResult> {
     const id = identity.source === "legacy" ? identity.id.replace(/^legacy:/, "") : identity.id;
     const valid = identity.source === "legacy" ? /^[1-9][0-9]{0,9}$/.test(id) : /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(id);

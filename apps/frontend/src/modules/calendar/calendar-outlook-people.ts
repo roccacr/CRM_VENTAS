@@ -15,12 +15,12 @@ function groupOf(response: OutlookResponse): (typeof GROUPS)[number]["key"] {
     return response === "declined" ? "declined" : "pending";
 }
 const sameEmail = (a: OutlookPerson | null, b: OutlookPerson) => Boolean(a?.email && b.email && a.email.toLowerCase() === b.email.toLowerCase());
-/** Attendees without the organizer, who is shown on their own: Outlook lists them in both places. */
+/** Asistentes sin el organizador, que se muestra aparte. Outlook los lista en los dos lugares. */
 export const invitees = (detail: OutlookEventDetail): readonly OutlookAttendee[] => detail.attendees.filter((attendee) => !sameEmail(detail.organizer, attendee));
-/** People are what the invitation list shows; rooms and equipment are not counted as having answered. */
+/** La lista de invitación muestra personas. Las salas y el equipo no cuentan como quien respondió. */
 const people = (detail: OutlookEventDetail) => invitees(detail).filter((attendee) => attendee.kind !== "resource");
 
-/** Attendees grouped like Outlook's "Seguimiento" panel, empty groups left out. */
+/** Asistentes agrupados como el panel Seguimiento de Outlook. Un grupo vacío no se muestra. */
 export function groupAttendees(attendees: readonly OutlookAttendee[]) {
     return GROUPS.map((group) => ({ ...group, items: attendees.filter((attendee) => groupOf(attendee.response) === group.key) })).filter((group) => group.items.length > 0);
 }
@@ -32,7 +32,7 @@ export function acceptedSummary(detail: OutlookEventDetail): string | null {
     return `${String(accepted)} de ${String(invited.length)} han aceptado`;
 }
 export const displayName = (person: OutlookPerson): string => person.name?.trim() || person.email || "Sin nombre";
-/** Two letters for the avatar: first and second word of the name, or of the e-mail when there is no name. */
+/** Dos letras para el avatar: la primera y la segunda palabra del nombre, o del correo si no hay nombre. */
 export function initials(person: OutlookPerson): string {
     const parts = displayName(person)
         .split(/[\s@.]+/)
@@ -46,7 +46,7 @@ export function whoLine(detail: OutlookEventDetail, shown = 3): string {
     if (unique.length <= shown) return unique.join(", ");
     return `${unique.slice(0, shown).join(", ")} y ${String(unique.length - shown)} más`;
 }
-/** The one-line "who" for the quick card: names, then "2 de 4 han aceptado" when there are invitees. */
+/** La línea de quiénes para la tarjeta rápida: nombres y, si hay invitados, cuántos aceptaron. */
 export function peopleLine(detail: OutlookEventDetail | undefined, shown = 2): string {
     if (!detail) return "";
     const names = whoLine(detail, shown);

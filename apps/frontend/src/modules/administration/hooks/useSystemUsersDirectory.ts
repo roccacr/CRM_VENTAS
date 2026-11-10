@@ -60,6 +60,7 @@ const appendUniqueUsers = (currentUsers: readonly SystemUserListItem[], nextUser
  * estado y orden se aplican al instante y reinician la paginación. Si algo
  * cambia antes de la respuesta, la anterior se descarta. El usuario abierto
  * se conserva por `publicId`, no por la posición de la fila.
+ * Un fallo de la primera página vacía la tabla. Un fallo al pedir más conserva las filas ya visibles.
  */
 export const useSystemUsersDirectory = (input: SystemUsersDirectoryInput): SystemUsersDirectoryState => {
     const [isLoadingMore, setIsLoadingMore] = useState(false);

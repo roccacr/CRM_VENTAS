@@ -118,7 +118,7 @@ function OrderChecks({ item }: { readonly item: FollowUpItem }) {
     );
 }
 
-/** Position in the workflow, not proof of historical visits: users can jump stages. */
+/** Posición en el flujo. No prueba visitas históricas: la persona puede saltar etapas. */
 export function FormalizationRecordProgress({ item, compact = false }: { readonly item: FollowUpItem; readonly compact?: boolean }) {
     const state = item.state.code;
     const closed = state === "closed";

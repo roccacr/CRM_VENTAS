@@ -12,7 +12,7 @@ const granularCodes = [
 ];
 type Permission = { readonly code: string; readonly effect: string };
 
-/** Effective API grants only; a granular entry disables umbrella compatibility for every category. */
+/** Solo cuentan los permisos efectivos del API. Una entrada granular apaga la compatibilidad amplia de todas las categorías. */
 export function formalizationReadQueues(_roles: readonly IdentityRole[] | undefined, permissions: readonly Permission[] = []): readonly FollowUpQueue[] {
     const allowed = (code: string) => permissions.some((entry) => entry.code === code && entry.effect === "allow") && !permissions.some((entry) => entry.code === code && entry.effect === "deny");
     const legacy = !permissions.some((entry) => granularCodes.includes(entry.code)) && allowed("formalizacion.home.stages.read");
@@ -23,7 +23,7 @@ export function formalizationReadQueues(_roles: readonly IdentityRole[] | undefi
     return queues.length ? ["all", ...queues] : [];
 }
 
-/** Detail authority is independent of every banner/list grant; explicit deny wins. */
+/** La autoridad del detalle es independiente del permiso de cada banner o lista. Un deny explícito gana. */
 export function canReadFormalizationOrder(_roles: readonly IdentityRole[] | undefined, permissions: readonly Permission[] = []): boolean {
     return permissions.some((entry) => entry.code === "formalizacion.orders.read" && entry.effect === "allow") && !permissions.some((entry) => entry.code === "formalizacion.orders.read" && entry.effect === "deny");
 }

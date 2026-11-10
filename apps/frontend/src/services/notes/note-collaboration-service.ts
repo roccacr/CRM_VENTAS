@@ -159,7 +159,7 @@ async function mutate(noteId: string, suffix: string, method: "POST" | "PUT" | "
     if (result.noteId !== noteId) invalid();
     return result;
 }
-/** Reads one authorized thread; replies use an explicit bounded page. */
+/** Lee un hilo autorizado. Las respuestas usan una página acotada y explícita. */
 export async function getNoteThread(noteId: string, replyPage = 1): Promise<NoteThread> {
     const r = record(await apiRequest<unknown>(`${notePath(noteId)}?replyPage=${String(integer(replyPage, 1, 1000))}`));
     if (r.schemaVersion !== 1) invalid();
@@ -168,7 +168,7 @@ export async function getNoteThread(noteId: string, replyPage = 1): Promise<Note
     if (note.id !== noteId) invalid();
     return { schemaVersion: 1, note, collaborationVersion: integer(r.collaborationVersion, 1), participants: unique(array(r.participants, parseParticipant, 100), (p) => p.userId), mentions: unique(array(r.mentions, id, 100), String), replies, replyPage: parsePage(r.replyPage, replyPage, replies.length), following: boolean(r.following) };
 }
-/** Lists only server-authorized collaborative notes without browser persistence. */
+/** Lista solo las notas colaborativas que el servidor autorizó. No las persiste en el navegador. */
 export async function getNoteInbox(kind: "all" | "created" | "shared" | "mentions" | "assigned" = "shared", status: PersonalNote["status"] | "all" = "open", page = 1, filters: NoteInboxFilters = {}): Promise<NoteInbox> {
     const query = new URLSearchParams({ kind, status, page: String(integer(page, 1, 1000)), pageSize: "25" });
     addInboxFilters(query, filters);
@@ -178,42 +178,42 @@ export async function getNoteInbox(kind: "all" | "created" | "shared" | "mention
     const items = unique(array(r.items, parseItem, 25), (n) => n.id);
     return { schemaVersion: 1, items, page: parsePage(r.page, page, items.length) };
 }
-/** Searches the authorized user directory for an existing note. */
+/** Busca en el directorio autorizado de usuarios para una nota que ya existe. */
 export async function getEligibleNoteUsers(noteId: string, search: string): Promise<NoteEligibleUsers> {
     return readUserDirectory(`${notePath(noteId)}/eligible-users`, new URLSearchParams({ search }));
 }
-/** Searches invitees before creating a private note in its explicit context. */
+/** Busca invitados antes de crear una nota privada en su contexto explícito. */
 export async function getEligibleUsersForNoteDraft(moduleCode: NoteModule, context: NoteContext, search: string): Promise<NoteEligibleUsers> {
     context = normalizeNoteContext(context);
     const query = new URLSearchParams({ moduleCode, contextType: context.kind, ...(context.kind === "view" && context.code !== undefined ? { viewCode: context.code } : {}), ...(context.kind === "sales_order" ? { recordId: context.id, ...(context.source === "legacy" ? { recordSource: context.source } : {}) } : {}), search });
     return readUserDirectory("/note-collaboration/eligible-users", query);
 }
-/** Replaces sharing atomically against the collaboration version displayed. */
+/** Reemplaza el uso compartido de forma atómica, contra la versión de colaboración que se mostró. */
 export async function replaceNoteParticipants(noteId: string, command: NoteParticipantsCommand): Promise<NoteCollaborationResult> {
     return mutate(noteId, "participants", "PUT", command);
 }
-/** Replaces explicit note mentions without changing the caller operation ID. */
+/** Reemplaza las menciones explícitas de la nota y no cambia el id de operación de quien llama. */
 export async function replaceNoteMentions(noteId: string, command: NoteMentionsCommand): Promise<NoteCollaborationResult> {
     return mutate(noteId, "mentions", "PUT", command);
 }
-/** Adds a plain-text reply; ambiguous failures remain the caller's pending command. */
+/** Agrega una respuesta de texto plano. Un fallo ambiguo sigue siendo el comando pendiente de quien llama. */
 export async function addNoteReply(noteId: string, command: NoteReplyCommand): Promise<NoteCollaborationResult> {
     return mutate(noteId, "replies", "POST", command);
 }
-/** Edits an author's reply against its displayed version. */
+/** Edita la respuesta del autor contra la versión que se mostró. */
 export async function editNoteReply(noteId: string, replyId: string, command: NoteReplyEditCommand): Promise<NoteCollaborationResult> {
     return mutate(noteId, `replies/${id(replyId)}`, "PATCH", command);
 }
-/** Withdraws a reply without deleting its history. */
+/** Retira una respuesta y no borra su historial. */
 export async function withdrawNoteReply(noteId: string, replyId: string, command: NoteReplyWithdrawCommand): Promise<NoteCollaborationResult> {
     return mutate(noteId, `replies/${id(replyId)}/withdraw`, "POST", command);
 }
-/** Changes only the current user's following preference. */
+/** Cambia solo la preferencia de seguimiento de la persona actual. */
 export async function setNoteFollowing(noteId: string, command: NoteFollowingCommand): Promise<NoteCollaborationResult> {
     return mutate(noteId, "my-following", "PUT", command);
 }
 
-/** Fetches all bounded directory pages; never silently truncates the selection list to its first100 users. */
+/** Trae todas las páginas acotadas del directorio. No recorta en silencio la lista de selección a los primeros 100 usuarios. */
 async function readUserDirectory(path: string, query: URLSearchParams): Promise<NoteEligibleUsers> {
     const people = new Map<string, NoteEligibleUsers["items"][number]>();
     for (let page = 1; page <= 1000; page++) {
@@ -240,7 +240,7 @@ function addInboxRangeFilters(query: URLSearchParams, filters: NoteInboxFilters)
     if (filters.createdFrom) query.set("createdFrom", timestamp(filters.createdFrom));
     if (filters.createdTo) query.set("createdTo", timestamp(filters.createdTo));
 }
-/** All authors of currently authorized notes; independent of the selected inbox page. */
+/** Todos los autores de las notas autorizadas ahora. No depende de la página de bandeja elegida. */
 export async function getNoteInboxAuthors(): Promise<{ publicId: string; displayName: string }[]> {
     const r = record(await apiRequest<unknown>("/note-collaboration/inbox/authors"));
     if (r.schemaVersion !== 1) invalid();

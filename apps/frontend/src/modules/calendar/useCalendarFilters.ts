@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { CalendarEvent } from "../../services/calendar/calendar-service";
 import { visibleEvents } from "./calendar-view-tools";
 
-/** Search text and the type / Outlook switches. They only change what is drawn, never what is loaded. */
+/** Texto de búsqueda y los interruptores de tipo y de Outlook. Solo cambian lo dibujado. No cambian lo cargado. */
 export function useCalendarFilters(events: readonly CalendarEvent[]) {
     const [query, setQuery] = useState("");
     const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<string>>(new Set());

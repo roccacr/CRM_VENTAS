@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { getMarketingHomeSummary, type MarketingApiPeriod, type MarketingApiSummary } from "../../services/marketing/home-summary-service";
 
-/** Only the current user/period may publish results; stale requests and previous-period counters stay hidden. */
+/** Solo el usuario y el periodo actuales publican resultados. Una petición vieja y los contadores del periodo anterior permanecen ocultos. */
 export function useMarketingHomeSummary(period: MarketingApiPeriod, userId: string) {
     const key = JSON.stringify([userId, period]);
     const [state, setState] = useState<{ key: string; value: MarketingApiSummary | null; failed: boolean } | null>(null);

@@ -9,7 +9,7 @@ interface PickerProps {
     readonly onChange: (selection: MarketingSelection) => void;
 }
 
-/** Native date inputs keep the keyboard, locale and mobile pickers; empty or invalid values are ignored. */
+/** Los inputs nativos de fecha conservan el teclado, el idioma y el selector móvil. Un valor vacío o inválido se ignora. */
 function DateField({ label, text = label, value, max, onPick }: { readonly label: string; readonly text?: string; readonly value: string; readonly max: string; readonly onPick: (value: string) => void }) {
     return (
         <label className="marketing-period__field">
@@ -27,7 +27,7 @@ function DateField({ label, text = label, value, max, onPick }: { readonly label
     );
 }
 
-/** Months are two selects, not `<input type="month">`, which Firefox and Safari desktop do not render as a picker. */
+/** El mes son dos selectores, no un input de mes, porque Firefox y Safari de escritorio no lo pintan como selector. */
 function MonthFields({ selection, today, onChange }: PickerProps) {
     const anchor = parseISODate(selection.anchor) ?? today;
     const years = Array.from({ length: 3 }, (_, index) => today.getFullYear() - 2 + index);
@@ -75,7 +75,7 @@ function MonthFields({ selection, today, onChange }: PickerProps) {
 
 const FIELD_LABEL: Record<Exclude<MarketingPeriodMode, "month" | "range">, string> = { day: "Día", week: "Un día de la semana", year: "Un día del año" };
 
-/** The inputs that match the chosen unit: one date for a day or week, month and year, or two dates for a range. */
+/** Los inputs de la unidad elegida: una fecha para día o semana, mes y año, o dos fechas para un rango. */
 function PeriodFields(props: PickerProps) {
     const { selection, today, onChange } = props;
     const max = toISODate(today);
@@ -114,7 +114,7 @@ function PeriodFields(props: PickerProps) {
     );
 }
 
-/** Only custom comparison needs dates; the other options are derived from the period. */
+/** Solo la comparación personalizada pide fechas. Las demás opciones salen del periodo. */
 function CompareFields({ selection, today, onChange }: PickerProps) {
     const max = toISODate(today);
     return (
@@ -168,7 +168,7 @@ interface MarketingPeriodPickerProps {
     readonly onChange: (filters: MarketingPreviewFilters) => void;
 }
 
-/** Day, week, month or free range, with arrows to step through time and a comparison the person can change. */
+/** Día, semana, mes o rango libre, con flechas para avanzar en el tiempo y una comparación que la persona puede cambiar. */
 export function MarketingPeriodPicker({ filters, today, period, comparison, onChange }: MarketingPeriodPickerProps) {
     const { selection } = filters;
     const update = (next: MarketingSelection) => {

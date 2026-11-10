@@ -1,20 +1,20 @@
-/** How deep the report goes: 1 = by project, 2 = project › campaign, 3 = project › campaign › ad. */
+/** Profundidad del reporte: 1 es por proyecto, 2 es proyecto y campaña, 3 es proyecto, campaña y anuncio. */
 export type CaptureDepth = 1 | 2 | 3;
 
 /** Medida del reporte; los motivos de pérdida añaden una distribución sin cambiar la cohorte captada. */
 export type CaptureMeasure = "leads" | "appointments" | "lost" | "lossReasons";
 
 /**
- * Counts for one group of leads.
- * `noAppointment + scheduled + completed` always equals `leads`: a lead is in exactly one of the three.
- * `lost` counts leads that are lost today, whatever happened before.
+ * Conteos de un grupo de leads.
+ * `noAppointment + scheduled + completed` siempre es igual a `leads`: un lead está en exactamente uno de los tres.
+ * `lost` cuenta los leads perdidos hoy, pase lo que haya pasado antes.
  */
 export interface CaptureValues {
     readonly leads: number;
     readonly noAppointment: number;
-    /** Appointment booked and not yet held. */
+    /** Cita agendada y todavía no realizada. */
     readonly scheduled: number;
-    /** Appointment held. */
+    /** Cita ya realizada. */
     readonly completed: number;
     readonly lost: number;
 }
@@ -37,7 +37,7 @@ export interface CaptureRow extends CaptureValues {
 export interface CaptureFilters {
     readonly from: string;
     readonly to: string;
-    /** Empty means every seller. */
+    /** Vacío significa todos los vendedores. */
     readonly sellers: readonly string[];
     /** Intervalos elegidos; los huecos entre meses o semanas no forman parte de la cohorte. */
     readonly periods?: readonly { readonly from: string; readonly to: string }[];
@@ -48,12 +48,12 @@ export interface CaptureNamed {
     readonly name: string;
 }
 
-/** A seller also carries the public id the photo file is named after (`public/vendedores/<publicId>.webp`). */
+/** El vendedor también lleva el id público con el que se nombra su foto: `public/vendedores/<publicId>.webp`. */
 export interface CaptureSeller extends CaptureNamed {
     readonly publicId: string | null;
 }
 
-/** Readonly dictionaries belong to one API response; no report shares mutable catalog state. */
+/** Los diccionarios de solo lectura pertenecen a una respuesta del API. Ningún reporte comparte un catálogo mutable. */
 export interface CaptureCatalogs {
     readonly sellers: readonly CaptureSeller[];
     readonly projects: readonly CaptureNamed[];
@@ -61,7 +61,7 @@ export interface CaptureCatalogs {
     readonly ads: readonly CaptureNamed[];
 }
 
-/** Rows inside the period and, when sellers are chosen, belonging to them. */
+/** Filas dentro del periodo y, si se eligieron vendedores, que les pertenecen. */
 export function filterCaptureRows(rows: readonly CaptureRow[], filters: CaptureFilters): CaptureRow[] {
     return rows.filter((row) => row.date >= filters.from && row.date <= filters.to && (!filters.periods?.length || filters.periods.some((period) => row.date >= period.from && row.date <= period.to)) && (filters.sellers.length === 0 || filters.sellers.includes(row.sellerId)));
 }
@@ -77,7 +77,7 @@ export const MEASURES: readonly { readonly measure: CaptureMeasure; readonly lab
     { measure: "lossReasons", label: "Motivos de pérdida", noun: "leads perdidos" },
 ];
 
-/** The number a bar, a banner or a ranking shows: one figure per measure. Each lead counts once: scheduled or completed. */
+/** El número que muestra una barra, un banner o un ranking: una cifra por medida. Cada lead cuenta una vez, como agendado o como realizado. */
 export function primaryValue(values: CaptureValues, measure: CaptureMeasure): number {
     if (measure === "appointments") return values.scheduled + values.completed;
     return measure === "lost" || measure === "lossReasons" ? values.lost : values.leads;
@@ -85,16 +85,16 @@ export function primaryValue(values: CaptureValues, measure: CaptureMeasure): nu
 
 export interface CaptureKpiFigures {
     readonly total: number;
-    /** The measure as a percentage of every lead; null when there are no leads or the measure is the leads themselves. */
+    /** La medida como porcentaje de todos los leads. Nulo cuando no hay leads o cuando la medida es los propios leads. */
     readonly share: number | null;
     readonly projects: number;
-    /** Groups at the chosen depth that have leads: projects, project › campaign pairs or project › campaign › ad paths. */
+    /** Grupos con leads en la profundidad elegida: proyectos, pares de proyecto y campaña, o rutas de proyecto, campaña y anuncio. */
     readonly units: number;
-    /** The measure per unit of the chosen depth. */
+    /** La medida por unidad de la profundidad elegida. */
     readonly average: number;
 }
 
-/** Banner figures for the rows on screen. A group counts once, however many sellers or days it spans. */
+/** Cifras del banner para las filas en pantalla. Un grupo cuenta una vez, aunque abarque varios vendedores o varios días. */
 export function captureKpis(rows: readonly CaptureRow[], measure: CaptureMeasure, depth: CaptureDepth): CaptureKpiFigures {
     const withLeads = rows.filter((row) => row.leads > 0);
     const units = measure === "lossReasons" ? lossReasonRows(rows).length : new Set(withLeads.map((row) => JSON.stringify(pathIds(row, depth)))).size;
@@ -107,15 +107,15 @@ export function captureKpis(rows: readonly CaptureRow[], measure: CaptureMeasure
 export interface ValueColumn {
     readonly key: string;
     readonly label: string;
-    /** Text for the cell; counts are plain numbers, shares carry their % sign. */
+    /** Texto de la celda. Los conteos son números. Las participaciones llevan el signo %. */
     readonly cell: (values: CaptureValues) => number | string;
-    /** Share columns cannot be added up across rows, so the total line recomputes them from the summed values. */
+    /** Las columnas de participación no se suman entre filas. La línea de total las vuelve a calcular desde los valores sumados. */
     readonly isShare?: boolean;
 }
 
 const share = (part: number, whole: number): string => (whole ? `${(Math.round((part / whole) * 1000) / 10).toLocaleString("es-CR")} %` : "—");
 
-/** The columns each measure shows in the tables: what the boss asked for at every depth. */
+/** Las columnas que cada medida muestra en las tablas, en cada profundidad. */
 export function columnsFor(measure: CaptureMeasure): readonly ValueColumn[] {
     if (measure === "appointments")
         return [
@@ -135,7 +135,7 @@ export function columnsFor(measure: CaptureMeasure): readonly ValueColumn[] {
 
 const nameOf = (list: readonly CaptureNamed[], id: string): string => list.find((item) => item.id === id)?.name ?? id;
 
-/** Ids of one row down to the chosen depth, outermost first. */
+/** Ids de una fila hasta la profundidad elegida, el más externo primero. */
 function pathIds(row: CaptureRow, depth: CaptureDepth): string[] {
     return [row.projectId, row.campaignId, row.adId].slice(0, depth);
 }
@@ -147,13 +147,13 @@ export const sellerName = (id: string, catalogs: CaptureCatalogs): string => nam
 export interface CaptureNode {
     readonly key: string;
     readonly label: string;
-    /** The measure's main figure, used for ordering and for the big number. */
+    /** La cifra principal de la medida, para ordenar y para el número grande. */
     readonly value: number;
     readonly detail: CaptureValues;
     readonly children: readonly CaptureNode[];
 }
 
-/** Sums rows into a tree: each level adds up exactly to its parent, so nothing is counted twice or dropped. */
+/** Suma las filas en un árbol. Cada nivel suma exactamente lo de su padre, así que nada se cuenta dos veces ni se deja fuera. */
 function fold(rows: readonly CaptureRow[], { depth, measure, catalogs }: { readonly depth: CaptureDepth; readonly measure: CaptureMeasure; readonly catalogs: CaptureCatalogs }, level: number, parent: string): CaptureNode[] {
     if (level >= depth) return [];
     const groups = new Map<string, CaptureRow[]>();
@@ -171,10 +171,10 @@ function fold(rows: readonly CaptureRow[], { depth, measure, catalogs }: { reado
         .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "es"));
 }
 
-/** Id of the project a top-level node stands for (its key is ["all", projectId]). */
+/** Id del proyecto que representa un nodo de primer nivel. Su clave es `["all", projectId]`. */
 export const projectIdOf = (node: CaptureNode): string => (JSON.parse(node.key) as string[])[1] ?? "";
 
-/** All sellers together as a tree: project, and inside it campaign, and inside it ad, each level adding up to its parent. */
+/** Todos los vendedores juntos, como árbol: proyecto, dentro la campaña y dentro el anuncio. Cada nivel suma lo de su padre. */
 export const summaryTree = (rows: readonly CaptureRow[], depth: CaptureDepth, measure: CaptureMeasure, catalogs: CaptureCatalogs): CaptureNode[] => fold(rows, { depth, measure, catalogs }, 0, "all");
 
 export interface SellerSection {
@@ -187,7 +187,7 @@ export interface SellerSection {
     readonly projects: readonly CaptureNode[];
 }
 
-/** One section per seller with the projects that seller received leads for (and what is inside each, down to the depth). */
+/** Una sección por vendedor, con los proyectos en los que recibió leads y lo que hay dentro de cada uno, hasta la profundidad. */
 export function sellerSections(rows: readonly CaptureRow[], depth: CaptureDepth, measure: CaptureMeasure, catalogs: CaptureCatalogs): SellerSection[] {
     return catalogs.sellers.flatMap((seller) => {
         const own = rows.filter((row) => row.sellerId === seller.id);
@@ -201,13 +201,13 @@ export interface PathRow {
     /** Conserva el color de la dimensión al compararla entre intervalos. */
     readonly colorKey?: string;
     readonly key: string;
-    /** Names from the outermost level down: ["Proyecto Vista", "Lanzamiento"]. */
+    /** Nombres desde el nivel más externo: `["Proyecto Vista", "Lanzamiento"]`. */
     readonly path: readonly string[];
     readonly value: number;
     readonly detail: CaptureValues;
 }
 
-/** Counts per project (or project › campaign › ad), all sellers together: the summary table. */
+/** Conteos por proyecto, o por proyecto, campaña y anuncio, con todos los vendedores juntos: la tabla de resumen. */
 export function summaryRows(rows: readonly CaptureRow[], depth: CaptureDepth, measure: CaptureMeasure, catalogs: CaptureCatalogs): PathRow[] {
     const groups = new Map<string, CaptureRow[]>();
     for (const row of rows) {
@@ -233,7 +233,7 @@ export interface GeneralRow {
     readonly detail: CaptureValues;
 }
 
-/** Seller › project (› campaign › ad) with the counts: the general table, one line per combination. */
+/** Vendedor, proyecto y, si aplica, campaña y anuncio, con los conteos: la tabla general, una línea por combinación. */
 export function generalRows(rows: readonly CaptureRow[], depth: CaptureDepth, measure: CaptureMeasure, catalogs: CaptureCatalogs): GeneralRow[] {
     const groups = new Map<string, CaptureRow[]>();
     for (const row of rows) {
@@ -254,17 +254,17 @@ export function generalRows(rows: readonly CaptureRow[], depth: CaptureDepth, me
 export interface ChartGroup {
     readonly key: string;
     readonly label: string;
-    /** Names from the outermost level down, so the axis can print one level per line. */
+    /** Nombres desde el nivel más externo, para que el eje imprima un nivel por línea. */
     readonly path: readonly string[];
-    /** One value per seller, in the same order as `sellers`. */
+    /** Un valor por vendedor, en el mismo orden de `sellers`. */
     readonly values: readonly number[];
-    /** Every lead per seller in the group (not only the measured ones): the base of the percent view. */
+    /** Todos los leads de cada vendedor en el grupo, no solo los de la medida. Es la base de la vista en porcentaje. */
     readonly leads?: readonly number[];
 }
 
-/** Clustered columns: one group per project (or project › campaign…), one bar per seller inside it. */
+/** Columnas agrupadas: un grupo por proyecto, o por proyecto y campaña, y una barra por vendedor dentro. */
 export function chartGroups(rows: readonly CaptureRow[], depth: CaptureDepth, measure: CaptureMeasure, catalogs: CaptureCatalogs): { readonly sellers: readonly CaptureSeller[]; readonly groups: readonly ChartGroup[] } {
-    // Aggregate each combination once; Todo may contain years of daily rows.
+    // Cada combinación se agrega una vez. Todo puede traer años de filas diarias.
     const present = new Set<string>();
     const values = new Map<string, Map<string, number>>();
     const leads = new Map<string, Map<string, number>>();
@@ -295,7 +295,7 @@ export const DEPTHS: readonly { readonly depth: CaptureDepth; readonly label: st
     { depth: 3, label: "Proyecto › Campaña › Anuncio", noun: "proyecto, campaña y anuncio" },
 ];
 
-/** Series colours: a classic business-chart set (blue, orange, red, teal, green, yellow, mauve, pink, brown, grey…), each with the text colour that stays readable on it. */
+/** Colores de las series, un juego clásico de gráfico de negocio. Cada uno trae el color de texto que sigue legible encima. */
 export const SERIES = [
     { color: "#4e79a7", ink: "#ffffff" },
     { color: "#f28e2b", ink: "#18222f" },
@@ -311,7 +311,7 @@ export const SERIES = [
     { color: "#d37295", ink: "#ffffff" },
 ] as const;
 
-/** An identity owns its series color; period/catalog ordering never changes it. */
+/** Una identidad es dueña de su color de serie. El orden del periodo o del catálogo no lo cambia. */
 export function sellerTone(id: string): { readonly color: string; readonly ink: string; readonly tint: string } {
     let hash = 2_166_136_261;
     for (const character of id) hash = Math.imul(hash ^ character.charCodeAt(0), 16_777_619) >>> 0;

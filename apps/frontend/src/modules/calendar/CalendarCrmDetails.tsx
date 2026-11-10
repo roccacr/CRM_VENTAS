@@ -66,7 +66,7 @@ function CrmLoader({ event }: { readonly event: CalendarEvent }) {
         );
     return <CrmContent crm={snapshot.detail} outlookBody={event.description} eventId={event.id} />;
 }
-/** The note already shows in the event card when the Outlook body carries it, so it is not printed twice. */
+/** Si el cuerpo de Outlook ya trae la nota, la tarjeta del evento la muestra y aquí no se repite. */
 const alreadyShown = (crm: CalendarCrmDetail, outlookBody: string | null): boolean => Boolean(crm.description) && Boolean(outlookBody) && (outlookBody ?? "").includes((crm.description ?? "").trim());
 function CrmLinks({ crm }: { readonly crm: CalendarCrmDetail }) {
     return (
@@ -143,7 +143,7 @@ function CrmContent({ crm, outlookBody, eventId }: { readonly crm: CalendarCrmDe
 
 type Field = readonly [label: string, value: string | null | undefined, optional?: boolean];
 function FieldGroup({ title, fields }: { readonly title: string; readonly fields: readonly Field[] }) {
-    // Optional fields that hold nothing are left out instead of printing a row of dashes.
+    // Un campo opcional vacío no se imprime como una fila de rayas.
     const shown = fields.filter(([, value, optional]) => !optional || Boolean(value));
     if (shown.length === 0) return null;
     return (

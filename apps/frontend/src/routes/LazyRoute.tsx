@@ -2,7 +2,7 @@ import { lazy, type ReactNode, Suspense, useState } from "react";
 
 import { RouteErrorBoundary } from "../components/feedback/RouteErrorBoundary";
 
-/** A rejected React.lazy caches its error; an explicit retry must create a new lazy instance. */
+/** Un `React.lazy` rechazado guarda su error. Un reintento explícito tiene que crear una instancia nueva. */
 export function createLazyRoute<Props extends object>(load: () => Promise<{ default: (props: Props) => ReactNode }>) {
     const initialPage = lazy(load);
     return function LazyRoute(props: Props) {

@@ -1,4 +1,4 @@
-/** Stage as a chip; an order without a stage is shown quieter because nothing has started yet. */
+/** La etapa como pastilla. Una orden sin etapa se muestra más tenue porque todavía no empezó. */
 export function StageChip({ label }: { readonly label: string }) {
     return <span className={`formalization-state${label.startsWith("Sin etapa") ? " formalization-state--none" : ""}`}>{label}</span>;
 }

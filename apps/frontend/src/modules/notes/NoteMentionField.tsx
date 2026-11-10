@@ -19,7 +19,7 @@ interface Query {
 
 const plain = (text: string): string => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-/** The "@" being typed at the caret, if any: it starts a word and has no space yet. */
+/** La arroba que se está escribiendo en el cursor, si existe. Empieza una palabra y todavía no tiene espacio. */
 function queryAt(text: string, caret: number): Query | null {
     const before = text.slice(0, caret);
     const match = /(^|\s)@([^\s@]*)$/.exec(before);
@@ -29,8 +29,8 @@ function queryAt(text: string, caret: number): Query | null {
 }
 
 /**
- * A comment box where "@" suggests the people already in the note. Picking one writes "@Name" in the text and adds that person to the
- * mentions sent with the comment; deleting the "@Name" from the text takes the mention back, so what is sent is always what is written.
+ * Una caja de comentario donde la arroba sugiere a las personas que ya están en la nota. Elegir una escribe @Nombre y agrega a esa persona
+ * a las menciones que se envían. Borrar ese @Nombre del texto retira la mención, así que lo enviado es lo escrito.
  */
 export function NoteMentionField({ value, onChange, options, mentions, onMentions, disabled }: Props) {
     const [query, setQuery] = useState<Query | null>(null);

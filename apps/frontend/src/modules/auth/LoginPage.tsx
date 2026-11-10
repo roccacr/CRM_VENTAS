@@ -158,7 +158,7 @@ const validateCredentials = (values: LoginFormValues): FieldErrors => {
  * La UI nunca recibe ni guarda tokens. El submit local y Microsoft delegan en
  * el API de identidad, que crea/renueva cookies HttpOnly y valida CSRF.
  */
-// eslint-disable-next-line complexity -- Ant Design form handlers keep the approved login UX in one component.
+// eslint-disable-next-line complexity -- Los manejadores del formulario conservan el ingreso aprobado en un solo componente.
 export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin, onMicrosoftLogin }: LoginPageProps) {
     const [form] = Form.useForm<LoginFormValues>();
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -169,7 +169,7 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
     const [isLocalMounted, setIsLocalMounted] = useState(false);
     const [isLocalEntered, setIsLocalEntered] = useState(false);
     const localTimerRef = useRef<number | undefined>(undefined);
-    /** Método del último intento; ubica el error del API junto al método que falló. */
+    /** Método del último intento. El error del API se muestra junto a ese método. Hasta que haya un intento local, queda atribuido a Microsoft. */
     const [lastMethod, setLastMethod] = useState<LoginMethod>("microsoft");
 
     /**
@@ -227,12 +227,11 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
     };
 
     /**
-     * Único camino de envío de este corte visual.
+     * Único camino del ingreso local. El botón y Enter llegan aquí.
      *
-     * El boton y la tecla Enter llaman esta misma ruta. En este corte visual
-     * no usamos reglas internas de Ant Design porque todavia no hay API ni
-     * contrato de submit real; la validacion vive aqui para controlar cuándo
-     * aparecen y se limpian los errores.
+     * La validación vive en esta pantalla para decidir cuándo aparece y se limpia cada error.
+     * El correo se recorta; la contraseña sale como se escribió. Sin red no se llama al API.
+     * Si no hay callback, no se envía nada. Si el callback falla, el mensaje lo trae el padre: esta pantalla no pinta la excepción.
      */
     const handleCredentialSubmit = async (): Promise<void> => {
         const values = form.getFieldsValue();
@@ -282,6 +281,7 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
         void onMicrosoftLogin();
     };
 
+    // Al salir de la pantalla se cancela el temporizador del panel local para no actualizar un componente desmontado.
     useEffect(
         () => () => {
             window.clearTimeout(localTimerRef.current);
@@ -316,6 +316,7 @@ export function LoginPage({ authError = null, isSubmitting = false, onLocalLogin
         });
     };
 
+    // Microsoft no revisa la red en esta pantalla. Mientras el ingreso local está en curso, su botón queda deshabilitado.
     const authErrorView = renderStatus(authError, "error");
     const isMicrosoftBusy = isSubmitting && lastMethod === "microsoft";
 

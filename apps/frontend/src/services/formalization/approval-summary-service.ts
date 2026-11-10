@@ -1,6 +1,6 @@
 import { apiRequest } from "../api/api-client";
 
-/** Reads the canonical count; errors must never be rendered as zero. */
+/** Lee el conteo canónico. Un error no se pinta como cero. */
 export async function getApprovalCount(): Promise<number> {
     const result = await apiRequest<{ total: unknown }>("/formalization/approvals/summary");
     if (import.meta.env.DEV) {

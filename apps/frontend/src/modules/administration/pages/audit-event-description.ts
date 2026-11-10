@@ -5,7 +5,7 @@ const catalogs = new Map(Object.entries({ projects: "el proyecto", campaigns: "l
 const verbs = new Map(Object.entries({ create: "Se creó", update: "Se actualizó", deactivate: "Se desactivó", reactivate: "Se reactivó", delete: "Se eliminó" }));
 const historicalActions = new Map(Object.entries({ catalog_item_created: "create", catalog_item_updated: "update", user_created: "create", user_updated: "update", role_updated: "update", role_deleted: "delete" }));
 
-/** Presentation only: internal summaries/codes remain unchanged in the audit API and database. */
+/** Solo presentación. El resumen interno y los códigos no cambian en el API ni en la base de auditoría. */
 export function auditEventDescription(event: EventDescription): string {
     const name = event.record.name ? ` "${event.record.name}"` : "";
     if (event.eventType === "user_access_replaced") return `Se actualizaron los accesos del usuario${name}`;

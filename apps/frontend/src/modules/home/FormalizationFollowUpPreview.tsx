@@ -20,7 +20,7 @@ import { StageChip } from "./FormalizationStageChip";
 import { canReadOrderAddendum } from "./order-addendum-permissions";
 
 const labels: Record<FollowUpQueue, string> = { all: "Todas", approvals: "Pendientes de aprobación", addendum: "Pendientes de adéndum", contracts: "Contratos pendientes", send: "Por enviar", signature: "Pendientes de firma", bank: "Gestión bancaria", balance: "Pendientes de saldo", transfer: "Traspasos pendientes", signed: "Traspaso firmado", closed: "Formalizaciones cerradas este año" };
-/** Spanish collation, so accents and "La Estefana : LE GAIA" vs "La Estefana: LE NOA" sort the way people read them. */
+/** Ordenación en español, para que los acentos y nombres parecidos se ordenen como se leen. */
 const byName = (a: string, b: string) => a.localeCompare(b, "es", { numeric: true, sensitivity: "base" });
 /** "Todas" always opens the list; the rest follow alphabetically so a long list can be scanned. */
 const sortedQueues = (queues: readonly FollowUpQueue[]): readonly FollowUpQueue[] => [...queues.filter((entry) => entry === "all"), ...queues.filter((entry) => entry !== "all").sort((a, b) => byName(labels[a], labels[b]))];
@@ -43,7 +43,7 @@ interface Props {
     readonly onRefresh?: () => void;
 }
 
-/** Canonical rows never enter simulated order previews. Revocation unmounts the consumer. */
+/** Las filas canónicas no entran en una vista simulada. Revocar el acceso desmonta al consumidor. */
 export function FormalizationFollowUpPreview(props: Props) {
     if (!props.enabled)
         return (
@@ -71,7 +71,7 @@ function useFollowUp({ scope, canViewApprovals, refreshVersion, allowedQueues, s
     const [projectCatalog, setProjectCatalog] = useState<FollowUp["projects"]>([]);
     const [failure, setFailure] = useState<string | null>(null);
     const pending = useRef<{ key: string; promise: Promise<FollowUp> } | null>(null);
-    // Include raw search and permission changes in the fence, before the debounce finishes.
+    // La búsqueda cruda y un cambio de permiso entran en la cerca antes de que termine la espera.
     const key = JSON.stringify([search, debouncedSearch, projectIds, selectedSelections, page, retry, refreshVersion, canViewApprovals]);
     const value = response?.key === key ? response.value : null;
     const failed = failure === key;
@@ -86,7 +86,7 @@ function useFollowUp({ scope, canViewApprovals, refreshVersion, allowedQueues, s
     useEffect(() => {
         if (search !== debouncedSearch) return;
         let active = true;
-        // StrictMode effect replay shares only this mounted consumer's current request.
+        // La repetición del efecto en StrictMode comparte solo la petición actual de este consumidor montado.
         if (pending.current?.key !== key) pending.current = { key, promise: getFollowUp({ search: debouncedSearch, projectId: "", queue: "all", projectIds, queues: selectedQueues, bankStages, page, pageSize: 25 }) };
         void pending.current.promise.then(
             (data) => {
@@ -104,14 +104,14 @@ function useFollowUp({ scope, canViewApprovals, refreshVersion, allowedQueues, s
         };
     }, [search, debouncedSearch, key, projectIds, selectedQueues, bankStages, page]);
     const invalidate = () => {
-        // Catalog options survive refresh; rows must be fenced even when revisiting a prior key.
+        // Las opciones de catálogo sobreviven al refresco. Las filas se cercan aunque se vuelva a una clave anterior.
         setResponse(null);
         setFailure(null);
     };
     return { ...filters, search, setSearch, page, setPage, setRetry, invalidate, value, failed, projects: projectCatalog, queues, canViewApprovals };
 }
 
-/** Which order is open in the side panel, and how to step to its neighbours on the current page. */
+/** Qué orden está abierta en el panel, y cómo pasar a las vecinas de la página actual. */
 function useOpenOrder(items: readonly FollowUpItem[]) {
     const [opened, setOpened] = useState<FollowUpItem | null>(null);
     const index = items.findIndex((item) => item.source === opened?.source && item.id === opened.id);
@@ -122,7 +122,7 @@ function useOpenOrder(items: readonly FollowUpItem[]) {
         const next = items[index + step];
         if (next) setOpened(next);
     };
-    // The selected record survives removal from a filtered queue; only this authorized read refreshes it.
+    // El registro elegido sobrevive si sale de la cola filtrada. Solo esta lectura autorizada lo refresca.
     const refresh = async () => {
         if (!opened) return;
         const updated = await getFormalizationOrderRecord(opened.source, opened.id.replace(/^legacy:/, ""));
@@ -131,7 +131,7 @@ function useOpenOrder(items: readonly FollowUpItem[]) {
     return { item: opened, position: index + 1, setOpenId, walk, refresh };
 }
 
-/** Loading, error or table: one place decides, so the section stays simple. */
+/** Carga, error o tabla: un solo lugar decide, para que la sección siga simple. */
 function FollowUpBody({ model, onOpen, showAddendum }: { readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: ((id: string) => void) | undefined; readonly showAddendum: boolean }) {
     const { value, failed, setRetry } = model;
     if (failed)
@@ -205,7 +205,7 @@ function missingTranid(model: ReturnType<typeof useFollowUp>, canRead: boolean, 
     return /^(?=[A-Z0-9_-]*[0-9])[A-Z0-9][A-Z0-9_-]{0,59}$/.test(candidate) ? candidate : null;
 }
 
-/** The table and its canonical side panel share which order is open; stage updates use a separate permission. */
+/** La tabla y su panel canónico comparten qué orden está abierta. Cambiar la etapa usa otro permiso. */
 function FollowUpWorkspace({ canReadOrder, model, stagePermissions = [], canUpdateStage, onRefresh, onViewFull, onNavigate }: { readonly canReadOrder: boolean; readonly onViewFull: (item: FollowUpItem) => void; readonly onNavigate?: ((path: string) => void) | undefined; readonly model: ReturnType<typeof useFollowUp>; readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined; readonly canUpdateStage: boolean | undefined; readonly onRefresh: (() => void) | undefined }) {
     const items = model.value?.items ?? [];
     const open = useOpenOrder(items);
@@ -350,7 +350,7 @@ function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<type
         </div>
     );
 }
-/** Missing time is a dash on screen and full words for assistive technology, so a column of identical "not available" lines does not shout. */
+/** Una hora ausente es una raya en pantalla y palabras completas para la tecnología de asistencia, para que una columna de avisos iguales no grite. */
 function TimeInStage({ days }: { readonly days: number | null }) {
     if (days !== null) return <span className="formalization-grid__meta">{`${String(days)} días en etapa`}</span>;
     return (
@@ -364,8 +364,8 @@ function TimeInStage({ days }: { readonly days: number | null }) {
 const SKELETON_ROWS = 6;
 
 /**
- * Loading state with the table's own header and row rhythm, so the page does not jump when the data arrives.
- * Static bars on purpose: animated shimmer repaints continuously and is costly on old laptops.
+ * Estado de carga con el mismo encabezado y el ritmo de filas de la tabla, para que la página no salte cuando llegan los datos.
+ * Las barras son estáticas a propósito: un brillo animado se repinta sin parar y pesa en computadoras viejas.
  */
 function FollowUpSkeleton() {
     return (
@@ -398,11 +398,11 @@ function FollowUpSkeleton() {
 
 function isStageAuthorResponsible(owner: FollowUpItem["responsible"], author: FollowUpItem["changedBy"]): boolean {
     if (!owner || !author || owner.id !== author.id) return false;
-    // Null IDs cannot establish identity; compare their recorded names only when both IDs are null.
+    // Un id nulo no establece identidad. Los nombres registrados se comparan solo cuando los dos ids son nulos.
     return owner.id !== null || owner.name === author.name;
 }
 
-/** Renders stage ownership independently from sales attribution and change authorship. */
+/** Pinta la responsabilidad de la etapa aparte de la atribución de venta y de quién hizo el cambio. */
 function StageResponsibility({ item }: { readonly item: FollowUpItem }) {
     const owner = item.responsible;
     const author = item.changedBy;

@@ -60,7 +60,7 @@ function InboxList({ items, onOpenNote, onState, pending }: { readonly items: No
         </ul>
     );
 }
-/** Inbox references are reauthorized by the server; opening always reloads the current thread. */
+/** El servidor vuelve a autorizar las referencias de la bandeja. Abrir siempre recarga el hilo actual. */
 export function NotesInbox({ kind, status, query, refreshVersion, onOpenNote }: Props) {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState(query);
@@ -249,7 +249,7 @@ function inboxFilters(basic: { search: string; moduleCode: NoteModule | ""; auth
     for (const key of ["createdFrom", "createdTo"] as const) {
         if (!advanced[key]) continue;
         const date = new Date(advanced[key]);
-        // datetime-local accepts minutes: include the whole final minute in the upper bound.
+        // El input de fecha y hora acepta minutos. El límite superior incluye el minuto final completo.
         if (key === "createdTo") date.setSeconds(59, 999);
         filters[key] = date.toISOString();
     }

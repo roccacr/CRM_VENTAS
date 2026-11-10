@@ -34,7 +34,7 @@ interface Props {
     readonly orderContext?: CalendarOrderContext;
     readonly event: CalendarEvent | null;
     readonly date: string;
-    /** Start and end picked on the time grid; used to preload a new event. */
+    /** Inicio y fin marcados en la grilla, para precargar un evento nuevo. */
     readonly range?: { readonly start: string; readonly end: string } | undefined;
     readonly calendar: CalendarDescriptor;
     readonly currentModule: CalendarModule;
@@ -53,7 +53,7 @@ interface FieldsProps {
     readonly locked: boolean;
 }
 
-/** Origin is immutable. An overlay never borrows the destination module's form or write capabilities. */
+/** El origen no cambia. Una vista superpuesta no toma el formulario ni la escritura del módulo de destino. */
 export function CalendarEventDrawer(props: Props) {
     const { event, date, calendar, currentModule, onClose, onSaved, events = [], calendars = [] } = props;
     const access = calendarEditAccess(event, calendar, currentModule);
@@ -392,7 +392,7 @@ function DateFields({ model, locked }: { readonly model: Model; readonly locked:
     );
 }
 function OriginNavigation({ event, calendar, currentModule, onNavigate }: Props) {
-    // Overlay canEdit is context-bound; the origin must revalidate this resource before editing.
+    // El permiso de editar de la vista superpuesta vale para ese contexto. El origen vuelve a validar el recurso antes de editar.
     if (!event?.originModule || event.source !== "native" || calendar.moduleCode === currentModule || !calendar.canUpdate || !onNavigate) return null;
     const context = CALENDAR_CONTEXT[event.originModule];
     return (
@@ -418,7 +418,7 @@ function EventParticipants({ editable, model, locked, moduleCode, connected }: {
     return editable ? <CalendarGuestFields model={model} locked={locked} moduleCode={moduleCode} outlookConnected={connected} /> : <TeamsPreference requested={model.fields.teamsRequested} />;
 }
 
-/** The saved confirmation needs a narrow panel; the form needs the wide one. */
+/** La confirmación de guardado usa el panel angosto. El formulario usa el ancho. */
 const drawerSize = (saved: boolean): string => (saved ? "min(520px, 100vw)" : "min(1180px, 100vw)");
 
 function DeliveryNotice({ model }: { readonly model: Model }) {

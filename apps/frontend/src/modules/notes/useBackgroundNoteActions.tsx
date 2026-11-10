@@ -18,7 +18,7 @@ interface Action<T> {
     retryable: boolean;
 }
 
-/** Optimistic metadata actions never lock content editors; their exact request survives an uncertain result. */
+/** Las acciones optimistas de metadatos no bloquean los editores de contenido. Su petición exacta sobrevive a un resultado incierto. */
 export function useBackgroundNoteActions<T>(value: T, onChanged: () => void) {
     const active = useRef(new Map<string, Action<T>>());
     const alive = useRef(true);

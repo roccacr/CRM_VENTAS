@@ -221,7 +221,7 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
         const values = form.getFieldsValue(true) as CreateUserFormValues;
         const submittedModules = getRoleModules(values.roleCodes, rolePermissions, moduleOptions, { roles: roleOptions, selectedModules: selectModules ? toWatchedList(values.orgUnitCodes) : undefined });
         const payload = isEditMode ? buildUpdateUserPayload(values, submittedModules) : buildCreateUserPayload(values, submittedModules, showPassword);
-        // Preserve saved memberships on unrelated edits; only deliberate scope edits replace them.
+        // Una edición que no toca el alcance conserva las membresías guardadas. Solo un cambio deliberado de alcance las reemplaza.
         if (selectModules && isEditMode && !form.isFieldsTouched(["orgUnitCodes", "roleCodes"])) {
             onSubmit({ ...payload, orgUnitCodes: toWatchedList(values.orgUnitCodes) });
             return;
@@ -292,7 +292,7 @@ export function CreateSystemUserDrawer({ canAssignPassword, canAssignRoles, erro
                             mode="multiple"
                             allowClear
                             virtual={false}
-                            // Escape clipped form sections while staying above the drawer mask.
+                            // Una sección recortada del formulario se escapa y sigue por encima de la máscara del panel.
                             getPopupContainer={(trigger: HTMLElement) => trigger.closest<HTMLElement>(".ant-drawer-body") ?? trigger.parentElement ?? trigger}
                             placeholder="Selecciona uno o más roles"
                             showSearch={{ optionFilterProp: "label" }}

@@ -49,6 +49,7 @@ const mapCatalogToCreateUserState = (catalog: IdentitySecurityCatalog): CreateUs
  * Catálogo para el alta de usuarios: roles, módulos operativos y permisos por rol.
  *
  * Un fallo deja opciones vacías y bloquea el alta hasta recuperar el catálogo.
+ * Apagar la carga no borra un catálogo que ya llegó. Una respuesta tardía se descarta.
  * El API valida de nuevo roles y módulos al crear.
  */
 export const useCreateUserCatalog = (enabled = true): CreateUserCatalogState => {

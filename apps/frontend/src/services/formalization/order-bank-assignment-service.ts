@@ -27,11 +27,11 @@ function parse(value: unknown): OrderBankAssignment {
     if ([Boolean(bank) !== Boolean(advisor), advisor?.bankPublicId !== bank?.publicId].some(Boolean)) throw new TypeError("Asignación bancaria inválida.");
     return { source: data.source as OrderBankAssignment["source"], id: data.id as string, version: data.version as number, bank, advisor, changedAt: data.changedAt as string | null };
 }
-/** Reads the management link without changing the sales order. */
+/** Lee el vínculo de gestión y no cambia la orden de venta. */
 export async function getOrderBankAssignment(order: NetsuiteOrderIdentity, signal?: AbortSignal): Promise<OrderBankAssignment> {
     return parse(await apiRequest<unknown>(path(order), signal ? { signal } : {}));
 }
-/** Explicit versioned writes must never be automatically replayed after authentication. */
+/** Una escritura explícita y versionada no se repite sola después de autenticar. */
 export async function saveOrderBankAssignment(order: NetsuiteOrderIdentity, body: OrderBankAssignmentCommand, signal?: AbortSignal): Promise<OrderBankAssignment> {
     return parse(await apiRequest<unknown>(path(order), { method: "POST", body, retryOnUnauthorized: false, ...(signal ? { signal } : {}) }));
 }
@@ -39,7 +39,7 @@ export async function saveOrderBankAssignment(order: NetsuiteOrderIdentity, body
 function assignmentDate(value: unknown) {
     return value === null || (typeof value === "string" && Number.isFinite(Date.parse(value)));
 }
-/** Unlink is an explicit versioned command and must never be replayed automatically. */
+/** Desvincular es un comando explícito y versionado. No se repite solo. */
 export async function unlinkOrderBankAssignment(order: NetsuiteOrderIdentity, body: Pick<OrderBankAssignmentCommand, "expectedVersion" | "reason">, signal?: AbortSignal): Promise<OrderBankAssignment> {
     return parse(await apiRequest<unknown>(`${path(order)}/unlink`, { method: "POST", body, retryOnUnauthorized: false, ...(signal ? { signal } : {}) }));
 }

@@ -1,6 +1,6 @@
 import LoadingOutlined from "@ant-design/icons/LoadingOutlined";
 
-/** The side panels' preload: a status line that moves, then the same cards and label column the data will have, so nothing jumps when it arrives. */
+/** Precarga de los paneles laterales: una línea de estado que se mueve y después las mismas tarjetas y la columna de etiquetas que tendrán los datos, para que nada salte al llegar. */
 export function FormalizationDrawerLoading({ label, title, cards }: { readonly label: string; readonly title: string; readonly cards: readonly number[] }) {
     return (
         <div className="record-page client-loading" role="status" aria-busy="true" aria-label={label}>

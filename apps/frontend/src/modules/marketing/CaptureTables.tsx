@@ -6,7 +6,7 @@ import { addValues, type CaptureCatalogs, type CaptureDepth, type CaptureMeasure
 const formatCell = (value: number | string): string => (typeof value === "number" ? countFormat.format(value) : value);
 const measureLabel = (measure: CaptureMeasure): string => MEASURES.find((item) => item.measure === measure)?.label ?? "Leads";
 
-/** One table per level, each flat and on its own: what you read in a row is exactly one project, one campaign or one ad. */
+/** Una tabla por nivel, cada una plana y aparte. Lo que se lee en una fila es exactamente un proyecto, una campaña o un anuncio. */
 const LEVELS = [
     { depth: 1, title: "Proyectos", header: "Proyecto", noun: "proyecto" },
     { depth: 2, title: "Campañas", header: "Campaña", noun: "campaña" },
@@ -15,7 +15,7 @@ const LEVELS = [
 
 type Level = (typeof LEVELS)[number];
 
-/** Id of the project of a row: the first part of its key (the ids of the path, outermost first). */
+/** Id del proyecto de una fila: la primera parte de su clave. Los ids del camino van del más externo al más interno. */
 const projectIdOf = (row: PathRow): string => (JSON.parse(row.key) as string[])[0] ?? "";
 
 function ValueCells({ columns, detail }: { readonly columns: readonly ValueColumn[]; readonly detail: CaptureValues }) {
@@ -35,7 +35,7 @@ interface Pick {
     readonly toggle: () => void;
 }
 
-/** Name of the row: the level's own name in bold; for campaigns and ads, the path above it in small type, so the row still says where it belongs. */
+/** Nombre de la fila: el del propio nivel en negrita. En campañas y anuncios, el camino de arriba va en texto pequeño, para que la fila siga diciendo dónde pertenece. */
 function NameCell({ row, level, pick }: { readonly row: PathRow; readonly level: Level; readonly pick: Pick | undefined }) {
     const own = row.path[level.depth - 1] ?? "";
     const parents = row.path.slice(0, level.depth - 1).join(" › ");
@@ -133,7 +133,7 @@ function LevelTable({ level, rows, measure, selected, onToggle }: LevelProps) {
 
 interface Props {
     readonly rows: readonly CaptureRow[];
-    /** The rows left after the project selection: campaigns and ads follow it. */
+    /** Las filas que quedan después de elegir proyectos. Las campañas y los anuncios la siguen. */
     readonly scoped: readonly CaptureRow[];
     readonly depth: CaptureDepth;
     readonly measure: CaptureMeasure;
@@ -143,8 +143,8 @@ interface Props {
 }
 
 /**
- * The breakdown as side-by-side tables, one per level (projects, campaigns, ads), each as tall as it needs and scrolling on its own, so the
- * whole width of the screen is used and nothing is merged. Picking projects in the first one narrows the other two to them.
+ * El desglose en tablas lado a lado, una por nivel: proyectos, campañas y anuncios. Cada una es tan alta como necesita y se desplaza sola.
+ * Se usa todo el ancho y nada se mezcla. Elegir proyectos en la primera reduce las otras dos a esos proyectos.
  */
 export function BreakdownTables({ rows, scoped, depth, measure, catalogs, selected, onToggle }: Props) {
     const projects = useMemo(() => summaryRows(rows, 1, measure, catalogs), [rows, measure, catalogs]);

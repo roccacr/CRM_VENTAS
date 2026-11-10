@@ -5,7 +5,7 @@ import { type ReactNode, useState } from "react";
 import type { LeadProfileField } from "../../services/leads/lead-profile-service";
 import { filledFields, type InfoBlock, isBlank, ORIGIN_LABEL } from "./lead-profile-model";
 
-/** A section card on the Administration contract: 40px band with the title, content below. */
+/** Tarjeta de sección con el contrato de Administración: banda de 40 px con el título y el contenido debajo. */
 export function ProfileCard({ title, aside, children, className }: { readonly title: string; readonly aside?: ReactNode; readonly children: ReactNode; readonly className?: string }) {
     return (
         <section className={`profile-card${className ? ` ${className}` : ""}`} aria-label={title}>
@@ -28,7 +28,7 @@ function FieldValue({ field, multiSource }: { readonly field: LeadProfileField; 
     );
 }
 
-/** The introduction of the consolidated view. */
+/** La introducción de la vista consolidada. */
 export function InfoHero() {
     return (
         <header className="profile-intro">
@@ -40,9 +40,9 @@ export function InfoHero() {
 }
 
 /**
- * One block of the consolidated view: eyebrow, title, what it contains, then label over value.
- * Every field is shown, because this view exists to read the whole file; a switch hides the empty ones when only what is known matters.
- * A field with a different legacy value always stays visible so the difference is never hidden.
+ * Un bloque de la vista consolidada: ceja, título, qué contiene y después etiqueta sobre valor.
+ * Se muestra cada campo, porque esta vista existe para leer el expediente completo. Un interruptor oculta los vacíos cuando solo importa lo conocido.
+ * Un campo con un valor anterior distinto permanece visible, para que la diferencia no se esconda.
  */
 export function InfoBlockCard({ block, multiSource }: { readonly block: InfoBlock; readonly multiSource: boolean }) {
     const [onlyFilled, setOnlyFilled] = useState(false);

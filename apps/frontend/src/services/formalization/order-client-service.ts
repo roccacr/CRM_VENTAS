@@ -15,7 +15,7 @@ export interface OrderClientDetail {
     readonly warnings: readonly string[];
 }
 type Mapping = readonly [label: string, native: string, legacy: string];
-/** Only what the person who opens the order needs to know about the client; the rest of the lead stays in its own module. */
+/** Solo lo que necesita saber del cliente quien abre la orden. El resto del lead se queda en su módulo. */
 const leadGroups: readonly { title: string; fields: readonly Mapping[] }[] = [
     {
         title: "Información comercial",
@@ -44,7 +44,7 @@ function text(value: unknown): string {
 function fields(value: unknown): Record<string, unknown> {
     return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
-/** Read only the client related to an authorized order; never search another lead by matching its name. */
+/** Lee solo el cliente de una orden autorizada. No busca otro lead por coincidencia de nombre. */
 export async function getOrderClientDetail(identity: NetsuiteOrderIdentity, historyCursor?: string): Promise<OrderClientDetail> {
     const data = await getDatabaseOrder(identity, historyCursor);
     const lead = fields(data.lead?.sourceFields);

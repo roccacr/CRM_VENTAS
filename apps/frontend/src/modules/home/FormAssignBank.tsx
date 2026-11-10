@@ -150,7 +150,7 @@ function useAssignment({ item, profile, onClose, onAssigned }: { readonly item: 
             active = false;
             abort.abort();
         };
-        // Item identity is fixed by the drawer key.
+        // La identidad del ítem la fija la clave del panel.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reload]);
     useEffect(() => {
@@ -263,7 +263,7 @@ function AssignmentDrawer(props: { readonly item: FollowUpItem; readonly profile
         <ConfigProvider locale={esES} theme={PROJECTS_THEME}>
             <Drawer
                 {...ADMINISTRATION_DRAWER_PROPS}
-                // While the executive form is open it takes the whole panel; this one comes back, with its choices, when it closes.
+                // Mientras el formulario del ejecutivo está abierto ocupa todo el panel. Este vuelve, con sus opciones, al cerrarse.
                 open={!creating}
                 rootClassName="create-user-drawer catalog-items-modal--projects users-view-form catalog-form-drawer banks-form"
                 title={`Asignar banco · ${item.number}`}

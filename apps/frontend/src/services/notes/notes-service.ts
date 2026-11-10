@@ -66,7 +66,7 @@ function parseNoteContent(value: unknown): PersonalNote["content"] {
     if (!text.trim()) invalid();
     return { format: "plain_text", text };
 }
-/** Validates a plain-text note while retaining compatibility with private note responses. */
+/** Valida una nota de texto plano y conserva la compatibilidad con las respuestas de notas privadas. */
 export function parsePersonalNote(value: unknown): PersonalNote {
     const n = record(value),
         content = parseNoteContent(n.content),
@@ -110,13 +110,13 @@ function parseResult(value: unknown): NoteCommandResult {
     const r = record(value);
     return { noteId: identifier(r.noteId), version: integer(r.version, 1), ...(r.layoutVersion === undefined ? {} : { layoutVersion: integer(r.layoutVersion, 1) }), replayed: boolean(r.replayed) };
 }
-/** The legacy list uses a presentation alias; native public IDs and malformed IDs must never be rewritten. */
+/** La lista anterior usa un alias de presentación. Un id público nativo y un id mal formado no se reescriben. */
 export function normalizeNoteContext(context: NoteContext): NoteContext {
     if (context.kind !== "sales_order" || context.source !== "legacy") return context;
     const id = /^legacy:([1-9][0-9]{0,9})$/.exec(context.id)?.[1];
     return id && context.id === `legacy:${id}` && Number(id) <= 2147483647 ? { ...context, id } : context;
 }
-/** Reads the authorized context, using bounded pages and validating all displayed fields. */
+/** Lee el contexto autorizado, con páginas acotadas, y valida todos los campos que se muestran. */
 export async function getNotes(moduleCode: NoteModule, context: NoteContext, status: PersonalNote["status"] | "all" = "open", page = 1): Promise<{ items: PersonalNote[]; total: number }> {
     context = normalizeNoteContext(context);
     const query = new URLSearchParams({ moduleCode, contextType: context.kind, ...(context.kind === "view" && context.code !== undefined ? { viewCode: context.code } : {}), ...(context.kind === "sales_order" ? { recordId: context.id, ...(context.source === "legacy" ? { recordSource: context.source } : {}) } : {}), status, page: String(page), pageSize: "100" });
@@ -128,28 +128,28 @@ function parseList(response: Record<string, unknown>, page: number): { items: Pe
     if (response.schemaVersion !== 1 || !Array.isArray(response.items) || response.items.length > 100 || integer(pagination.number, 1, 1000) !== page || integer(pagination.size, 1, 100) !== 100) invalid();
     return { items: (response.items as unknown[]).map(parsePersonalNote), total: integer(pagination.total, 0, Number.MAX_SAFE_INTEGER) };
 }
-/** Creates a private note with an explicit operation identifier; ambiguous writes never replay automatically. */
+/** Crea una nota privada con un identificador de operación explícito. Una escritura ambigua no se repite sola. */
 // eslint-disable-next-line max-params -- Optional relations preserve the existing four-argument creation contract.
 export async function createNote(moduleCode: NoteModule, context: NoteContext, fields: NoteFields, operationId: string, relatedRecords: NoteRecordReference[] = []): Promise<NoteCommandResult> {
     return parseResult(await apiRequest<unknown>("/notes", { method: "POST", body: { moduleCode, context: normalizeNoteContext(context), ...fields, operationId, ...(relatedRecords.length ? { relatedRecords: relatedRecords.map((reference) => ({ ...reference })) } : {}) }, retryOnUnauthorized: false }));
 }
-/** Edits only against the version displayed to the author. */
+/** Edita solo contra la versión que se le mostró al autor. */
 // eslint-disable-next-line max-params -- Preserve the agreed public client contract used by the notes UI.
 export async function editNote(moduleCode: NoteModule, noteId: string, fields: NoteFields, expectedVersion: number, operationId: string): Promise<NoteCommandResult> {
     return parseResult(await apiRequest<unknown>(`/notes/${encodeURIComponent(noteId)}`, { method: "PATCH", body: { moduleCode, ...fields, expectedVersion, operationId }, retryOnUnauthorized: false }));
 }
-/** Applies a lifecycle transition without deleting persisted content. */
+/** Aplica una transición del ciclo de vida y no borra el contenido persistido. */
 // eslint-disable-next-line max-params -- Preserve the agreed public client contract used by the notes UI.
 export async function setNoteState(moduleCode: NoteModule, noteId: string, action: "complete" | "reopen" | "archive", expectedVersion: number, operationId: string): Promise<NoteCommandResult> {
     return parseResult(await apiRequest<unknown>(`/notes/${encodeURIComponent(noteId)}/${action}`, { method: "POST", body: { moduleCode, expectedVersion, operationId }, retryOnUnauthorized: false }));
 }
-/** Personal layout concurrency is independent of the note content version. */
+/** La concurrencia del layout personal es independiente de la versión del contenido de la nota. */
 export async function saveNotePlacement(moduleCode: NoteModule, noteId: string, placement: NotePlacement, operationId: string): Promise<NoteCommandResult> {
     const { layoutVersion, ...coordinates } = placement;
     return parseResult(await apiRequest<unknown>(`/notes/${encodeURIComponent(noteId)}/my-placement`, { method: "PUT", body: { moduleCode, ...coordinates, expectedLayoutVersion: layoutVersion, operationId }, retryOnUnauthorized: false }));
 }
 
-/** Null preserves server redaction; it never becomes a guessed record link. */
+/** Un nulo conserva lo que el servidor ocultó. No se convierte en un vínculo adivinado. */
 function parseVisibleContext(value: unknown): NoteContext | null {
     return value === null ? null : parseContext(value);
 }

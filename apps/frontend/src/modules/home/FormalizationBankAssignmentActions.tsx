@@ -28,7 +28,7 @@ function allowed(profile: IdentityProfile) {
     return permissions.read && permissions.update && canReadFormalizationOrder(profile.roles, profile.permissions);
 }
 type Props = { readonly item: FollowUpItem; readonly assignment: OrderBankAssignment; readonly onChanged?: (() => void) | undefined };
-/** Actions use fresh effective grants; a session refresh closes only this order's confirmation. */
+/** Las acciones usan permisos efectivos frescos. Refrescar la sesión cierra solo la confirmación de esta orden. */
 export function FormalizationBankAssignmentActions({ item, assignment, onChanged }: Props) {
     const [profile, setProfile] = useState<IdentityProfile | null>(null);
     const [open, setOpen] = useState(false);

@@ -20,7 +20,7 @@ interface CardNote {
 }
 interface CardProps {
     readonly note: CardNote;
-    /** Short label of where the note lives: "Personal", "Vista", "Orden". */
+    /** Etiqueta corta de dónde vive la nota: Personal, Vista u Orden. */
     readonly where: string;
     readonly locked: boolean;
     readonly onOpen: () => void;
@@ -30,7 +30,7 @@ interface CardProps {
 const shortDate = (iso: string): string => new Date(iso).toLocaleDateString("es-CR", { day: "numeric", month: "short" });
 const firstName = (name: string): string => name.trim().split(/\s+/)[0] ?? name;
 
-/** One note as a small sticky card: title, three lines of text, who and when, and its actions as icon buttons. Cards sit two by two. */
+/** Una nota como tarjeta pequeña: título, tres líneas de texto, quién y cuándo, y sus acciones como botones de ícono. Las tarjetas van de dos en dos. */
 export function NoteCard({ note, where, locked, onOpen, actions }: CardProps) {
     return (
         <li className="note-card" style={{ "--note": note.color } as CSSProperties}>
@@ -54,7 +54,7 @@ export function NoteCard({ note, where, locked, onOpen, actions }: CardProps) {
     );
 }
 
-/** Author capabilities come from the API; invited readers never receive lifecycle controls. */
+/** Las capacidades del autor vienen del API. Un lector invitado no recibe los controles del ciclo de vida. */
 export function NoteLifecycleActions({ note, disabled, onState }: { readonly note: PersonalNote; readonly disabled: boolean; readonly onState: (action: "complete" | "reopen" | "archive") => void }) {
     const actions = [
         { action: "complete", capability: "canComplete", label: "Completar", icon: <CheckOutlined /> },
@@ -80,7 +80,7 @@ export function NoteLifecycleActions({ note, disabled, onState }: { readonly not
     );
 }
 
-/** A square icon button with its name for screen readers and as a tooltip. */
+/** Un botón cuadrado de ícono, con su nombre para lectores de pantalla y como tooltip. */
 export function CardAction({ label, icon, disabled, onClick }: { readonly label: string; readonly icon: ReactNode; readonly disabled: boolean; readonly onClick: () => void }) {
     return (
         <button type="button" className="note-card__action" aria-label={label} title={label} disabled={disabled} onClick={onClick}>
@@ -89,7 +89,7 @@ export function CardAction({ label, icon, disabled, onClick }: { readonly label:
     );
 }
 
-/** Shares the search field across server-filtered inboxes and the current view. */
+/** Comparte el campo de búsqueda entre las bandejas filtradas por el servidor y la vista actual. */
 export function NotesSearch({ value, onChange, disabled }: { readonly value: string; readonly onChange: (value: string) => void; readonly disabled: boolean }) {
     return (
         <label className="notes-search">

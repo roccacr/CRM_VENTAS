@@ -14,7 +14,7 @@ registerDataTable(DT);
 const columns = [{ data: "actorName" }, { data: "recordedModule" }, { data: "record.id" }, { data: "actionLabel" }, { data: "createdAt" }, { data: "publicId" }];
 const options = { paging: false, searching: false, ordering: false, autoWidth: false, info: false, layout: { topStart: null, topEnd: null, bottomStart: null, bottomEnd: null }, language: { emptyTable: "No hay eventos con esos filtros." } };
 const text = (value: string | null) => value || "Sin asignar";
-/** Catalog DataTable rendering; matching/order are authoritative on the server, not on one visible page. */
+/** Pinta la tabla del catálogo. El filtro y el orden los decide el servidor, no la página visible. */
 export function SecurityAuditDataTable({ items, onDetail }: { readonly items: AuditEvent[]; readonly onDetail: (publicId: string) => void }) {
     return (
         <div className="security-audit-grid catalog-items-page--projects">

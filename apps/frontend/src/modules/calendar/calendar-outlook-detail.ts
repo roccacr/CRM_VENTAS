@@ -1,11 +1,11 @@
 export interface OutlookDescription {
-    /** The human part of the body, without the Teams boilerplate. */
+    /** La parte humana del cuerpo, sin el texto fijo de Teams. */
     readonly summary: string;
-    /** A Teams join link taken from the body, only when it points at teams.microsoft.com over https. */
+    /** Enlace de unión de Teams tomado del cuerpo, solo si apunta a teams.microsoft.com por https. */
     readonly joinUrl: string | null;
     readonly meetingId: string | null;
     readonly passcode: string | null;
-    /** Internal reference the CRM appends after the Teams block. */
+    /** Referencia interna que el CRM agrega después del bloque de Teams. */
     readonly reference: string | null;
 }
 
@@ -26,12 +26,12 @@ function safeJoinUrl(text: string): string | null {
 
 const capture = (text: string, pattern: RegExp): string | null => pattern.exec(text)?.[1] ?? null;
 
-/** Outlook bodies mix a short human note with the Teams join block; this separates them without trusting arbitrary links. */
+/** El cuerpo de Outlook mezcla una nota corta con el bloque de Teams. Aquí se separan y no se confía en un enlace cualquiera. */
 export function parseOutlookDescription(text: string | null): OutlookDescription {
     if (!text) return { summary: "", joinUrl: null, meetingId: null, passcode: null, reference: null };
     const human = text.split(BOILERPLATE)[0] ?? "";
     return {
-        // Long tracking links add nothing to a note; the join link has its own button.
+        // Un enlace largo de seguimiento no aporta a la nota. El enlace de unión tiene su propio botón.
         summary: human.replace(URL_IN_TEXT, "").replace(/^\.+/, "").replace(/\s+/g, " ").trim(),
         joinUrl: safeJoinUrl(text),
         meetingId: capture(text, /(?:Meeting ID|Id\. de reuni\u00f3n):\s*(\d{3}(?: \d{3}){2,4})/i),

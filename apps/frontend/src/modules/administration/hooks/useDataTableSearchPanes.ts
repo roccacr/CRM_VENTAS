@@ -86,7 +86,8 @@ export const clearSystemUsersDataTableState = (): void => {
  * Configura SearchPanes para tablas con columnas filtrables declaradas.
  *
  * Los paneles quedan colapsados y en cascada para no ocupar la tabla hasta
- * que el usuario los abre. Las columnas de acciones no entran al panel.
+ * que el usuario los abre. Si no se dice cuántos caben, son tres por fila.
+ * Las columnas de acciones no entran al panel. El total del panel se muestra junto al conteo filtrado.
  *
  * @param options - Índices filtrables, índices ocultos y paneles por fila
  * @returns `columnDefs` y `layout` estables mientras no cambien las columnas

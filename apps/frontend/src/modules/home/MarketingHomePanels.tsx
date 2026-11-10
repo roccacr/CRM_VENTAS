@@ -18,7 +18,7 @@ interface ProjectComparison {
     readonly previous: string;
 }
 
-/** State the direction in words; color alone cannot explain a comparison. */
+/** La dirección se dice con palabras. El color solo no explica una comparación. */
 function projectDelta(card: ProjectCard, label: string) {
     const delta = describeChange(card.change, "%");
     if (!delta) return { direction: "flat" as const, text: card.leads > 0 ? "Sin leads antes" : "Sin leads en ambos periodos" };
@@ -54,7 +54,7 @@ function ProjectCardView({ card, periodWord, comparison }: { readonly card: Proj
     );
 }
 
-/** Where leads concentrate. With a seller chosen it lists only the projects assigned to them. */
+/** Dónde se concentran los leads. Con un vendedor elegido lista solo los proyectos que tiene asignados. */
 export function MarketingProjects({ cards, periodWord, seller, comparison }: { readonly cards: readonly ProjectCard[]; readonly periodWord: string; readonly seller: string; readonly comparison: ProjectComparison }) {
     return (
         <section className="marketing-card marketing-projects" aria-labelledby="marketing-projects-title">

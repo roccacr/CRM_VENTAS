@@ -1,4 +1,4 @@
-/** Aggregate row consumed by the view. Runtime has no demonstration data or synthetic fallback. */
+/** Fila agregada que consume la vista. En ejecución no hay datos de demostración ni un respaldo sintético. */
 export interface MarketingSampleRow {
     readonly sellerName?: string;
     readonly sellerPublicId?: string | null;
@@ -7,14 +7,14 @@ export interface MarketingSampleRow {
     readonly campaign: string;
     readonly ad: string;
     readonly seller: string;
-    /** Days before "today"; 0 is today. */
+    /** Días antes de hoy. Cero es hoy. */
     readonly daysAgo: number;
     readonly leads: number;
     readonly withAppointment: number;
     readonly appointments: number;
-    /** Appointments that took place. */
+    /** Citas que ya ocurrieron. */
     readonly attended: number;
-    /** Due appointments the lead did not attend. */
+    /** Citas ya vencidas a las que el lead no asistió. */
     readonly missed: number;
 }
 
@@ -45,7 +45,7 @@ export const MARKETING_COMPARISONS = [
 ] as const;
 export type MarketingComparison = (typeof MARKETING_COMPARISONS)[number]["key"];
 
-/** What the person picked: a unit of time, a date inside it and what to compare with. Dates are ISO `YYYY-MM-DD`. */
+/** Lo que la persona eligió: una unidad de tiempo, una fecha dentro de ella y contra qué comparar. Las fechas son ISO `YYYY-MM-DD`. */
 export interface MarketingSelection {
     readonly mode: MarketingPeriodMode;
     readonly anchor: string;
@@ -57,7 +57,7 @@ export interface MarketingSelection {
 }
 export type MarketingPreviewFilters = Record<MarketingDimension, string> & { selection: MarketingSelection; sellers?: readonly string[]; projects?: readonly string[] };
 
-/** Below this many leads a rate is noise, so the UI flags it and alerts ignore it. */
+/** Por debajo de esta cantidad de leads una tasa es ruido. La interfaz lo marca y las alertas lo ignoran. */
 export const MARKETING_MIN_SAMPLE = 25;
 
 const DAY_MS = 86_400_000;
@@ -69,14 +69,14 @@ export const daysBetween = (from: Date, to: Date): number => Math.round((startOf
 const pad = (value: number): string => String(value).padStart(2, "0");
 export const toISODate = (date: Date): string => `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-/** Same day-of-month `months` away, clamped to the last day (31 Mar - 1 month = 28/29 Feb). */
+/** El mismo día del mes, tantos meses antes o después, recortado al último día real. El 31 de marzo menos un mes cae el 28 o 29 de febrero. */
 export function addMonths(date: Date, months: number): Date {
     const first = new Date(date.getFullYear(), date.getMonth() + months, 1);
     const lastDay = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
     return new Date(first.getFullYear(), first.getMonth(), Math.min(date.getDate(), lastDay));
 }
 
-/** Strict ISO parser; impossible dates such as 2026-02-31 are rejected instead of rolling over. */
+/** Lector ISO estricto. Una fecha imposible, como 2026-02-31, se rechaza y no se corre al mes siguiente. */
 export function parseISODate(value: string): Date | null {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
     if (!match) return null;
@@ -84,20 +84,20 @@ export function parseISODate(value: string): Date | null {
     return toISODate(date) === value ? date : null;
 }
 
-/** Quick summary on entry: today against yesterday. The person then chooses any other period. */
+/** Resumen rápido al entrar: hoy contra ayer. Después la persona elige otro periodo. */
 export function emptyMarketingFilters(today: Date = startOfDay(new Date())): MarketingPreviewFilters {
     const iso = toISODate(today);
     const selection: MarketingSelection = { mode: "day", anchor: iso, rangeStart: toISODate(addDays(today, -6)), rangeEnd: iso, comparison: "previous", compareStart: toISODate(addDays(today, -13)), compareEnd: toISODate(addDays(today, -7)) };
     return { project: "", campaign: "", ad: "", seller: "", selection };
 }
 
-/** Inclusive date range. */
+/** Rango de fechas inclusivo. */
 export interface MarketingRange {
     readonly start: Date;
     readonly end: Date;
 }
 
-/** Orders the ends and never reaches into the future, where the sample (and reality) has no data. */
+/** Ordena los extremos y no entra al futuro, donde la muestra y la realidad no tienen datos. */
 function clampRange(start: Date, end: Date, today: Date): MarketingRange {
     const [from, to] = start <= end ? [start, end] : [end, start];
     const last = to > today ? today : to;
@@ -125,14 +125,14 @@ const PERIOD_RESOLVERS: Record<MarketingPeriodMode, (selection: MarketingSelecti
     },
 };
 
-/** The dates the person is looking at. A week or month in progress ends today. */
+/** Las fechas que la persona está mirando. Una semana o un mes en curso terminan hoy. */
 export function resolveMarketingPeriod(selection: MarketingSelection, today: Date = startOfDay(new Date())): MarketingRange {
     return PERIOD_RESOLVERS[selection.mode](selection, today);
 }
 
 const rangeLength = (range: MarketingRange): number => daysBetween(range.start, range.end) + 1;
 
-/** Start of the unit right before: yesterday, last week, last month or last year. */
+/** Inicio de la unidad anterior: ayer, la semana pasada, el mes pasado o el año pasado. */
 function shiftedStart(mode: MarketingPeriodMode, start: Date): Date {
     if (mode === "day") return addDays(start, -1);
     if (mode === "week") return addDays(start, -7);
@@ -151,12 +151,12 @@ function previousRange(mode: MarketingPeriodMode, period: MarketingRange): Marke
     const end = addDays(start, length - 1);
     if (mode !== "month") return { start, end };
     const limit = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-    // A closed month or year is compared with the whole previous one, whatever its length; one in progress keeps its elapsed days.
+    // Un mes o un año ya cerrado se compara con el anterior completo, dure lo que dure. Uno en curso conserva los días transcurridos.
     const closed = period.end.getTime() === new Date(period.start.getFullYear(), period.start.getMonth() + 1, 0).getTime();
     return { start, end: closed || end > limit ? limit : end };
 }
 
-/** The dates the period is compared with. */
+/** Las fechas contra las que se compara el periodo. */
 export function resolveMarketingComparison(selection: MarketingSelection, period: MarketingRange, today: Date = startOfDay(new Date())): MarketingRange {
     switch (selection.comparison) {
         case "lastMonth":
@@ -170,14 +170,14 @@ export function resolveMarketingComparison(selection: MarketingSelection, period
     }
 }
 
-/** Start of the neighbouring unit; months and years step from their first day so the length never drifts. */
+/** Inicio de la unidad vecina. Meses y años avanzan desde su primer día para que la duración no se desplace. */
 function steppedStart(mode: MarketingPeriodMode, start: Date, direction: -1 | 1): Date {
     if (mode === "day") return addDays(start, direction);
     if (mode === "week") return addDays(start, direction * 7);
     return addMonths(new Date(start.getFullYear(), mode === "year" ? 0 : start.getMonth(), 1), direction * (mode === "year" ? 12 : 1));
 }
 
-/** Moves the selection one unit back or forward; a range moves by its own length. */
+/** Mueve la selección una unidad atrás o adelante. Un rango se mueve por su propia duración. */
 export function shiftMarketingSelection(selection: MarketingSelection, direction: -1 | 1, today: Date = startOfDay(new Date())): MarketingSelection {
     const period = resolveMarketingPeriod(selection, today);
     const length = rangeLength(period);
@@ -188,7 +188,7 @@ export function shiftMarketingSelection(selection: MarketingSelection, direction
     return { ...selection, anchor: toISODate(next > today ? today : next) };
 }
 
-/** True while the period ends before today, so moving forward still lands on real data. */
+/** Verdadero mientras el periodo termina antes de hoy, así que avanzar todavía cae en datos reales. */
 export function canAdvanceMarketingSelection(selection: MarketingSelection, today: Date = startOfDay(new Date())): boolean {
     return resolveMarketingPeriod(selection, today).end < today;
 }
@@ -207,24 +207,24 @@ function rowsIn(range: MarketingRange, filters: MarketingPreviewFilters, today: 
     return source.filter((row) => row.daysAgo >= newest && row.daysAgo <= oldest && matchesDimensions(row, filters));
 }
 
-/** Granularity of a chart: one point per day up to a month, per week up to a quarter, per calendar month beyond. */
+/** Grano del gráfico: un punto por día hasta un mes, por semana hasta un trimestre y por mes calendario después. */
 export type MarketingGrain = 1 | 7 | "month";
 const grainFor = (days: number): MarketingGrain => (days <= 31 ? 1 : days <= 100 ? 7 : "month");
 
-/** The chart must show the same data the cards compare against, so a longer shifted window is cut to the comparison dates. */
+/** El gráfico muestra los mismos datos que comparan las tarjetas. Una ventana desplazada más larga se corta a las fechas de la comparación. */
 function comparedChartRows(shifted: readonly MarketingSampleRow[], period: MarketingRange, comparison: MarketingRange, today: Date): readonly MarketingSampleRow[] {
-    // With one day the chart shows its week and pairs each day with the equivalent one, as context.
+    // Con un solo día el gráfico muestra su semana y empareja cada día con el equivalente, como contexto.
     if (rangeLength(period) <= 1) return shifted;
     const newest = daysBetween(comparison.end, today);
     const oldest = daysBetween(comparison.start, today);
     return shifted.filter((row) => row.daysAgo >= newest && row.daysAgo <= oldest);
 }
 
-/** Everything the page needs, resolved once from the selection so every block reads the same dates. */
+/** Todo lo que la página necesita, resuelto una vez desde la selección para que cada bloque lea las mismas fechas. */
 export function resolveMarketingView(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS) {
     const period = resolveMarketingPeriod(filters.selection, today);
     const comparison = resolveMarketingComparison(filters.selection, period, today);
-    // A single day has no shape, so the chart shows the week that ends on it.
+    // Un solo día no tiene forma, así que el gráfico muestra la semana que termina en él.
     const window: MarketingRange = rangeLength(period) <= 1 ? { start: addDays(period.end, -6), end: period.end } : period;
     const offset = daysBetween(comparison.start, period.start);
     const compareWindow: MarketingRange = { start: addDays(window.start, -offset), end: addDays(window.end, -offset) };
@@ -244,18 +244,18 @@ export function resolveMarketingView(filters: MarketingPreviewFilters, today: Da
 }
 export type MarketingView = ReturnType<typeof resolveMarketingView>;
 
-/** Leads captured in the last 7 days with no appointment: what still needs follow-up, whatever period is chosen. */
+/** Leads captados en los últimos 7 días sin cita: lo que todavía necesita seguimiento, cualquiera que sea el periodo elegido. */
 export function recentWithoutAppointment(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS): number {
     return summarizeMarketingSample(rowsIn({ start: addDays(today, -6), end: today }, filters, today, source)).withoutAppointment;
 }
 
-/** First day with leads under the other filters, so an ad can be followed "since it started". */
+/** Primer día con leads bajo los demás filtros, para seguir un anuncio desde que empezó. */
 export function firstMarketingActivity(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS): Date | null {
     const active = source.filter((row) => matchesDimensions(row, filters) && row.leads > 0);
     return active.length ? addDays(today, -Math.max(...active.map((row) => row.daysAgo))) : null;
 }
 
-/** All banners and tables use the same filtered sample; repeated appointments are not unique leads. */
+/** Todos los banners y tablas usan la misma muestra filtrada. Las citas repetidas no son leads únicos. */
 export function summarizeMarketingSample(rows: readonly MarketingSampleRow[]) {
     const totals = rows.reduce((sum, row) => ({ leads: sum.leads + row.leads, withAppointment: sum.withAppointment + row.withAppointment, appointments: sum.appointments + row.appointments, attended: sum.attended + row.attended, missed: sum.missed + row.missed }), { leads: 0, withAppointment: 0, appointments: 0, attended: 0, missed: 0 });
     const due = totals.attended + totals.missed;
@@ -264,17 +264,17 @@ export function summarizeMarketingSample(rows: readonly MarketingSampleRow[]) {
         pending: totals.appointments - due,
         withoutAppointment: totals.leads - totals.withAppointment,
         rate: totals.leads ? (totals.withAppointment / totals.leads) * 100 : 0,
-        // Attendance only counts appointments already due; pending ones are neither attended nor missed yet.
+        // La asistencia cuenta solo citas ya vencidas. Una pendiente no es asistida ni perdida.
         attendance: due ? (totals.attended / due) * 100 : 0,
     };
 }
 
-/** Relative change in percent, or null when there is no previous value to compare with. */
+/** Cambio relativo en porcentaje, o nulo cuando no hay un valor anterior contra el cual comparar. */
 export function relativeChange(current: number, previous: number): number | null {
     return previous > 0 ? ((current - previous) / previous) * 100 : null;
 }
 
-/** One point of a chart, oldest first; `compared` is the same point of the comparison. */
+/** Un punto del gráfico, el más antiguo primero. `compared` es el mismo punto de la comparación. */
 export interface MarketingBucket {
     readonly label: string;
     readonly leads: number;
@@ -305,7 +305,7 @@ function bucketIndex(row: MarketingSampleRow, from: Date, grain: MarketingGrain,
     return Math.floor((daysBetween(from, today) - row.daysAgo) / grain);
 }
 
-/** Splits the chart window into days, weeks or months and lines the comparison up point by point. */
+/** Parte la ventana del gráfico en días, semanas o meses y alinea la comparación punto por punto. */
 export function bucketMarketingSample(view: Pick<MarketingView, "window" | "compareWindow" | "grain" | "today">, rows: readonly MarketingSampleRow[], compared: readonly MarketingSampleRow[] = []): MarketingBucket[] {
     const { window, compareWindow, grain, today } = view;
     const buckets = Array.from({ length: bucketCount(window, grain) }, (_, index) => ({ label: bucketLabelFor(window, grain, index), leads: 0, compared: 0, withAppointment: 0, attended: 0 }));
@@ -323,25 +323,25 @@ export function bucketMarketingSample(view: Pick<MarketingView, "window" | "comp
     return buckets;
 }
 
-/** Leads without appointment per day over the last week, for the follow-up card. */
+/** Leads sin cita por día durante la última semana, para la tarjeta de seguimiento. */
 export function recentWithoutAppointmentSeries(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS): number[] {
     const window = { start: addDays(today, -6), end: today };
     return bucketMarketingSample({ window, compareWindow: window, grain: 1, today }, rowsIn(window, filters, today, source)).map((bucket) => bucket.leads - bucket.withAppointment);
 }
 
-/** Leads captured today, this week, this month and this year (each up to today), whatever period is displayed. */
+/** Leads captados hoy, esta semana, este mes y este año, cada uno hasta hoy, cualquiera que sea el periodo mostrado. */
 export function horizonLeads(filters: MarketingPreviewFilters, today: Date = startOfDay(new Date()), source: readonly MarketingSampleRow[] = EMPTY_MARKETING_ROWS) {
     const leadsIn = (mode: MarketingPeriodMode) => summarizeMarketingSample(rowsIn(resolveMarketingPeriod({ ...filters.selection, mode, anchor: toISODate(today) }, today), filters, today, source)).leads;
     return { day: leadsIn("day"), week: leadsIn("week"), month: leadsIn("month"), year: leadsIn("year") };
 }
 
-/** Projects a seller works on, or every project when no seller is chosen. */
+/** Proyectos en los que trabaja un vendedor, o todos cuando no se elige vendedor. */
 export function projectsForSeller(seller: string | readonly string[], source: readonly MarketingDirectoryRow[] = EMPTY_MARKETING_ROWS): string[] {
     const selected = typeof seller === "string" ? [seller].filter(Boolean) : seller;
     return [...new Set(source.filter((combination) => selected.length === 0 || selected.includes(combination.seller)).map((combination) => combination.project))].sort((first, second) => first.localeCompare(second, "es"));
 }
 
-/** Reconcile each dimension against the same totals used by the banners, with its movement and change. */
+/** Reconcilia cada dimensión contra los mismos totales de los banners, con su movimiento y su cambio. */
 export function groupMarketingSample(view: MarketingView, dimension: MarketingDimension) {
     const split = (source: readonly MarketingSampleRow[]) => {
         const groups = new Map<string, MarketingSampleRow[]>();
@@ -351,7 +351,7 @@ export function groupMarketingSample(view: MarketingView, dimension: MarketingDi
     const current = split(view.rows);
     const previous = split(view.previousRows);
     const inWindow = split(view.windowRows);
-    // A source that had leads before and none now is exactly what a supervisor must see, so it stays in the list.
+    // Una fuente que tenía leads y ahora no tiene es justo lo que un supervisor debe ver, así que se queda en la lista.
     return [...new Set([...current.keys(), ...previous.keys()])]
         .map((name) => {
             const items = current.get(name) ?? [];
@@ -371,7 +371,7 @@ function marketingGroupLabel(dimension: MarketingDimension, name: string, rows: 
     return name;
 }
 
-/** Sellers against campaigns: how many leads each seller holds per campaign, and how many have an appointment. */
+/** Vendedores contra campañas: cuántos leads tiene cada vendedor por campaña y cuántos tienen cita. */
 export function matrixMarketingSample(rows: readonly MarketingSampleRow[]) {
     const campaigns = [...new Set(rows.map((row) => row.campaign))].sort((first, second) => first.localeCompare(second, "es"));
     const sellers = [...new Set(rows.map((row) => row.seller))].map((seller) => {
@@ -382,7 +382,7 @@ export function matrixMarketingSample(rows: readonly MarketingSampleRow[]) {
     return { campaigns, sellers: sellers.sort((first, second) => second.total.leads - first.total.leads || first.seller.localeCompare(second.seller, "es")) };
 }
 
-/** Something that needs a look. Only sources with enough leads can raise one, so noise never alarms anyone. */
+/** Algo que merece una mirada. Solo una fuente con suficientes leads puede levantarla, así el ruido no alarma. */
 export interface MarketingAlert {
     readonly key: string;
     readonly text: string;
@@ -392,9 +392,9 @@ const DROP_THRESHOLD = -20;
 const SELLER_GAP_POINTS = 8;
 const MIN_ALERT_DAYS = 7;
 
-/** Sources that lost a fifth or more of their leads against the comparison. */
+/** Fuentes que perdieron un quinto o más de sus leads contra la comparación. */
 function dropAlerts(view: MarketingView): MarketingAlert[] {
-    // Day-to-day swings of 50% are normal, so a drop only means something over at least a week.
+    // Un vaivén diario del 50 % es normal, así que una caída solo cuenta a partir de una semana.
     if (rangeLength(view.period) < MIN_ALERT_DAYS) return [];
     return (["project", "campaign", "ad"] as const).flatMap((dimension) => {
         const label = MARKETING_DIMENSIONS.find((item) => item.key === dimension)?.label ?? "";
@@ -408,7 +408,7 @@ function dropAlerts(view: MarketingView): MarketingAlert[] {
     });
 }
 
-/** Sellers whose share of leads without appointment is clearly above the team average. */
+/** Vendedores cuya parte de leads sin cita está claramente por encima del promedio del equipo. */
 function sellerAlerts(view: MarketingView): MarketingAlert[] {
     const total = summarizeMarketingSample(view.rows);
     const average = total.leads ? (total.withoutAppointment / total.leads) * 100 : 0;
@@ -417,7 +417,7 @@ function sellerAlerts(view: MarketingView): MarketingAlert[] {
         .map((group) => ({ key: `seller:${group.name}`, text: `${group.label}: ${String(Math.round((group.withoutAppointment / group.leads) * 100))} % de sus leads sin cita (el equipo promedia ${String(Math.round(average))} %).` }));
 }
 
-/** At most three alerts, empty when everything is within range. */
+/** Como máximo tres alertas. Vacío cuando todo está dentro del rango. */
 export function alertMarketingSample(view: MarketingView): MarketingAlert[] {
     return [...dropAlerts(view), ...sellerAlerts(view)].slice(0, 3);
 }

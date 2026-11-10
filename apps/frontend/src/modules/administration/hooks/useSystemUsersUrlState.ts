@@ -51,6 +51,8 @@ const writeSearchParams = (activeFilter: SystemUserFilter, searchQuery: string):
  *
  * Usa `replaceState` para no llenar el historial con cada tecla. Escribe en una
  * microtarea para aplicar juntos los filtros resueltos al montar la pantalla.
+ * Todos quita `estado` y una búsqueda vacía quita `q`. El hash se conserva.
+ * Un estado desconocido en la URL vuelve a Todos.
  */
 export const useSystemUsersUrlState = (): SystemUsersUrlState => {
     const [activeFilter, setActiveFilter] = useState<SystemUserFilter>(() => parseSystemUserFilter(readSearchParams().get(STATUS_PARAM)));

@@ -436,14 +436,18 @@ describe("CatalogItemsPage", () => {
         await waitFor(() => expect(screen.queryByRole("status", { name: "Cargando proyectos" })).not.toBeInTheDocument());
         expect(screen.getByRole("table", { name: "Proyectos" })).toBe(grid);
         const profileReads = mockProfile.mock.calls.length;
-        fireEvent.click(screen.getByRole("button", { name: "Página anterior" }));
-        expect(await screen.findByText(item.name)).toBeInTheDocument();
-        expect(screen.queryByRole("status", { name: "Cargando proyectos" })).not.toBeInTheDocument();
-        expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
-        expect(mockProfile).toHaveBeenCalledTimes(profileReads);
-        fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
-        expect(await screen.findByText("Second project")).toBeInTheDocument();
-        expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
+        const list = screen.getByRole("region", { name: "Listado de Proyectos" });
+        for (const [button, name] of [["Página anterior", item.name], ["Página siguiente", "Second project"]] as const) {
+            fireEvent.click(screen.getByRole("button", { name: button }));
+            expect(list).toHaveAttribute("aria-busy", "false");
+            expect(await screen.findByText(name)).toBeInTheDocument();
+            expect(list).toHaveAttribute("aria-busy", "false");
+            // El indicador de la petición anterior puede seguir montado durante el fundido.
+            expect(screen.queryByRole("status", { name: "Cargando proyectos" })?.getAttribute("data-loading")).not.toBe("true");
+            expect(screen.getByRole("table", { name: "Proyectos" })).toBe(grid);
+            expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
+            expect(mockProfile).toHaveBeenCalledTimes(profileReads);
+        }
     });
 
     it("invalidates cached pages on explicit refresh", async () => {

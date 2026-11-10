@@ -135,7 +135,7 @@ const WORKSPACE_HOME_PATH_BY_CODE: Readonly<Record<string, string>> = {
     sales: "/home/sales",
 };
 
-/** Calendar origin navigation carries date/event in query; permission checks still use its registered menu item. */
+/** Una consulta o un hash se aceptan solo en los calendarios y en el perfil del lead. El permiso sigue usando el ítem de menú registrado. */
 export const getAppRoute = (path: string): AppRoute | undefined => {
     const exact = APP_ROUTES.get(path);
     if (exact) return exact;
@@ -161,7 +161,7 @@ export const replaceBrowserPath = (path: string): void => {
     }
 };
 
-/** User navigation compares the complete URL: selecting Home clears record query/hash without duplicating an identical URL. */
+/** La navegación de la persona compara la URL completa. Elegir Inicio limpia la consulta y el hash del registro, y no duplica una URL idéntica. */
 export const pushBrowserPath = (path: string): void => {
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== path) {
         window.history.pushState(null, "", path);

@@ -13,7 +13,7 @@ type Permissions = IdentityProfile["permissions"];
 const WHATSAPP_PERMISSION = "formalizacion.orders.whatsapp";
 const composeUrl = (email: string) => `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(email)}`;
 
-/** Same rule as in the order drawer: an explicit allow and no deny. */
+/** La misma regla del panel de la orden: hace falta el allow exacto de `formalizacion.orders.whatsapp` y un deny lo quita. */
 const canWhatsApp = (permissions: Permissions): boolean => permissions.some((entry) => entry.code === WHATSAPP_PERMISSION && entry.effect === "allow") && !permissions.some((entry) => entry.code === WHATSAPP_PERMISSION && entry.effect === "deny");
 
 function WhatsAppAction({ data }: { readonly data: LeadProfileResult }) {
@@ -26,8 +26,8 @@ function WhatsAppAction({ data }: { readonly data: LeadProfileResult }) {
 }
 
 /**
- * Quick actions of the profile, the same ones the order and client panels offer. Scheduling is done on the client's most recent linked order, because the calendar
- * resolves the lead through an order; without one the button is not offered. "Ver perfil del cliente" is not repeated: this already is the profile.
+ * Acciones rápidas del perfil, las mismas que ofrecen los paneles de la orden y del cliente. Agendar usa la orden vinculada más reciente, porque el calendario
+ * resuelve el lead a través de una orden. Sin una, el botón no se ofrece. El correo abre el borrador de Outlook y no envía desde el CRM.
  */
 export function LeadProfileActions({ data, permissions, refreshing, onRefresh }: { readonly data: LeadProfileResult; readonly permissions: Permissions; readonly refreshing: boolean; readonly onRefresh: () => void }) {
     const email = fieldValue(data.sections, "email");

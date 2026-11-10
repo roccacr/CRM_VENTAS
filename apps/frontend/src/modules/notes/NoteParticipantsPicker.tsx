@@ -12,7 +12,7 @@ interface Props {
 }
 const accountStatus = { active: "Activo", inactive: "Inactivo", pending: "Pendiente de activación" };
 const personLabel = (person: { displayName: string; status?: keyof typeof accountStatus }) => (person.status ? `${person.displayName} · ${accountStatus[person.status]}` : person.displayName);
-/** Loads the authorized directory before selection; identities remain public IDs and names are labels. */
+/** Carga el directorio autorizado antes de elegir. Las identidades siguen siendo ids públicos y los nombres son etiquetas. */
 export function NoteParticipantsPicker({ noteId, draft, value, onChange, disabled }: Props) {
     const selectId = useId();
     const [items, setItems] = useState<NoteEligibleUsers["items"]>([]);

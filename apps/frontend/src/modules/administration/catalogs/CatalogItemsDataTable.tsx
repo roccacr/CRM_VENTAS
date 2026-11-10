@@ -34,8 +34,8 @@ const TEST_LAYOUT = { topStart: null, topEnd: null, bottomStart: "info", bottomE
 const PROJECT_TOOLBAR_ROW_CLASS = "dt-layout-row projects-view-toolbar";
 
 /**
- * Catalog panes filter the loaded API page. Static facet counts avoid
- * rebuilding the nested pane tables after each main-table draw.
+ * Los paneles filtran la página que ya trajo el API. Los conteos estáticos evitan
+ * reconstruir las tablas anidadas después de cada dibujo de la tabla principal.
  */
 const getTableLayout = (layout: DataTableSearchPanesConfig["layout"], projectView: boolean, enablePanes: boolean) => {
     const top = (layout as { readonly top?: { readonly searchPanes?: Record<string, unknown> } }).top;

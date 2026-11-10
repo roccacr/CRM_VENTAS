@@ -5,12 +5,12 @@ const PERMISSIONS = { list: "user.view_list", detail: "user.view_detail", create
 export type UsersPermissions = Readonly<Record<keyof typeof PERMISSIONS, boolean>>;
 export const NO_USERS_PERMISSIONS: UsersPermissions = { list: false, detail: false, create: false, update: false, activate: false, deactivate: false, assignPassword: false, assignRoles: false };
 
-/** Effective grants only: a deny always wins, including for an Owner. The API remains authoritative. */
+/** Solo cuentan los permisos efectivos. Un deny gana, también si quien lo tiene es Owner. El API sigue siendo la autoridad. Crear exige además asignar roles. */
 export function getUsersPermissions(permissions: IdentityProfile["permissions"]): UsersPermissions {
     const allowed = new Set(permissions.filter(({ effect }) => effect === "allow").map(({ code }) => code));
     for (const { code, effect } of permissions) if (effect === "deny") allowed.delete(code);
     return { ...Object.fromEntries(Object.entries(PERMISSIONS).map(([key, code]) => [key, allowed.has(code)])), create: allowed.has("user.create") && allowed.has("role.assign") } as UsersPermissions;
 }
 
-/** Activate applies only to the active destination; block and inactivate both require deactivate. */
+/** Activar solo vale para el destino activo. Bloquear e inactivar exigen desactivar. La persona en sesión no se cambia a sí misma. */
 export const canChangeUserStatus = (permissions: UsersPermissions, user: SystemUserListItem, target: SystemUserStatusUpdateTarget): boolean => !user.isCurrentUser && (target === "active" ? permissions.activate : permissions.deactivate);

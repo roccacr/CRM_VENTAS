@@ -58,11 +58,11 @@ const hasWorkspaceRouteAccess = (profile: IdentityProfile, path: string): boolea
     const homePath = getWorkspaceHomePath(workspaceCode);
     const definition = ASSIGNED_WORKSPACES.find((item) => item.code === workspaceCode);
     const hasHomeMenuItem = definition?.menuItems.some((item) => item.routePath === homePath);
-    // Administration has a landing page but no home menu item or separate home permission.
+    // Administración tiene página de inicio y no tiene un ítem de menú ni un permiso de inicio aparte.
     if (path === homePath && !hasHomeMenuItem) return true;
 
     const menuItems = workspace.menuItems.flatMap((item) => [item, ...(item.children ?? [])]);
-    // Legacy Sales/Accounting items share a home URL despite having different item codes.
+    // Ventas y Contabilidad anteriores comparten la URL de inicio aunque sus códigos de ítem sean distintos.
     return menuItems.some((item) => item.code === route.menuItemCode || item.routePath === path);
 };
 
@@ -99,7 +99,7 @@ export const resolveAuthState = async (path: string, onAuthenticatedSession?: (u
     let session = await getIdentitySession();
 
     if (!isAuthenticatedSession(session)) {
-        // Login and unknown URLs have no registered private page to recover.
+        // El login y una URL desconocida no tienen una página privada registrada que recuperar.
         if (!getAppRoute(path)) {
             return { status: "anonymous" };
         }
@@ -107,8 +107,8 @@ export const resolveAuthState = async (path: string, onAuthenticatedSession?: (u
         try {
             await refreshAuthenticatedSession();
         } catch (error) {
-            // Only an explicit rejection proves the refresh is invalid. Transport,
-            // server and CSRF failures must not force login or replay a rotation.
+            // Solo un rechazo explícito prueba que el refresco no es válido. Un fallo de transporte,
+            // del servidor o de CSRF no obliga a ir al login ni repite la rotación.
             if (error instanceof ApiClientError && error.status === 401) return { status: "anonymous" };
             throw error;
         }

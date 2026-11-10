@@ -85,13 +85,13 @@ const parseResponseBody = async (response: Response): Promise<unknown> => {
     return response.json();
 };
 
-/** Business conflicts must not refresh the session or replay a mutation. */
+/** Un conflicto de negocio no refresca la sesión ni repite una mutación. */
 const readConflictMessage = (body: unknown): string | null => {
     if (!body || typeof body !== "object" || !("message" in body)) return null;
     return typeof body.message === "string" && body.message.trim().length > 0 ? body.message : null;
 };
 
-/** Business conflicts and explicit no-retry requests must never replay a mutation. */
+/** Un conflicto de negocio y una petición marcada para no reintentar no repiten una mutación. */
 const shouldRenewSession = (error: unknown, path: string, options: ApiRequestOptions): boolean => {
     if (!(error instanceof ApiClientError) || options.retryOnUnauthorized === false || path === IDENTITY_REFRESH_PATH) return false;
     return error.status === 401 || (error.status === 409 && readConflictMessage(error.responseBody) === STALE_PERMISSION_SESSION_MESSAGE);
@@ -138,7 +138,7 @@ const fetchIdentitySessionForCsrf = async (): Promise<void> => {
     });
     const responseBody = await parseResponseBody(response);
 
-    // An older preflight must not replace the proof belonging to a newer login.
+    // Un preflight anterior no reemplaza la prueba de un login más nuevo.
     assertCurrentIdentityResponse(IDENTITY_REFRESH_PATH, generation);
 
     if (!response.ok) {
@@ -279,7 +279,7 @@ export const refreshAuthenticatedSession = async (): Promise<void> => {
     return refreshFlight.promise;
 };
 
-/** Only idempotent reads may recover a temporary dependency failure. */
+/** Solo una lectura idempotente puede recuperarse de un fallo temporal de una dependencia. */
 const canRetryUnavailableRead = (error: unknown, options: ApiRequestOptions): boolean => (options.method ?? "GET") === "GET" && error instanceof ApiClientError && error.status === 503;
 
 /**
@@ -297,9 +297,9 @@ export const apiRequest = async <TResponse>(path: string, options: ApiRequestOpt
         return await executeApiRequest<TResponse>(path, options);
     } catch (error) {
         assertRequestNotAborted(options.signal);
-        // Never renew or replay an operation from a previous authenticated context.
+        // No se renueva ni se repite una operación de un contexto autenticado anterior.
         if (generation !== sessionGeneration) throw error;
-        // Only safe reads recover one temporary dependency failure; uncertain writes keep their operation key.
+        // Solo las lecturas seguras recuperan un fallo temporal de dependencia. Una escritura incierta conserva su clave de operación.
         if (canRetryUnavailableRead(error, options)) {
             await new Promise<void>((resolve) => setTimeout(resolve, 500));
             if (generation !== sessionGeneration) throw error;
@@ -315,7 +315,7 @@ export const apiRequest = async <TResponse>(path: string, options: ApiRequestOpt
     }
 };
 
-/** Supplies only the existing in-memory CSRF proof; stale account responses cannot authorize sockets. */
+/** Entrega solo la prueba CSRF que ya está en memoria. Una respuesta vieja de otra cuenta no autoriza un socket. */
 export const getAuthenticatedCsrfToken = async (): Promise<string> => {
     const generation = sessionGeneration;
     if (refreshFlight?.generation === generation) await refreshFlight.promise;

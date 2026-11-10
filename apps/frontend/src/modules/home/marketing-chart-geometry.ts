@@ -3,7 +3,7 @@ export interface ChartPoint {
     readonly y: number;
 }
 
-/** Rounds the top of an axis up to 1, 2, 5 or 10 times a power of ten so gridlines carry readable numbers. */
+/** Redondea el tope del eje hacia arriba a 1, 2, 5 o 10 por una potencia de diez, para que la grilla lleve números legibles. */
 export function niceMaximum(value: number): number {
     if (value <= 0) return 1;
     const magnitude = 10 ** Math.floor(Math.log10(value));
@@ -12,7 +12,7 @@ export function niceMaximum(value: number): number {
     return step * magnitude;
 }
 
-/** Maps values to a box; a single value sits in the middle so it is still visible. */
+/** Lleva los valores a una caja. Un valor único queda al centro para que siga visible. */
 export function toPoints(values: readonly number[], maximum: number, width: number, height: number): ChartPoint[] {
     const safeMaximum = maximum > 0 ? maximum : 1;
     return values.map((value, index) => ({ x: values.length > 1 ? (index / (values.length - 1)) * width : width / 2, y: height - (Math.max(0, value) / safeMaximum) * height }));
@@ -20,7 +20,7 @@ export function toPoints(values: readonly number[], maximum: number, width: numb
 
 const round = (value: number): number => Math.round(value * 100) / 100;
 
-/** One Bezier segment between two points, with control points kept inside the box. */
+/** Un tramo Bézier entre dos puntos, con los controles dentro de la caja. */
 function segment(points: readonly ChartPoint[], index: number, height: number): string {
     const from = points[index];
     const to = points[index + 1];
@@ -33,14 +33,14 @@ function segment(points: readonly ChartPoint[], index: number, height: number): 
     return ` C${control1} ${control2} ${String(round(to.x))},${String(round(to.y))}`;
 }
 
-/** Smooth curve through the points (Catmull-Rom as Bezier), kept inside the box so it never dips below zero. */
+/** Curva suave por los puntos, Catmull-Rom como Bézier, dentro de la caja para no bajar de cero. */
 export function smoothPath(points: readonly ChartPoint[], height: number): string {
     const [first] = points;
     if (!first) return "";
     return points.slice(0, -1).reduce((path, _point, index) => path + segment(points, index, height), `M${String(round(first.x))},${String(round(first.y))}`);
 }
 
-/** Closes a line down to the baseline so it can be filled. */
+/** Cierra la línea hasta la base para poder rellenarla. */
 export function areaPath(points: readonly ChartPoint[], height: number): string {
     const first = points[0];
     const last = points.at(-1);

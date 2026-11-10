@@ -75,7 +75,7 @@ function placementFor(note: PersonalNote, index = 0): NotePlacement {
     return note.myPlacements.find((p) => p.viewportClass === viewport()) ?? { viewportClass: viewport(), anchorMode: "context", x: Math.max(12, window.innerWidth - 340 - (index % 3) * 24), y: window.scrollY + 160 + (index % 5) * 42, width: 300, height: 230, collapsed: false, hidden: false, layoutVersion: 0 };
 }
 
-/** Header entry next to the bell, with the same desktop/mobile icon treatment. */
+/** Entrada del encabezado junto a la campana, con el mismo trato de ícono en escritorio y en móvil. */
 export function NotesButton({ mobile = false }: { readonly mobile?: boolean }) {
     const notes = useContext(NotesContext);
     if (!notes?.visible) return null;
@@ -86,13 +86,13 @@ export function NotesButton({ mobile = false }: { readonly mobile?: boolean }) {
     );
 }
 
-/** Header bell opens only server-authorized conversations in the same notes provider. */
+/** La campana del encabezado abre solo conversaciones que el servidor autorizó, en el mismo proveedor de notas. */
 export function NotesNotificationsButton({ mobile = false }: { readonly mobile?: boolean }) {
     const notes = useContext(NotesContext);
     return <NoteNotificationsButton mobile={mobile} enabled={Boolean(notes?.visible)} onOpenNote={(id) => notes?.openNote(id)} />;
 }
 
-/** A real order replaces the generic view, preserving its source-specific identity. */
+/** Una orden real reemplaza la vista genérica y conserva la identidad de su origen. */
 export function NotesTarget({ source, id, label }: { readonly source: "native" | "legacy"; readonly id: string; readonly label: string }) {
     const setTarget = useContext(NotesContext)?.setTarget;
     useEffect(() => {
@@ -102,7 +102,7 @@ export function NotesTarget({ source, id, label }: { readonly source: "native" |
     return null;
 }
 
-/** Only effective notes permissions mount the client; no role name or Owner bypass exists. */
+/** Solo los permisos efectivos de notas montan el cliente. El nombre del rol y Owner no abren un atajo. */
 export function PersonalNotesProvider({ moduleCode, permissions, homeEnabled, viewCode, viewLabel, children }: { readonly moduleCode: string | undefined; readonly permissions: readonly Permission[]; readonly homeEnabled: boolean; readonly viewCode?: string | undefined; readonly viewLabel?: string | undefined; readonly children: ReactNode }) {
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [threadOpen, setThreadOpen] = useState(false);
@@ -194,7 +194,7 @@ interface Attempt {
     request: () => Promise<NoteCommandResult>;
     after: (result: NoteCommandResult) => void;
 }
-/** A keyed context owns its requests and drafts, so stale responses cannot appear in another record. */
+/** Un contexto con clave es dueño de sus peticiones y borradores. Una respuesta vieja no aparece en otro registro. */
 function NotesWorkspace({ moduleCode, target, canCreate, canShare, refreshVersion, open, onOpen, onClose }: WorkspaceProps) {
     const notesContext = useContext(NotesContext);
     const [mode, setMode] = useState<"context" | NotesInboxKind>("all");
@@ -531,7 +531,7 @@ function commandError(error: unknown): string {
     if ([401, 403, 404].includes(error.status)) return "La nota o tu acceso ya no están disponibles. Vuelve a consultar tus notas.";
     return "No se pudo guardar la nota. Revisa los datos y vuelve a intentarlo.";
 }
-/** Who the panel is for and where it is open, in the same identity block as the other side panels. */
+/** Para quién es el panel y dónde está abierto, en el mismo bloque de identidad que los otros paneles laterales. */
 function NotesIdentity({ target }: { readonly target: NonNullable<Target> }) {
     return (
         <div className="user-detail-drawer__identity">
@@ -597,7 +597,7 @@ const NOTE_COLORS: readonly (readonly [color: string, name: string])[] = [
     ["#DFECFA", "Azul suave"],
     ["#EEE4F7", "Lila suave"],
 ];
-/** The note's colour as four swatches: what you pick is what the sticky note will look like. */
+/** El color de la nota en cuatro muestras. Lo que se elige es el color que tendrá la nota. */
 function ColorChoice({ value, disabled, onChange }: { readonly value: string; readonly disabled: boolean; readonly onChange: (color: string) => void }) {
     const options = NOTE_COLORS.some(([color]) => color === value) ? NOTE_COLORS : [...NOTE_COLORS, [value, "Color guardado"] as const];
     return (

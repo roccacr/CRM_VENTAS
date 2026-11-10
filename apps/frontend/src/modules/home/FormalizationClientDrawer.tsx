@@ -122,7 +122,7 @@ const initialsOf = (name: string): string =>
         .map((part) => part.charAt(0).toUpperCase())
         .join("");
 
-/** Who the drawer is about, in the same identity block the user detail uses. */
+/** De quién es el panel, en el mismo bloque de identidad que usa el detalle de usuario. */
 function ClientIdentity({ item }: { readonly item: FollowUpItem }) {
     const name = item.client ?? "Cliente";
     return (
@@ -138,7 +138,7 @@ function ClientIdentity({ item }: { readonly item: FollowUpItem }) {
     );
 }
 
-/** Shared right-hand drawer appearance, with a fresh authorized read on every opening. */
+/** El mismo panel derecho. Cada apertura hace una lectura autorizada nueva. */
 export function FormalizationClientDrawer({ item, open, onClose, effectivePermissions = [], onNavigate, onCalendarClosed }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void; readonly onNavigate?: ((path: string) => void) | undefined; readonly onCalendarClosed?: (() => void) | undefined; readonly effectivePermissions?: readonly { readonly code: string; readonly effect: string }[] }) {
     return (
         <Drawer

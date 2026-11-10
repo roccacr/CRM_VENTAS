@@ -1,4 +1,4 @@
-/** Criteria-first audit history; reads only the selected module/section batch. */
+/** Historial de auditoría que exige criterio. Lee solo el lote del módulo y la sección elegidos. */
 import "./SecurityAuditPage.css";
 
 import LeftOutlined from "@ant-design/icons/LeftOutlined";
@@ -17,7 +17,7 @@ import { type AuditFilter, type AuditOptions, type AuditPage, getAuditOptions, g
 import { SecurityAuditDataTable } from "./SecurityAuditDataTable";
 import { SecurityAuditDetailDrawer } from "./SecurityAuditDetailDrawer";
 
-/** Session-owned caches are memory-only and expire; no log data enters localStorage. */
+/** La caché de la sesión vive en memoria y caduca. El registro no entra en localStorage. */
 export function SecurityAuditPage({ currentUser }: { readonly currentUser: IdentityUser }) {
     return (
         <ConfigProvider theme={PROJECTS_THEME}>
@@ -25,7 +25,7 @@ export function SecurityAuditPage({ currentUser }: { readonly currentUser: Ident
         </ConfigProvider>
     );
 }
-// Loading, independent primary filters and bounded pagination are separate UI states.
+// La carga, los filtros primarios y la página acotada son estados de pantalla distintos.
 // eslint-disable-next-line complexity
 function AuditContent() {
     const [options, setOptions] = useState<AuditOptions>();
@@ -54,7 +54,7 @@ function AuditContent() {
             });
         return () => {
             live = false;
-            // Request ownership, not a DOM ref: invalidate the latest in-flight request on unmount.
+            // La petición tiene dueño, no una ref del DOM. Al desmontar se invalida la que sigue en curso.
             // eslint-disable-next-line react-hooks/exhaustive-deps
             sequence.current++;
         };
@@ -69,7 +69,7 @@ function AuditContent() {
         setIndex(0);
         setCursors([undefined]);
     }
-    // Cache freshness, eviction, request ownership and failure/loading states are independent.
+    // La frescura de la caché, su desalojo, el dueño de la petición y el fallo o la carga son estados independientes.
     // eslint-disable-next-line complexity
     async function load(filter: AuditFilter, nextIndex: number, history: (string | undefined)[], refresh = false) {
         const request = ++sequence.current;

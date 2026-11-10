@@ -6,7 +6,7 @@ import type { ClientHistoryPage } from "../../services/formalization/database-or
 import type { NetsuiteOrderIdentity } from "../../services/formalization/netsuite-order-service";
 import { getOrderClientDetail } from "../../services/formalization/order-client-service";
 
-/** Source dates are observations, not invented UTC timestamps. */
+/** Las fechas de origen son observaciones. No se inventan marcas UTC. */
 export function FormalizationClientHistory({ initial, identity }: { readonly initial: ClientHistoryPage | null; readonly identity: NetsuiteOrderIdentity }) {
     const [page, setPage] = useState(initial);
     const [loading, setLoading] = useState(false);

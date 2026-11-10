@@ -23,7 +23,7 @@ import { BreakdownTables } from "./CaptureTables";
 import { type CaptureCatalogs, type CaptureDepth, type CaptureFilters, captureKpis, type CaptureMeasure, DEPTHS, filterCaptureRows, lossReasonRows, MEASURES, type PathRow } from "./lead-capture-report";
 import { useCaptureReport } from "./useCaptureReport";
 
-/** The breakdown modal is as wide as its tables: one table is not stretched over the whole screen, three use it. */
+/** El modal del desglose es tan ancho como sus tablas. Una tabla no se estira a toda la pantalla. Tres la usan. */
 const BREAKDOWN_WIDTH: Record<CaptureDepth, number> = { 1: 760, 2: 1200, 3: 1700 };
 
 const MEASURE_HINTS: Record<CaptureMeasure, string> = {
@@ -57,9 +57,8 @@ function Block({ title, hint, aside, actions, children }: { readonly title: stri
 }
 
 /**
- * Lead-capture report. The person picks how deep to look (project, campaign or ad); the report answers in the same order every
- * time: the chart and tables grouped by project, campaign or ad.
- * Session changes remount the report so local filters and results never cross identities.
+ * Reporte de captación. La persona elige la profundidad: proyecto, campaña o anuncio. El gráfico y las tablas responden en ese mismo orden.
+ * Un cambio de sesión remonta el reporte, así que los filtros y resultados locales no cruzan identidades.
  */
 export function MarketingLeadCapturePage({ currentUser }: { readonly currentUser: Pick<IdentityUser, "publicId" | "permissionVersion"> }) {
     return <CapturePage key={`${currentUser.publicId}:${String(currentUser.permissionVersion)}`} userId={currentUser.publicId} />;
@@ -174,7 +173,7 @@ function CaptureResults({ picked, setPicked, value, measure, depth, filters, cat
     const clearSelection = () => {
         setPicked(new Set());
     };
-    // Keep the explicit project filter even when the new qualification has no matching rows.
+    // El filtro explícito de proyectos se conserva aunque la calificación nueva no tenga filas.
     const selected = picked;
     const scoped = useMemo(() => (selected.size === 0 ? rows : rows.filter((row) => selected.has(row.projectId))), [rows, selected]);
     const toggle = (projectId: string) => {
@@ -287,7 +286,7 @@ function CaptureResults({ picked, setPicked, value, measure, depth, filters, cat
     );
 }
 
-/** Says how the table drives the chart and the detail, and clears the choice. Hidden in the exported files. */
+/** Dice cómo la tabla manda el gráfico y el detalle, y limpia la elección. En los archivos exportados no se muestra. */
 function SelectionBar({ count, onClear }: { readonly count: number; readonly onClear: () => void }) {
     return (
         <div className="capture-selection" data-active={count > 0}>

@@ -46,11 +46,11 @@ export interface AuditChangeSet {
     changes: { field: string; before: unknown; after: unknown }[];
 }
 export type AuditDetail = AuditEvent & { changeSet: AuditChangeSet | null };
-/** Detail snapshots are fetched only when an event is opened. */
+/** La foto del detalle se pide solo al abrir el evento. */
 export const getAuditDetail = (publicId: string): Promise<AuditDetail> => apiRequest(`/audit/${encodeURIComponent(publicId)}`);
-/** Choices do not download log rows. */
+/** Las opciones no descargan filas del registro. */
 export const getAuditOptions = (): Promise<AuditOptions> => apiRequest("/audit/options");
-/** Required server scope; matching and pagination happen before rows reach the browser. */
+/** El alcance lo exige el servidor. El filtro y la página ocurren antes de que las filas lleguen al navegador. */
 export function getAuditPage(filter: AuditFilter): Promise<AuditPage> {
     const query = new URLSearchParams({ moduleCode: filter.moduleCode, sectionCode: filter.sectionCode, limit: String(filter.limit) });
     for (const key of ["catalogCode", "search", "cursor"] as const) if (filter[key]) query.set(key, filter[key]);

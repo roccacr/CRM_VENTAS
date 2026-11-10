@@ -356,7 +356,7 @@ export function FormalizationOrderPreview(props: { readonly order: Formalization
     );
 }
 
-/** Same action in the ready header and the full-page loading skeleton. */
+/** La misma acción en el encabezado listo y en el esqueleto de carga de la página. */
 function RecordRefreshAction({ onRefresh, loading = false }: { readonly onRefresh: (() => void) | undefined; readonly loading?: boolean }) {
     if (!onRefresh) return null;
     return (
@@ -366,7 +366,7 @@ function RecordRefreshAction({ onRefresh, loading = false }: { readonly onRefres
     );
 }
 
-/** Database identity/progress plus the explicitly approved NetSuite primary projection. */
+/** Identidad y avance de la base, más la proyección primaria de NetSuite aprobada de forma explícita. */
 export function FormalizationOrderRecord({
     item,
     onBack,
@@ -392,7 +392,7 @@ export function FormalizationOrderRecord({
     readonly stagePermissions?: readonly { code: string; effect: string }[] | undefined;
     readonly canUpdateStage?: boolean;
 }) {
-    // A confirmed POST updates only this flag in the exact projection that was visible for this order.
+    // Un POST confirmado actualiza solo esta bandera, en la proyección exacta que estaba visible para esta orden.
     const [confirmedPrimary, setConfirmedPrimary] = useState<{ primary: NetsuitePrimary | null; order: string } | null>(null);
     const [addendumRevision, setAddendumRevision] = useState(0);
     const fundsRevalidation = useStageRevalidation(item, onStageSaved);
@@ -410,7 +410,7 @@ export function FormalizationOrderRecord({
         [orderIdentity],
     );
     if (netsuiteStatus === "loading") return <FormalizationRecordLoading complete actions={<RecordRefreshAction onRefresh={onRefresh} loading />} />;
-    // Adendum and purchase funds sit with the contract and the key facts in one compact grid instead of stacking full-width cards.
+    // El adéndum y los fondos de compra quedan con el contrato y los datos clave en una grilla compacta.
     const overview = (
         <>
             <FormalizationOrderAddendum marker item={item} permissions={stagePermissions} refreshVersion={addendumRevision} onChanged={handleAddendumChanged} />
@@ -520,7 +520,7 @@ function RecordStageActions({ item, allowed, status, permissions, onRefresh, onS
     );
 }
 
-/** Revalidate one CRM record after a committed write without invalidating the provider projection. */
+/** Revalida un registro del CRM después de una escritura confirmada. No invalida la proyección del proveedor. */
 function useStageRevalidation(item: FollowUpItem, onUpdate: ((item: FollowUpItem) => void) | undefined) {
     const [notice, setNotice] = useState<string | null>(null);
     const identity = item.source + ":" + item.id;
@@ -550,7 +550,7 @@ function confirmedApprovalPrimary(primary: NetsuitePrimary | null, confirmed: { 
     return { ...primary, checks: { ...primary.checks, "Aprobación formalización": true } };
 }
 
-/** A confirmed missing record has its own safe message; other failures keep the retry guidance. */
+/** Un registro confirmado como ausente tiene su propio mensaje. Los demás fallos conservan la guía de reintento. */
 function recordLoadMessage(status: string, message: string | undefined): string {
     if (status === "error") return message ?? "No fue posible cargar los datos de la orden. Pulsa recargar para reintentar.";
     return "Los datos de la orden aún no están disponibles.";

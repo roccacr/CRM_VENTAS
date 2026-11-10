@@ -71,7 +71,7 @@ function parse(value: unknown): OrderHistoryPage {
     validateCoverage(coverage);
     return { ...row, items: row.items.map(entry) } as unknown as OrderHistoryPage;
 }
-/** Always consults the authorized order; no arbitrary audit record ID or browser persistence. */
+/** Consulta siempre la orden autorizada. No usa un id arbitrario de auditoría ni persistencia en el navegador. */
 export async function getOrderHistory(identity: NetsuiteOrderIdentity, cursor?: string): Promise<OrderHistoryPage> {
     const id = identity.source === "legacy" ? identity.id.replace(/^legacy:/, "") : identity.id;
     const valid = identity.source === "legacy" ? /^[1-9][0-9]{0,9}$/.test(id) : /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(id);

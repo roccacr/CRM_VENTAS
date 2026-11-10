@@ -1,6 +1,6 @@
 import type { NotePlacement } from "../../services/notes/notes-service";
 
-/** Clamp visible controls to the current screen, preserving the stored desktop layout separately. */
+/** Recorta los controles visibles a la pantalla actual. El layout de escritorio guardado se conserva aparte. */
 export function visiblePlacement(value: NotePlacement): NotePlacement {
     const width = Math.min(value.width, Math.max(160, window.innerWidth - 24));
     const height = Math.min(value.height, Math.max(80, window.innerHeight - 150));

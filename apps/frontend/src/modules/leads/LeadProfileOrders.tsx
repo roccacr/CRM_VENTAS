@@ -42,7 +42,7 @@ function OrderRow({ order, withCurrency }: { readonly order: LeadProfileOrder; r
     );
 }
 function OrdersTable({ rows }: { readonly rows: readonly LeadProfileOrder[] }) {
-    // A column nobody fills is noise: currency appears only when at least one order reports it.
+    // Una columna que nadie llena es ruido. La moneda aparece solo cuando al menos una orden la reporta.
     const withCurrency = rows.some((order) => order.currency);
     return (
         <div className="profile-table-wrap">
@@ -93,7 +93,7 @@ function OrderFilters({ orders, filter, onChange }: { readonly orders: Orders; r
     );
 }
 
-/** Sales orders linked to the client, one table for both sources; each row opens the order in the orders view. The pager only appears when there is another page. */
+/** Órdenes de venta vinculadas al cliente, una tabla para los dos orígenes. Cada fila abre la orden en la vista de órdenes. El paginador aparece solo si hay otra página. */
 export function LeadProfileOrders({ orders, page, refreshing, onPage }: Props) {
     const [filter, setFilter] = useState<OrderFilter>("all");
     const rows = profileOrders(orders, filter);

@@ -1,6 +1,6 @@
 import type { AdministrationCatalogDefinition } from "../catalogs/catalog-definitions";
 
-/** Broker identity stays separate; presentation reuses the approved Projects design. */
+/** La identidad de corredores queda aparte. La presentación reutiliza el diseño de Proyectos. El formulario de esta pantalla corta el nombre en 250 caracteres. */
 export const BROKERS_CATALOG: AdministrationCatalogDefinition = {
     code: "brokers",
     createPermission: "administration.catalog_broker.create",

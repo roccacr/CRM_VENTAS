@@ -71,13 +71,13 @@ function BannerCorner({ kind }: { readonly kind: keyof typeof BANNER_PLAN_PATHS 
     );
 }
 
-/** Preserve the empty list shell while refusing a revoked category queue. */
+/** Conserva el cascarón vacío de la lista mientras rechaza una cola cuya categoría fue revocada. */
 function visibleQueue(selected: PreviewQueue | null, allowedQueues: readonly string[]): PreviewQueue | null {
     if (!selected || selected.filter === "all" || allowedQueues.includes(selected.filter)) return selected;
     return null;
 }
 
-/** Share effect replays within a gated mount; retries and new grants read fresh data. */
+/** Las repeticiones del efecto se comparten dentro del montaje autorizado. Un reintento o un permiso nuevo leen datos frescos. */
 function useBannerSummary<T>(load: () => Promise<T>, enabled: boolean, refreshVersion: number) {
     const [value, setValue] = useState<T | null>(null);
     const [failed, setFailed] = useState(false);
@@ -161,7 +161,7 @@ function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }:
     );
 }
 
-/** One gated owner supplies every stage banner without sharing data between mounts. */
+/** Un solo dueño autorizado alimenta cada banner de etapa. Los montajes no comparten datos. */
 function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly onOpen: (filter: FollowUpSelection) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
     const { value: summary, failed, retry } = useHomeSummary(enabled, refreshVersion);
     const counts = summary?.counts ?? { contracts: { toSend: undefined, pendingSignature: undefined }, banking: undefined, bankingInProgress: undefined, balance: undefined, transferPending: undefined, transferSigned: undefined, closedThisYear: undefined };
@@ -288,12 +288,12 @@ function canUpdateOrderStage(_roles: FormalizationHomeProps["roles"], permission
     return entries.some((entry) => entry.effect === "allow") && !entries.some((entry) => entry.effect === "deny");
 }
 
-/** Gate the consumer itself so revoked access cannot retain data or start a request. */
+/** La puerta está en el consumidor. Un acceso revocado no conserva datos ni inicia una petición. */
 function FormalizationStageBanners({ canView, onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly canView: boolean; readonly onOpen: (filter: FollowUpSelection) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
     return canView ? <StageBanners allowedQueues={allowedQueues} onOpen={onOpen} enabled={enabled} refreshVersion={refreshVersion} /> : null;
 }
 
-/** Hidden previews never initiate stage-summary reads. */
+/** Una vista previa oculta no inicia la lectura del resumen de etapas. */
 const isHomeSummaryEnabled = (view: "home" | "orders", queue: PreviewQueue | null, selected: FormalizationExample | null) => view === "home" && queue === null && selected === null;
 
 /** Cabecera de la página; el botón de refrescar solo existe si hay algún banner visible por permisos. */
@@ -322,7 +322,7 @@ function activitySessionKey(user: FormalizationHomeProps["currentUser"]) {
     return user?.email ?? "session";
 }
 
-/** Gated canonical Home aggregates and follow-up; stage updates require their own effective permission. */
+/** Agregados y seguimiento canónicos, detrás de su permiso. Cambiar la etapa exige su propio permiso efectivo. */
 function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [], initialView = "home", onNavigate }: FormalizationHomeProps) {
     const filterStorageKey = filterPreferenceKey(currentUser);
     const [refreshVersion, setRefreshVersion] = useState(0);
@@ -486,7 +486,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [
     );
 }
 
-/** Permission-set changes unmount every read consumer, clearing open records and pending results before paint. */
+/** Un cambio del conjunto de permisos desmonta cada lectura, y limpia registros abiertos y resultados pendientes antes de pintar. */
 export function FormalizationHomePage(props: FormalizationHomeProps) {
     return (
         <FormalizationPreviewBoundary>
@@ -495,7 +495,7 @@ export function FormalizationHomePage(props: FormalizationHomeProps) {
     );
 }
 
-/** Reading the real record stays inside the same effective module/permission gate as its list. */
+/** Leer el registro real queda en la misma puerta de módulo y permiso que su lista. */
 function CurrentFormalizationRecord({ item, canView, ...props }: Omit<React.ComponentProps<typeof FormalizationOrderRecord>, "item"> & { readonly item: FollowUpItem | null; readonly canView: boolean }) {
     if (!canView || !item) return null;
     return <FormalizationOrderRecord item={item} {...props} />;
@@ -514,7 +514,7 @@ function RestoringOrder({ visible, status, onRetry, onBack }: { readonly visible
     );
 }
 
-/** Stale highlights must stay hidden if their own database refresh fails or is pending. */
+/** Un destacado vencido permanece oculto si su propio refresco de base falla o sigue pendiente. */
 function recordReadStatus(databaseStatus: string, providerStatus: "idle" | "loading" | "success" | "error"): "idle" | "loading" | "success" | "error" {
     if (databaseStatus === "loading") return "loading";
     if (["denied", "missing", "error"].includes(databaseStatus)) return "error";

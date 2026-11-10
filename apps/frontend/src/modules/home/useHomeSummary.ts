@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from "react";
 
 import { getHomeSummary, type HomeSummary } from "../../services/formalization/home-summary-service";
 
-/** Mount-local reads on entry, visible focus/tab return and retry; these counters are not realtime. */
+/** Lecturas locales al montar, al volver el foco o la pestaña y al reintentar. Estos contadores no son en tiempo real. */
 export function useHomeSummary(enabled: boolean, refreshVersion = 0) {
     const [value, setValue] = useState<HomeSummary | null>(null);
     const [failed, setFailed] = useState(false);
     const [wasEnabled, setWasEnabled] = useState(enabled);
-    // Shared in-flight promise de-duplicates focus/visibility/retry triggers; a stale response is ignored.
+    // Una promesa en curso compartida evita repetir foco, visibilidad y reintento. Una respuesta vieja se ignora.
     const request = useRef<Promise<HomeSummary> | null>(null);
-    // Bridge so the returned `retry` can call the `read` closure owned by the effect.
+    // Puente para que el `retry` devuelto llame al `read` que pertenece al efecto.
     const refresh = useRef<() => void>(() => {});
-    // Clear during the render transition so a re-enabled Home cannot paint prior counts.
+    // Se limpia durante la transición de render para que un Inicio reactivado no pinte conteos anteriores.
     if (wasEnabled !== enabled) {
         setWasEnabled(enabled);
         setValue(null);

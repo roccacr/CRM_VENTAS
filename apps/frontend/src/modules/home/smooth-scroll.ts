@@ -1,4 +1,4 @@
-/** First ancestor that actually scrolls vertically (the app shell scrolls inside itself). The page itself is the document's scrolling element, never `body`. */
+/** Primer ancestro que de verdad hace scroll vertical. El shell de la app se desplaza dentro de sí. La página es el elemento de scroll del documento, no `body`. */
 function scrollParentOf(node: HTMLElement): HTMLElement | null {
     for (let parent = node.parentElement; parent && parent !== document.body && parent !== document.documentElement; parent = parent.parentElement) {
         const { overflowY } = getComputedStyle(parent);

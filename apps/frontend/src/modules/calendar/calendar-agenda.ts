@@ -11,7 +11,7 @@ export interface AgendaStats {
 const localDay = (event: CalendarEvent) => utcToLocal(event.start).slice(0, 10);
 const active = (event: CalendarEvent) => event.status !== "cancelled";
 
-/** Counts shown in the summary strip, always for the events already loaded; nothing is fetched here. */
+/** Conteos de la franja de resumen, siempre sobre los eventos ya cargados. Aquí no se consulta nada. */
 export function agendaStats(events: readonly CalendarEvent[], today: string, calendars: number): AgendaStats {
     let weekEnd = today;
     for (let day = 0; day < 7; day += 1) weekEnd = calendarNextDay(weekEnd);
@@ -24,7 +24,7 @@ export function agendaStats(events: readonly CalendarEvent[], today: string, cal
     };
 }
 
-/** The next events from today on, soonest first, for the side agenda. */
+/** Los próximos eventos desde hoy, el más cercano primero, para la agenda lateral. */
 export function upcomingEvents(events: readonly CalendarEvent[], today: string, limit: number): readonly CalendarEvent[] {
     return events
         .filter((event) => event.status === "scheduled" && localDay(event) >= today)

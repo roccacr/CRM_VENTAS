@@ -19,7 +19,7 @@ const prefix = "crm:follow-up:v1:";
 export function isFollowUpSelection(value: unknown): value is FollowUpSelection {
     return typeof value === "string" && value !== "all" && [...FOLLOW_UP_QUEUES, "bank_not_started", "bank_in_progress"].includes(value);
 }
-/** Local preferences contain filter IDs only and never grant access to an order. */
+/** Las preferencias locales guardan solo ids de filtro. No conceden acceso a una orden. */
 function validProjects(value: unknown): value is string[] {
     return Array.isArray(value) && value.length <= 50 && value.every((id: unknown) => typeof id === "string" && /^(?:[0-9A-HJKMNP-TV-Z]{26}|legacy-project:[1-9][0-9]{0,19})$/.test(id));
 }
@@ -52,7 +52,7 @@ export function saveFollowUpPreferences(key: string | undefined, value: FollowUp
     try {
         localStorage.setItem(prefix + key, JSON.stringify(value));
     } catch {
-        /* Private/blocked storage must not prevent filtering. */
+        /* Un almacenamiento privado o bloqueado no impide filtrar. */
     }
 }
 /**
@@ -76,7 +76,7 @@ interface FilterOptions {
 function initialPreferences(key: string | undefined, scope: PreviewQueue): FollowUpPreferences {
     return readFollowUpPreferences(key) ?? { projectIds: scope.project ? [scope.project] : [], selections: scope.filter === "all" ? [] : [scope.filter] };
 }
-/** Filter state is shared by both list surfaces; storage is scoped to the current user and view. */
+/** El estado del filtro lo comparten las dos superficies de lista. El almacenamiento queda en el usuario y la vista actuales. */
 export function useFollowUpFilters({ scope, tableOnly, canViewApprovals, filterStorageKey, allowedQueues, stagePermissions, filterRequest }: FilterOptions) {
     const surface = tableOnly ? "orders" : "home";
     const storageKey = filterStorageKey ? `${filterStorageKey}:${surface}:${scope.filter}:${scope.project ?? ""}` : undefined;

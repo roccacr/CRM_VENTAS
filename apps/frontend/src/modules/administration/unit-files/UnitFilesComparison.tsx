@@ -15,14 +15,14 @@ const COST_FIELDS = new Set(["advertisedSalePrice", "minimumSalePrice", "pricePe
 const NUMERIC_FIELDS = new Set([...KEY_FIELDS, "minimumSalePrice", "pricePerSquareMeter", "approximateMaintenanceFee", "habitableArea", "storageArea", "mezzanineArea", "balconyArea", "groundFloorArea", "upperFloorArea", "extensionArea", "terraceArea", "thirdLevelBasementArea", "externalGardenArea", "slopedGardenArea", "openCommonArea"]);
 const numberFormat = new Intl.NumberFormat("es-CR", { maximumFractionDigits: 6 });
 
-// Source amounts use dot decimals and optional thousands commas. Do not guess other formats.
+// Los montos de origen usan punto decimal y, si vienen, comas de miles. No se adivina otro formato.
 function amount(value: string | null | undefined): number | null {
     if (!value || !/^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(value.trim())) return null;
     const parsed = Number(value.trim().replaceAll(",", ""));
     return Number.isFinite(parsed) && Math.abs(parsed) <= Number.MAX_SAFE_INTEGER ? parsed : null;
 }
 
-/** Visual comparison is presentation-only: source values and API contracts remain untouched. */
+/** La comparación solo presenta. Los valores de origen y el contrato del API no se modifican. */
 export function UnitFilesComparison({ items, labels, groups }: { readonly items: UnitDetail[]; readonly labels: Record<string, string>; readonly groups: readonly { title: string; fields: readonly string[] }[] }) {
     const [referenceId, setReferenceId] = useState(items[0]?.id);
     const [differencesOnly, setDifferencesOnly] = useState(false);

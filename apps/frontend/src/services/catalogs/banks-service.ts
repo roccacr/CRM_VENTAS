@@ -1,7 +1,7 @@
 import { apiRequest } from "../api/api-client";
 import type { CatalogContextModuleCode, CatalogItemStatus, ListCatalogItemsOptions } from "./catalog-service";
 
-/** Native bank identity: no ERP reference or generic catalog item is synthesized. */
+/** Identidad nativa del banco. No se fabrica una referencia del ERP ni un ítem genérico de catálogo. */
 export interface Bank {
     readonly publicId: string;
     readonly name: string;
@@ -42,7 +42,7 @@ const record = (value: unknown): value is Record<string, unknown> => typeof valu
 const nonempty = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
 const integer = (value: unknown, minimum: number): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum;
 const baseValid = (value: Record<string, unknown>) => nonempty(value.publicId) && nonempty(value.name) && (value.status === "active" || value.status === "inactive") && integer(value.version, 1) && [value.createdAt, value.updatedAt].every((value) => nonempty(value) && Number.isFinite(Date.parse(value)));
-/** Reject incomplete records instead of granting fake identities or versions. */
+/** Rechaza un registro incompleto. No le otorga una identidad ni una versión falsas. */
 export const parseBank = (value: unknown): Bank => {
     if (!record(value) || !baseValid(value) || !integer(value.advisorCount, 0)) throw new TypeError("Respuesta de banco inválida.");
     return value as unknown as Bank;
@@ -69,7 +69,7 @@ const advisorPath = (bankId: string, advisorId?: string) => `${bankPath(bankId)}
 export const listBanks = async (options: ListCatalogItemsOptions): Promise<BankPage<Bank>> => parsePage(await apiRequest<unknown>(`${BASE}?${query(options)}`), parseBank);
 export const getBank = async (id: string, moduleCode: CatalogContextModuleCode): Promise<Bank> => parseBank(await apiRequest<unknown>(`${bankPath(id)}?${new URLSearchParams({ moduleCode }).toString()}`));
 export const listBankAdvisors = async (bankId: string, options: ListCatalogItemsOptions): Promise<BankPage<BankAdvisor>> => parsePage(await apiRequest<unknown>(`${advisorPath(bankId)}?${query(options)}`), parseBankAdvisor);
-// Mutation responses are never replayed after session renewal; callers reconcile unknown outcomes with GET.
+// La respuesta de una mutación no se repite después de renovar la sesión. Quien llama reconcilia un resultado desconocido con GET.
 export const createBank = async (body: BankPayload, signal?: AbortSignal): Promise<Bank> => parseBank(await apiRequest<unknown>(BASE, { method: "POST", body, retryOnUnauthorized: false, ...(signal ? { signal } : {}) }));
 export const updateBank = async (id: string, body: BankPayload & { readonly expectedVersion: number }, signal?: AbortSignal): Promise<Bank> => parseBank(await apiRequest<unknown>(bankPath(id), { method: "PATCH", body, retryOnUnauthorized: false, ...(signal ? { signal } : {}) }));
 export const updateBankStatus = async (id: string, body: BankStatusPayload, signal?: AbortSignal): Promise<Bank> => parseBank(await apiRequest<unknown>(`${bankPath(id)}/status`, { method: "PATCH", body, retryOnUnauthorized: false, ...(signal ? { signal } : {}) }));

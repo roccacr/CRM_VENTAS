@@ -171,7 +171,7 @@ export const getRoleModules = (roleCodes: readonly string[], rolePermissions: Cr
 /** Owner viaja con la unidad raíz. El resto viaja con los módulos donde sus roles tienen acciones. */
 const getPayloadOrgUnitCodes = (roleCodes: readonly string[], roleModules: readonly CreateUserModuleOption[]): readonly string[] => (hasOwnerRole(roleCodes) ? [GLOBAL_ORG_UNIT_CODE] : roleModules.map((module) => module.code));
 
-/** Both visibility and transport require an open creation form with local access and an effective grant. */
+/** Mostrar y enviar la contraseña inicial exigen el alta abierta, acceso local y el permiso efectivo. */
 export const canAssignInitialPassword = (mode: "create" | "edit", open: boolean, allowed: boolean | undefined, accessMethods: readonly string[]): boolean => Boolean(open && mode === "create" && allowed && accessMethods.includes("local"));
 
 /**

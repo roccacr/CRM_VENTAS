@@ -6,7 +6,7 @@ export interface OrderUnitDetail {
     readonly warnings: readonly string[];
 }
 type Mapping = readonly [label: string, native: string, legacy: string];
-// Explicit equivalents of the authorized snapshot allowlists. IDs remain references, never names.
+// Equivalentes explícitos de las listas permitidas de la foto autorizada. Los ids siguen siendo referencias, no nombres.
 const groups: readonly { title: string; fields: readonly Mapping[] }[] = [
     {
         title: "Unidad",
@@ -70,7 +70,7 @@ function text(value: unknown): string {
     if (typeof value === "boolean") return value ? "Sí" : "No";
     return "Sin dato";
 }
-/** Fresh authorized read only. Preserve source precision; no currency, status or area conversion is inferred. */
+/** Solo una lectura autorizada y fresca. Conserva la precisión de la fuente. No se infieren moneda, estado ni conversión de área. */
 export async function getOrderUnitDetail(identity: NetsuiteOrderIdentity): Promise<OrderUnitDetail> {
     const data = await getDatabaseOrder(identity);
     const warnings = data.warnings.filter((warning) => warning.startsWith("unitFile:"));

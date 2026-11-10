@@ -76,7 +76,7 @@ function useSynchronization({ identity, allowed, onEnvironment, onSynchronized }
     const unavailable = context !== null && !canSynchronize;
     return { context, label, canSynchronize, unavailable, open, setOpen, status, notice, pending, synchronize };
 }
-/** Environment and commit feedback remain scoped to the mounted order identity. */
+/** El entorno y el aviso de confirmación quedan en la identidad de la orden montada. */
 export function NetsuiteSynchronizationActions(props: SynchronizationProps) {
     const { allowed, onEnvironment } = props;
     const { context, label, canSynchronize, unavailable, open, setOpen, status, notice, pending, synchronize } = useSynchronization(props);

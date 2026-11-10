@@ -15,13 +15,13 @@ interface Props {
     readonly name: string;
     readonly stats: readonly ProfileStat[];
     readonly onStat: (tab: ProfileTab) => void;
-    /** Quick actions on the right of the name. */
+    /** Acciones rápidas a la derecha del nombre. */
     readonly actions: ReactNode;
-    /** The tab bar sits at the bottom edge of the card. */
+    /** La barra de pestañas queda en el borde inferior de la tarjeta. */
     readonly children: ReactNode;
 }
 
-/** A label whose wording says something (inactive, lost, contract…) gets a soft tint; anything else stays neutral. */
+/** Una etiqueta cuyo texto dice algo, como inactivo, perdido o contrato, recibe un tinte suave. Lo demás queda neutro. */
 function Chip({ label }: { readonly label: string }) {
     return (
         <span className="profile-chip" data-tone={labelTone(label)}>
@@ -49,8 +49,8 @@ function Subtitle({ data }: { readonly data: LeadProfileResult }) {
 }
 
 /**
- * The client at a glance: a quiet cover, the person, quick actions, the figures of the file as shortcuts into its sections, and the tab bar.
- * It never shows a figure the data does not support.
+ * El cliente de un vistazo: una cubierta quieta, la persona, las acciones rápidas, las cifras del expediente como atajos a sus secciones y la barra de pestañas.
+ * No muestra una cifra que los datos no sostengan.
  */
 export function LeadProfileHero({ data, name, stats, onStat, actions, children }: Props) {
     return (

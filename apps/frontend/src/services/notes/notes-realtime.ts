@@ -1,4 +1,4 @@
-/** Metadata is a signal to re-read authorized HTTP snapshots, never note content. */
+/** El metadato es una señal para volver a leer fotos HTTP autorizadas. No es el contenido de la nota. */
 export interface NoteActivity {
     readonly schemaVersion: 1;
     readonly eventId: string;
@@ -11,7 +11,7 @@ export interface NoteActivity {
 }
 const idPattern = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const kinds = new Set(["notification.created", "notifications.changed", "note.changed", "note.access_revoked", "sync.required"]);
-/** Rejects unknown fields so private payloads cannot reach UI listeners. */
+/** Rechaza campos desconocidos, para que un payload privado no llegue a los escuchas de la interfaz. */
 export function parseNoteActivity(value: unknown): NoteActivity | null {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
     const v = value as Record<string, unknown>;
@@ -30,7 +30,7 @@ export interface RealtimeSocket {
 }
 type Phase = "notifications" | "snapshot" | "revoke";
 type Listener = (event: NoteActivity | null) => void | Promise<void>;
-/** Owns bounded dedupe, coalescing and listener cleanup for one authenticated connection. */
+/** Es dueño de la deduplicación acotada, de la unión de eventos y de limpiar los escuchas de una conexión autenticada. */
 export function createNotesRealtime(socket: RealtimeSocket) {
     const listeners: Record<Phase, Set<Listener>> = { notifications: new Set(), snapshot: new Set(), revoke: new Set() };
     const seen = new Set<string>();
@@ -87,8 +87,8 @@ export function createNotesRealtime(socket: RealtimeSocket) {
         }
         invalidate(event);
     };
-    // Retry frequency is capped at one attempt per minute after exponential backoff.
-    // A rejected subscription still needs REST reconciliation while the socket is connected.
+    // Después del retroceso exponencial, el reintento queda en un intento por minuto.
+    // Una suscripción rechazada igual necesita reconciliarse por REST mientras el socket sigue conectado.
     const retry = (noteId: string, rateLimited = false) => {
         reconcile();
         if (disposed || !rooms.has(noteId) || retries.has(noteId)) return;
@@ -202,13 +202,13 @@ export function createNotesRealtime(socket: RealtimeSocket) {
 }
 export type NotesRealtime = ReturnType<typeof createNotesRealtime>;
 
-/** Unknown acknowledgements require reconciliation, never an inferred permission revocation. */
+/** Un acuse desconocido exige reconciliar. No se infiere que el permiso fue revocado. */
 function subscriptionAck(value: unknown): { ok: unknown; code: unknown } | null {
     if (!value || typeof value !== "object" || !("ok" in value)) return null;
     return { ok: value.ok, code: "code" in value ? value.code : undefined };
 }
 
-/** Validates the mandatory envelope independently from optional resource metadata. */
+/** Valida el sobre obligatorio aparte del metadato opcional del recurso. */
 function validEnvelope(v: Record<string, unknown>): boolean {
     return v.schemaVersion === 1 && typeof v.eventId === "string" && idPattern.test(v.eventId) && typeof v.kind === "string" && kinds.has(v.kind) && validTimestamp(v.occurredAt);
 }

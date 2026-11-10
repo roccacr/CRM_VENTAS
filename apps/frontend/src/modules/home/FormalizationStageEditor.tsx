@@ -19,7 +19,7 @@ interface Props {
     readonly onRefresh: () => void;
     readonly onApproved?: () => void;
 }
-/** The parent keys this editor by order/version; retry keys survive network errors within that edit. */
+/** El padre identifica este editor por orden y versión. La clave de reintento sobrevive a un error de red dentro de esa edición. */
 function useStageEdit({ item, allowed, permissions = [], onSaved }: Props) {
     const [target, setTarget] = useState(item.state.code);
     const [purchaseFundsOrigin, setPurchaseFundsOrigin] = useState<"own_funds" | "bank_financing" | "">(item.purchaseFundsOrigin ?? "");
@@ -74,7 +74,7 @@ function useStageEdit({ item, allowed, permissions = [], onSaved }: Props) {
     return { purchaseFundsOrigin, setPurchaseFundsOrigin, nextCode, uncertain, canSkip, destinationAllowed, exceptional, target, setTarget, reason, setReason, confirming, setConfirming, busy, error, stale, selected, eligible, restriction, refreshRequired, disabled, canSave, changed, save, pending };
 }
 
-/** Contracts branch only after an explicit funding choice; existing banking advances through in-progress. */
+/** El contrato se ramifica solo después de una elección explícita de fondos. La banca ya iniciada avanza por en curso. */
 function nextOrderStage(item: FollowUpItem, origin: string): string | null {
     const current = item.state.code;
     const currentIndex = ORDER_STAGES.findIndex((stage) => stage.code === current);
@@ -95,7 +95,7 @@ function stageFunds(current: string, target: string, origin: "own_funds" | "bank
 function stageReason(requiresReason: boolean, reason: string): { reason?: string } {
     return requiresReason ? { reason: reason.trim() } : {};
 }
-/** Version zero is valid for an order with no recorded transition yet. */
+/** La versión cero es válida en una orden que todavía no tiene una transición registrada. */
 function stageEditingRestriction(item: FollowUpItem, allowed: boolean): string | null {
     if (!allowed) return "No tienes permiso para cambiar la etapa.";
     if (item.approvalsComplete === undefined) return "Actualiza la orden para verificar sus aprobaciones.";
@@ -108,7 +108,7 @@ function stageSaveAllowed({ disabled, selected, different, requiresReason, reaso
     return !requiresReason || reason.trim().length > 0;
 }
 
-/** Commands register stage movement; they do not record signatures or payments. */
+/** Los comandos registran el movimiento de etapa. No registran firmas ni pagos. */
 const ADVANCE_LABELS: Partial<Record<OrderStage, string>> = {
     contract_pending_send: "Marcar como enviado",
     bank_management: "Iniciar gestión bancaria",
@@ -118,7 +118,7 @@ const ADVANCE_LABELS: Partial<Record<OrderStage, string>> = {
     transfer_signed: "Cerrar formalización",
 };
 
-/** Labels follow the actual eligible destination, including direct completion. */
+/** Las etiquetas siguen el destino elegible real, incluido un cierre directo. */
 function advanceLabel(item: FollowUpItem, next: { readonly code: string; readonly label: string }): string | undefined {
     let label = ADVANCE_LABELS[item.state.code as OrderStage];
     if (["pending_balance", "pending_transfer", "transfer_signed"].includes(item.state.code))
@@ -131,7 +131,7 @@ function advanceLabel(item: FollowUpItem, next: { readonly code: string; readonl
     return label;
 }
 
-/** Moves to the following stage; the confirmation dialog still asks before anything is saved. */
+/** Avanza a la etapa siguiente. El diálogo de confirmación pregunta antes de guardar. */
 function AdvanceAction({ item, model }: { readonly item: FollowUpItem; readonly model: ReturnType<typeof useStageEdit> }) {
     const index = ORDER_STAGES.findIndex((stage) => stage.code === item.state.code);
     const next = ORDER_STAGES.find((stage) => stage.code === model.nextCode) ?? { code: "", label: "Selecciona el origen de fondos" };
@@ -158,7 +158,7 @@ function AdvanceAction({ item, model }: { readonly item: FollowUpItem; readonly 
     );
 }
 
-/** Explain the blocked destination beside the disabled next-step button. */
+/** Explica el destino bloqueado junto al botón de siguiente paso deshabilitado. */
 function AdvanceDestination({ item, next }: { readonly item: FollowUpItem; readonly next: { code: string; label: string } }) {
     const restriction = stageTargetRestriction(item, next.code);
     const guidance = restriction ?? manualSignatureWarning(item, next.code);
@@ -182,7 +182,7 @@ function AdvanceDestination({ item, next }: { readonly item: FollowUpItem; reado
     );
 }
 
-/** Reversals use the existing exceptional command, destination permission and mandatory reason. */
+/** Una reversa usa el comando excepcional existente, el permiso del destino y un motivo obligatorio. */
 function PreviousAction({ item, model, onChoose }: { readonly item: FollowUpItem; readonly model: ReturnType<typeof useStageEdit>; readonly onChoose: (code: string) => void }) {
     if (!model.canSkip) return null;
     let code = ORDER_STAGES[ORDER_STAGES.findIndex((stage) => stage.code === item.state.code) - 1]?.code;
@@ -213,7 +213,7 @@ function PreviousAction({ item, model, onChoose }: { readonly item: FollowUpItem
     );
 }
 
-/** Confirmation is explicit and failed mutations keep the editor and its operation key. */
+/** La confirmación es explícita. Una mutación fallida conserva el editor y su clave de operación. */
 export function FormalizationStageEditor(props: Props) {
     const model = useStageEdit(props);
     return props.item.saleLost === true ? null : <StageEditorView {...props} model={model} />;
@@ -423,7 +423,7 @@ const TRANSFER_SIGNED_REQUIRED = "En NetSuite, marca «Cuotas pagadas por comple
 const CLOSED_REQUIRED = "Se requiere confirmar Unidad entregada: Sí en NetSuite para cerrar. Cuotas pagadas por completo, Unidad traspasada y Llaves entregadas no condicionan el cierre.";
 const BALANCE_RETURN_FORBIDDEN = "No se permite volver a Pendiente de saldo desde traspaso o etapas posteriores.";
 const SEND_REQUIRED = "Primero registra el envío del contrato y completa la etapa Pendiente de firma.";
-/** Unknown/missing signature never enables a later destination; the API repeats this under the order lock. */
+/** Una firma desconocida o ausente no habilita un destino posterior. El API lo repite bajo el bloqueo de la orden. */
 function stageTargetRestriction(item: FollowUpItem, target: string, skip = false): string | null {
     const paidRestriction = installmentsTargetRestriction(item, target);
     if (paidRestriction) return paidRestriction;
@@ -431,7 +431,7 @@ function stageTargetRestriction(item: FollowUpItem, target: string, skip = false
     if (item.contractSigned !== true) return SIGNATURE_REQUIRED;
     return !skip && ORDER_STAGES.findIndex((stage) => stage.code === item.state.code) < 1 ? SEND_REQUIRED : null;
 }
-/** Destination flags apply even to exceptions and reversals; unknown never satisfies an explicit No. */
+/** Las banderas del destino valen también en excepciones y reversas. Un valor desconocido no cumple un No explícito. */
 function installmentsTargetRestriction(item: FollowUpItem, target: string): string | null {
     const transferIndex = ORDER_STAGES.findIndex((stage) => stage.code === "pending_transfer");
     const currentIndex = ORDER_STAGES.findIndex((stage) => stage.code === item.state.code);

@@ -15,7 +15,7 @@ function Person({ person, caption }: { readonly person: OutlookPerson; readonly 
     );
 }
 
-/** "Seguimiento": who organized the event and how each invited person answered, as Outlook shows it. */
+/** Seguimiento: quién organizó el evento y cómo respondió cada persona invitada, como lo muestra Outlook. */
 export function OutlookAttendeesPanel({ detail }: { readonly detail: OutlookEventDetail }) {
     const shown = invitees(detail);
     const groups = groupAttendees(shown);

@@ -1,4 +1,4 @@
-/** Notes while they load: the cards they will have, in quiet bars, so the panel does not jump when they arrive. */
+/** Las notas mientras cargan: las tarjetas que tendrán, en barras quietas, para que el panel no salte cuando llegan. */
 export function NotesLoading({ label }: { readonly label: string }) {
     return (
         <div className="notes-loading" role="status" aria-busy="true">

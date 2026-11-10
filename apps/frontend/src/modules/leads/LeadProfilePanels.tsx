@@ -2,7 +2,7 @@ import type { LeadProfileResult } from "../../services/leads/lead-profile-servic
 import { infoBlocks } from "./lead-profile-model";
 import { InfoBlockCard, InfoHero } from "./LeadProfileFields";
 
-/** The consolidated view: introduction, then the base summary, the complementary context and the traceability of the record. */
+/** La vista consolidada: introducción, luego el resumen base, el contexto complementario y la trazabilidad del registro. */
 export function ConsolidatedPanel({ data }: { readonly data: LeadProfileResult }) {
     const blocks = infoBlocks(data.sections);
     return (

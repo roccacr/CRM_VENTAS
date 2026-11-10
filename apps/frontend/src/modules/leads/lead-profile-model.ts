@@ -3,7 +3,7 @@ import type { LeadProfileEvent, LeadProfileField, LeadProfileOrder, LeadProfileR
 export const ORIGIN_LABEL = { native: "Nuevo", legacy: "Anterior" } as const;
 
 export type ProfileTab = "log" | "events" | "opportunities" | "estimates" | "info" | "orders" | "files";
-/** Same sections the client file has always had, in the same order. */
+/** Las mismas secciones que el expediente del cliente siempre tuvo, en el mismo orden. */
 export const PROFILE_TABS: readonly { readonly id: ProfileTab; readonly label: string }[] = [
     { id: "log", label: "Bitácora de seguimiento" },
     { id: "events", label: "Lista de eventos" },
@@ -21,7 +21,7 @@ export const fieldValue = (sections: readonly Section[], code: string): string |
     return isBlank(value) ? null : value;
 };
 
-/** The legacy system fills empty values with "--" or "Sin dato"; both mean there is nothing to show. */
+/** El sistema anterior rellena un vacío con "--" o "Sin dato". Los dos significan que no hay nada que mostrar. */
 export const isBlank = (value: string | null | undefined): boolean => !value || ["--", "Sin dato", "N/A"].includes(value.trim());
 export const filledFields = (fields: readonly LeadProfileField[]) => fields.filter((field) => !isBlank(field.value));
 
@@ -55,7 +55,7 @@ const BLOCKS: readonly { readonly id: string; readonly eyebrow: string; readonly
         codes: ["status", "stage", "owner", "company", "currency", "createdAt", "updatedAt", "acquisitionSource", "interest", "followUpValue", "followUpReason", "contribution", "templateSent", "relatedLead", "action", "actionAt", "calendarFollowUp", "countryCode"],
     },
 ];
-/** The extra person's fields share names with the client's, so they carry their own label once everything sits in one view. */
+/** Los campos de la persona adicional comparten nombre con los del cliente, así que en una sola vista llevan su propia etiqueta. */
 const LABEL: Readonly<Record<string, string>> = {
     relatedName: "Nombre de la persona adicional",
     relatedIdentification: "Identificación adicional",
@@ -69,8 +69,8 @@ const LABEL: Readonly<Record<string, string>> = {
     fundsOrigin: "Origen de fondos",
 };
 /**
- * Regroups the API sections into the consolidated view: base summary, complementary context and traceability.
- * A field the view does not know yet goes to the last block, so nothing the API sends is ever left out.
+ * Reagrupa las secciones del API en la vista consolidada: resumen base, contexto complementario y trazabilidad.
+ * Un campo que la vista todavía no conoce va al último bloque, para no dejar fuera nada de lo que el API envía.
  */
 export function infoBlocks(sections: readonly Section[]): InfoBlock[] {
     const byCode = new Map(sections.flatMap((section) => section.fields).map((field) => [field.code, field] as const));
@@ -88,9 +88,7 @@ export function infoBlocks(sections: readonly Section[]): InfoBlock[] {
     return blocks.map((block, index) => (index === blocks.length - 1 ? { ...block, fields: [...block.fields, ...rest] } : block)).filter((block) => block.fields.length > 0);
 }
 
-/**
- *
- */
+/** Dos letras: la inicial de las dos primeras palabras, en mayúscula. */
 export function initials(name: string): string {
     return name
         .split(/\s+/u)
@@ -103,7 +101,7 @@ export function initials(name: string): string {
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const STAMP = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/u;
-/** Legacy dates keep their original wall time, so the text is reformatted and never converted between zones. */
+/** Las fechas anteriores conservan su hora de pared original. El texto se reformatea y no se convierte entre zonas. */
 export function formatStamp(value: string | null): string {
     const match = STAMP.exec(value ?? "");
     if (!match) return value ?? "Sin fecha";
@@ -114,14 +112,12 @@ export function formatStamp(value: string | null): string {
 /**
  *
  */
-/** The date and the hour of a stamp apart, for cards that show them in two lines. */
+/** La fecha y la hora de una marca, separadas, para las tarjetas que las muestran en dos líneas. */
 export function stampParts(value: string | null): { readonly date: string; readonly time: string | null } {
     const [date = "", time] = formatStamp(value).split(" · ");
     return { date, time: time ?? null };
 }
-/**
- *
- */
+/** Muestra el monto con dos decimales de Costa Rica. Un texto que no es número se deja como vino. Un vacío es una raya. */
 export function formatAmount(amount: string | null): string {
     const number = Number(amount);
     if (!amount || !Number.isFinite(number)) return amount ?? "—";
@@ -148,15 +144,14 @@ const fold = (text: string) =>
         .normalize("NFD")
         .replace(/\p{Diacritic}/gu, "")
         .toLowerCase();
-/** Grouping by wording: the API does not send a record type yet, so the title decides and anything else is "Otros". */
+/** El grupo sale del texto. El API todavía no envía un tipo de registro, así que decide el título y lo demás queda en Otros. */
 export function historyKind(entry: HistoryEntry): HistoryKind {
     const text = fold(entry.action);
     return KIND_PATTERNS.find(([, pattern]) => pattern.test(text))?.[0] ?? "other";
 }
+/** La fecha que se muestra es la de la fuente. Si falta, la del hecho. Si también falta, la del registro. */
 export const historyDate = (entry: HistoryEntry): string | null => entry.sourceDate ?? entry.occurredAt ?? entry.recordedAt;
-/**
- *
- */
+/** La búsqueda ignora acentos y mira la acción, el detalle y quién la hizo. Vacía, deja pasar todo. */
 export function matchesHistory(entry: HistoryEntry, query: string): boolean {
     const needle = fold(query.trim());
     return !needle || fold([entry.action, entry.detail ?? "", entry.actorName ?? ""].join(" ")).includes(needle);
@@ -164,17 +159,15 @@ export function matchesHistory(entry: HistoryEntry, query: string): boolean {
 export const historyOfKind = (history: LeadProfileResult["history"], kind: HistoryKind): HistoryEntry[] => history.items.filter((entry) => historyKind(entry) === kind);
 
 export type OrderFilter = "all" | "native" | "legacy";
-/**
- *
- */
+/** Todas junta primero las nativas y después las anteriores. Un filtro deja una sola fuente. */
 export function profileOrders(orders: LeadProfileResult["orders"], filter: OrderFilter): LeadProfileOrder[] {
     const sources = filter === "all" ? (["native", "legacy"] as const) : ([filter] as const);
     return sources.flatMap((source) => [...orders[source].items]);
 }
 
-/** Opens the order in the orders view, which restores it from these two parameters. */
+/** Abre la orden en la vista de órdenes, que la restaura con estos dos parámetros. El prefijo `legacy:` se quita del id. */
 export const orderHref = (order: LeadProfileOrder): string => `/home/formalization/orders?${new URLSearchParams({ orderSource: order.source, orderId: order.id.replace(/^legacy:/u, "") }).toString()}`;
-/** The orders read sends the ERP's status as a bare code; without its catalogue the code is shown as such instead of looking like a name. */
+/** La lectura de órdenes trae el estado del ERP como un código pelado. Sin su catálogo, un código numérico se muestra como código y no como si fuera un nombre. */
 export function orderStatus(status: string | null): string | null {
     if (!status) return null;
     return /^\d+$/u.test(status) ? `Código ${status}` : status;
@@ -187,19 +180,19 @@ const TONES: readonly (readonly [LabelTone, RegExp])[] = [
     ["ok", /mas probable|contrato|firmad|ganad|cerrad|activ[oa]\b|aprobad|complet|realizad|atendid/u],
     ["info", /reserva|oportunidad|estimaci|cotiz|visita|cita|nuevo|programad|agendad/u],
 ];
-/** Soft colour by meaning: lost or cancelled reads red, inactive or pending amber, contract or active green, reservation or opportunity blue. */
+/** Color suave por el significado: perdido o cancelado en rojo, inactivo o pendiente en ámbar, contrato o activo en verde, reserva u oportunidad en azul. */
 export function labelTone(label: string): LabelTone {
     const text = fold(label);
     return TONES.find(([, pattern]) => pattern.test(text))?.[0] ?? "neutral";
 }
 
-/** The newest linked order, the one a new event is scheduled against. */
+/** La orden vinculada más nueva, contra la que se agenda un evento. El orden es el texto de la fecha, no el origen. */
 export function latestOrder(orders: LeadProfileResult["orders"]): LeadProfileOrder | null {
     const all = profileOrders(orders, "all");
     return [...all].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0] ?? null;
 }
 
-/** Events of both databases in one list, newest first. */
+/** Eventos de las dos bases en una lista, lo más nuevo primero. */
 export function profileEvents(events: NonNullable<LeadProfileResult["events"]>, filter: OrderFilter): LeadProfileEvent[] {
     const sources = filter === "all" ? (["native", "legacy"] as const) : ([filter] as const);
     const stamp = (event: LeadProfileEvent) => `${event.date ?? ""} ${event.startTime ?? ""}`;

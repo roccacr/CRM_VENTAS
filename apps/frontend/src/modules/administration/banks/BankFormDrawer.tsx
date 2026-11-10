@@ -33,7 +33,7 @@ export function Section({ step, title, children }: { readonly step: number; read
         </section>
     );
 }
-/** Nombre, y los datos de contacto cuando el registro es un ejecutivo. */
+/** Nombre de hasta 250. El ejecutivo agrega correo de 254, teléfono de 40 y área de 120. El banco no pide esos datos. */
 function BankFields({ advisor }: { readonly advisor: boolean }) {
     return (
         <Section step={1} title={`Información ${advisor ? "del ejecutivo" : "del banco"}`}>
@@ -69,7 +69,10 @@ function dialogTitle(dialog: BankDialog): string {
     const advisor = dialog.kind === "advisor";
     return status ? `${dialog.item.status === "active" ? "Inactivar" : "Reactivar"} ${"bankPublicId" in dialog.item ? "ejecutivo" : "banco"}` : `${dialog.item ? "Editar" : "Nuevo"} ${advisor ? "ejecutivo" : "banco"}`;
 }
-/** El motivo de auditoría se escribe de nuevo. Un campo de contacto no recibe un valor inventado. */
+/**
+ * El motivo se vacía en cada apertura y exige de 3 a 255 caracteres.
+ * Cambiar el estado no reenvía el nombre. Inactivar un banco no cambia el estado de sus ejecutivos.
+ */
 export function BankFormDrawer({ dialog, saving, error, blocked, onClose, onSubmit }: { readonly dialog: BankDialog; readonly saving: boolean; readonly error: string | null; readonly blocked: boolean; readonly onClose: () => void; readonly onSubmit: (values: BankFormValues) => void }) {
     const [form] = Form.useForm<BankFormValues>();
     const status = dialog.kind === "status";

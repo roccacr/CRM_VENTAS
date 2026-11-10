@@ -1,6 +1,6 @@
 import type { AdministrationCatalogDefinition } from "../catalogs/catalog-definitions";
 
-/** Campaign identity stays separate; presentation reuses the approved Projects design. */
+/** La identidad de campañas queda aparte. La presentación reutiliza el diseño de Proyectos. Este archivo no declara un tope de nombre, así que el formulario compartido no le agrega uno. */
 export const CAMPAIGNS_CATALOG: AdministrationCatalogDefinition = {
     code: "campaigns",
     createPermission: "administration.catalog_campaign.create",

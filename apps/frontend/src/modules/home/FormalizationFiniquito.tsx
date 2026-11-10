@@ -35,7 +35,7 @@ function writeFailure(failure: unknown) {
     const stale = failure instanceof ApiClientError && [400, 401, 403, 404, 409].includes(failure.status);
     return { stale, message: stale ? "La orden o tus permisos cambiaron. Actualiza el finiquito." : "No se confirmó el cambio. Reintenta la misma operación." };
 }
-/** Both confirmed flags gate the branch; the server rechecks them for every mutation. */
+/** Las dos banderas confirmadas abren la rama. El servidor las vuelve a comprobar en cada mutación. */
 export function FormalizationFiniquito({ item, allowed }: { readonly item: FollowUpItem; readonly allowed: boolean }) {
     if (item.saleLost !== true || item.contractSigned !== true) return null;
     return <FiniquitoContent key={`${item.source}:${item.id}`} item={item} allowed={allowed} />;
@@ -66,7 +66,7 @@ function useFiniquito(item: FollowUpItem, allowed: boolean) {
         };
     }, [item.source, item.id, revision]);
     const next = ({ none: "pending_send", pending_send: "sent", sent: "signed", signed: null } as const)[data?.status ?? "none"];
-    // Keep the uncertain-response retry and its original operation together.
+    // El reintento de una respuesta incierta se queda con su operación original.
     // eslint-disable-next-line complexity
     const save = async () => {
         if (!data || !next) return;
@@ -104,7 +104,7 @@ function useFiniquito(item: FollowUpItem, allowed: boolean) {
     };
     return { data, error, busy, confirming, setConfirming, stale, uncertain, next, save, refresh };
 }
-// Declarative conditional rendering keeps the branch and its feedback together.
+// El render condicional deja juntas la rama y su aviso.
 // eslint-disable-next-line complexity
 function FiniquitoContent({ item, allowed }: { readonly item: FollowUpItem; readonly allowed: boolean }) {
     const { data, error, busy, confirming, setConfirming, stale, uncertain, next, save, refresh } = useFiniquito(item, allowed);

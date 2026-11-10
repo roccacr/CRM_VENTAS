@@ -1,6 +1,6 @@
 import type { AdministrationCatalogDefinition } from "../catalogs/catalog-definitions";
 
-/** Location identity stays separate; presentation reuses the approved Projects design. */
+/** La identidad de ubicaciones queda aparte. La presentación reutiliza el diseño de Proyectos. El formulario de esta pantalla corta el nombre en 100 caracteres. */
 export const LOCATIONS_CATALOG: AdministrationCatalogDefinition = {
     code: "locations",
     createPermission: "administration.catalog_location.create",

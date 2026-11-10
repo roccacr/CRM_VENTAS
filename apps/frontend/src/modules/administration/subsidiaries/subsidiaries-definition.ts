@@ -1,6 +1,6 @@
 import type { AdministrationCatalogDefinition } from "../catalogs/catalog-definitions";
 
-/** Subsidiary identity stays separate; presentation reuses the approved Projects design. */
+/** La identidad de subsidiarias queda aparte. La presentación reutiliza el diseño de Proyectos. El formulario de esta pantalla corta el nombre en 250 caracteres. */
 export const SUBSIDIARIES_CATALOG: AdministrationCatalogDefinition = {
     code: "subsidiaries",
     createPermission: "administration.catalog_subsidiary.create",

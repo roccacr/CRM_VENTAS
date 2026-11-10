@@ -21,7 +21,7 @@ import { type AuthState, getDefaultAuthenticatedPath, resolveRouteState, type Se
 
 /** Datos que la raíz ya resolvió. Este componente solo elige qué pantalla pintar. */
 export interface AppRouteContentProps {
-    /** Explicit menu navigation resets page-local detail, even on the same pathname. */
+    /** Una navegación explícita del menú reinicia el detalle local de la página, aunque la ruta sea la misma. */
     readonly navigationRevision?: number;
     /** Aviso del reintento de sesión. `null` cuando no hay un intento en curso. */
     readonly authRetryFeedback: string | null;
@@ -57,10 +57,10 @@ function RoutePage({ currentUser, roles, effectivePermissions, route, onNavigate
 /** Traduce el estado de autenticación a la fase y el usuario que muestra la pantalla de sesión. */
 const getSessionStatusView = (authState: AuthState): { readonly phase: SessionStatusPhase; readonly user: IdentityUser | null } => (authState.status === "checking" ? { phase: authState.phase ?? "checking", user: authState.user ?? null } : { phase: "checking", user: null });
 
-/** Authenticated feedback stays inside the original shell; denied pages never mount. */
+/** El aviso de una sesión válida se queda dentro del shell original. Una página denegada no se monta. */
 function AuthenticatedRouteContent({ profile, path, onLogout, onNavigate, navigationRevision }: { readonly navigationRevision: number; readonly profile: IdentityProfile; readonly path: string; readonly onLogout: () => void; readonly onNavigate: (path: string) => void }) {
     const route = getAppRoute(path);
-    // Navigation props can precede App's effect: authorize the current URL now.
+    // Las props de navegación pueden llegar antes del efecto de la raíz: la URL actual se autoriza ahora.
     const permittedRoute = resolveRouteState(profile, path).status === "authenticated" ? route : undefined;
     const defaultPath = getDefaultAuthenticatedPath(profile);
     const shellRoute = permittedRoute ?? getAppRoute(defaultPath ?? "");
@@ -96,7 +96,7 @@ function PreviewWorkspace({ workspaceCode, userId, sessionId, children }: { read
     return workspaceCode === "formalization" ? <FormalizationPreviewBoundary key={`${userId}:${sessionId}`}>{children}</FormalizationPreviewBoundary> : children;
 }
 
-/** A missing permitted landing page offers no invented navigation destination. */
+/** Si no hay una página de inicio permitida, no se inventa un destino. El botón de volver no se muestra. */
 function AuthenticatedRouteFeedback({ unknown, defaultPath, onNavigate }: { readonly unknown: boolean; readonly defaultPath: string | null; readonly onNavigate: (path: string) => void }) {
     return (
         <section className="global-home-dashboard" role="alert" aria-labelledby="route-feedback-title">

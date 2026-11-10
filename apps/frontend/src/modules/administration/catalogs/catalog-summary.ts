@@ -22,8 +22,8 @@ const count = new Intl.NumberFormat("es-CR");
 const hasExternalReference = (item: CatalogItem): boolean => item.externalReferences.some((reference) => reference.externalId.trim() !== "");
 
 /**
- * Cards for a catalog list. `total` comes from the API and covers every record; the other figures are counted over the
- * rows already loaded, so when the list is paged the caption says so instead of presenting a partial count as the whole.
+ * Tarjetas de un listado de catálogo. `total` viene del API y cubre todos los registros. Las demás cifras se cuentan
+ * sobre las filas ya cargadas, y si hay más páginas el texto lo dice para no presentar un conteo parcial como el total.
  */
 export function buildCatalogItemCards({ label, items, total, ready }: { readonly label: string; readonly items: readonly CatalogItem[]; readonly total: number; readonly ready: boolean }): CatalogBannerData[] {
     const dash = "—";
@@ -60,8 +60,8 @@ export function buildUnitFileCards({ projects, loaded, selected, hasSearched }: 
 }
 
 /**
- * Cards for the user directory. The API counts the whole directory by status and ignores the search and the active
- * filter, so these figures never change while someone is filtering the table. Before the first answer they show a dash.
+ * Tarjetas del directorio de usuarios. El API cuenta todo el directorio por estado e ignora la búsqueda y el filtro
+ * activo, así que las cifras no cambian mientras se filtra la tabla. Antes de la primera respuesta muestran una raya.
  */
 export function buildUserCards({ summary, ready }: { readonly summary: SystemUsersSummary; readonly ready: boolean }): CatalogBannerData[] {
     const figure = (value: number): string => (ready ? count.format(value) : "—");

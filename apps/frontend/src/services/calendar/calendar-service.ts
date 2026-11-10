@@ -44,7 +44,7 @@ export interface OutlookAttendee extends OutlookPerson {
     readonly kind: "required" | "optional" | "resource";
     readonly response: OutlookResponse;
 }
-/** Read-only facts Outlook holds about an event; showing them grants nothing and cannot write back. */
+/** Datos de solo lectura que Outlook tiene del evento. Mostrarlos no concede nada y no escribe de vuelta. */
 export interface OutlookEventDetail {
     readonly organizer: OutlookPerson | null;
     readonly attendees: readonly OutlookAttendee[];
@@ -166,7 +166,7 @@ function readOutlookAttendee(value: unknown): OutlookAttendee {
     return { ...readOutlookPerson(data), kind: data.kind as OutlookAttendee["kind"], response: data.response as OutlookResponse };
 }
 const httpsOrNull = (value: unknown): string | null => (typeof value === "string" && value.startsWith("https://") ? value : null);
-/** The detail is extra information: a malformed one is dropped instead of blanking the whole calendar. */
+/** El detalle es información extra. Uno mal formado se descarta y no vacía todo el calendario. */
 function readOutlookDetail(value: unknown): { outlookDetail?: OutlookEventDetail } {
     try {
         const data = object(value);
@@ -238,11 +238,11 @@ function readOrigin(data: Record<string, unknown>): CalendarModule | null {
 function readOutlookIdentity(data: Record<string, unknown>) {
     return { ...(data.outlookId === undefined ? {} : { outlookId: string(data.outlookId) }), ...(data.outlookVersion === undefined ? {} : { outlookVersion: string(data.outlookVersion) }) };
 }
-/** The server supplies the authorized catalogs and capabilities; no sample fallback. */
+/** El servidor entrega los catálogos y las capacidades autorizadas. No hay un ejemplo de respaldo. */
 export async function getCalendars(): Promise<CalendarDescriptor[]> {
     return list(envelope(await apiRequest<unknown>("/calendar/calendars")).calendars, readCalendar);
 }
-/** Only the visible exclusive interval and explicitly selected authorized modules are requested. */
+/** Se pide solo el intervalo exclusivo visible y los módulos autorizados elegidos de forma explícita. */
 export async function getCalendarEvents(modules: readonly CalendarModule[], interval: CalendarInterval, contextModule: CalendarModule): Promise<CalendarEvent[]> {
     return (await getCalendarFeed(modules, interval, contextModule)).events;
 }
@@ -255,7 +255,7 @@ export async function getCalendarFeed(modules: readonly CalendarModule[], interv
     if (!["connected", "consent_required", "unavailable", "conflict"].includes(string(outlookStatus))) throw invalid();
     return { events: list(response.events, readEvent), outlookStatus: outlookStatus as OutlookFeedStatus };
 }
-/** Caller holds the original event version and operation UUID across retries. */
+/** Quien llama conserva la versión original del evento y el UUID de la operación entre reintentos. */
 export async function saveCalendarEvent(command: CalendarEventCommand, edit?: { readonly id: string; readonly expectedVersion: number }): Promise<CalendarEvent> {
     const path = edit ? `/calendar/events/${encodeURIComponent(edit.id)}` : "/calendar/events";
     const response = envelope(await apiRequest<unknown>(path, { method: edit ? "PATCH" : "POST", body: edit ? { ...command, expectedVersion: edit.expectedVersion } : command, retryOnUnauthorized: false }));
@@ -291,7 +291,7 @@ function readLink(value: unknown): CalendarLink {
     if (!["note", "lead", "sales_order"].includes(string(data.entityType)) || !["native", "legacy"].includes(string(data.source))) throw invalid();
     return { entityType: data.entityType as CalendarLink["entityType"], source: data.source as CalendarLink["source"], id: string(data.id) };
 }
-/** Results are authorized by the API; source is part of each record identity. */
+/** El API autoriza los resultados. El origen forma parte de la identidad de cada registro. */
 export async function getCalendarLookup(kind: CalendarLookupKind, search: string, moduleCode: CalendarModule, leads?: readonly CalendarLink[]): Promise<CalendarLookupItem[]> {
     const query = new URLSearchParams({ kind, search, moduleCode });
     if (leads?.length) query.set("leads", JSON.stringify(leads));

@@ -1,6 +1,6 @@
 import type { PersonalNote } from "../../services/notes/notes-service";
 
-/** Project lifecycle only from capabilities already granted by the server; reopening never invents edit/reply access. */
+/** El ciclo de vida se proyecta solo con capacidades que el servidor ya concedió. Reabrir no inventa permiso de editar ni de responder. */
 export function projectNoteState<T extends PersonalNote>(note: T, status: PersonalNote["status"]): T {
     const resolve = note.capabilities.canComplete || note.capabilities.canReopen;
     const capabilities = { ...note.capabilities };

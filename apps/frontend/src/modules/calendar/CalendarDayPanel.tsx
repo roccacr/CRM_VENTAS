@@ -20,7 +20,7 @@ const dayTitle = (day: string) => {
     const text = dayFormat.format(new Date(`${day}T00:00:00Z`));
     return text.charAt(0).toUpperCase() + text.slice(1);
 };
-/** Position inside the 00:00-24:00 window; null when the slot lies entirely outside it. */
+/** Posición dentro de la ventana de 00:00 a 24:00. Nula si el hueco queda por completo fuera. */
 const place = (from: number, to: number) => {
     const first = Math.max(from, FIRST_HOUR * 60);
     const last = Math.min(to, LAST_HOUR * 60);
@@ -74,7 +74,7 @@ function externalBlocks(value: OutlookAvailability | undefined, day: string): Bl
         });
 }
 
-/** One column slot of the day: the width and left edge come from how many events share its time. */
+/** Un hueco de columna del día. El ancho y el borde izquierdo salen de cuántos eventos comparten esa hora. */
 function columnStyle<T extends { readonly top: number; readonly height: number }>(placed: Placed<T & { readonly from: number; readonly to: number }>) {
     const width = `calc((100% - 12px) / ${String(placed.lanes)})`;
     return { top: placed.item.top, height: placed.item.height, width, left: `calc(6px + ${width} * ${String(placed.lane)})`, right: "auto" } as const;
@@ -88,7 +88,7 @@ interface DayModel {
     readonly clashing: readonly Block[];
     readonly items: ReturnType<typeof arrange<Block & { readonly kind: "event" | "draft" }>>;
 }
-/** Everything the day grid draws: the loaded events, Outlook's busy times, the event being edited and which of them collide with it. */
+/** Lo que dibuja la grilla del día: los eventos cargados, las horas ocupadas de Outlook, el evento en edición y cuáles chocan con él. */
 function buildDay(props: Props): DayModel {
     const day = props.start.slice(0, 10);
     const { timed, allDay } = dayBlocks(props, day);
@@ -118,7 +118,7 @@ function DayItem({ placed, clashKeys, clashing, start, end }: { readonly placed:
     );
 }
 
-/** Outlook-style day beside the form, 00:00 to 24:00: what is already booked that day and where the event being edited lands. Overlaps share the width and turn red on both sides. Read-only; it never writes. */
+/** Día al lado del formulario, de 00:00 a 24:00: lo ya reservado y dónde cae el evento en edición. Los solapes comparten el ancho y se marcan en rojo de los dos lados. Es de solo lectura. */
 export function CalendarDayPanel(props: Props) {
     const { day, allDay, outlook, draft, clashing, items } = buildDay(props);
     const clashKeys = new Set(clashing.map((block) => block.key));
@@ -161,15 +161,15 @@ export function CalendarDayPanel(props: Props) {
 
 const VISIBLE_SUGGESTIONS = 4;
 const SHORT_DAY = new Intl.DateTimeFormat("es-CR", { day: "numeric", month: "short", timeZone: "UTC" });
-/** "10:00 – 11:00", with the day in front only when the slot is not on the day being edited. */
+/** Hora de inicio y fin. El día va delante solo cuando el hueco no es el día que se está editando. */
 function slotLabel(slot: OutlookSlot, day: string): string {
     const start = utcToLocal(slot.start);
     const times = `${start.slice(11, 16)} – ${utcToLocal(slot.end).slice(11, 16)}`;
     return start.slice(0, 10) === day ? times : `${SHORT_DAY.format(new Date(`${start.slice(0, 10)}T00:00:00Z`)).replace(".", "")} · ${times}`;
 }
 /**
- * Free times Outlook proposes, as compact green chips two per row. Only the first few show; the rest sit behind one button,
- * so a long list never pushes the day grid out of sight.
+ * Horas libres que propone Outlook, en fichas verdes de dos por fila. Se muestran las primeras cuatro y el resto queda detrás de un botón,
+ * para que una lista larga no empuje la grilla del día fuera de la vista.
  */
 function Suggestions({ slots, day, disabled, onSuggest }: { readonly slots: readonly OutlookSlot[]; readonly day: string; readonly disabled: boolean; readonly onSuggest: ((slot: OutlookSlot) => void) | undefined }) {
     const [expanded, setExpanded] = useState(false);
@@ -216,7 +216,7 @@ function AvailabilitySummary({ value, day, onSuggest, disabled }: { readonly dis
         </section>
     );
 }
-/** Names what the new time lands on. Events already drawn on the grid are listed first; Outlook's own conflicts cover the ones outside the loaded view. */
+/** Nombra sobre qué cae la hora nueva. Primero van los eventos ya dibujados. Los conflictos propios de Outlook cubren los que están fuera de la vista cargada. */
 function ConflictNotice({ clashing, external }: { readonly clashing: readonly Block[]; readonly external: OutlookAvailability["conflicts"] }) {
     const rows = clashing.length ? clashing.map((block) => ({ key: block.key, label: block.label, when: `${clock(block.from)} – ${clock(block.to)}` })) : external.map((event, index) => ({ key: String(index), label: event.label, when: `${utcToLocal(event.start).slice(11, 16)} – ${utcToLocal(event.end).slice(11, 16)}` }));
     if (rows.length === 0) return null;

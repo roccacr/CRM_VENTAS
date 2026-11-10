@@ -1,12 +1,12 @@
-// Local presentation fixture only; replace with the canonical DTO when its binding is approved.
-// Never use this example as an API error fallback or to modify the selected order.
-// Field names follow the sales-order record the business already uses; every value here is invented.
+// Ejemplo local de presentación. Se reemplaza por el DTO canónico cuando se apruebe su enlace.
+// Este ejemplo no rellena un error del API ni modifica la orden seleccionada.
+// Los nombres de campo siguen el registro de orden que el negocio ya usa. Cada valor de aquí es inventado.
 
 export interface RecordField {
     readonly label: string;
     readonly value: string | number | null;
     readonly kind?: "money";
-    /** Long text. The label stays above the value, aligned to the left. */
+    /** Texto largo. La etiqueta queda arriba del valor, alineada a la izquierda. */
     readonly wide?: boolean;
 }
 
@@ -19,7 +19,7 @@ export interface RecordChapterData {
     readonly id: string;
     readonly label: string;
     readonly groups?: readonly RecordGroup[];
-    /** Honest empty state when this part of the file has no records yet. */
+    /** Estado vacío honesto cuando esta parte del expediente todavía no tiene registros. */
     readonly empty?: string;
 }
 
@@ -30,7 +30,7 @@ export interface RecordFlag {
 
 export interface CheckGroup {
     readonly title: string;
-    /** Show "n de m" only where every flag answers the same question (milestones, approvals). */
+    /** Muestra "n de m" solo donde cada bandera responde la misma pregunta: hitos o aprobaciones. */
     readonly counted?: boolean;
     readonly items: readonly RecordFlag[];
 }

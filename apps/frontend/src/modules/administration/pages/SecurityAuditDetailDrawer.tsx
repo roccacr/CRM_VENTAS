@@ -59,7 +59,7 @@ function displayCollection(value: object): string {
         .join(" · ");
 }
 
-/** A mounted drawer owns one read request; closing or switching events discards late responses. */
+/** El panel montado es dueño de una lectura. Cerrarlo o cambiar de evento descarta una respuesta tardía. */
 export function SecurityAuditDetailDrawer({ publicId, onClose }: { readonly publicId: string; readonly onClose: () => void }) {
     const [detail, setDetail] = useState<AuditDetail>();
     const [error, setError] = useState(false);
@@ -161,7 +161,7 @@ function AuditReferenceFacts({ detail }: { readonly detail: AuditDetail }) {
     );
 }
 
-/** Only existing guarded section routes are linked; this is never a URL for a specific record. */
+/** Solo se enlazan rutas de sección que ya existen y tienen guarda. No es una URL de un registro concreto. */
 function auditSectionPath(detail: AuditDetail): string | null {
     if (!detail.contextKnown) return null;
     const workspaces: Readonly<Record<string, string>> = { administration: "administration", ventas: "sales", mercadeo: "marketing", formalizacion: "formalization", contabilidad: "accounting" };

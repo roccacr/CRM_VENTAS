@@ -6,9 +6,9 @@ export interface NoteNotification {
     kind: "shared" | "reply" | "mention" | "assigned" | "reminder" | "due";
     actor: { publicId: string; displayName: string };
     noteId: string;
-    /** Which note the notice is about. */
+    /** De qué nota es el aviso. */
     note: { title: string | null; excerpt: string };
-    /** What the actor wrote, for replies and mentions; null for invitations. */
+    /** Lo que escribió quien actuó, en respuestas y menciones. Nulo en una invitación. */
     replyExcerpt: string | null;
     moduleCode: NoteModule;
     createdAt: string;
@@ -55,7 +55,7 @@ function validatePage(pagination: NoteNotifications["page"], page: number, items
     if (pagination.number !== page || new Set(items.map((n) => n.id)).size !== items.length) invalid();
     if (items.length && (pagination.number - 1) * pagination.size + items.length > pagination.total) invalid();
 }
-/** Reads metadata only; opening the bell never marks notifications read. */
+/** Lee solo metadatos. Abrir la campana no marca los avisos como leídos. */
 export async function getNoteNotifications(filter: "all" | "unread" | "mentions" = "all", page = 1): Promise<NoteNotifications> {
     const query = new URLSearchParams({ filter, page: String(integer(page, 1, 1000)), pageSize: "25" });
     const r = record(await apiRequest<unknown>(`/notifications?${query}`)),
@@ -66,18 +66,18 @@ export async function getNoteNotifications(filter: "all" | "unread" | "mentions"
     validatePage(pagination, page, items);
     return { schemaVersion: 1, items, page: pagination, unreadCount: integer(r.unreadCount), observedAt: timestamp(r.observedAt) };
 }
-/** The optional server flag explicitly identifies a bounded lower-bound count. */
+/** La bandera opcional del servidor identifica de forma explícita un conteo que es un límite inferior. */
 export async function getNoteUnreadCount(): Promise<NoteUnreadCount> {
     const r = record(await apiRequest<unknown>("/notifications/unread-count"));
     const flag = r.countIsLowerBound === undefined ? false : r.countIsLowerBound;
     if (typeof flag !== "boolean") invalid();
     return { count: integer(r.count), countIsLowerBound: flag as boolean };
 }
-/** Marks one current-recipient notification read only after explicit user action. */
+/** Marca como leído un aviso del destinatario actual solo después de una acción explícita. */
 export async function markNoteNotificationRead(notificationId: string): Promise<void> {
     await apiRequest<unknown>(`/notifications/${id(notificationId)}/read`, { method: "PUT", retryOnUnauthorized: false });
 }
-/** Uses the list's observedAt cutoff so later events cannot be marked read accidentally. */
+/** Usa el corte `observedAt` de la lista, para que un evento posterior no se marque leído por accidente. */
 export async function markAllNoteNotificationsRead(through: string): Promise<void> {
     await apiRequest<unknown>("/notifications/read-all", { method: "PUT", body: { through: timestamp(through) }, retryOnUnauthorized: false });
 }

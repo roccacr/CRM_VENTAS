@@ -75,7 +75,7 @@ function rows(value: unknown): MarketingApiDailyRow[] {
     });
 }
 
-/** Validate identifiers, totals and incomplete sources before a value can become a visible counter. */
+/** Valida identificadores, totales y fuentes incompletas antes de que un valor pueda verse como contador. */
 export function parseMarketingHomeSummary(value: unknown, period: MarketingApiPeriod): MarketingApiSummary {
     const data = record(value);
     const sources = record(data.sources);
@@ -102,12 +102,12 @@ export function parseMarketingHomeSummary(value: unknown, period: MarketingApiPe
     validateAppointments(summary);
     return summary;
 }
-/** Existing BFF handles session cookies and authentication; GET has no mutation or persistence. */
+/** El BFF existente maneja las cookies de sesión y la autenticación. El GET no muta ni persiste. */
 export async function getMarketingHomeSummary(period: MarketingApiPeriod): Promise<MarketingApiSummary> {
     return parseMarketingHomeSummary(await apiRequest<unknown>(`/marketing/home/summary?period=${period}`), period);
 }
 
-/** Reject disconnected rows and totals instead of publishing a partial report. */
+/** Rechaza filas y totales desconectados. No publica un reporte parcial. */
 function validateEvidence(summary: MarketingApiSummary): void {
     const sellers = new Set(summary.sellers.map((item) => item.id));
     const projects = new Set(summary.projects.map((item) => item.id));
@@ -117,7 +117,7 @@ function validateEvidence(summary: MarketingApiSummary): void {
     if (summary.sources.native + summary.sources.legacy !== summary.counts.leads || total(summary.selected) !== summary.counts.leads || total(summary.comparison) !== summary.counts.previousLeads) throw invalid();
 }
 
-/** Appointment volume is event based; conversion is a unique-lead cohort aggregate. */
+/** El volumen de citas se cuenta por evento. La conversión es un agregado de la cohorte de leads únicos. */
 function parseAppointments(value: unknown): MarketingApiAppointments {
     const data = record(value);
     if (data.available === false) return { available: false };

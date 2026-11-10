@@ -36,14 +36,14 @@ const initialTab = (): ProfileTab => {
     const tab = new URLSearchParams(window.location.search).get("tab");
     return isProfileTab(tab) ? tab : "log";
 };
-/** The chosen section lives in the address (?tab=) so a link opens it; it replaces the entry instead of adding history. */
+/** La sección elegida vive en la dirección (`?tab=`), así un enlace la abre. Reemplaza la entrada y no agrega historial. */
 function rememberTab(tab: ProfileTab) {
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
     window.history.replaceState(window.history.state, "", url);
 }
 
-/** Data comes from the same single read as before; the sections only decide how it is shown. Paging keeps the page on screen and refreshes just the section. */
+/** Los datos salen de la misma lectura única de antes. Las secciones solo deciden cómo se muestran. Paginar deja la página en pantalla y refresca solo esa sección. */
 function useLeadProfile({ source, id }: LeadIdentity) {
     const [loaded, setLoaded] = useState<Loaded | null>(null);
     const [status, setStatus] = useState<number | null>(null);
@@ -80,7 +80,7 @@ interface PanelProps {
     readonly data: LeadProfileResult;
     readonly profile: ReturnType<typeof useLeadProfile>;
 }
-/** The section the person chose; each one only needs the part of the read that belongs to it. */
+/** La sección que la persona eligió. Cada una usa solo la parte de la lectura que le corresponde. */
 function ProfilePanel({ tab, data, profile }: PanelProps) {
     const history = {
         history: data.history,
@@ -108,7 +108,7 @@ const tabCounts = (data: LeadProfileResult): Partial<Record<ProfileTab, string>>
     return { log: `${String(data.history.items.length)}${more(data)}`, events: data.events ? String(profileEvents(data.events, "all").length) : "—", opportunities: count("opportunities"), estimates: count("estimates"), orders: orders > 0 ? String(orders) : "" };
 };
 
-/** Figures shown under the name; each opens the section it comes from. */
+/** Cifras bajo el nombre. Cada una abre la sección de donde sale. */
 function profileStats(data: LeadProfileResult, counts: Partial<Record<ProfileTab, string>>): ProfileStat[] {
     const since = stampParts(fieldValue(data.sections, "createdAt")).date;
     return [

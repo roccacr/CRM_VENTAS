@@ -11,14 +11,14 @@ import type { FollowUpItem } from "../../services/formalization/follow-up-servic
 import { canReadLeadProfile, leadProfilePath } from "../../services/leads/lead-profile-service";
 import { FormalizationDrawerLoading } from "./FormalizationDrawerLoading";
 
-/** Calendar dates retain the source day, independently of the browser timezone. Invalid dates remain visible. */
+/** Las fechas de calendario conservan el día de origen, aparte de la zona del navegador. Una fecha inválida sigue visible. */
 function dateValue(value: string): string {
     const day = /^\d{4}-\d{2}-\d{2}(?:$|T)/.exec(value)?.[0].slice(0, 10);
     if (!day || (value.length > 10 && Number.isNaN(Date.parse(value)))) return value;
     const parsed = new Date(day + "T00:00:00Z");
     return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== day ? value : `${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)}`;
 }
-/** Format decimal text without converting the amount to floating point or guessing a currency. */
+/** Formatea el texto decimal sin convertir el monto a punto flotante ni adivinar una moneda. */
 function moneyValue(value: string, currency: string | null): string {
     const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
     const amount = match ? `${match[1] ?? ""}${(match[2] ?? "").replace(/\B(?=(\d{3})+(?!\d))/g, " ")}${match[3] === undefined ? "" : "," + match[3]}` : value;
@@ -33,7 +33,7 @@ function DetailValue({ field, currency }: { readonly field: DatabaseOrderDetailF
     if (field.kind === "boolean") return <>{({ yes: "Sí", no: "No", unknown: "—" } as Record<string, string>)[value] ?? value}</>;
     return <>{field.value}</>;
 }
-/** Shared label/value layout for order sections, preserving each caller's display values. */
+/** Layout compartido de etiqueta y valor. Conserva los textos que ya preparó quien llama. */
 export function OrderSectionFields({ items }: { readonly items: readonly { readonly key: string; readonly label: string; readonly value: ReactNode }[] }) {
     return (
         <dl className="formalization-order-fields">
@@ -123,7 +123,7 @@ function OrderDetailsContent({ item, permissions }: { readonly item: FollowUpIte
         </div>
     );
 }
-/** Shared fresh authorized database detail. Keying by order/version prevents old responses and errors leaking across records. */
+/** Detalle fresco y autorizado de la base. Identificarlo por orden y versión evita que una respuesta o un error viejos pasen a otro registro. */
 export function FormalizationOrderDetails({ item, permissions = [] }: { readonly item: FollowUpItem; readonly permissions?: readonly { readonly code: string; readonly effect: string }[] }) {
     return <OrderDetailsContent key={`${item.source}:${item.id}:${String(item.stateVersion)}`} item={item} permissions={permissions} />;
 }

@@ -4,7 +4,7 @@ const plain = (text: string): string =>
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase();
 
-/** Narrows the notes already loaded by what is typed: title, text and author, ignoring case and accents. */
+/** Reduce las notas ya cargadas por lo que se escribe: título, texto y autor, sin distinguir mayúsculas ni acentos. Una búsqueda vacía deja pasar todo. */
 export function matchesNote(note: { readonly title: string | null; readonly content: { readonly text: string }; readonly author: { readonly displayName: string } }, query: string): boolean {
     const needle = plain(query.trim());
     if (!needle) return true;

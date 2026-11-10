@@ -16,7 +16,7 @@ interface Props {
     readonly onPage: (page: number) => void;
 }
 
-/** Every field of the record, label over value. Empty ones fold behind a switch: these records carry dozens of control fields. */
+/** Cada campo del registro, etiqueta sobre valor. Los vacíos se pliegan con un interruptor: estos registros traen decenas de campos de control. */
 function RecordFields({ record, id }: { readonly record: CommercialRecord; readonly id: string }) {
     const [showEmpty, setShowEmpty] = useState(false);
     const empty = record.fields.filter((field) => isBlank(field.value)).length;
@@ -83,7 +83,7 @@ function RecordFacts({ record }: { readonly record: CommercialRecord }) {
     );
 }
 
-/** One record: headline first, the rest on demand. */
+/** Un registro: primero el encabezado y el resto a pedido. */
 function Record({ record }: { readonly record: CommercialRecord }) {
     const [open, setOpen] = useState(false);
     const detailsId = useId();
@@ -139,7 +139,7 @@ function Empty({ text }: { readonly text: string }) {
     );
 }
 
-/** Real records of the client. A log entry is not an opportunity or an estimate, so nothing is inferred from the log. */
+/** Registros reales del cliente. Una anotación del historial no es una oportunidad ni una estimación, así que del historial no se infiere ninguna. */
 export function LeadProfileCommercial({ title, data, refreshing, onPage }: Props) {
     if (!data?.available) {
         return (

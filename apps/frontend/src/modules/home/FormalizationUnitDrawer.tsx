@@ -20,7 +20,7 @@ import { FormalizationDrawerLoading } from "./FormalizationDrawerLoading";
 const QUALIFIER = /^(.*?) \((unidad no informada|moneda no informada|sin equivalencia confirmada)\)$/;
 const QUALIFIER_NOTES: Record<string, string> = { "unidad no informada": "El origen no informa la unidad de medida.", "moneda no informada": "El origen no informa la moneda.", "sin equivalencia confirmada": "El estado se muestra como viene del origen, sin equivalencia confirmada." };
 
-/** The same caution on every row is noise: it is said once per group, and the labels stay short. */
+/** Repetir la misma advertencia en cada fila es ruido. Se dice una vez por grupo y las etiquetas quedan cortas. */
 function tidy(group: OrderUnitDetail["groups"][number]) {
     const notes = new Set<string>();
     const fields = group.fields.map((field) => {
@@ -91,7 +91,7 @@ function UnitContent({ item, onRetry }: { readonly item: FollowUpItem; readonly 
     );
 }
 
-/** Shared right-hand drawer appearance, with a fresh authorized read on every opening. */
+/** El mismo panel derecho. Cada apertura hace una lectura autorizada nueva. */
 export function FormalizationUnitDrawer({ item, open, onClose }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void }) {
     const [attempt, setAttempt] = useState(0);
     return (

@@ -1,16 +1,16 @@
 /**
- * Export of the on-screen report as an image (PNG) or a PDF.
+ * Exporta el reporte que está en pantalla como imagen PNG o como PDF.
  *
- * No library: the image is made by drawing a copy of the report into an SVG `foreignObject` and rasterising it, and the PDF is the
- * browser's own print dialog ("Save as PDF") with a print stylesheet. Both read what is already on screen, so the file always matches it.
+ * No usa una librería. La imagen se hace dibujando una copia del reporte dentro de un `foreignObject` SVG y rasterizándola. El PDF es el
+ * diálogo de impresión del navegador, con una hoja de estilos de impresión. Los dos leen lo que ya está en pantalla, así que el archivo coincide con eso.
  */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
-/** Twice the screen resolution, so text stays sharp when the image is zoomed or printed. */
+/** El doble de la resolución de pantalla, para que el texto siga nítido al ampliar o imprimir la imagen. */
 const IMAGE_SCALE = 2;
 
-/** File name from the choices on screen: lowercase, no accents, nothing a file system would reject. */
+/** El nombre del archivo sale de lo elegido en pantalla: minúsculas, sin acentos y sin caracteres que un sistema de archivos rechace. */
 export function exportFileName(parts: readonly string[], extension: "png" | "pdf"): string {
     const slug = parts
         .join("_")
@@ -36,7 +36,7 @@ function toDataUrl(blob: Blob): Promise<string> {
     });
 }
 
-/** Photos are fetched from the app and embedded as data, because an SVG drawn into a canvas cannot load outside files. */
+/** Las fotos se piden a la aplicación y se incrustan como datos, porque un SVG dibujado en un canvas no puede cargar archivos externos. */
 async function embedImages(root: HTMLElement): Promise<void> {
     await Promise.all(
         [...root.querySelectorAll("img")].map(async (image) => {
@@ -50,7 +50,7 @@ async function embedImages(root: HTMLElement): Promise<void> {
     );
 }
 
-/** Every rule of the page's stylesheets as text, so the copy is styled exactly like the original (including ::before / ::after). */
+/** Cada regla de las hojas de estilo de la página, como texto, para que la copia se vea igual que el original, incluidos `::before` y `::after`. */
 function pageCss(): string {
     return [...document.styleSheets]
         .flatMap((sheet) => {
@@ -63,7 +63,7 @@ function pageCss(): string {
         .join("\n");
 }
 
-/** The page root keeps the classes the report's styles are scoped to; the copy needs the same ones. */
+/** La raíz de la página conserva las clases a las que están acotados los estilos del reporte. La copia necesita las mismas. */
 function scopeOf(node: HTMLElement): string {
     return node.closest<HTMLElement>(".capture-preview")?.className ?? "capture-preview";
 }
@@ -82,8 +82,8 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Draws `node` into a PNG. The copy is laid out off-screen at the same width, with the export class on, so parts that scroll on
- * screen (the wide chart) are fully open and the whole report fits in the picture.
+ * Dibuja `node` en un PNG. La copia se arma fuera de pantalla, al mismo ancho y con la clase de exportación, para que lo que en pantalla se desplaza,
+ * como el gráfico ancho, quede abierto por completo y el reporte entero quepa en la imagen.
  */
 export async function renderNodeToPng(node: HTMLElement): Promise<Blob> {
     const width = node.offsetWidth;
@@ -101,12 +101,12 @@ export async function renderNodeToPng(node: HTMLElement): Promise<Blob> {
         const style = document.createElement("style");
         style.textContent = pageCss();
         const holder = document.createElementNS(XHTML_NS, "div");
-        // The off-screen placement belongs to the staging box only: inside the picture the copy sits at the top left.
+        // La posición fuera de pantalla pertenece solo a la caja de preparación. Dentro de la imagen, la copia queda arriba a la izquierda.
         const placed = stage.cloneNode(true) as HTMLElement;
         Object.assign(placed.style, { position: "static", left: "auto", top: "auto" });
         holder.append(style, placed);
         const svg = `<svg xmlns="${SVG_NS}" width="${String(full)}" height="${String(height)}" viewBox="0 0 ${String(full)} ${String(height)}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(holder)}</foreignObject></svg>`;
-        // A data URL, not a blob URL: with a blob URL Chrome marks the canvas as tainted and refuses to export it.
+        // Es una URL de datos, no una URL de blob. Con una URL de blob, Chrome marca el canvas como contaminado y rechaza exportarlo.
         const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
         {
             const image = await loadImage(url);
@@ -129,7 +129,7 @@ export async function renderNodeToPng(node: HTMLElement): Promise<Blob> {
     }
 }
 
-/** Hands a file to the browser's download, without leaving the page. */
+/** Entrega un archivo a la descarga del navegador y deja a la persona en la misma página. */
 export function downloadBlob(blob: Blob, fileName: string): void {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -144,8 +144,8 @@ export function downloadBlob(blob: Blob, fileName: string): void {
 }
 
 /**
- * Opens the print dialog with only the report: the body gets a class the print styles are scoped to (so printing any other
- * page afterwards is untouched) and a one-off rule sets A4 landscape. Both are removed when printing ends.
+ * Abre el diálogo de impresión solo con el reporte. El body recibe la clase a la que están acotados los estilos de impresión, así que imprimir otra
+ * página después no hereda esa hoja. Una regla de una sola vez fija A4 horizontal. Las dos se quitan cuando termina la impresión.
  */
 export function printReport(): void {
     const page = document.createElement("style");

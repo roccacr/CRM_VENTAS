@@ -97,7 +97,7 @@ function Lookup({ kind, label, model, locked, moduleCode }: { readonly kind: Cal
     const [search, setSearch] = useState("");
     const [items, setItems] = useState<CalendarLookupItem[]>([]);
     const [status, setStatus] = useState("");
-    // Presentation-only cache for this mounted form; commands still contain identities alone.
+    // Caché de presentación de este formulario. El comando sigue llevando solo identidades.
     const [labels, setLabels] = useState(() => new Map<string, CalendarLookupItem>(model.initialSelectionOptions[kind].map((item) => [`${item.source}:${item.id}`, item] as const)));
     const leadFilter = kind === "orders" ? JSON.stringify(model.fields.links.filter((link) => link.entityType === "lead")) : "[]";
     useEffect(() => {
@@ -209,7 +209,7 @@ function Lookup({ kind, label, model, locked, moduleCode }: { readonly kind: Cal
     };
     const chips = selected.map((identity) => labels.get(`${identity.source}:${identity.id}`) ?? (kind === "leads" ? model.leadOptions.find((item) => item.source === identity.source && item.id === identity.id) : undefined) ?? { ...identity, label: identity.id });
     const shown = items.slice(0, MAX_OPTIONS);
-    // A chosen record stays reachable even when the current search no longer lists it.
+    // Un registro ya elegido sigue disponible aunque la búsqueda actual ya no lo liste.
     for (const item of chips) if (!shown.some((entry) => entry.id === item.id && entry.source === item.source)) shown.push(item);
     return (
         <fieldset className="event-lookup" disabled={locked}>

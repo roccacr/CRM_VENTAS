@@ -1,6 +1,6 @@
 import { bucketMarketingSample, horizonLeads, type MarketingPreviewFilters, type MarketingView, projectsForSeller, relativeChange, summarizeMarketingSample } from "./marketing-home-preview.model";
 
-/** One card per project: leads in the displayed period with their trend, plus the four time horizons. */
+/** Una tarjeta por proyecto: leads del periodo mostrado con su tendencia, más los cuatro horizontes de tiempo. */
 export function buildProjectCards(filters: MarketingPreviewFilters, view: MarketingView) {
     return projectsForSeller(filters.sellers ?? filters.seller, view.source)
         .filter((name) => (filters.projects ? filters.projects.length === 0 || filters.projects.includes(name) : !filters.project || name === filters.project))

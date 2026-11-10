@@ -28,7 +28,7 @@ interface Props {
     readonly mobile?: boolean;
     readonly enabled?: boolean;
 }
-/** Both header variants share realtime; only the visible bell reads counts and announces notices. */
+/** Las dos variantes del encabezado comparten el tiempo real. Solo la campana visible lee conteos y anuncia avisos. */
 export function NoteNotificationsButton({ onOpenNote, mobile = false, enabled = true }: Props) {
     const [open, setOpen] = useState(false);
     const [filter, setFilter] = useState<NotificationFilter>("unread");
@@ -214,7 +214,7 @@ interface ReadIntent {
     confirmed: boolean;
 }
 const matchesRead = (item: NoteNotification, intent: ReadIntent) => intent.ids.includes(item.id) || (intent.through !== null && Date.parse(item.createdAt) <= Date.parse(intent.through));
-/** Overlay read receipts until a fresh post-ack snapshot arrives; later notifications stay unread. */
+/** Los acuses se superponen hasta que llega una foto fresca posterior al acuse. Los avisos posteriores siguen sin leer. */
 function presentNotifications(data: NoteNotifications, reads: ReadIntent[], filter: "all" | "unread" | "mentions"): NoteNotifications {
     const items = data.items.map((item) => (item.readAt === null && reads.some((read) => matchesRead(item, read)) ? { ...item, readAt: new Date().toISOString() } : item));
     const unreadCount = Math.max(0, data.unreadCount - reads.reduce((sum, read) => sum + read.amount, 0));
@@ -410,7 +410,7 @@ function NotificationList({ items, onMark, onOpen }: ListProps) {
         </>
     );
 }
-/** Who did what, on which note, and what they wrote, in one compact row. Unread ones are marked by the blue edge. */
+/** Quién hizo qué, en cuál nota y qué escribió, en una fila compacta. Lo no leído se marca con el borde azul. */
 function NotificationItem({ item, onMark, onOpen }: { readonly item: NoteNotification; readonly onMark: (id: string) => void; readonly onOpen: (item: NoteNotification) => void }) {
     const kind = KINDS[item.kind];
     return (
@@ -551,7 +551,7 @@ function useOrderImportNotices(enabled: boolean) {
             const result = await apiRequest<OrderImportNotice[]>(orderImportNoticesPath, { ...(signal ? { signal } : {}) });
             if (!signal?.aborted && Array.isArray(result)) setItems(result);
         } catch {
-            // Polling retries independently of note and calendar delivery.
+            // El sondeo reintenta aparte de la entrega de notas y de calendario.
         }
     }, []);
     useEffect(() => {

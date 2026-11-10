@@ -26,7 +26,7 @@ const localTime = (iso: string | null): string => {
     return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
 const utc = (value: string): string | null => (value ? new Date(value).toISOString() : null);
-/** Task changes use the displayed version; reminders belong exclusively to the current reader. */
+/** Los cambios de tarea usan la versión que se muestra. Los recordatorios pertenecen solo a quien está leyendo. */
 export function NoteWorkflowPanel({ thread, open, onChanged }: { readonly thread: NoteThread; readonly open: boolean; readonly onChanged: () => void }) {
     const [data, setData] = useState<NoteWorkflow | null>(null);
     const [locations, setLocations] = useState<NoteLocations | null>(null);

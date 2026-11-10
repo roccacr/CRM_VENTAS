@@ -2,7 +2,7 @@ import type { CatalogContextModuleCode } from "../../../services/catalogs/catalo
 import { CatalogItemsPage } from "../catalogs/CatalogItemsPage";
 import { SUBSIDIARIES_CATALOG } from "./subsidiaries-definition";
 
-/** Subsidiary-owned route; the shared view guarantees exact Projects interaction and visual parity. */
+/** Ruta propia de subsidiarias. La vista compartida conserva la interacción y el aspecto de Proyectos. La identidad y los permisos siguen siendo de este catálogo. */
 export function SubsidiariesPage({ contextLabel = "Administración", contextModuleCode = "administration" }: { readonly contextLabel?: string; readonly contextModuleCode?: CatalogContextModuleCode }) {
     return <CatalogItemsPage catalog={SUBSIDIARIES_CATALOG} contextLabel={contextLabel} contextModuleCode={contextModuleCode} />;
 }

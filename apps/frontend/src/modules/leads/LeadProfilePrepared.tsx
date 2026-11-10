@@ -14,8 +14,8 @@ interface PreparedProps {
 }
 
 /**
- * A section whose data is not connected yet. It keeps its place and its structure (what will be listed and in which columns),
- * says plainly that nothing is loaded, and shows no invented rows.
+ * Una sección cuyos datos todavía no están conectados. Conserva su lugar y su estructura, qué se listará y en qué columnas,
+ * dice con claridad que nada está cargado y no muestra filas inventadas.
  */
 function PreparedSection({ title, icon, heading, description, columns, note }: PreparedProps) {
     return (
@@ -52,15 +52,11 @@ function PreparedSection({ title, icon, heading, description, columns, note }: P
     );
 }
 
-/**
- *
- */
+/** Eventos todavía no conectados. Conserva las columnas y no inventa filas. */
 export function EventsPrepared() {
     return <PreparedSection title="Lista de eventos" icon={<CalendarOutlined />} heading="Eventos del cliente" description="Citas, reuniones y tareas agendadas con este cliente se listarán aquí, con su fecha, tipo y responsable." columns={["Fecha", "Tipo", "Evento", "Responsable", "Estado"]} note="Esta sección todavía no está conectada: queda lista para cargar los eventos del cliente por separado, sin afectar al resto del perfil." />;
 }
-/**
- *
- */
+/** Documentos todavía no conectados. Conserva las columnas y no inventa filas. */
 export function FilesPrepared() {
     return <PreparedSection title="OneDrive" icon={<CloudOutlined />} heading="Documentos del cliente" description="Contratos, reservas y archivos del cliente guardados en OneDrive se listarán aquí." columns={["Nombre", "Tipo", "Modificado", "Tamaño"]} note="Esta sección todavía no está conectada: queda lista para cargar los documentos por separado, sin afectar al resto del perfil." />;
 }

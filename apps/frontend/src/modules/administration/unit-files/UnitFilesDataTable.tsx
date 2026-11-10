@@ -14,7 +14,7 @@ import { useDataTableSearchPanes } from "../hooks/useDataTableSearchPanes";
 import type { UnitSummary } from "./unit-files.api";
 import { createUnitPaneAjax, type UnitPaneChoices, type UnitPaneSelection } from "./unit-files-search-panes";
 
-// DataTables registers its renderer here; this static API is not a React Hook.
+// DataTables registra aquí su render. Esta API estática no es un hook de React.
 // eslint-disable-next-line react-hooks/rules-of-hooks
 DataTable.use(DT);
 const labels = ["", "Código", "Proyecto", "Tipo de vivienda", "Precio de venta", "Estado", "Entrega estimada", "Área total (m²)", "Lote (m²)", "Área de parqueo (m²)"];
@@ -23,7 +23,7 @@ const columns = keys.map((data, index) => ({ data, title: labels[index] ?? "", d
 const FIELDS = [{ columnIndex: 1 }, { columnIndex: 2 }, { columnIndex: 3 }, { columnIndex: 5 }];
 const DISABLED_FIELDS = [0, 4, 6, 7, 8, 9];
 
-/** Server-owned filters apply before cursor paging; DataTables renders only the returned batch. */
+/** Los filtros del servidor corren antes de la página por cursor. DataTables pinta solo el lote devuelto. */
 export function UnitFilesDataTable({
     items,
     selected,
@@ -70,7 +70,7 @@ export function UnitFilesDataTable({
             });
         };
     }, [busy]);
-    // DataTables retains this DOM node: state keeps its identity stable even across hot reloads.
+    // DataTables conserva este nodo. El estado mantiene su identidad, también tras una recarga en caliente.
     const [filterHost] = useState(() => {
         const host = document.createElement("div");
         host.className = "unit-files-filter-host";
@@ -91,7 +91,7 @@ export function UnitFilesDataTable({
                 });
             });
     }, [selected]);
-    // The adapter stores these callbacks for DataTables events; it never invokes them during render.
+    // El adaptador guarda estos callbacks para los eventos de DataTables. No los llama durante el render.
 
     const options: NonNullable<DataTableProps["options"]> = {
         autoWidth: false,
@@ -169,7 +169,7 @@ export function UnitFilesDataTable({
                     slots={{
                         0: (_value: unknown, type: string, row: UnitSummary) => {
                             if (type !== "display") return "";
-                            // DataTables owns these nodes; update selection without replacing React roots.
+                            // Esos nodos son de DataTables. La selección se actualiza sin reemplazar las raíces de React.
                             const input = document.createElement("input");
                             input.type = "checkbox";
                             input.dataset.unitId = row.id;

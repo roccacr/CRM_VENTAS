@@ -88,7 +88,7 @@ function SourceFilter({ events, filter, onChange }: { readonly events: Events; r
     );
 }
 
-/** Calendar events of the client from either database, in one table, newest first. The pager appears only when another page exists. */
+/** Eventos de calendario del cliente, de cualquiera de las dos bases, en una tabla y lo más nuevo primero. El paginador aparece solo si existe otra página. */
 export function LeadProfileEvents({ events, page, refreshing, onPage }: Props) {
     const [filter, setFilter] = useState<OrderFilter>("all");
     const rows = profileEvents(events, filter);

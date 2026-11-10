@@ -15,7 +15,7 @@ interface PlacementQueue {
     attempt: PlacementAttempt | undefined;
 }
 
-/** Serialize each personal layout independently; coalesce gestures without replaying uncertain writes automatically. */
+/** Serializa cada layout personal por separado. Junta los gestos y no reintenta sola una escritura incierta. */
 export function useNotePlacements(moduleCode: NoteModule, onSaved: (id: string, placement: NotePlacement) => void) {
     const queues = useRef(new Map<string, PlacementQueue>());
     const alive = useRef(true);
@@ -29,7 +29,7 @@ export function useNotePlacements(moduleCode: NoteModule, onSaved: (id: string, 
     const report = (key: string, state: PlacementSaveState) => {
         if (alive.current) setStates((old) => ({ ...old, [key]: state }));
     };
-    // eslint-disable-next-line complexity -- Keep per-note ordering, coalescing and uncertain-write recovery in one loop.
+    // eslint-disable-next-line complexity -- El orden por nota, la unión de gestos y la recuperación de una escritura incierta quedan en un solo ciclo.
     const flush = async (id: string, key: string, queue: PlacementQueue) => {
         if (queue.running) return;
         queue.running = true;
@@ -49,7 +49,7 @@ export function useNotePlacements(moduleCode: NoteModule, onSaved: (id: string, 
             }
             report(key, "saved");
         } catch {
-            // Keep both the exact uncertain operation and any newer gesture until an explicit retry.
+            // Se conservan la operación incierta exacta y cualquier gesto más nuevo hasta un reintento explícito.
             report(key, "error");
         } finally {
             queue.running = false;

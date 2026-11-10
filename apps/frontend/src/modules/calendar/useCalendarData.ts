@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { type CalendarDescriptor, type CalendarEvent, type CalendarInterval, type CalendarModule, getCalendarFeed, getCalendars, type OutlookFeedStatus } from "../../services/calendar/calendar-service";
 
-/** Request keys hide old data immediately; cleanup fences late responses even when transport cannot abort. */
+/** La clave de la petición oculta de inmediato los datos viejos. Al limpiar se descarta una respuesta tardía aunque el transporte no pueda abortar. */
 export function useCalendarData(module: CalendarModule, readableModules: readonly CalendarModule[], authorizationKey: string) {
     const [catalog, setCatalog] = useState<{ key: string; calendars: CalendarDescriptor[]; error: boolean }>({ key: "", calendars: [], error: false });
     const [selected, setSelected] = useState<readonly CalendarModule[]>([module]);

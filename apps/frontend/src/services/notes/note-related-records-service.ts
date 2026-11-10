@@ -44,7 +44,7 @@ const kind = (v: unknown): NoteRecordReference["kind"] => (v === "lead" || v ===
 const identifier = (v: unknown): string => (/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(text(v, 26)) ? (v as string) : invalid());
 export const relatedRecordKey = (reference: NoteRecordReference): string => `${reference.kind}:${reference.source}:${reference.id}`;
 
-/** Storage identity is transport data; the user selects a business name, not a database. */
+/** La identidad de almacenamiento es dato de transporte. La persona elige un nombre de negocio, no una base de datos. */
 export function parseRecordReference(value: unknown): NoteRecordReference {
     const r = record(value);
     const source = r.source === "native" || r.source === "legacy" ? r.source : invalid();
@@ -75,12 +75,12 @@ function parseRelatedLead(value: unknown, type: NoteRecordReference["kind"]): Pi
     if (type !== "sales_order" || reference.kind !== "lead") invalid();
     return { relatedLead: { reference, label: text(r.label), description: r.description === null ? null : text(r.description) } };
 }
-/** Restricted summaries have no source ID or commercial metadata. */
+/** Un resumen restringido no trae id de origen ni metadatos comerciales. */
 export function parseRelatedRecords(value: unknown): NoteRelatedRecord[] {
     if (!Array.isArray(value) || value.length > 100) invalid();
     return (value as unknown[]).map(parseRelatedRecord);
 }
-/** Searches a bounded authorized page from the federated record selector. */
+/** Busca una página acotada y autorizada del selector federado de registros. */
 export async function getRelatedRecordOptions(moduleCode: NoteModule, type: NoteRecordReference["kind"], search: string, page = 1): Promise<RelatedRecordOptions> {
     const query = new URLSearchParams({ moduleCode, kind: type, search, page: String(integer(page)) });
     const r = record(await apiRequest<unknown>(`/notes/related-record-options?${query.toString()}`));
@@ -88,13 +88,13 @@ export async function getRelatedRecordOptions(moduleCode: NoteModule, type: Note
     if (r.schemaVersion !== 1 || pagination.number !== page || pagination.size !== 25) invalid();
     return { items: parseRelatedRecords(r.items), page: { number: page, size: 25 }, hasMore: bool(r.hasMore), partial: bool(r.partial) };
 }
-/** Reads summaries and the current collaboration version without granting record access. */
+/** Lee resúmenes y la versión actual de colaboración. No concede acceso al registro. */
 export async function getNoteRelatedRecords(noteId: string): Promise<NoteRelatedRecords> {
     const r = record(await apiRequest<unknown>(`/note-collaboration/notes/${identifier(noteId)}/related-records`));
     if (r.schemaVersion !== 1) invalid();
     return { version: integer(r.version), items: parseRelatedRecords(r.items), canManage: bool(r.canManage) };
 }
-/** Exact operation IDs are retained by the editor when a mutation has an uncertain outcome. */
+/** El editor conserva los ids exactos de operación cuando una mutación tiene un resultado incierto. */
 export async function saveNoteRelatedRecords(noteId: string, command: RelatedRecordsCommand): Promise<{ noteId: string; version: number; collaborationVersion: number; replayed: boolean }> {
     const r = record(await apiRequest<unknown>(`/note-collaboration/notes/${identifier(noteId)}/related-records`, { method: "PUT", body: command, retryOnUnauthorized: false }));
     return { noteId: identifier(r.noteId), version: integer(r.version), collaborationVersion: integer(r.collaborationVersion), replayed: bool(r.replayed) };

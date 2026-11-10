@@ -10,7 +10,7 @@ type Command = () => void;
 const typing = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 const blocked = (event: KeyboardEvent) => event.ctrlKey || event.metaKey || event.altKey || typing(event.target);
 
-/** Navigation and view commands that only need the calendar itself. */
+/** Comandos de navegación y de vista que solo necesitan el calendario. */
 function navigation(api: CalendarApi): Record<string, Command> {
     const views = Object.fromEntries(
         Object.entries(VIEWS).map(([key, view]) => [
@@ -34,7 +34,7 @@ function navigation(api: CalendarApi): Record<string, Command> {
     };
 }
 
-/** Single-key shortcuts like Outlook's. They never fire while typing, with a modifier held, or while a card or panel is open. */
+/** Atajos de una tecla. No disparan mientras se escribe, con un modificador pulsado o con una tarjeta o un panel abierto. */
 export function useCalendarShortcuts(calendar: RefObject<CalendarRef | null>, options: { readonly enabled: boolean; readonly onCreate: Command | null; readonly onSearch: Command }) {
     const { enabled, onCreate, onSearch } = options;
     useEffect(() => {

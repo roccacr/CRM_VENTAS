@@ -32,7 +32,7 @@ interface Pending {
     request: () => Promise<unknown>;
     after: () => void;
 }
-/** Same identity block as the other side panels: icon, name of the panel and what it holds. */
+/** El mismo bloque de identidad que los otros paneles: ícono, nombre del panel y qué contiene. */
 function ThreadIdentity() {
     return (
         <div className="user-detail-drawer__identity">
@@ -46,7 +46,7 @@ function ThreadIdentity() {
         </div>
     );
 }
-/** Keeps the same note mounted while closed so an uncertain write retains its original retry key. */
+/** Mantiene la misma nota montada mientras está cerrado, para que una escritura incierta conserve su clave de reintento original. */
 export function NoteCollaborationDrawer({ noteId, open, onClose, onChanged }: Props) {
     return (
         <Drawer {...ADMINISTRATION_DRAWER_PROPS} rootClassName="user-detail-drawer note-collaboration-drawer" closable={{ placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }} title={<ThreadIdentity />} open={open} onClose={onClose}>
@@ -315,7 +315,7 @@ interface FeedbackProps {
     readonly retry: () => void;
     readonly onReload: () => void;
 }
-/** While saving, the floating preloader; afterwards the plain status line. */
+/** Mientras guarda, el preloader flotante. Después, la línea de estado simple. */
 function CommandStatus({ busy, notice }: { readonly busy: boolean; readonly notice: string }) {
     if (busy) return <NotesSavingOverlay label={notice || "Guardando…"} />;
     return (
@@ -441,7 +441,7 @@ function OriginPost({ thread, locked, perform, background, update }: SectionProp
         </li>
     );
 }
-/** Following is about the conversation, so it sits with the conversation. */
+/** Seguir trata de la conversación, así que queda junto a la conversación. */
 function FollowToggle({ thread, locked, background, update }: SectionProps) {
     return (
         <button
@@ -507,11 +507,11 @@ function ParticipantSummary({ thread }: { readonly thread: NoteThread }) {
     );
 }
 const accessLabel = (access: NoteParticipant["access"]): string => (access === "reply" ? "Puede responder" : "Solo lectura");
-/** Who can see the note, in one line: a stack of faces, a sentence, and the two actions that concern the whole thread. */
+/** Quién puede ver la nota, en una línea: una pila de caras, una frase y las dos acciones que conciernen a todo el hilo. */
 function ThreadBar({ thread, locked, perform, background, update }: SectionProps) {
     const [editing, setEditing] = useState(false);
     const [people, setPeople] = useState<NoteParticipant[]>(thread.participants);
-    // Keep the version from when editing began; a remote snapshot must not turn a stale draft into an overwrite.
+    // Se conserva la versión de cuando empezó la edición. Una foto remota no convierte un borrador viejo en una sobrescritura.
     const [baseVersion, setBaseVersion] = useState(thread.collaborationVersion);
     return (
         <section className="note-thread-bar" aria-label="Participantes">
@@ -750,7 +750,7 @@ function NoteContextLink({ context }: { readonly context: NoteContext | null }) 
     return <a href={`/home/formalization?${query.toString()}`}>Abrir orden de venta vinculada</a>;
 }
 
-/** Existing own replies retain their edit capability independently of permission to post new replies. */
+/** Las respuestas propias ya existentes conservan su permiso de edición, aparte del permiso para publicar respuestas nuevas. */
 function replyComposerAllowed(reply: NoteReply | null, thread: NoteThread | null): boolean {
     if (reply) return thread?.replies.some((current) => current.id === reply.id && current.canEdit) ?? false;
     return thread?.note.capabilities.canReply ?? false;

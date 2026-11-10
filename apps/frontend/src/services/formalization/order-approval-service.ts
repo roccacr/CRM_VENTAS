@@ -7,7 +7,7 @@ interface ApprovalCommand {
     readonly expectedSequence: number;
     readonly operationId: string;
 }
-/** Approval preserves identity/idempotency; replay may report a later known stage without moving it back. */
+/** La aprobación conserva la identidad y la idempotencia. Una repetición puede informar una etapa posterior ya conocida y no la devuelve atrás. */
 export async function approveFormalizationOrder(command: ApprovalCommand): Promise<{ readonly alreadyApproved: boolean }> {
     const id = command.source === "legacy" ? command.id.replace(/^legacy:/, "") : command.id;
     const result = await apiRequest<unknown>("/formalization/orders/approve", { method: "POST", body: { ...command, id }, retryOnUnauthorized: false });
@@ -25,7 +25,7 @@ function validSequence(value: unknown): boolean {
     return typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
 }
 
-/** Legacy aliases may resolve to an authoritative native ULID; native identities never downgrade or change. */
+/** Un alias anterior puede resolverse al ULID nativo autoritativo. Una identidad nativa no se degrada ni se cambia. */
 function validIdentity(data: Record<string, unknown>, source: string, id: string): boolean {
     if (data.source === source) return data.id === id;
     return source === "legacy" && data.source === "native" && typeof data.id === "string" && /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(data.id);

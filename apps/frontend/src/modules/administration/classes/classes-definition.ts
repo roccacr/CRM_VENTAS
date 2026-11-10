@@ -1,6 +1,6 @@
 import type { AdministrationCatalogDefinition } from "../catalogs/catalog-definitions";
 
-/** Class identity stays separate; presentation reuses the approved Projects design. */
+/** La identidad de clases queda aparte. La presentación reutiliza el diseño de Proyectos. El formulario de esta pantalla corta el nombre en 100 caracteres. */
 export const CLASSES_CATALOG: AdministrationCatalogDefinition = {
     code: "classes",
     createPermission: "administration.catalog_class.create",

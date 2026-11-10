@@ -15,7 +15,7 @@ interface Props {
     readonly onRefresh: () => void;
     readonly onApproved?: (() => void) | undefined;
 }
-/** The keyed parent isolates each order/version; uncertain retries keep the same operation UUID. */
+/** El padre identifica cada orden y versión. Un reintento incierto conserva el mismo UUID de operación. */
 export function FormalizationApprovalAction({ item, onSaved, onRefresh, onApproved }: Props) {
     const [confirming, setConfirming] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -33,7 +33,7 @@ export function FormalizationApprovalAction({ item, onSaved, onRefresh, onApprov
         try {
             operation.current ??= crypto.randomUUID();
             const result = await approveFormalizationOrder({ source: item.source, id: item.id, expectedSequence: Number(item.stateVersion), operationId: operation.current });
-            // Lock a completed command even if the targeted refresh fails or has not remounted us yet.
+            // Un comando ya completado queda bloqueado aunque el refresco dirigido falle o todavía no nos haya vuelto a montar.
             const successMessage = result.alreadyApproved ? "NetSuite ya tenía marcada la aprobación de Formalización. El Habita quedó sincronizado." : "Aprobación de Formalización guardada en NetSuite y en Habita.";
             notification.success({ title: "Aprobación completada", description: successMessage, placement: "bottomLeft", duration: 6 });
             setBlocked(true);
@@ -114,7 +114,7 @@ function validVersion(value: unknown): boolean {
     return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
-// Only fixed messages are shown; a provider or server message cannot inject arbitrary details.
+// Solo se muestran mensajes fijos. Un texto del proveedor o del servidor no puede inyectar un detalle arbitrario.
 const APPROVAL_REJECTIONS: ReadonlyMap<string, string> = new Map([
     ["CRM_SALES_ORDER_NOT_FOUND", "La orden de venta ya no existe o no está disponible en Habita."],
     ["CRM_SALES_ORDER_UNAVAILABLE", "No se puede aprobar: la orden está inactiva o marcada como venta caída en Habita."],

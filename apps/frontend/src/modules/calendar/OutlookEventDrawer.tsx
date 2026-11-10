@@ -111,7 +111,7 @@ function EventCard({ event, description, joinUrl }: { readonly event: CalendarEv
         </section>
     );
 }
-/** Full detail of an Outlook event on the right, laid out like Outlook's own window: the event, its facts and description, and "Seguimiento" with organizer and replies. */
+/** Detalle completo de un evento de Outlook a la derecha, como su propia ventana: el evento, sus datos y la descripción, y Seguimiento con organizador y respuestas. */
 interface Props {
     readonly event: CalendarEvent;
     readonly onClose: () => void;

@@ -81,7 +81,7 @@ const FILE_ICONS: readonly (readonly [RegExp, ReactNode, string])[] = [
     [/\.(png|jpe?g|gif|webp|bmp|svg|heic)$/iu, <FileImageOutlined key="img" />, "img"],
     [/\.(zip|rar|7z)$/iu, <FileZipOutlined key="zip" />, "zip"],
 ];
-/** File-type glyph with the tint OneDrive gives each kind of document. */
+/** Glifo del tipo de archivo, con el tinte que OneDrive da a cada clase de documento. */
 function FileGlyph({ name }: { readonly name: string }) {
     const match = FILE_ICONS.find(([pattern]) => pattern.test(name));
     return (
@@ -183,7 +183,7 @@ interface UploadProps {
 function UploadSlot({ enabled, data, ...props }: UploadProps & { readonly enabled: boolean; readonly data: OrderDocuments | null }) {
     return enabled && data?.folder ? <UploadPanel {...props} /> : null;
 }
-/** Compact drop target for the side panel. */
+/** Destino compacto para soltar archivos en el panel lateral. */
 function UploadPanel({ busy, input, onFiles }: UploadProps) {
     return (
         <div
@@ -250,7 +250,7 @@ function FolderStats({ files }: { readonly files: readonly OrderDocument[] }) {
         </dl>
     );
 }
-/** Left column: the folder as OneDrive presents it, its totals, and the order-scoped actions. */
+/** Columna izquierda: la carpeta como la presenta OneDrive, sus totales y las acciones de esta orden. */
 function FolderPanel({ item, data, busy, loading, onRefresh, onConnect, children }: { readonly item: FollowUpItem; readonly data: OrderDocuments | null; readonly busy: boolean; readonly loading: boolean; readonly onRefresh: () => void; readonly onConnect: () => void; readonly children?: ReactNode }) {
     return (
         <aside className="order-documents__side" aria-label="Carpeta de la orden">

@@ -40,7 +40,7 @@ const actionOrder = (permission: Permission) => {
     return rank < 0 ? ACTION_ORDER.length : rank;
 };
 
-/** Presentation grouping only: retain the API module and permission codes for every mutation. */
+/** El agrupado es solo visual. Cada guardado conserva el módulo y los códigos de permiso del API. */
 function sections(module: Module, modules: readonly Module[]) {
     const scoped = (source: Module): ScopedView[] => source.views.map((view) => ({ ...view, permissions: [...view.permissions].sort((a, b) => actionOrder(a) - actionOrder(b)), moduleCode: source.code }));
     const views = scoped(module);
@@ -59,14 +59,14 @@ function sections(module: Module, modules: readonly Module[]) {
     return [
         { code: "users", name: "Usuarios", views: user, inherited: false },
         { code: "roles", name: "Roles y seguridad", views: role, inherited: false },
-        // The audit API currently uses role.assign, not a separate audit permission.
+        // La auditoría usa hoy `role.assign`. No tiene un permiso de auditoría aparte.
         { code: "audit", name: "Auditoría", views: audit.length ? audit : role.map((view) => ({ ...view, name: "Auditoría", permissions: view.permissions.filter((permission) => permission.code === "role.assign").map((permission) => ({ ...permission, name: "Acceder a Auditoría" })) })), inherited: !audit.length },
         { code: "catalogs", name: "Catálogos", views: catalogs, inherited: false },
         ...own.filter((view) => !view.code.includes("audit")).map((view) => ({ code: view.code, name: view.name, views: [view], inherited: false })),
     ];
 }
 
-// Expanded view, shared audit access, selection and locked/partial checkboxes are independent UI states.
+// La vista abierta, el acceso compartido a auditoría, la selección y las casillas bloqueadas o parciales son estados de pantalla distintos.
 // eslint-disable-next-line complexity
 function PermissionSection({ name, views, inherited, ...props }: Props & { readonly name: string; readonly views: readonly ScopedView[]; readonly inherited: boolean }) {
     const [selected, setSelected] = useState(views[0]?.code);
@@ -155,7 +155,7 @@ function PermissionSection({ name, views, inherited, ...props }: Props & { reado
     );
 }
 
-/** One primary module at a time, with separate sections, views and real API actions. */
+/** Un módulo principal a la vez, con secciones, vistas y acciones reales del API por separado. */
 export function RolePermissionHierarchy(props: Props) {
     const primary = props.modules.filter((module) => !["user", "role"].includes(module.code) && !module.code.startsWith("catalog_"));
     const ordered = [...primary].sort((a, b) => Number(b.code === "administration") - Number(a.code === "administration"));

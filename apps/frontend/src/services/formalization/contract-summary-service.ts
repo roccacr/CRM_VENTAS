@@ -1,6 +1,6 @@
 import { apiRequest } from "../api/api-client";
 
-/** Aggregate contract stages returned by the canonical API. */
+/** Etapas agregadas del contrato que devuelve el API canónico. */
 export interface ContractSummary {
     readonly schemaVersion: 1;
     readonly observedAt: string;
@@ -15,7 +15,7 @@ export interface ContractSummary {
     };
 }
 
-/** Reads canonical aggregates; unavailable data must never become zero. */
+/** Lee agregados canónicos. Un dato que no está disponible no se convierte en cero. */
 export async function getContractSummary(): Promise<ContractSummary> {
     const result = record(await apiRequest<unknown>("/formalization/contracts/summary"));
     const sources = record(result.sources);
@@ -37,18 +37,18 @@ export async function getContractSummary(): Promise<ContractSummary> {
             duplicatesExcluded: count(sources.duplicatesExcluded),
         },
     };
-    // Log only validated aggregate fields, never arbitrary incoming payload data.
+    // El registro lleva solo los campos agregados ya validados. No lleva datos arbitrarios del payload.
     if (import.meta.env.DEV) console.log("[Formalization API: contracts/summary] Incoming aggregate", summary);
     return summary;
 }
 
-/** Narrows to a plain object; arrays and null are contract violations. */
+/** Exige un objeto plano. Un arreglo o un nulo violan el contrato. */
 function record(value: unknown): Record<string, unknown> {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid contract summary");
     return value as Record<string, unknown>;
 }
 
-/** Counts must be non-negative safe integers; anything else is rejected, never coerced to zero. */
+/** Los conteos tienen que ser enteros seguros y no negativos. Cualquier otra cosa se rechaza y no se convierte en cero. */
 function count(value: unknown): number {
     if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) throw new Error("Invalid contract summary");
     return value;

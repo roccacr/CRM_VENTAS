@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { NoteThread } from "../../services/notes/note-collaboration-service";
 
 const BOTTOM_DISTANCE = 48;
-/** Tracks the Drawer scroll owner, preserving older reading position without moving keyboard focus. */
+/** Sigue al dueño del scroll del panel. Conserva la posición de lectura anterior y no mueve el foco del teclado. */
 export function useThreadScroll(thread: NoteThread | null, page: number, open: boolean, onFollowLatest: (page: number) => void) {
     const replyKey = thread?.replies.map((reply) => reply.id).join("|") ?? "";
     const total = thread?.replyPage.total ?? 0;

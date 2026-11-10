@@ -7,7 +7,7 @@ const TILES: readonly { readonly key: keyof AgendaStats; readonly label: string;
     { key: "calendars", label: "Calendarios activos", hint: "superpuestos" },
 ];
 
-/** Four counters above the calendar, so the day's load is readable before opening any event. */
+/** Cuatro contadores arriba del calendario, para leer la carga del día antes de abrir un evento. */
 export function CalendarSummary({ stats }: { readonly stats: AgendaStats }) {
     return (
         <section className="calendar-summary" aria-label="Resumen del calendario">

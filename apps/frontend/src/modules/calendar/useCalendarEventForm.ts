@@ -62,7 +62,7 @@ function eventFields(event: CalendarEvent): CalendarFields {
         links: [...(event.links ?? [])],
     };
 }
-/** A new event starts at 09:00-10:00 of the chosen day, or at the slot picked on the time grid. */
+/** Un evento nuevo empieza de 09:00 a 10:00 del día elegido, o en el hueco marcado en la grilla. */
 function blankFields(date: string, context?: CalendarOrderContext, range?: { readonly start: string; readonly end: string }): CalendarFields {
     return { roomAddress: "", typeId: "", title: "", description: "", location: "", start: range?.start ?? `${date}T09:00`, end: range?.end ?? `${date}T10:00`, allDay: false, userIds: [], externalEmails: "", teamsRequested: false, ...contextDefaults(context) };
 }
@@ -73,7 +73,7 @@ function participantFields(event: CalendarEvent) {
     const participants = event.participants ?? [];
     return { userIds: participants.flatMap((p) => (p.userId ? [p.userId] : [])), externalEmails: participants.flatMap((p) => (p.email ? [p.email] : [])).join(", ") };
 }
-/** Unknown form keys stay readable and cannot accidentally select a different module's editor. */
+/** Una clave de formulario desconocida se puede leer y no abre el editor de otro módulo. */
 export function calendarEditAccess(event: CalendarEvent | null, calendar: CalendarDescriptor, currentModule: CalendarModule) {
     const supportedTypes = calendar.types.filter((type) => type.formKey === `${calendar.moduleCode}.general.v1`);
     const supported = event ? event.formKey === `${calendar.moduleCode}.general.v1` && supportedTypes.some((type) => type.id === event.typeId) : supportedTypes.length > 0;
@@ -149,7 +149,7 @@ function addendumOrderRequirement(fields: CalendarFields, calendar: CalendarDesc
     const requiresOrder = calendar.moduleCode === "formalizacion" && calendar.types.some((type) => type.id === fields.typeId && type.code === "adendum");
     return { requiresOrder, orderError: requiresOrder && linksEditable ? addendumPairError(fields, options) : null };
 }
-/** Keeps the original version and retry key. Unknown writes freeze the draft until the same operation is retried. */
+/** Conserva la versión original y la clave de reintento. Una escritura incierta congela el borrador hasta repetir la misma operación. */
 export function useCalendarEventForm(event: CalendarEvent | null, calendar: CalendarDescriptor, date: string, { onSaved, orderContext, range }: { readonly onSaved: () => void; readonly orderContext?: CalendarOrderContext | undefined; readonly range?: { readonly start: string; readonly end: string } | undefined }) {
     const context = event ? undefined : orderContext;
     const [fields, setFields] = useState(() => initialFields(event, date, context, range));
@@ -191,7 +191,7 @@ export function useCalendarEventForm(event: CalendarEvent | null, calendar: Cale
             command = commandBody(fields, calendar.moduleCode, operation.current);
             if (event?.outlookVersion) command = { ...command, expectedOutlookVersion: event.outlookVersion };
             if (!linksEditable) {
-                // Omission preserves API-redacted relations; an empty array would remove them.
+                // Omitir las relaciones conserva las que el API ocultó. Un arreglo vacío las quitaría.
                 const { links: _links, ...preserved } = command;
                 command = preserved;
             }

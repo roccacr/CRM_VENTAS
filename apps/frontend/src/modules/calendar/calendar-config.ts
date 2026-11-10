@@ -10,7 +10,7 @@ export interface CalendarPermission {
     readonly code: string;
     readonly effect: string;
 }
-/** Deny always wins; Owner names never grant calendar visibility. */
+/** Hace falta el allow exacto de `${módulo}.calendar.read` y un deny lo quita. El nombre Owner no abre el calendario. */
 export function canReadCalendar(permissions: readonly CalendarPermission[], module: CalendarModule): boolean {
     const matches = permissions.filter((permission) => permission.code === `${module}.calendar.read`);
     return matches.some((entry) => entry.effect === "allow") && !matches.some((entry) => entry.effect === "deny");

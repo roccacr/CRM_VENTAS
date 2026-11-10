@@ -18,7 +18,7 @@ const fold = (text: string) =>
 const isTentative = (event: CalendarEvent) => event.outlookDetail?.showAs === "tentative" || event.outlookDetail?.myResponse === "tentativelyAccepted";
 const isPrivate = (event: CalendarEvent) => PRIVATE.includes(event.outlookDetail?.sensitivity ?? "");
 
-/** Outlook-style cues drawn on the event itself: series, tentative, private, cancelled and "comes from Outlook". */
+/** Señales dibujadas en el propio evento: serie, provisional, privado, cancelado y que viene de Outlook. */
 export function eventSignals(event: CalendarEvent): string[] {
     const flags: [boolean, string][] = [
         [event.source === "outlook", "cal-event--outlook"],
@@ -35,7 +35,7 @@ export interface TypeFilter {
     readonly label: string;
     readonly color: string;
 }
-/** One entry per event type across the visible calendars, so the same kind of event is filtered together. */
+/** Una entrada por tipo de evento entre los calendarios visibles, para filtrar juntos los del mismo tipo. */
 export function typeFilters(calendars: readonly CalendarDescriptor[], selected: readonly CalendarModule[]): TypeFilter[] {
     const byCode = new Map<string, TypeFilter>();
     for (const calendar of calendars) {
@@ -51,7 +51,7 @@ export interface ViewFilters {
     readonly showOutlook: boolean;
 }
 const matches = (event: CalendarEvent, query: string) => !query || fold([event.title, event.location ?? "", event.description ?? ""].join(" ")).includes(query);
-/** Search and filters only change what is drawn; counts of the loaded period stay as the server returned them. */
+/** La búsqueda y los filtros solo cambian lo que se dibuja. Los conteos del periodo cargado quedan como los devolvió el servidor. */
 export function visibleEvents(events: readonly CalendarEvent[], filters: ViewFilters): CalendarEvent[] {
     const query = fold(filters.query.trim());
     return events.filter((event) => {

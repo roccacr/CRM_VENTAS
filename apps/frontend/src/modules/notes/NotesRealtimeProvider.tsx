@@ -5,12 +5,13 @@ import { API_ORIGIN } from "../../config/frontend-env";
 import { getAuthenticatedCsrfToken, subscribeToSessionRefresh } from "../../services/api/api-client";
 import { createNotesRealtime, type NotesRealtime } from "../../services/notes/notes-realtime";
 import { NotesRealtimeContext } from "./useNotesRealtime";
-/** One socket belongs to the authenticated shell, shared by both header variants and drawers. */
+/** Un socket pertenece al shell autenticado y lo comparten las dos variantes del encabezado y los paneles. */
 export function NotesRealtimeProvider({ children }: { readonly children: ReactNode }) {
     const [client, setClient] = useState<NotesRealtime | null>(null);
     useEffect(() => {
         let active = true;
         let retry: ReturnType<typeof setTimeout> | undefined;
+        // No conecta solo. Usa solo websocket y la cookie de sesión. La prueba es el token CSRF. Si falla, reintenta a los 15 s. Refrescar la sesión desconecta y vuelve a conectar solo si el refresco se confirmó.
         const socket = io(`${API_ORIGIN}/notes`, {
             autoConnect: false,
             transports: ["websocket"],
@@ -50,7 +51,7 @@ export function NotesRealtimeProvider({ children }: { readonly children: ReactNo
             if (outcome === "refreshed" && active) socket.connect();
         });
         void Promise.resolve().then(() => {
-            // StrictMode can discard an effect before this microtask; never open its abandoned socket.
+            // StrictMode puede descartar un efecto antes de esta microtarea. Ese socket abandonado no se abre.
             if (active) {
                 setClient(realtime);
                 socket.connect();

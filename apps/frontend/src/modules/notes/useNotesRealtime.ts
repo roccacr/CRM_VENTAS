@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef } from "react";
 
 import type { NoteActivity, NotesRealtime } from "../../services/notes/notes-realtime";
 export const NotesRealtimeContext = createContext<NotesRealtime | null>(null);
-/** Stable listeners retain component drafts and pending receipts during snapshot refreshes. */
+/** Los escuchas estables conservan los borradores del componente y los acuses pendientes mientras se refresca la foto. */
 export function useNotesRealtime(phase: "notifications" | "snapshot" | "revoke", listener: (event: NoteActivity | null) => void | Promise<void>, enabled = true) {
     const client = useContext(NotesRealtimeContext);
     const latest = useRef(listener);

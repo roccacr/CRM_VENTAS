@@ -20,7 +20,7 @@ interface Props {
     readonly saveState?: PlacementSaveState;
     readonly onRetry?: () => void;
 }
-/** Pointer movement is local; only pointer release or a keyboard action persists layout. */
+/** El movimiento del puntero es local. Solo soltar el puntero o una acción de teclado persiste el layout. */
 export function NoteSheet({ note, placement, busy, onSave, onEdit, saveState, onRetry }: Props) {
     const [local, setLocal] = useState(() => visiblePlacement(placement));
     const current = useRef(local);

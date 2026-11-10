@@ -35,7 +35,7 @@ function Change({ change, event }: { readonly change: OrderHistoryChange; readon
         </div>
     );
 }
-/** The version counter is bookkeeping: it rides next to the title as a chip instead of taking a row of its own. */
+/** El contador de versión es de control. Va junto al título como pastilla y no ocupa una fila propia. */
 function VersionChip({ event }: { readonly event: OrderHistoryEntry }) {
     const change = event.changes.find((entry) => entry.field === "version");
     if (!change) return null;
@@ -45,9 +45,9 @@ const dateOf = (event: OrderHistoryEntry): number => {
     const date = event.occurredAt ?? event.recordedAt;
     return date ? new Date(date).getTime() : 0;
 };
-/** Newest first, whatever order the pages arrive in; the sort is stable so equal timestamps keep the server order. */
+/** Lo más nuevo primero, cualquiera que sea el orden de llegada de las páginas. El orden es estable: marcas iguales conservan el orden del servidor. */
 const newestFirst = (items: readonly OrderHistoryEntry[]): readonly OrderHistoryEntry[] => [...items].sort((a, b) => dateOf(b) - dateOf(a));
-/** Title, newest marker and date of one entry. */
+/** Título, marca de lo más nuevo y fecha de una entrada. */
 function EntryHead({ event, latest }: { readonly event: OrderHistoryEntry; readonly latest: boolean }) {
     const date = event.occurredAt ?? event.recordedAt;
     return (
@@ -175,7 +175,7 @@ function Content({ item }: { readonly item: FollowUpItem }) {
         </Card>
     );
 }
-/** Lazy read on opening, same enterprise side panel as the client; switching orders unmounts obsolete requests. */
+/** La lectura espera a abrir el panel, el mismo panel lateral del cliente. Cambiar de orden desmonta las peticiones viejas. */
 export function FormalizationOrderHistoryDrawer({ item, open, onClose }: { readonly item: FollowUpItem; readonly open: boolean; readonly onClose: () => void }) {
     return (
         <Drawer

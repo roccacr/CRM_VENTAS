@@ -10,7 +10,7 @@ export interface RecentOrderActivity {
     readonly approval: string | null;
 }
 
-/** The server selects the authenticated actor and enforces the six-event limit. */
+/** El servidor elige al actor autenticado y aplica el límite de seis eventos. */
 export async function getRecentOrderActivity(): Promise<readonly RecentOrderActivity[]> {
     const body = object(await apiRequest<unknown>("/formalization/home/recent-activity"));
     if (body.schemaVersion !== 1 || !Array.isArray(body.items) || body.items.length > 6) throw new Error("Movimientos inválidos");

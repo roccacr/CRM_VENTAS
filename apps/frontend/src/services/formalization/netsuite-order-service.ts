@@ -9,7 +9,7 @@ export interface NetsuiteOrderResult {
     readonly order: NetsuiteOrderIdentity & { readonly netsuiteId: string };
     readonly data: unknown;
 }
-/** This endpoint resolves the provider reference server-side; credentials never reach React. */
+/** Este endpoint resuelve la referencia del proveedor en el servidor. Las credenciales no llegan a React. */
 export async function getNetsuiteOrder(identity: NetsuiteOrderIdentity): Promise<NetsuiteOrderResult> {
     const result = await apiRequest<unknown>(synchronizationPath(identity));
     return parseNetsuiteResult(result);
@@ -39,13 +39,13 @@ function synchronizationPath(identity: NetsuiteOrderIdentity): string {
     if (!valid) throw new Error("Identidad de orden invalida");
     return "/formalization/orders/" + identity.source + "/" + encodeURIComponent(id) + "/netsuite";
 }
-/** Environment comes from the authenticated server, independently of browser location. */
+/** El entorno sale del servidor autenticado, aparte de la ubicación del navegador. */
 export async function getNetsuiteSynchronizationContext(identity: NetsuiteOrderIdentity): Promise<NetsuiteSynchronizationContext> {
     const result = object(await apiRequest<unknown>(synchronizationPath(identity) + "/context"));
     if (!["production", "sandbox"].includes(String(result.environment)) || typeof result.canSynchronize !== "boolean") throw new Error("Contexto NetSuite invalido");
     return { environment: result.environment as "production" | "sandbox", canSynchronize: result.canSynchronize };
 }
-/** Pull an authorized server snapshot; the browser never supplies provider fields. */
+/** Trae una foto autorizada del servidor. El navegador no envía campos del proveedor. */
 export async function synchronizeNetsuiteOrder(identity: NetsuiteOrderIdentity) {
     const result = object(await apiRequest<unknown>(synchronizationPath(identity) + "/sync", { method: "POST", body: {} }));
     if (result.persisted !== true || !["applied", "unchanged"].includes(String(result.result)) || !["native", "legacy"].includes(String(result.destination)) || !["production", "sandbox"].includes(String(result.environment)) || !Number.isSafeInteger(result.changes) || Number(result.changes) < 0) throw new Error("No se confirmo la sincronizacion");

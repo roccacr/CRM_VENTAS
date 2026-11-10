@@ -18,7 +18,7 @@ interface Props {
 }
 const fundsLabel = (value: PurchaseFundsOrigin | null | undefined) => (value === "own_funds" ? "Fondos propios" : value === "bank_financing" ? "Financiamiento bancario" : "Sin definir");
 
-/** Parent keys by order/version so asynchronous responses cannot change another order's form. */
+/** El padre identifica el formulario por orden y versión, para que una respuesta asíncrona no cambie el de otra orden. */
 function useFundsEdit({ item, allowed, onSaved }: Props) {
     const [snapshot, setSnapshot] = useState<FundsSnapshot | null>(null);
     const [origin, setOrigin] = useState<PurchaseFundsOrigin | "">("");
@@ -145,7 +145,7 @@ function MarkerPanel({ edit, onRefresh, onClose }: { readonly edit: ReturnType<t
     );
 }
 
-/** Compact classification card shared by the drawer and full order. */
+/** Tarjeta compacta de clasificación, compartida por el panel y la orden completa. */
 export function FormalizationPurchaseFunds(props: Props & { readonly marker?: boolean }) {
     return props.marker ? <PurchaseFundsMarker {...props} /> : <PurchaseFundsCard {...props} />;
 }

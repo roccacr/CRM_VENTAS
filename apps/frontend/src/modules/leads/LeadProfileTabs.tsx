@@ -19,7 +19,7 @@ const ICONS: Record<ProfileTab, ReactNode> = {
     files: <CloudOutlined />,
 };
 
-/** Accessible tab list: arrow keys move between sections, Home and End jump to the first and last, only the active tab is in the tab order. */
+/** Lista de pestañas accesible. Las flechas mueven entre secciones, Inicio y Fin saltan a la primera y a la última, y solo la pestaña activa entra en el orden de tabulación. */
 export function LeadProfileTabs({ active, counts, onChange }: { readonly active: ProfileTab; readonly counts: Partial<Record<ProfileTab, string>>; readonly onChange: (tab: ProfileTab) => void }) {
     const move = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
         const last = PROFILE_TABS.length - 1;

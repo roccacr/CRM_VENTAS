@@ -319,7 +319,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         icon: <NotificationOutlined />,
         menuItems: [
             { code: "marketing-home", label: "Inicio", icon: <DashboardOutlined />, requiredPermission: "mercadeo.home.read", routePath: MARKETING_HOME_PATH },
-            // Section permissions control visibility; business views and actions remain future scope.
+            // El permiso de la sección decide si se ve. Las vistas y acciones de negocio siguen fuera de este alcance.
             { code: "marketing-leads", label: "Captación de leads", icon: <FunnelPlotOutlined />, requiredPermission: "mercadeo.leads.read", routePath: "/home/marketing/leads" },
             { code: "marketing-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "mercadeo.calendar.read", routePath: "/home/marketing/calendar" },
             { code: "marketing-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("marketing") },
@@ -330,7 +330,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         label: "Formalización",
         icon: <FileProtectOutlined />,
         menuItems: [
-            // Active module membership opens Home; individual banners have their own permissions.
+            // La membresía activa del módulo abre Inicio. Cada banner tiene su propio permiso.
             { code: "formalization-home", label: "Inicio", icon: <DashboardOutlined />, routePath: FORMALIZATION_HOME_PATH },
             // Acceso de gestión oculto temporalmente: el seguimiento se concentra en Inicio. La ruta directa se conserva.
             { code: "formalization-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "formalizacion.calendar.read", routePath: `${FORMALIZATION_HOME_PATH}/calendar` },
@@ -538,7 +538,7 @@ export const getVisibleNavigationWorkspaces = (permissions: readonly EffectiveNa
     const visibleModuleWorkspaces = moduleWorkspaces.flatMap((workspace) => {
         const moduleCode = WORKSPACE_MODULE_CODE_BY_WORKSPACE_CODE[workspace.code];
 
-        // A permissionless Home must never expose Formalization without active module membership.
+        // Un Inicio sin permiso no muestra Formalización si no hay membresía activa del módulo.
         if (workspace.code === "formalization" && !activeOrgUnitCodes.has("formalizacion")) return [];
 
         if (shouldFilterByOrgUnit && moduleCode && !activeOrgUnitCodes.has(moduleCode)) {
@@ -1013,7 +1013,7 @@ function MobileNavigationDrawer({ activeMenuItemCode, activeWorkspace, assignedW
         const trigger = document.activeElement;
         const initialFocus = drawer.querySelector<HTMLButtonElement>("button") ?? drawer;
         const background = new Map<Element, string | null>();
-        // Isolate siblings up to body without making the drawer's ancestors inert.
+        // Aísla a los hermanos hasta el body sin dejar inertes a los ancestros del cajón.
         let branch = drawer.parentElement;
         while (branch && branch !== document.body) {
             const parent = branch.parentElement;
@@ -1052,7 +1052,7 @@ function MobileNavigationDrawer({ activeMenuItemCode, activeWorkspace, assignedW
         }
         if (event.key !== "Tab") return;
 
-        // Recompute after accordion changes; collapsed and disabled options cannot receive Tab.
+        // Se recalcula después de cambiar el acordeón. Una opción plegada o deshabilitada no recibe Tab.
         const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button, input, a[href], select, textarea, [tabindex]")).filter((element) => element.tabIndex >= 0 && !element.matches(":disabled") && !element.closest('[hidden], [aria-hidden="true"], [inert]'));
         const first = focusable[0];
         const last = focusable.at(-1);
@@ -1190,7 +1190,7 @@ function GlobalMenuDropdown({ id, isOpen, label, onPointerEnter, onPointerLeave,
         const group = panel?.parentElement;
         if (!panel || !group) return;
 
-        // Viewport positioning escapes the tablet scroll track's clipping.
+        // La posición respecto de la ventana evita el recorte de la pista de scroll en tableta.
         const positionPanel = () => {
             const trigger = group.getBoundingClientRect();
             const width = panel.getBoundingClientRect().width;
@@ -1485,7 +1485,7 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
         onMenuItemSelect?.(routePath);
     };
 
-    // CSS hides the drawer on desktop; close it too so its modal isolation is released.
+    // El CSS esconde el cajón en escritorio. También se cierra para soltar su aislamiento modal.
     useEffect(() => {
         const desktop = window.matchMedia("(min-width: 768px)");
         /** Cierra el cajón al pasar a escritorio. */

@@ -8,7 +8,7 @@ const BAR_GROUPS = [
     [26, 44, 14],
 ];
 
-/** Loading state with the shape of the report (summary table + chart), so the page does not jump when the data arrives. Static: no shimmer. */
+/** Estado de carga con la forma del reporte, tabla de resumen y gráfico, para que la página no salte cuando llegan los datos. Es estático: no hay brillo animado. */
 export function CaptureLoading() {
     return (
         <section className="marketing-card capture-block capture-loading" role="status" aria-live="polite" aria-label="Cargando reporte">

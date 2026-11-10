@@ -7,10 +7,10 @@ import type { MarketingBucket } from "./marketing-home-preview.model";
 const WIDTH = 1000;
 const HEIGHT = 300;
 
-/** Gradient ids go into `url(#…)`, so React's colon-separated ids are cleaned first. */
+/** Los ids del degradado entran en `url(#…)`. Primero se limpian los dos puntos que React pone en los ids. */
 const useSvgId = (prefix: string): string => `${prefix}${useId().replaceAll(":", "")}`;
 
-/** Small trend line with a soft fill, used inside cards. Decorative: the number next to it carries the data. */
+/** Línea pequeña de tendencia con un relleno suave, dentro de las tarjetas. Es decorativa: el número de al lado lleva el dato. */
 export function SparkArea({ values }: { readonly values: readonly number[] }) {
     const gradient = useSvgId("spark");
     const points = toPoints(values, Math.max(1, ...values) * 1.15, 100, 30);
@@ -36,13 +36,13 @@ interface AreaChartProps {
     readonly unit: string;
 }
 
-/** Gridline values: the first step count that splits the axis into whole numbers, or one per unit when the axis is tiny. */
+/** Valores de la grilla: el primer paso que parte el eje en enteros, o uno por unidad cuando el eje es muy pequeño. */
 const axisTicks = (maximum: number): number[] => {
     const steps = maximum < 4 ? maximum : ([4, 5, 2].find((count) => maximum % count === 0) ?? 4);
     return Array.from({ length: steps + 1 }, (_, index) => (maximum * index) / steps);
 };
 
-/** Axis labels thin out on long series so they never overlap, and the last one never crowds its neighbour. */
+/** Las etiquetas del eje se espacian en series largas para no montarse, y la última no aplasta a su vecina. */
 const labelStep = (count: number): number => Math.ceil(count / 8);
 const showsLabel = (index: number, count: number): boolean => {
     const step = labelStep(count);
@@ -50,7 +50,7 @@ const showsLabel = (index: number, count: number): boolean => {
     return index === last || (index % step === 0 && last - index >= Math.ceil(step / 2));
 };
 
-/** Which point is under the pointer or the keyboard cursor; null when none is. */
+/** Qué punto está bajo el puntero o el cursor del teclado. Nulo si no hay ninguno. */
 function useChartCursor(count: number) {
     const [active, setActive] = useState<number | null>(null);
     const last = Math.max(0, count - 1);
@@ -72,7 +72,7 @@ function useChartCursor(count: number) {
     };
 }
 
-/** Vertical cursor, point marker and tooltip for the active point; nothing when no point is active. */
+/** Cursor vertical, marca y tooltip del punto activo. Nada si no hay un punto activo. */
 function ChartReadout({ bucket, point }: { readonly bucket: MarketingBucket | null; readonly point: ChartPoint | null }) {
     if (!bucket || !point) return null;
     const left = (point.x / WIDTH) * 100;
@@ -91,7 +91,7 @@ function ChartReadout({ bucket, point }: { readonly bucket: MarketingBucket | nu
     );
 }
 
-/** The main chart: leads over time against the comparison, with a hover or keyboard read-out for every point. */
+/** El gráfico principal: leads en el tiempo contra la comparación, con lectura por puntero o teclado en cada punto. */
 export function LeadsAreaChart({ title, buckets, comparisonLabel, currentLabel = "Periodo seleccionado", unit }: AreaChartProps) {
     const headingId = useSvgId("area-title");
     const gradient = useSvgId("area-fill");

@@ -5,9 +5,9 @@ import { FORMALIZATION_QUEUE_HELP } from "./formalization-queue-help";
 const count = new Intl.NumberFormat("es-CR");
 
 /**
- * Counters for the order list, taken from the per-queue totals the follow-up API already returns.
- * They describe the whole portfolio, not the current filter, so a filter never makes a card read as a false zero.
- * Until the API answers every figure is a dash: a dash means "not known yet", a zero means "none".
+ * Contadores de la lista de órdenes, tomados de los totales por cola que el API de seguimiento ya devuelve.
+ * Describen todo el portafolio, no el filtro actual, así que un filtro no hace que una tarjeta lea un cero falso.
+ * Hasta que el API responde, cada cifra es una raya. La raya significa que todavía no se sabe. El cero significa que no hay ninguno.
  */
 export function buildOrderCards(counts: FollowUp["counts"] | null, queues: readonly FollowUpQueue[] = FOLLOW_UP_QUEUES): CatalogBannerData[] {
     const figure = (queue: keyof FollowUp["counts"]): string => {

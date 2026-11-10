@@ -4,7 +4,7 @@ import { InfoHint } from "./MarketingInfoHint";
 
 type Totals = ReturnType<typeof summarizeMarketingSample>;
 
-/** Change chip: green up, red down, neutral flat; a dash when there is nothing to compare with. */
+/** Pastilla de cambio: verde si sube, rojo si baja, neutro si está plano. Una raya cuando no hay contra qué comparar. */
 export function DeltaText({ delta, context }: { readonly delta: MarketingDelta | null; readonly context?: string }) {
     if (!delta) return <>—</>;
     return (
@@ -15,7 +15,7 @@ export function DeltaText({ delta, context }: { readonly delta: MarketingDelta |
     );
 }
 
-/** Tiny trend line; decorative because the numeric columns already carry the data. */
+/** Línea pequeña de tendencia. Es decorativa porque las columnas numéricas ya llevan el dato. */
 function Sparkline({ values }: { readonly values: readonly number[] }) {
     const max = Math.max(1, ...values);
     const step = values.length > 1 ? 72 / (values.length - 1) : 0;
@@ -27,7 +27,7 @@ function Sparkline({ values }: { readonly values: readonly number[] }) {
     );
 }
 
-/** Shown only when something needs a look; when everything is within range the block does not exist. */
+/** Se muestra solo cuando algo merece una mirada. Si todo está dentro del rango, el bloque no existe. */
 export function MarketingAlerts({ alerts, comparison }: { readonly alerts: readonly MarketingAlert[]; readonly comparison?: { current: string; previous: string } }) {
     if (alerts.length === 0) return null;
     return (
@@ -95,11 +95,11 @@ function BreakdownRow({ group, maxLeads, flagLow }: { readonly group: BreakdownP
     );
 }
 
-/** Where leads come from, largest first, with change against the comparison and a per-row movement line. */
+/** De dónde vienen los leads, el mayor primero, con el cambio contra la comparación y una línea de movimiento por fila. */
 export function MarketingBreakdown({ groups, totals, previousLeads, dimension, onDimensionChange }: BreakdownProps) {
     const dimensionLabel = MARKETING_DIMENSIONS.find((item) => item.key === dimension)?.label ?? "Proyecto";
     const maxLeads = Math.max(1, ...groups.map((group) => group.leads));
-    // When the whole period is small, tagging every row only adds noise; one note says it once.
+    // Cuando todo el periodo es pequeño, marcar cada fila solo agrega ruido. Una nota lo dice una vez.
     const smallPeriod = totals.leads < MARKETING_MIN_SAMPLE * 3;
     return (
         <section id="marketing-preview-breakdown" className="marketing-card" aria-labelledby="marketing-breakdown-title">
@@ -150,7 +150,7 @@ export function MarketingBreakdown({ groups, totals, previousLeads, dimension, o
     );
 }
 
-/** Which seller holds how many leads in each campaign. Collapsed by default: it answers a second question. */
+/** Qué vendedor tiene cuántos leads en cada campaña. Viene plegado: responde una segunda pregunta. */
 export function MarketingSellerMatrix({ matrix }: { readonly matrix: ReturnType<typeof matrixMarketingSample> }) {
     const max = Math.max(1, ...matrix.sellers.flatMap((seller) => seller.cells.map((cell) => cell.leads)));
     return (

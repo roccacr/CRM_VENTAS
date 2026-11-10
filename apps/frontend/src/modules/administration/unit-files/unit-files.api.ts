@@ -60,14 +60,14 @@ function unitQuery(filter: UnitFilter, moduleCode: string): URLSearchParams {
     for (const key of ["codes", "housingTypes", "statuses", "paneProjectIds"] as const) if (filter[key]?.length) query.set(key, JSON.stringify(filter[key]));
     return query;
 }
-/** Counts cover all matching records, independently of the currently loaded inventory page. */
+/** Los conteos cubren todos los registros que coinciden, aparte de la página de inventario cargada. */
 export function listUnitFacets(filter: UnitFilter, kind: UnitFacetKind, after: string | undefined, moduleCode: string): Promise<{ items: UnitFacet[]; nextAfter: string | null }> {
     const query = unitQuery({ ...filter, cursor: undefined, limit: 100 }, moduleCode);
     query.set("kind", kind);
     if (after !== undefined) query.set("after", after);
     return apiRequest(`/unit-files/facets?${query}`);
 }
-/** Searchable choices remain project-scoped and bounded, never a full inventory download. */
+/** Las opciones de búsqueda quedan en los proyectos pedidos y con tope. No descargan el inventario completo. */
 export function listUnitOptions(filter: UnitFilter, options: { kind: "housingType" | "code"; search: string; after?: string | undefined }, moduleCode: string): Promise<UnitOptions> {
     const { kind, search, after } = options;
     const query = new URLSearchParams({ moduleCode, projectIds: filter.projectIds.join(","), limit: "50", kind, search });
@@ -78,17 +78,17 @@ export function listUnitOptions(filter: UnitFilter, options: { kind: "housingTyp
     return apiRequest<UnitOptions>(`/unit-files/options?${query}`);
 }
 
-/** Unit Files owns its read contract; it never calls generic catalog persistence. */
+/** El expediente tiene su contrato de lectura. No llama a la persistencia genérica de catálogos. */
 export async function listUnitProjects(moduleCode: string): Promise<UnitProject[]> {
     const response = await apiRequest<{ items: UnitProject[] }>(`/unit-files/projects?moduleCode=${encodeURIComponent(moduleCode)}`);
     return response.items;
 }
-/** Criteria are transmitted before any inventory query; cursors bind the complete search. */
+/** El criterio viaja antes de cualquier consulta de inventario. El cursor ata la búsqueda completa. */
 export function listUnitFiles(filter: UnitFilter, moduleCode: string): Promise<UnitPage> {
     const query = unitQuery(filter, moduleCode);
     return apiRequest<UnitPage>(`/unit-files?${query}`);
 }
-/** Full business values and provider references are fetched only for requested records. */
+/** Los valores de negocio y las referencias del proveedor se piden solo para los registros abiertos. */
 export function getUnitFile(id: string, moduleCode: string): Promise<UnitDetail> {
     return apiRequest<UnitDetail>(`/unit-files/${encodeURIComponent(id)}?moduleCode=${encodeURIComponent(moduleCode)}`);
 }

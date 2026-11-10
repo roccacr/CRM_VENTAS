@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { type CaptureApiPeriod, type CaptureApiReport, type CaptureQualification, getCaptureReport } from "../../services/marketing/lead-report-service";
 
-/** Previous identity/period data never paints; only the current live request can publish a result. */
+/** Los datos de otra identidad o de otro periodo no se pintan. Solo la petición viva actual puede publicar un resultado. */
 export function useCaptureReport(period: CaptureApiPeriod, userId: string, qualification: CaptureQualification) {
     const [attempt, setAttempt] = useState(0);
     const key = JSON.stringify([userId, period, qualification, attempt]);

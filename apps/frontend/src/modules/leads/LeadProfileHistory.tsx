@@ -24,7 +24,7 @@ interface Props {
 }
 
 const statusChange = (entry: HistoryEntry): string | null => (entry.fromStatus || entry.toStatus ? `${entry.fromStatus ?? "—"} → ${entry.toStatus ?? "—"}` : null);
-/** Who did it, what status changed and why, and which system it came from. */
+/** Quién lo hizo, qué estado cambió y por qué, y de qué sistema vino. */
 function EntryMeta({ entry }: { readonly entry: HistoryEntry }) {
     const change = statusChange(entry);
     return (
@@ -135,7 +135,7 @@ function HistoryPager({ history, refreshing, atStart, onFirst, onNext }: Pick<Pr
     );
 }
 
-/** Activity of the client. Search and filters work on the records already loaded in this page; the next page is requested with the existing cursor. */
+/** Actividad del cliente. La búsqueda y los filtros trabajan sobre los registros ya cargados en esta página. La siguiente página se pide con el cursor existente. */
 export function LeadProfileHistory(props: Props) {
     const { history, kind, title = "Bitácora de seguimiento", hint = DEFAULT_HINT, emptyText = "Sin historial registrado." } = props;
     const [query, setQuery] = useState("");

@@ -8,7 +8,7 @@ interface Tile {
     readonly caption: string;
 }
 
-/** The three banners of each measure: how many, what share of all leads (or how many projects), and the average per project, campaign or ad (total ÷ groups, shown in the caption). */
+/** Los tres banners de cada medida: cuántos, qué parte de todos los leads o cuántos proyectos, y el promedio por proyecto, campaña o anuncio. El promedio es el total dividido entre los grupos y se explica en el pie. */
 const UNITS: Record<CaptureDepth, { readonly one: string; readonly many: string; readonly path: string }> = {
     1: { one: "proyecto", many: "proyectos", path: "proyecto" },
     2: { one: "campaña", many: "campañas", path: "proyecto › campaña" },
@@ -22,7 +22,7 @@ function tilesFor(figures: CaptureKpiFigures, measure: CaptureMeasure, depth: Ca
     return [{ key: "total", label: info.label, value: countFormat.format(figures.total), caption: "en el periodo, con el filtro actual" }, second, { key: "average", label: `Promedio de ${info.noun} por ${unit.one}`, value: percentFormat.format(figures.average), caption: `${countFormat.format(figures.total)} ${info.noun} ÷ ${countFormat.format(figures.units)} ${figures.units === 1 ? unit.one : unit.many} con leads` }];
 }
 
-/** KPI banners over the chart. They follow the same filters and the project selection as the chart. */
+/** Banners de indicadores sobre el gráfico. Siguen los mismos filtros y la misma selección de proyectos que el gráfico. */
 export function CaptureKpis({ figures, measure, depth }: { readonly figures: CaptureKpiFigures; readonly measure: CaptureMeasure; readonly depth: CaptureDepth }) {
     return (
         <ul className="capture-kpis" aria-label="Indicadores del periodo">

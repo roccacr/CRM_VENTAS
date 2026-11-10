@@ -2,7 +2,7 @@ import type { CatalogContextModuleCode } from "../../../services/catalogs/catalo
 import { CatalogItemsPage } from "../catalogs/CatalogItemsPage";
 import { BROKERS_CATALOG } from "./brokers-definition";
 
-/** Broker-owned route; the shared view guarantees exact Projects interaction and visual parity. */
+/** Ruta propia de corredores. La vista compartida conserva la interacción y el aspecto de Proyectos. La identidad y los permisos siguen siendo de este catálogo. */
 export function BrokersPage({ contextLabel = "Administración", contextModuleCode = "administration" }: { readonly contextLabel?: string; readonly contextModuleCode?: CatalogContextModuleCode }) {
     return <CatalogItemsPage catalog={BROKERS_CATALOG} contextLabel={contextLabel} contextModuleCode={contextModuleCode} />;
 }

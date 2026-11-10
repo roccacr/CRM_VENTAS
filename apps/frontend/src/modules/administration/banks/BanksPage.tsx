@@ -105,6 +105,7 @@ async function dispatchAdvisorChange(target: Extract<BankDialog, { kind: "adviso
 function writableDialog(dialog: BankDialog | null, saving: boolean, blocked: boolean): BankDialog | null {
     return saving || blocked ? null : dialog;
 }
+/** Leer es obligatorio. Inactivar un activo exige inactivar; reactivar exige actualizar. Crear y editar usan sus propios permisos. */
 function canSubmit(target: BankDialog, permissions: CatalogPermissions): boolean {
     if (!permissions.read) return false;
     if (target.kind === "status") return target.item.status === "active" ? permissions.inactivate : permissions.update;
@@ -222,6 +223,7 @@ function useBanks(contextModuleCode: CatalogContextModuleCode) {
                 setError(null);
             }
         });
+        // La página de bancos es de 500. Si esta lectura falla, la lista queda vacía para no mostrar el filtro anterior.
         void listBanks({ moduleCode: contextModuleCode, search: filters.search, status: filters.status, limit: 500, offset: (filters.page - 1) * 500 })
             .then((result) => {
                 if (active && token === epoch.current) setBanks(result);
@@ -250,6 +252,7 @@ function useBanks(contextModuleCode: CatalogContextModuleCode) {
                 setAdvisors(EMPTY_ADVISORS);
             }
         });
+        // Los ejecutivos van de 25.
         void Promise.all([getBank(selectedId, contextModuleCode), listBankAdvisors(selectedId, { moduleCode: contextModuleCode, search: advisorFilters.search, status: advisorFilters.status, limit: 25, offset: (advisorFilters.page - 1) * 25 })])
             .then(([bank, result]) => {
                 if (active && token === epoch.current) {
@@ -270,6 +273,7 @@ function useBanks(contextModuleCode: CatalogContextModuleCode) {
     const reload = useCallback(() => {
         setRefresh((value) => value + 1);
     }, []);
+    /** Un duplicado avisa y deja reintentar. 401 o 403 cierran el panel. 409 o un fallo sin confirmar bloquean el envío y conservan el borrador. */
     const handleFailure = (failure: unknown) => {
         if (bankErrorCode(failure) === "BANK_DUPLICATE") {
             setFormError(messageFor(failure, "El registro ya existe."));
@@ -332,6 +336,7 @@ function useBanks(contextModuleCode: CatalogContextModuleCode) {
             }
         }
     };
+    // Un banco inactivo, o una lista de ejecutivos que no cargó, no habilita el alta.
     const advisorCreateDisabled = selected?.status !== "active" || advisorLoading || Boolean(advisorError);
     return {
         advisorCreateDisabled,

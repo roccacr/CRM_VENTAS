@@ -34,7 +34,7 @@ interface PeriodCopy {
     readonly unit: string;
 }
 
-/** The four time frames of the summary. Each one is compared with the same stretch of the previous one. */
+/** Los cuatro marcos de tiempo del resumen. Cada uno se compara con el mismo tramo del anterior. */
 const HOME_PERIODS: readonly PeriodCopy[] = [
     { key: "day", label: "Hoy", word: "hoy", against: "ayer", chart: "Leads de los últimos 7 días", unit: "día" },
     { key: "week", label: "Semana", word: "esta semana", against: "la semana pasada", chart: "Leads de la semana", unit: "día" },
@@ -55,7 +55,7 @@ interface MarketingBannerProps {
     readonly context?: string;
 }
 
-/** Compares a rate with the previous one, only when the comparison had something to compare. */
+/** Compara una tasa con la anterior, solo cuando la comparación tenía algo contra qué medir. */
 const rateChange = (current: number, previous: number, hasPrevious: boolean) => {
     if (!hasPrevious) return null;
     const delta = describeChange(current - previous, "puntos");
@@ -73,7 +73,7 @@ interface BannerInput {
     readonly followUp: { readonly value: number; readonly series: readonly number[]; readonly range: string };
 }
 
-/** Four cards, each with its own trend: how many leads, how many reach an appointment, how many visits happened and what still needs follow-up. */
+/** Cuatro tarjetas, cada una con su tendencia: cuántos leads, cuántos llegan a cita, cuántas visitas ocurrieron y qué sigue pendiente de seguimiento. */
 function buildBanners({ available, appointmentsAvailable, totals, before, context, buckets, followUp, eventTotals }: BannerInput): readonly MarketingBannerProps[] {
     const pending: readonly MarketingBannerProps[] = [
         { title: "Leads", value: "—", caption: "Registrados en el periodo", icon: <UserAddOutlined />, tone: "neutral", delta: null, series: [] },
@@ -102,7 +102,7 @@ function buildBanners({ available, appointmentsAvailable, totals, before, contex
             icon: <CheckCircleOutlined />,
             tone: "success",
             hint: "Se cuentan por la fecha de la cita, aunque el lead se haya registrado antes. Completada no confirma que el cliente asistió.",
-            // Recent appointments are still pending, so comparing completed visits would read as a false drop.
+            // Las citas recientes siguen pendientes, así que comparar visitas completadas se leería como una caída falsa.
             delta: null,
             series: eventTotals ? [] : buckets.map((bucket) => bucket.attended),
         },
@@ -134,13 +134,13 @@ function describeScope({ projects }: MarketingScope, source: readonly MarketingD
     return projects.length ? `Captación de leads y citas · ${projectLabel}` : "Captación de leads y citas";
 }
 
-/** Stable IDs in values; readable names sorted independently of source/provider identities. */
+/** Los valores llevan ids estables. Los nombres legibles se ordenan aparte de la identidad de origen o del proveedor. */
 function marketingOptions(rows: readonly MarketingDirectoryRow[]) {
     const names = new Map(rows.map((row) => [row.project, row.projectName ?? row.project]));
     return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, "es"));
 }
 
-/** Period and project are the only controls; the detail by campaign and ad lives in "Captación de leads". */
+/** Periodo y proyecto son los únicos controles. El detalle por campaña y anuncio vive en Captación de leads. */
 function MarketingControls({ available, notice, onRetry, rows, period, scope, summary, onPeriod, onProject }: ControlsProps) {
     return (
         <>
@@ -179,7 +179,7 @@ function MarketingControls({ available, notice, onRetry, rows, period, scope, su
     );
 }
 
-/** Lead cohorts retain their creation dates; appointment events use a separate event-date counter. */
+/** Las cohortes de leads conservan su fecha de creación. Las citas usan un contador aparte, por fecha del evento. */
 function marketingRows(summary: MarketingApiSummary): readonly MarketingSampleRow[] {
     const today = parseISODate(summary.today) as Date;
     const sellers = new Map(summary.sellers.map((seller) => [seller.id, seller]));
@@ -202,7 +202,7 @@ function marketingRows(summary: MarketingApiSummary): readonly MarketingSampleRo
     }));
 }
 
-/** Connected entry; the API owns both source precedence and real lead counts. */
+/** Entrada conectada. El API es dueño de la precedencia de la fuente y de los conteos reales de leads. */
 export function MarketingHomePage({ currentUser }: { readonly currentUser: IdentityUser }) {
     const [period, setPeriod] = useState<HomePeriod>("month");
     const { value, failed, retry } = useMarketingHomeSummary(period, currentUser.publicId);
@@ -224,7 +224,7 @@ interface MarketingHomeDashboardProps {
     readonly onRetry?: (() => void) | undefined;
 }
 
-/** Pure dashboard: placeholders when unavailable; explicit rows are the only data source. */
+/** Tablero puro. Si no hay dato, un placeholder. Las filas explícitas son la única fuente. */
 export function MarketingHomeDashboard({ currentUser, rows, today, periodControl, appointmentsAvailable, appointmentEvents, directory, dataQuality, loading, notice = "La información de leads y citas estará disponible al conectar los datos.", onRetry }: MarketingHomeDashboardProps) {
     const [transitionPending, startTransition] = useTransition();
     const showAppointments = appointmentsAvailable !== false;
@@ -299,7 +299,7 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
     );
 }
 
-/** Shared busy signal for network reads and local filter transitions; does not block newer selections. */
+/** Señal de ocupado compartida por las lecturas de red y el cambio local de filtro. No bloquea una selección más nueva. */
 function MarketingPreload({ busy }: { readonly busy: boolean }) {
     if (!busy) return null;
     return (
@@ -319,7 +319,7 @@ function useMarketingScope(userId: string, rows: readonly MarketingDirectoryRow[
     const setScope = (update: (current: MarketingScope) => MarketingScope) => {
         setStored((current) => ({ userId, scope: update(current.scope) }));
     };
-    // Select values must commit immediately; defer only the expensive report, otherwise rapid selections can be lost.
+    // El valor del selector se confirma de inmediato. Solo se aplaza el reporte costoso; si no, una selección rápida se pierde.
     const deferredScope = useDeferredValue(scope);
     return { scope: deferredScope, selection: scope, setScope, pending: loading || scope !== deferredScope };
 }
@@ -355,7 +355,7 @@ function MarketingWelcome({ currentUser, scope, source }: { readonly currentUser
     );
 }
 
-/** Same banner anatomy as Formalization, with the trend drawn inside the card. */
+/** La misma anatomía de banner que Formalización, con la tendencia dibujada dentro de la tarjeta. */
 function MarketingBanner({ title, value, caption, hint, icon, tone, delta, series, context }: MarketingBannerProps) {
     return (
         <article className={`marketing-banner marketing-banner--${tone}`}>
@@ -385,7 +385,7 @@ function MarketingBanner({ title, value, caption, hint, icon, tone, delta, serie
     );
 }
 
-/** Directory associations come from real cohort rows and event lead links, without manufacturing zero-lead rows. */
+/** Las asociaciones del directorio salen de filas reales de cohorte y de vínculos de lead del evento. No se fabrican filas con cero leads. */
 function marketingDirectory(summary: MarketingApiSummary): MarketingDirectoryRow[] {
     const sellers = new Map(summary.sellers.map((seller) => [seller.id, seller]));
     const projects = new Map(summary.projects.map((project) => [project.id, project]));

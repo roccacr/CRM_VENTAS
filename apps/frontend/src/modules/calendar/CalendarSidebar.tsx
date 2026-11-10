@@ -51,7 +51,7 @@ function MyCalendars({ calendars, selected, events, onToggle, showOutlook, onTog
     );
 }
 
-/** Event types, filtered together across calendars; unchecking one only hides it from view. */
+/** Tipos de evento, filtrados juntos entre calendarios. Desmarcar uno solo lo oculta de la vista. */
 function TypeList({ types, hiddenTypes, onToggleType }: Pick<Props, "types" | "hiddenTypes" | "onToggleType">) {
     if (types.length < 2) return null;
     return (
@@ -104,7 +104,7 @@ function Upcoming({ calendars, events, today }: Pick<Props, "calendars" | "event
     );
 }
 
-/** Left column, as in Outlook: "Mis calendarios" (the authorized calendars drawn on top of each other, one colour each) and what comes next. */
+/** Columna izquierda: Mis calendarios, los autorizados dibujados uno sobre otro y cada uno con su color, y lo que viene después. */
 export function CalendarSidebar({ calendars, selected, events, today, onToggle, types, hiddenTypes, showOutlook, onToggleType, onToggleOutlook }: Props) {
     return (
         <aside className="calendar-sidebar" aria-label="Navegación del calendario">
