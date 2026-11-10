@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CatalogItemDetailDrawer } from "../../src/modules/administration/catalogs/CatalogItemDetailDrawer";
@@ -17,10 +17,13 @@ beforeEach(() => {
     window.localStorage.clear();
 });
 afterEach(async () => {
-    cleanup();
-    // DataTables disposes independent React slot roots 250 ms after table teardown.
-    await waitFor(() => {
-        expect(screen.queryAllByRole("menuitem", { hidden: true })).toHaveLength(0);
+    // DataTables desmonta las raíces de sus slots a los 250 ms. El DOM ya vacío
+    // no acredita ese cierre; act espera también sus actualizaciones de React.
+    await act(async () => {
+        cleanup();
+        await new Promise<void>((resolve) => {
+            setTimeout(resolve, 300);
+        });
     });
 });
 
