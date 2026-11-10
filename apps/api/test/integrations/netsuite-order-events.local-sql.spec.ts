@@ -100,6 +100,8 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await sql`CREATE TABLE IF NOT EXISTS ${sql.table("crmdatabase-api.ordenventa")} (id_ov INT PRIMARY KEY,id_ov_netsuite BIGINT NOT NULL UNIQUE,${sql.join(orderFlagMappings.map((mapping) => sql`${sql.id(mapping.legacy)} INT NULL`))}) ENGINE=InnoDB`.execute(db);
         await sql`ALTER TABLE crm_sales_order MODIFY id_sales_order INT NOT NULL AUTO_INCREMENT, ADD COLUMN IF NOT EXISTS public_id_sales_order CHAR(26) NULL UNIQUE, ADD COLUMN IF NOT EXISTS native_code_sales_order VARCHAR(140) NULL UNIQUE`.execute(db);
         await extendFixture();
+        const schema = await readFile(new URL("../../Arquitectura/SQL/040_notes_commands.sql", import.meta.url), "utf8");
+        await sql.raw(schema.slice(schema.indexOf("CREATE TABLE int_event_outbox")).trim().replace("CREATE TABLE int_event_outbox", "CREATE TABLE IF NOT EXISTS int_event_outbox")).execute(db);
         for (const statement of await loadRecordAuditStatements()) await sql.raw(statement).execute(db);
         await sql`CREATE TABLE IF NOT EXISTS conf_schema_migration (migration_name_schema_migration VARCHAR(100) PRIMARY KEY) ENGINE=InnoDB`.execute(db);
         await sql`INSERT IGNORE INTO conf_schema_migration VALUES ('202610220023_record_audit'),('202610220024_record_audit_identifier_collation')`.execute(db);
@@ -112,9 +114,6 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await app.getHttpAdapter().getInstance().ready();
     });
     it("returns queued, deduplicates requests and publishes private success and failure results", async () => {
-        const schema = await readFile(new URL("../../Arquitectura/SQL/040_notes_commands.sql", import.meta.url), "utf8");
-        const outbox = schema.slice(schema.indexOf("CREATE TABLE int_event_outbox")).trim().replace("CREATE TABLE int_event_outbox", "CREATE TABLE IF NOT EXISTS int_event_outbox");
-        await sql.raw(outbox).execute(db);
         await sql`DELETE FROM int_event_outbox WHERE aggregate_type_event_outbox='netsuite_order_import'`.execute(db);
         await sql`INSERT INTO ${sql.table("crmdatabase-api.ordenventa")} (id_ov,id_ov_netsuite,id_ov_tranid) VALUES (77,8906821,'BC448')`.execute(db);
         const identity = { getCurrentUser: (session: string) => Promise.resolve({ user: { publicId: session, permissionVersion: 1 }, session: { publicId: "session-id" } }) };
@@ -160,6 +159,33 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
             );
         });
     });
+    it("durably queues a missing edited order once and imports it natively without a browser session", async () => {
+        await sql`DELETE FROM int_event_outbox WHERE aggregate_type_event_outbox='netsuite_order_import'`.execute(db);
+        await sql`INSERT INTO crm_lead_external_reference VALUES (8,1,'300','active',NULL)`.execute(db);
+        const payload = importSnapshot();
+        const receipt = await service.receive(payload);
+        expect(receipt).toMatchObject({ result: "not_found", persisted: false });
+        const orders = {
+            executeEventImport: vi.fn(async () => {
+                const fresh = structuredClone(payload);
+                fresh.event.eventId = randomUUID();
+                const result = await service.receive(fresh, { importTranid: "BC448", allowUnlinkedOwner: true, authorize: () => Promise.resolve(captureIntegrationAuditActor({ publicId: "integration:netsuite:4552704_SB1", name: "Automatic import" })) });
+                return { result: result.result };
+            }),
+        };
+        const queue = new NetsuiteOrderImportQueue({ db } as DatabaseService, {} as never, {} as never, orders as never);
+        await expect(queue.enqueueMissingEvent(payload, receipt)).resolves.toMatchObject({ importQueued: true, persisted: false });
+        await queue.enqueueMissingEvent(payload, receipt);
+        await vi.waitFor(async () => {
+            const { rows } = await sql<{ status: string }>`SELECT status_event_outbox AS status FROM int_event_outbox WHERE aggregate_type_event_outbox='netsuite_order_import'`.execute(db);
+            expect(rows).toEqual([{ status: "delivered" }]);
+        });
+        const { rows } = await sql`SELECT o.lead_id_sales_order AS client,r.transaction_number_sales_order_external_reference AS number
+            FROM crm_sales_order o JOIN crm_sales_order_external_reference r ON r.sales_order_id_sales_order_external_reference=o.id_sales_order`.execute(db);
+        expect(rows).toEqual([{ client: 8, number: "BC448" }]);
+        expect(orders.executeEventImport).toHaveBeenCalledOnce();
+        expect((await sql`SELECT id_ov FROM ${sql.table("crmdatabase-api.ordenventa")}`.execute(db)).rows).toEqual([]);
+    });
     afterAll(async () => {
         await app.close();
         await db.destroy();
@@ -200,6 +226,23 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         expect(rows.rows).toEqual([{ client: 8, number: "BC448" }]);
         const audit = await sql`SELECT origin FROM audit_netsuite_order_event WHERE result='applied' AND destination='native'`.execute(db);
         expect(audit.rows).toEqual([{ origin: "NetSuite import import-test" }]);
+    });
+    it("reconciles two concurrent automatic imports without creating a second order", async () => {
+        await sql`INSERT INTO crm_lead_external_reference VALUES (8,1,'300','active',NULL)`.execute(db);
+        const run = () => {
+            const payload = importSnapshot();
+            payload.event.eventId = randomUUID();
+            return service.receive(payload, {
+                importTranid: "BC448",
+                importIfMissing: true,
+                allowUnlinkedOwner: true,
+                authorize: () => Promise.resolve(captureIntegrationAuditActor({ publicId: "integration:netsuite:4552704_SB1", name: "Automatic import" })),
+            });
+        };
+        const results = await Promise.all([run(), run()]);
+        expect(results.map((result) => result.result).sort()).toEqual(["applied", "unchanged"]);
+        expect((await sql`SELECT id_sales_order FROM crm_sales_order`.execute(db)).rows).toHaveLength(1);
+        expect((await sql`SELECT external_id_sales_order_external_reference FROM crm_sales_order_external_reference`.execute(db)).rows).toHaveLength(1);
     });
 
     it("does not create a native row for an existing legacy number or an unmapped customer", async () => {

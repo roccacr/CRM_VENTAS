@@ -1,7 +1,7 @@
 /**
  * Entrada global de eventos guardados del CRM. Solo enruta; la logica vive en lib y en cada modulo.
- * No hace: no modifica registros ni crea una cola. El API confirma recepcion sin persistencia; no hay reintentos.
- * Archivador: /SuiteScripts/SS2_1_UE_CRM_CambiosRegistros.js
+ * La libreria envia el evento y valida el acuse de edicion persistida o solicitud durable de importacion.
+ * Archivador: /SuiteScripts/SS2_1_UE_CRM_Habita.js
  * Crear un despliegue por tipo de registro. Usa la libreria unificada de /SuiteScripts/.
  *
  * @NApiVersion 2.1

@@ -2,7 +2,7 @@
 
 ## Corte local — 2026-11-10
 
-La cabecera de la librería local identifica `2026.11.10.8`. El RESTlet añade
+La cabecera y el emisor de la librería local identifican `2026.11.10.9`. El RESTlet añade
 `GET module=salesOrders&action=findByTranId&tranid=<número>` para resolver
 el ID interno de una orden con coincidencia exacta. Se incorpora
 `custbody_fecha_unidad_entregada` a la proyección.
@@ -32,6 +32,30 @@ fila legacy `432`). En ambos casos se verificaron los vínculos en la BD nueva
 y el aviso Completada. Sus responsables siguen pendientes de conciliar con
 cuentas de Habita. La lectura de `projectName` requiere instalar la librería
 local `2026.11.10.8` en NetSuite.
+
+## Importación automática desde una edición de producción
+
+El receptor de producción autentica el token y procesa primero la edición
+con la resolución BD nueva → BD vieja. Si devuelve `not_found` para `edit`
+o `xedit`, guarda una solicitud durable en la misma cola de importación.
+El acuse conserva `persisted=false` y añade `importQueued=true`. La librería
+`2026.11.10.9` lo registra como `import_queued`, sin acreditar aún el alta.
+
+El trabajador consulta por ID interno una foto fresca del mismo entorno y
+cuenta. Reutiliza el importador y sus relaciones, crea únicamente en la BD
+nueva y deja bitácora con actor de integración. Si otra petición creó la
+orden mientras esperaba, la transacción actualiza el destino existente sin
+duplicarla. La deduplicación de la cola usa entorno, cuenta e ID de orden.
+Los reenvíos comparten la solicitud y una fila fallida puede rearmarse.
+El reinicio del API conserva trabajos pendientes y recupera los arriendos
+de procesamiento vencidos.
+
+Los resultados automáticos se conservan en `int_event_outbox` y se registran
+en PM2. Al no tener sesión de persona, no aparecen en sus avisos privados.
+Un error conserva la causa disponible y no se anuncia como orden guardada.
+Los eventos `create`, `approve`, `cancel` y `reject` conservan su política
+de actualización sin alta automática. Este cambio corresponde al receptor
+de producción, el receptor local/Sandbox conserva su comportamiento anterior.
 
 La biblioteca local fija la URL base de producción en
 `https://api-habita.rdghub.com/integrations/netsuite/production`.

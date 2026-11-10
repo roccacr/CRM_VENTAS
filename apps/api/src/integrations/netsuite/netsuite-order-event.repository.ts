@@ -20,6 +20,7 @@ type EventAudit = { destination: OrderEventDestination | null; orderId: string |
 type EventTransaction = Transaction<CrmDatabase>;
 export interface ManualOrderSynchronization {
     importTranid?: string;
+    importIfMissing?: boolean;
     allowUnlinkedOwner?: boolean;
     authorize(tx: EventTransaction, target: { destination: OrderEventDestination; id: string }): Promise<AuditActorSnapshot>;
 }
@@ -142,11 +143,14 @@ export class NetsuiteOrderEventRepository {
         return { destination: "legacy", id: String(row.id_ov), row };
     }
 
-    /** Solo la extracción manual crea órdenes; el webhook sigue siendo exclusivamente de actualización. */
+    /** Las altas usan el importador. El receptor encola una extracción aparte si su edición no encuentra destino. */
     private async resolveEventTarget(tx: EventTransaction, event: PersistedOrderEvent, manual?: ManualOrderSynchronization): Promise<Target | null> {
         const existing = await this.resolve(tx, event.event.netsuiteId);
         if (!manual?.importTranid) return existing;
-        if (existing) throw new ConflictException("La orden ya existe en Habita. Revisa los filtros de búsqueda.");
+        if (existing) {
+            if (manual.importIfMissing) return existing;
+            throw new ConflictException("La orden ya existe en Habita. Revisa los filtros de búsqueda.");
+        }
         await this.assertTranidAvailable(tx, manual.importTranid);
         return this.createImportedOrder(tx, event);
     }

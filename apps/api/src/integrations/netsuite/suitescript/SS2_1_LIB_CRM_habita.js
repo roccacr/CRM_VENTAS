@@ -1,5 +1,5 @@
 /**
- * Versión: 2026.11.10.8 — Proyecto del expediente para importar relaciones faltantes.
+ * Versión: 2026.11.10.9 — Recibo durable de importación automática para órdenes ausentes.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
  * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
  * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
@@ -433,8 +433,9 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             });
             if (Number(response.code) === 409) return blocked("snapshot_conflict");
             if (Number(response.code) !== 200) return blocked("receiver_rejected");
-            if (!isMatchingReceipt(JSON.parse(response.body), event)) return blocked("receipt_invalid");
-            return { status: "received_local", delivered: true };
+            const receipt = JSON.parse(response.body);
+            if (!isMatchingReceipt(receipt, event)) return blocked("receipt_invalid");
+            return { status: receipt.importQueued === true ? "import_queued" : "received_local", delivered: true };
         }
 
         /** Un solo reintento inmediato para red o HTTP 500 o mas. Un 4xx, incluido el 409, vuelve en el primer intento. El cuerpo y el UUID no cambian en ese reintento. */
@@ -450,13 +451,14 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             throw new Error("delivery_failed");
         }
 
-        /** El recibo acredita COMMIT y los mismos IDs de orden y evento; una mera recepcion v1 no basta. */
+        /** Acredita COMMIT de la edición o de la solicitud de importación. En cola aún no equivale a orden creada. */
         function isMatchingReceipt(receipt, event) {
             return (
                 Boolean(receipt) &&
                 receipt.schemaVersion === SCHEMA_VERSION &&
                 receipt.received === true &&
-                receipt.persisted === true &&
+                (receipt.persisted === true ||
+                    (receipt.persisted === false && receipt.result === "not_found" && receipt.importQueued === true)) &&
                 receipt.eventId === event.eventId &&
                 receipt.netsuiteId === event.netsuiteId
             );
@@ -482,7 +484,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         "use strict";
 
         // Version unica del conjunto de scripts. Actualizar al preparar cada entrega: la lee el empaquetador.
-        const SCRIPT_VERSION = "2026.11.10.4";
+        const SCRIPT_VERSION = "2026.11.10.9";
 
         /**
          * Un fallo del logger no debe interrumpir una consulta ni cambiar su respuesta.

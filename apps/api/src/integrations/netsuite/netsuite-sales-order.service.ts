@@ -4,14 +4,16 @@ import { BadGatewayException, BadRequestException, ForbiddenException, Inject, I
 import { z } from "zod";
 
 import { canReadFormalizationOrder } from "../../common/security/route-permission.js";
+import { captureIntegrationAuditActor } from "../../modules/crm/audit/audit-actor.js";
 import { IdentityService } from "../../modules/crm/identity/identity.service.js";
 import type { IdentityProfile } from "../../modules/crm/identity/identity.types.js";
 import { formalizationPermissionScope } from "../../modules/crm/sales/sales-orders/follow-up.service.js";
 import { assertFormalizationOrderReadable } from "../../modules/crm/sales/sales-orders/formalization-read.policy.js";
 import { orderTimingIdentity, type TimingOrder } from "../../modules/crm/sales/sales-orders/order-timing.contract.js";
 import { NetsuiteOrderRepository } from "./netsuite-order.repository.js";
-import { persistedOrderEvent, productionOrderEvent } from "./netsuite-order-event.contract.js";
+import { type PersistedOrderEvent, persistedOrderEvent, productionOrderEvent } from "./netsuite-order-event.contract.js";
 import { readOrderRelationValues } from "./netsuite-order-event.mapper.js";
+import type { ManualOrderSynchronization } from "./netsuite-order-event.repository.js";
 import { NetsuiteOrderEventService } from "./netsuite-order-event.service.js";
 import { reconcileImportRelations } from "./netsuite-order-import.relations.js";
 import { NetsuiteRestletClient } from "./netsuite-restlet.client.js";
@@ -120,6 +122,26 @@ export class NetsuiteSalesOrderService {
         return this.executeImport(tranid, () => Promise.resolve(actor), true);
     }
 
+    /** Una entrega autenticada puede recuperar una orden ausente con una foto fresca del mismo entorno y cuenta. */
+    async executeEventImport(request: { netsuiteId: string; accountId: string; environment: "production" | "sandbox" }) {
+        const context = this.client.integrationContext();
+        if (context.accountId !== request.accountId || context.environment !== request.environment) throw new ForbiddenException("La importación automática pertenece a otro entorno de NetSuite.");
+        if (!this.events.synchronizationEnabled(context.environment)) throw new ServiceUnavailableException("Importación NetSuite deshabilitada para este ambiente.");
+        const event = await this.verifiedEvent(request.netsuiteId, context);
+        return this.applyImport(
+            event,
+            () =>
+                Promise.resolve(
+                    captureIntegrationAuditActor({
+                        publicId: "integration:netsuite:" + context.accountId,
+                        name: "NetSuite " + context.environment + " automatic import",
+                    }),
+                ),
+            true,
+            true,
+        );
+    }
+
     /** El numero del snapshot tiene que ser el pedido. La cola si puede crear alias que faltan; la llamada directa no. Un responsable sin cuenta no tira la orden. */
     private async executeImport(tranid: string, actor: () => Promise<Parameters<NetsuiteOrderRepository["captureSynchronizationActor"]>[1]>, queued = false) {
         const context = this.client.integrationContext();
@@ -129,15 +151,23 @@ export class NetsuiteSalesOrderService {
         const number = event.snapshot.data.fields.initialtranid;
         if (typeof number !== "string" || number.trim().toUpperCase() !== tranid) throw new BadGatewayException("NetSuite devolvió una orden distinta a la solicitada.");
         const current = await actor();
+        return this.applyImport(event, (tx) => this.repository.captureSynchronizationActor(tx, current), queued);
+    }
+
+    private async applyImport(event: PersistedOrderEvent, authorize: ManualOrderSynchronization["authorize"], queued: boolean, importIfMissing = false) {
+        const number = event.snapshot.data.fields.initialtranid;
+        if (typeof number !== "string" || !number.trim() || number.trim().length > 180) throw new BadGatewayException("NetSuite no confirmó el número de orden.");
+        const tranid = number.trim().toUpperCase();
         const fields = event.snapshot.data.fields;
         const dependencies = queued ? await this.readMissingImportRelations(fields) : {};
         const outcome = { ownerLinked: true };
         const result = await this.events.receive(event, {
             importTranid: tranid,
+            importIfMissing,
             allowUnlinkedOwner: queued,
             authorize: async (tx, destination) => {
-                const authorized = await this.repository.captureSynchronizationActor(tx, current);
-                if (queued) outcome.ownerLinked = await reconcileImportRelations(tx, { fields, orderId: destination.id, netsuiteId, operationId: event.event.eventId, ...dependencies });
+                const authorized = await authorize(tx, destination);
+                if (queued && destination.destination === "native") outcome.ownerLinked = await reconcileImportRelations(tx, { fields, orderId: destination.id, netsuiteId: event.event.netsuiteId, operationId: event.event.eventId, ...dependencies });
                 return authorized;
             },
         });

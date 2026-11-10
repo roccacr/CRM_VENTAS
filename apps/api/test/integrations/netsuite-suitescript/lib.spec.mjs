@@ -468,10 +468,16 @@ describe("EnviarEvento.sendRecordEvent", () => {
         ["wrong schema", receipt({ schemaVersion: 1 })],
         ["not received", receipt({ received: false })],
         ["not persisted", receipt({ persisted: false })],
+        ["queue without absent result", receipt({ persisted: false, importQueued: true })],
+        ["absent without durable queue", receipt({ persisted: false, result: "not_found", importQueued: false })],
         ["other id", receipt({ netsuiteId: "999" })],
         ["id as number", receipt({ netsuiteId: 214 })],
     ])("never treats %s as delivered", (_name, body) => {
         expect(setup({ post: () => ({ code: 200, body }) }).send(EVENT, snapshot)).toEqual({ status: "receipt_invalid", delivered: false });
+    });
+    it("acknowledges a durable import request without claiming that the order was persisted", () => {
+        const body = receipt({ persisted: false, result: "not_found", importQueued: true });
+        expect(setup({ post: () => ({ code: 200, body }) }).send(EVENT, snapshot)).toEqual({ status: "import_queued", delivered: true });
     });
     it.each([
         ["HTML body", () => ({ code: 200, body: "<html>ngrok</html>" })],

@@ -12,6 +12,7 @@ import { LocalServiceTokenGuard } from "../../src/common/security/local-service-
 import { LocalServiceToken } from "../../src/common/security/local-service-token.guard.js";
 import { NetsuiteLocalEventsController } from "../../src/integrations/netsuite/netsuite-local-events.controller.js";
 import { NetsuiteOrderEventService } from "../../src/integrations/netsuite/netsuite-order-event.service.js";
+import { NetsuiteOrderImportQueue } from "../../src/integrations/netsuite/netsuite-order-import.queue.js";
 import { NetsuiteProductionEventsController } from "../../src/integrations/netsuite/netsuite-production-events.controller.js";
 
 const secret = "a".repeat(64);
@@ -38,6 +39,7 @@ async function fixture(overrides: Record<string, unknown> = {}, globalCsrf = tru
     const module = await Test.createTestingModule({
         controllers: [NetsuiteProductionEventsController, NetsuiteLocalEventsController, BrowserController],
         providers: [
+            { provide: NetsuiteOrderImportQueue, useValue: { enqueueMissingEvent: (_event: unknown, result: unknown) => result } },
             {
                 provide: NetsuiteOrderEventService,
                 useValue: {
