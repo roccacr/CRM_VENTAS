@@ -4,7 +4,7 @@ import type { CrmDatabase } from "../../database/database.types.js";
 import type { AppointmentState, LegacyAppointmentEvent, LegacyAppointmentEvidence, LegacyAppointmentLead } from "../../modules/crm/marketing/marketing-appointments.contract.js";
 import type { MarketingWindow } from "../../modules/crm/marketing/marketing-home.contract.js";
 
-/** Reject invalid legacy dates without interpreting text notes or appointment flags as attendance. */
+/** Una fecha que no es un dia UTC real se descarta. La nota y el texto de estado no son asistencia. */
 export function legacyAppointmentDate(value: string): string | null {
     if (!/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(value)) return null;
     const day = value.slice(0, 10);
@@ -12,7 +12,14 @@ export function legacyAppointmentDate(value: string): string | null {
     return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day ? day : null;
 }
 const states: Record<string, AppointmentState> = { pendiente: "scheduled", completado: "completed", cancelado: "cancelled" };
-/** Read legacy cohorts and unique calendar identities; provider lead reference is not the old lead PK. */
+/**
+ * Cohortes y citas, solo lectura. La referencia del proveedor es `idinterno_lead`,
+ * no la llave local del lead. El dia resta 21600 segundos (UTC-6 fijo) y no
+ * consulta una zona por fila. Pasar de 100000 cohortes, 50000 citas o 50000
+ * citas sin resolver lanza: no se recorta en silencio. La asistencia queda nula.
+ * Solo `pendiente`, `completado` y `cancelado` tienen estado; el resto es `unknown`.
+ * Sin lead, con id no positivo, o con un conteo de proveedor distinto de 1, la cita queda sin resolver.
+ */
 export async function readLegacyAppointments(tx: Transaction<CrmDatabase>, window: MarketingWindow): Promise<LegacyAppointmentEvidence> {
     const cohorts = await sql<Omit<LegacyAppointmentLead, "date" | "providerMatches"> & { dayNumber: number | string; providerMatches: number | string }>`SELECT /*+ MAX_EXECUTION_TIME(5000) */ CAST(l.id_lead AS CHAR) AS id,
         FLOOR((UNIX_TIMESTAMP(l.creado_lead)-21600)/86400) AS dayNumber,CAST(l.idinterno_lead AS CHAR) AS providerId,

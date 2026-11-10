@@ -1,3 +1,9 @@
+## Como leer este archivo
+
+El corte vigente es el del 2026-11-10. Las secciones con fecha anterior
+conservan la evidencia de ese momento y no describen el comportamiento actual.
+Documentar este archivo no autoriza escrituras, migraciones ni despliegues.
+
 ## Implementación local posterior — 2026-11-02
 
 ## Corte del BFF y SuiteScript — 2026-11-10

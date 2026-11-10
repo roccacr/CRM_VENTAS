@@ -1,22 +1,22 @@
 import { z } from "zod";
 
-// ============================================================================
-// Esquemas compartidos para configuracion MySQL.
-//
-// Runtime y migrador deben validar TLS/base con la misma regla. Este archivo
-// evita que cada entrada lea DB_* a su manera y apague seguridad por accidente.
-// ============================================================================
+/**
+ * Reglas MySQL compartidas por el runtime y el migrador.
+ *
+ * Las dos entradas tienen que aceptar o rechazar el mismo host, puerto y TLS.
+ * Si cada una lee `DB_*` por su cuenta, una puede quedar en claro mientras la
+ * otra exige certificado.
+ */
 
 const LOCAL_DATABASE_HOSTS = new Set(["127.0.0.1", "::1", "localhost"]);
 
-/** Rango valido para puertos TCP configurables. */
+/** Puerto TCP real. Cero y los valores por encima de 65535 no son un default usable. */
 export const tcpPortSchema = z.coerce.number().int().min(1).max(65535);
 
 /**
- * Booleano de entorno expresado como texto.
- *
- * Las variables de entorno llegan como strings. Mantener este transform
- * centralizado evita que cada consumidor invente su propia lectura de `"true"`.
+ * Booleano de entorno. Solo acepta los textos `true` y `false`: `1`, `yes` o
+ * `TRUE` no se coerccionan a encendido. El default lo elige cada variable; no
+ * hay un default global que deje una compuerta abierta.
  */
 export const booleanEnvSchema = (defaultValue: "true" | "false") =>
     z
@@ -25,7 +25,8 @@ export const booleanEnvSchema = (defaultValue: "true" | "false") =>
         .transform((value) => value === "true");
 
 /**
- * Indica si el host de MySQL es local y puede operar sin TLS en desarrollo.
+ * Host de loopback por nombre exacto, ya recortado y en minusculas. No resuelve
+ * DNS: un nombre que apunte a 127.0.0.1 sigue siendo remoto para esta regla.
  */
 export const isLocalDatabaseHost = (host: string): boolean => LOCAL_DATABASE_HOSTS.has(host.trim().toLowerCase());
 
@@ -36,11 +37,11 @@ export interface DatabaseTlsValidationInput {
 }
 
 /**
- * Agrega errores de TLS MySQL a un schema Zod sin duplicar mensajes.
+ * TLS de MySQL, en el mismo schema que el resto del entorno.
  *
- * Reglas:
- * - una CA solo tiene sentido si TLS esta encendido;
- * - cualquier host remoto debe exigir TLS.
+ * Una CA con `DB_SSL` apagado pareceria cifrado y viajaria en claro. Un host
+ * que no es loopback no puede arrancar sin TLS: el default `false` solo cubre
+ * la base local.
  */
 export const addDatabaseTlsIssues = (config: DatabaseTlsValidationInput, context: z.RefinementCtx): void => {
     if (config.DB_SSL_CA && !config.DB_SSL) {

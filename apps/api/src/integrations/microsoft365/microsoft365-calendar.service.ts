@@ -27,6 +27,7 @@ const RESPONSES: readonly OutlookResponse[] = ["accepted", "declined", "tentativ
 const JOIN_HOSTS = ["teams.microsoft.com"] as const;
 const OUTLOOK_HOSTS = ["outlook.office.com", "outlook.office365.com", "outlook.live.com", "office.com"] as const;
 const pageSchema = z.object({ value: z.array(z.unknown()), "@odata.nextLink": z.string().optional() });
+/** Sin zona, o con zona UTC, el instante se normaliza. Otra zona no se interpreta: la agenda responde no disponible. */
 function instant(value: z.infer<typeof graphTime>): string {
     if (value.timeZone && value.timeZone !== "UTC") throw new ExternalCalendarError("unavailable");
     const input = /(?:Z|[+-]\d\d:\d\d)$/.test(value.dateTime) ? value.dateTime : `${value.dateTime}Z`;
@@ -34,7 +35,7 @@ function instant(value: z.infer<typeof graphTime>): string {
     if (!Number.isFinite(parsed.getTime())) throw new ExternalCalendarError("unavailable");
     return parsed.toISOString();
 }
-// Una sola proyección conserva juntas la privacidad y la normalización de los campos opcionales de Graph.
+/** Un cuerpo que no sea texto no se publica. El buzon propio conserva el contenido, tambien el privado. La disponibilidad de terceros no pasa por aqui. */
 // eslint-disable-next-line complexity
 function feedEvent(row: z.infer<typeof feedSchema>, outlook?: OutlookEventDetail): ExternalFeedEvent {
     if (row.body && row.body.contentType.toLowerCase() !== "text") throw new ExternalCalendarError("unavailable");
@@ -43,7 +44,7 @@ function feedEvent(row: z.infer<typeof feedSchema>, outlook?: OutlookEventDetail
     const content = { title: row.subject ?? "Evento", description: row.body?.content ?? null, location: row.location?.displayName ?? null };
     return { id: row.id, ...content, start: instant(row.start), end: instant(row.end), allDay: row.isAllDay ?? false, uid: row.iCalUId, version: row["@odata.etag"], ...(outlook ? { outlook } : {}) };
 }
-/** Links from Graph are shown to people, so only https links on known Microsoft hosts pass. */
+/** El enlace se muestra a una persona: solo https, y solo un host Microsoft conocido o un subdominio suyo. */
 function trustedLink(value: string | null | undefined, hosts: readonly string[]): string | null {
     try {
         const url = new URL(value ?? "");
@@ -55,7 +56,7 @@ function trustedLink(value: string | null | undefined, hosts: readonly string[])
 const person = (value: z.infer<typeof graphPerson> | null | undefined): OutlookPerson | null => (value?.emailAddress ? { name: value.emailAddress.name ?? null, email: value.emailAddress.address ?? null } : null);
 const response = (value: string | null | undefined): OutlookResponse => RESPONSES.find((known) => known === value) ?? "none";
 const attendeeKind = (value: string | null | undefined): OutlookAttendee["kind"] => (value === "optional" || value === "resource" ? value : "required");
-// Una sola proyección normaliza los campos opcionales de Graph; un campo nuevo malformado no debe romper la agenda.
+/** Un detalle mal formado no tumba la agenda: esa proyeccion sale vacia. Se publican como maximo 100 asistentes; el total real queda en el conteo. Teams solo si el enlace es de `teams.microsoft.com`. */
 // eslint-disable-next-line complexity
 function outlookDetail(raw: unknown): OutlookEventDetail | undefined {
     const parsed = detailSchema.safeParse(raw);
@@ -84,15 +85,17 @@ function overlap(a: ExternalSlot, b: ExternalSlot): boolean {
 const asTime = (value: string) => ({ dateTime: new Date(value).toISOString(), timeZone: "UTC" });
 const attendees = (emails: string[], room?: string) => [...emails.map((address) => ({ emailAddress: { address }, type: "required" })), ...(room ? [{ emailAddress: { address: room }, type: "resource" }] : [])];
 
+/** 401 y 403 piden consentimiento. 412 es conflicto de version. Cualquier otro estado no exitoso es no disponible, sin devolver el cuerpo de Graph. */
 function assertResponse(response: Response): void {
     if ([401, 403].includes(response.status)) throw new ExternalCalendarError("consent_required");
     if (response.status === 412) throw new ExternalCalendarError("conflict");
     if (!response.ok) throw new ExternalCalendarError("unavailable");
 }
-/** Graph exige medianoche en la zona declarada para eventos de día completo; CRM persiste UTC. */
+/** Graph pide la medianoche en la zona declarada. Al dia completo se le restan 6 horas y se le quita la Z para enviarlo como reloj de America Central. Una hora concreta sale en UTC. */
 function eventTime(value: string, allDay: boolean) {
     return allDay ? { dateTime: new Date(Date.parse(value) - 6 * 3600000).toISOString().slice(0, 19), timeZone: "Central America Standard Time" } : asTime(value);
 }
+/** Teams solo si el detalle lo pidio. `transactionId` viaja en el alta, no en la correccion, para que un reintento no duplique el evento. */
 function eventBody(input: Parameters<ExternalCalendarPort["write"]>[1]) {
     const event = input.event;
     const details = z.object({ teamsRequested: z.boolean().optional() }).parse(event.details);
@@ -108,6 +111,7 @@ function eventBody(input: Parameters<ExternalCalendarPort["write"]>[1]) {
         ...(!input.remoteId ? { transactionId: input.transactionId } : {}),
     };
 }
+/** El ETag es obligatorio. La sala se compara sin distinguir mayusculas. Si se pidio sala y no viene, el estado queda `notResponded`, no libre. */
 function readRemote(value: unknown, roomAddress?: string): ExternalWrite {
     const schema = z.object({ id: z.string(), isOrganizer: z.boolean().optional(), iCalUId: z.string().optional(), "@odata.etag": z.string().min(1), onlineMeeting: z.object({ joinUrl: z.url() }).nullable().optional(), attendees: z.array(z.object({ type: z.string(), emailAddress: z.object({ address: z.string() }), status: z.object({ response: z.string() }).optional() })).optional() });
     const saved = schema.parse(value);
@@ -115,12 +119,14 @@ function readRemote(value: unknown, roomAddress?: string): ExternalWrite {
     return { id: saved.id, isOrganizer: saved.isOrganizer === true, uid: saved.iCalUId, version: saved["@odata.etag"], joinUrl: saved.onlineMeeting?.joinUrl ?? null, roomStatus: room?.status?.response ?? (roomAddress ? "notResponded" : null) };
 }
 const scheduleSchema = z.object({ scheduleId: z.string(), error: z.unknown().optional(), scheduleItems: z.array(z.object({ status: z.string(), start: graphTime, end: graphTime })).optional() });
+/** Error o items ausentes son `unknown`. Ocupado, tentativa, fuera de oficina o en otro sitio que pisen el hueco son `busy`. Libre solo si todos los que pisan dicen `free`. */
 function roomState(schedule: z.infer<typeof scheduleSchema>, slot: ExternalSlot): RoomAvailability {
     if (schedule.error || !schedule.scheduleItems) return "unknown";
     const statuses = schedule.scheduleItems.filter((entry) => overlap({ start: instant(entry.start), end: instant(entry.end) }, slot)).map((entry) => entry.status.toLowerCase());
     if (statuses.some((status) => ["busy", "tentative", "oof", "workingelsewhere"].includes(status))) return "busy";
     return statuses.every((status) => status === "free") ? "available" : "unknown";
 }
+/** El conflicto de otra persona se rotula con su correo, no con el asunto. Un horario que Graph no pudo leer marca la respuesta incompleta. */
 function appendSchedule(schedule: z.infer<typeof scheduleSchema>, input: ExternalSlot, result: ExternalAvailability): void {
     if (schedule.error || !schedule.scheduleItems) {
         result.incomplete = true;
@@ -132,17 +138,17 @@ function appendSchedule(schedule: z.infer<typeof scheduleSchema>, input: Externa
     }
 }
 
-/** Graph queda aislado: no registra tokens, respuestas crudas ni asuntos de otros colaboradores. */
+/** No registra el token, el cuerpo ni el asunto de otra persona. El navegador no elige el host. */
 @Injectable()
 export class Microsoft365CalendarService implements ExternalCalendarPort {
-    /** No cambia asistentes, contenido Teams ni recurrencia; Graph revalida el ETag al escribir. */
+    /** No manda asistentes, Teams ni recurrencia. Antes exige ser organizador y que el ETag siga siendo el esperado; Graph lo vuelve a exigir con `If-Match`. */
     async patchOwnEvent(token: string, id: string, input: Parameters<ExternalCalendarPort["patchOwnEvent"]>[2]): Promise<ExternalWrite> {
         const current = await this.read(token, id);
         if (!current.isOrganizer || current.version !== input.expectedVersion) throw new ExternalCalendarError("conflict");
         const saved = await this.request(token, `/me/events/${encodeURIComponent(id)}`, { method: "PATCH", version: input.expectedVersion, body: { subject: input.title, location: { displayName: input.location }, ...(!input.allDay ? { start: asTime(input.start), end: asTime(input.end) } : {}) } });
         return readRemote(saved);
     }
-    /** Solo consulta libre/ocupado; no expone títulos ni reserva las salas. */
+    /** Solo libre u ocupado, de a 20 direcciones. Un lote que falla deja esas salas en `unknown`; no se asumen libres. */
     async roomAvailability(token: string, input: ExternalSlot & { addresses: string[] }): Promise<Record<string, RoomAvailability>> {
         const result: Record<string, RoomAvailability> = {};
         const addresses = [...new Set(input.addresses.map((address) => address.toLowerCase()))];
@@ -163,7 +169,7 @@ export class Microsoft365CalendarService implements ExternalCalendarPort {
         }
         return result;
     }
-    /** Lee primero Outlook para el intervalo visible, incluidos eventos libres y ocurrencias. */
+    /** Vista del buzon propio, cancelados fuera. Mas de 500 filas no se recorta: la lectura falla. */
     async events(token: string, input: ExternalSlot): Promise<ExternalFeedEvent[]> {
         const query = new URLSearchParams({ startDateTime: input.start, endDateTime: input.end, $top: "100", $select: "id,subject,start,end,isAllDay,isCancelled,sensitivity,body,location,iCalUId,organizer,attendees,isOrganizer,responseStatus,isOnlineMeeting,onlineMeeting,type,showAs,importance,webLink" });
         const rows = await this.collection(token, `/me/calendarView?${query.toString()}`);
@@ -173,6 +179,7 @@ export class Microsoft365CalendarService implements ExternalCalendarPort {
             .filter(({ event }) => !event.isCancelled)
             .map(({ event, detail }) => feedEvent(event, detail));
     }
+    /** Redirigir esta prohibido. El plazo es 12 s. Un corte de red es no disponible y no se publica el cuerpo de Graph. */
     private async request(token: string, path: string, options: { body?: unknown; method?: string; version?: string | null; acceptMissing?: boolean; emptyResponse?: boolean } = {}): Promise<unknown> {
         const headers = new Headers({ Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: 'outlook.timezone="UTC", IdType="ImmutableId", outlook.body-content-type="text"' });
         if (options.version) headers.set("If-Match", options.version);
@@ -184,13 +191,14 @@ export class Microsoft365CalendarService implements ExternalCalendarPort {
             throw new ExternalCalendarError("unavailable");
         }
     }
-    /** Las cancelaciones responden sin JSON; un 404 es éxito solo en operaciones idempotentes. */
+    /** 404 es exito solo si la operacion ya acepta que el evento no este. Cancelar no trae JSON. */
     private async responseBody(response: Response, options: { acceptMissing?: boolean; emptyResponse?: boolean }): Promise<unknown> {
         if (options.acceptMissing && response.status === 404) return null;
         assertResponse(response);
         if (options.emptyResponse && [202, 204].includes(response.status)) return null;
         return response.json();
     }
+    /** Como maximo 10 paginas. Un `nextLink` que no empiece en este Graph se rechaza. Si aun queda otra pagina, no se devuelve un tramo. */
     private async collection(token: string, path: string): Promise<unknown[]> {
         const rows: unknown[] = [];
         let next: string | undefined = path;
@@ -215,7 +223,7 @@ export class Microsoft365CalendarService implements ExternalCalendarPort {
             return { label: room.displayName, address: room.emailAddress.toLowerCase(), capacity: room.capacity ?? null };
         });
     }
-    /** Combina agenda propia y disponibilidad sin revelar asuntos de otras personas. */
+    /** El dia visible es el de Costa Rica: se restan 6 horas y la jornada abre a las 06:00 UTC. Un evento privado se rotula "Evento privado". Uno libre no entra en conflicto. */
     async availability(token: string, input: ExternalSlot & { emails: string[]; roomAddress?: string; excludeId?: string }): Promise<ExternalAvailability> {
         const day = new Date(Date.parse(input.start) - 6 * 3600000).toISOString().slice(0, 10);
         const dayStart = `${day}T06:00:00.000Z`;
@@ -247,7 +255,7 @@ export class Microsoft365CalendarService implements ExternalCalendarPort {
             result.incomplete = true;
         }
     }
-    /** Las sugerencias usan un consentimiento independiente; su falta no impide leer la agenda. */
+    /** Este consentimiento es distinto del de leer la agenda. `events` no llama aqui, asi que faltar este permiso no vacia la agenda. Solo entran sugerencias con confianza ausente o de 100, y una duracion de mas de un dia no se propone. */
     async suggestions(token: string, input: ExternalSlot & { emails: string[]; roomAddress?: string }): Promise<ExternalSlot[]> {
         const minutes = Math.ceil((Date.parse(input.end) - Date.parse(input.start)) / 60000);
         if (minutes > 1440) return [];
@@ -256,7 +264,7 @@ export class Microsoft365CalendarService implements ExternalCalendarPort {
         const data = schema.parse(await this.request(token, "/me/findMeetingTimes", { body: { attendees: attendees(input.emails, input.roomAddress), meetingDuration: `PT${String(minutes)}M`, maxCandidates: 5, minimumAttendeePercentage: 100, returnSuggestionReasons: true, timeConstraint: { activityDomain: "work", timeSlots: [{ start: asTime(start), end: asTime(new Date(Date.parse(start) + 7 * 86400000).toISOString()) }] } } }));
         return data.meetingTimeSuggestions.filter((s) => s.confidence === undefined || s.confidence === 100).map((s) => ({ start: instant(s.meetingTimeSlot.start), end: instant(s.meetingTimeSlot.end) }));
     }
-    /** Relee una entrega confirmada sin repetir invitaciones. */
+    /** Si el evento ya no esta, cancelar termina. Si no somos organizador o el ETag cambio, es conflicto y no se cancela. */
     async cancel(token: string, id: string, version: string | null, reason: string): Promise<void> {
         const current = await this.request(token, `/me/events/${encodeURIComponent(id)}`, { acceptMissing: true });
         if (current === null) return;
@@ -264,11 +272,11 @@ export class Microsoft365CalendarService implements ExternalCalendarPort {
         if (!remote.isOrganizer || (version !== null && remote.version !== version)) throw new ExternalCalendarError("conflict");
         await this.request(token, `/me/events/${encodeURIComponent(id)}/cancel`, { method: "POST", body: { comment: reason }, acceptMissing: true, emptyResponse: true });
     }
-    /** Relee una entrega confirmada sin repetir invitaciones. */
+    /** Relee el evento confirmado. Es un GET: no vuelve a invitar. */
     async read(token: string, id: string, roomAddress?: string): Promise<ExternalWrite> {
         return readRemote(await this.request(token, `/me/events/${encodeURIComponent(id)}`), roomAddress);
     }
-    /** Usa transactionId estable y ETag para evitar duplicados o sobreescrituras. */
+    /** Alta con POST y `transactionId`. Correccion con PATCH y el ETag en `If-Match`, para no pisar una version que ya cambio. */
     async write(token: string, input: Parameters<ExternalCalendarPort["write"]>[1]): Promise<ExternalWrite> {
         const path = input.remoteId ? `/me/events/${encodeURIComponent(input.remoteId)}` : "/me/events";
         const saved = await this.request(token, path, { body: eventBody(input), method: input.remoteId ? "PATCH" : "POST", version: input.remoteVersion });

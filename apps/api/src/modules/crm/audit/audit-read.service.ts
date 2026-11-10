@@ -12,7 +12,7 @@ import { AuditReadRepository } from "./audit-read.repository.js";
 
 const changeSetSchema = z.object({ version: z.literal(1), entity: z.string().min(1), recordId: z.string().min(1), action: z.enum(["create", "update", "deactivate", "reactivate", "delete"]), before: z.record(z.string(), z.unknown()).nullable(), after: z.record(z.string(), z.unknown()).nullable() });
 
-/** Old/malformed events have no comparison; safe snapshots cannot expose arbitrary JSON. */
+/** Un evento viejo o mal formado no se compara. El snapshot se vuelve a filtrar; el JSON crudo no sale. */
 function safeChangeSet(value: unknown) {
     try {
         const parsed = changeSetSchema.safeParse(typeof value === "string" ? JSON.parse(value) : value);
@@ -23,10 +23,10 @@ function safeChangeSet(value: unknown) {
     }
 }
 
-/** Authenticated scope-first access to immutable, paginated audit history. */
+/** Lectura autenticada. El permiso se vuelve a evaluar aqui, incluido un deny explicito. */
 @Injectable()
 export class AuditReadService {
-    /** Identity authorization is reused without exposing audit writes. */
+    /** Reutiliza la identidad. Este servicio no escribe bitacora. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(AuditReadRepository) private readonly repository: AuditReadRepository,
@@ -36,12 +36,12 @@ export class AuditReadService {
         if (!canReadAudit(profile)) throw new ForbiddenException("Permiso insuficiente.");
     }
 
-    /** Central evidence uses the existing live audit permission, including explicit denies. */
+    /** El mismo permiso de auditoria viva, con el deny. La historia no abre otra puerta. */
     async leadTimeline(token: string | undefined, recordId: string, query: unknown) {
         await this.authorize(token);
         return this.repository.leadTimeline(recordId, query);
     }
-    /** Authorization precedes lookup; explicit response fields exclude metadata and network identifiers. */
+    /** Primero el permiso. Un id que no es ULID no llega a la base. La respuesta no incluye metadata ni red. */
     async detail(token: string | undefined, publicId: string) {
         await this.authorize(token);
         if (!isValid(publicId)) throw new BadRequestException("Identificador de evento inválido.");
@@ -49,12 +49,15 @@ export class AuditReadService {
         if (!row) throw new NotFoundException("Evento no encontrado.");
         return { publicId: row.publicId, eventType: row.eventType, summary: row.summary, reason: row.reason, actorName: row.actorName, targetName: row.targetName, createdAt: new Date(row.createdAt).toISOString(), ...buildAuditReadContext(row), changeSet: safeChangeSet(row.changeSet) };
     }
-    /** Only static navigation choices are returned; this does not query log rows. */
+    /** Solo el menu estatico. No consulta filas. */
     async options(token: string | undefined) {
         await this.authorize(token);
         return { modules: AUDIT_MODULES, catalogs: CATALOG_DEFINITIONS.map((catalog) => ({ code: catalog.routeCode, name: catalog.label })) };
     }
-    /** Scope validation precedes SQL; historic missing context remains explicitly unknown. */
+    /**
+     * La seccion se valida antes del SQL. Un catalogo solo cabe en la seccion de catalogos.
+     * Se pide una fila de mas: si llega, hay otra pagina y el cursor es el ultimo id visible.
+     */
     async list(token: string | undefined, query: AuditQueryDto) {
         await this.authorize(token);
         const module = AUDIT_MODULES.find((item) => item.code === query.moduleCode);

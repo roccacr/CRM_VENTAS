@@ -6,7 +6,7 @@ const base = "https://graph.microsoft.com/v1.0";
 const itemSchema = z.object({ id: z.string(), name: z.string(), size: z.number().default(0), lastModifiedDateTime: z.string().optional(), file: z.unknown().optional(), folder: z.unknown().optional(), parentReference: z.object({ id: z.string().optional(), driveId: z.string().optional() }).optional() });
 const pageSchema = z.object({ value: z.array(itemSchema), "@odata.nextLink": z.string().optional() });
 const pathId = encodeURIComponent;
-/** Solo rutas Graph construidas por el servidor; la URL de subida se valida antes de usarla. */
+/** Las rutas las arma el servidor. Una redireccion no se sigue. 401 y 403 son permiso, 404 no existe, 409, 412 y 416 son conflicto. El cuerpo de Graph no sale en el error. */
 @Injectable()
 export class OrderDocumentsGraph {
     private root(group: string) {
@@ -29,7 +29,7 @@ export class OrderDocumentsGraph {
         const response = await this.checked(`${base}${path}`, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
         return response.json();
     }
-    /** Busca la carpeta exacta por referencia NetSuite, sin confundirla con el ID local. */
+    /** El nombre es el id de NetSuite, no el id local. Tiene que ser carpeta y llamarse exactamente asi. No encontrada es nulo; otro error se propaga. */
     async folder(token: string, group: string, root: string, name: string) {
         try {
             const result = itemSchema.parse(await this.json(token, `${this.root(group)}${pathId(root)}:/${encodeURIComponent(name)}`));
@@ -40,12 +40,12 @@ export class OrderDocumentsGraph {
             throw error;
         }
     }
-    /** Crea el hijo en la raíz configurada y rechaza duplicados. */
+    /** `fail` evita un sufijo automatico. Ese sufijo dejaria la carpeta fuera de la relacion por id de NetSuite. */
     async createFolder(token: string, group: string, root: string, name: string) {
         // Fallar ante duplicados evita crear carpetas con sufijos que romperían la asociación por NetSuite.
         return this.json(token, `${this.root(group)}${pathId(root)}/children`, "POST", { name, folder: {}, "@microsoft.graph.conflictBehavior": "fail" });
     }
-    /** Recorre todas las páginas autorizadas sin devolver un listado parcial. */
+    /** Solo entran archivos, no carpetas. Mas de 50 paginas no se recorta: la consulta falla. */
     async files(token: string, group: string, folder: string, driveId?: string): Promise<DocumentItem[]> {
         let path: string | undefined = `${this.root(group)}${pathId(folder)}/children?$select=id,name,size,lastModifiedDateTime,file,folder&$top=200`;
         const items: DocumentItem[] = [];
@@ -58,18 +58,18 @@ export class OrderDocumentsGraph {
         }
         return items;
     }
-    /** Impide seguir enlaces de paginación ajenos a la carpeta consultada. */
+    /** El `nextLink` tiene que seguir en los hijos de esta carpeta. Otro host o otra carpeta se rechaza. */
     private nextPage(value: string | undefined, prefixes: readonly string[]) {
         if (!value) return undefined;
         if (!prefixes.some((prefix) => value.startsWith(prefix))) throw new BadGatewayException("Microsoft devolvió una paginación no válida.");
         return value.slice(base.length);
     }
-    /** Impide consultar un archivo que pertenezca a otra orden. */
+    /** El padre tiene que ser la carpeta de esta orden. Un archivo de otra carpeta no se entrega. */
     async assertChild(token: string, group: string, folder: string, item: string) {
         const result = itemSchema.parse(await this.json(token, `${this.root(group)}${pathId(item)}?$select=id,name,file,parentReference`));
         if (!result.file || result.parentReference?.id !== folder) throw new ForbiddenException("El archivo no pertenece a la carpeta de esta orden.");
     }
-    /** Entrega un enlace temporal únicamente para un archivo de la carpeta autorizada. */
+    /** El enlace temporal solo sale despues de comprobar el padre. Tiene que ser https, sin usuario ni clave, y un host de SharePoint, OneDrive u Office. */
     async link(token: string, input: { group: string; folder: string; item: string; action: "preview" | "download" }) {
         const { group, folder, item, action } = input;
         await this.assertChild(token, group, folder, item);
@@ -81,7 +81,7 @@ export class OrderDocumentsGraph {
         if (parsed.protocol !== "https:" || parsed.username || parsed.password || ![".sharepoint.com", ".1drv.com", ".officeapps.live.com", ".office.com", ".onedrive.com"].some((host) => parsed.hostname.endsWith(host))) throw new BadGatewayException("Microsoft devolvió un enlace no válido.");
         return url;
     }
-    /** Crea una carga con política explícita de duplicados y valida el destino. */
+    /** El destino de carga solo se acepta en `https` y en `.up.1drv.com` o `.sharepoint.com`, sin usuario ni clave. */
     async startUpload(token: string, input: { group: string; folder: string; name: string; conflict: string }) {
         const { group, folder, name, conflict } = input;
         const data = z.object({ uploadUrl: z.url(), expirationDateTime: z.string() }).parse(await this.json(token, `${this.root(group)}${pathId(folder)}:/${encodeURIComponent(name)}:/createUploadSession`, "POST", { item: { "@microsoft.graph.conflictBehavior": conflict, name } }));
@@ -92,7 +92,7 @@ export class OrderDocumentsGraph {
         const url = new URL(value);
         if (url.protocol !== "https:" || url.username || url.password || ![".up.1drv.com", ".sharepoint.com"].some((host) => url.hostname.endsWith(host))) throw new BadGatewayException("Microsoft devolvió un destino de carga no permitido.");
     }
-    /** Envía un rango de bytes sin adjuntar OAuth a una URL preautorizada. */
+    /** La URL ya viene preautorizada. No se le adjunta el Bearer. 200 o 201 cierran la carga. */
     async chunk(url: string, offset: number, size: number, bytes: Buffer) {
         this.assertUploadUrl(url);
         const response = await this.checked(url, { method: "PUT", headers: { "Content-Type": "application/octet-stream", "Content-Range": `bytes ${String(offset)}-${String(offset + bytes.length - 1)}/${String(size)}` }, body: new Uint8Array(bytes) });

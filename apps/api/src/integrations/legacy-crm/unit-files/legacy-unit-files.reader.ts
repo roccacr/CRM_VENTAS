@@ -9,7 +9,25 @@ import { unitFileCriteria } from "../../../modules/crm/unit-files/unit-files-sea
 import { isLegacyCrmEnabled } from "../legacy-crm-access.js";
 import { LegacyCrmDatabaseService } from "../legacy-crm-database.service.js";
 
-// This historical column belongs to one namespace. Other provider IDs are never ORed into it.
+/**
+ * Lectura de `crmdatabase-api.expedientes` por el pool legado.
+ *
+ * No escribe. Apagado devuelve vacio o `null`, no un 503: el listado nativo
+ * sigue solo. Un fallo de la fuente responde 503, con un mensaje fijo y sin SQL.
+ * El tope de 1500 ms es de la sentencia; si MySQL la corta, el cliente ve ese
+ * mismo mensaje.
+ *
+ * Un expediente solo entra si su proyecto principal tiene un unico
+ * `id_ProNetsuite` en `proyectos` y ese id apunta a un `crm_project` activo del
+ * namespace `netsuite`. Varios proyectos con el mismo id no se resuelven con
+ * `MIN`: quedan fuera. Otros proveedores no se mezclan en esa columna.
+ *
+ * Listado, opciones y facetas ocultan el expediente ya copiado a
+ * `crm_unit_file`. El detalle por id viejo no aplica esa exclusion: sigue
+ * exigiendo el mismo puente de proyecto.
+ */
+
+/** La columna historica del proyecto solo se compara con NetSuite. No se arma con el request. */
 const projectNamespace = "netsuite";
 const facetFields = { code: "e.codigo_exp", projectIds: "p.public_id_project", housingType: "e.tipoDeVivienda_exp", status: "e.estado_exp" };
 const from = sql`FROM \`crmdatabase-api\`.expedientes e
@@ -20,21 +38,32 @@ const from = sql`FROM \`crmdatabase-api\`.expedientes e
 const identities = sql`e.id_expediente AS position,CONCAT('legacy:unit-files:',e.id_expediente) AS id,NULL AS nativeCode,e.id_expediente AS legacyId,p.public_id_project AS projectId,p.name_project AS projectName,e.idProyectoPrincipal_exp AS projectReference,e.ID_interno_expediente AS externalId`;
 const summaryFields = ["code", "housingType", "sourceStatus", "advertisedSalePrice", "habitableArea", "estimatedDelivery", "totalArea", "lotArea", "approximateParkingArea", "modifiedAt"] as const;
 
-/** Source-specific translation and indexed anti-join are isolated here for clean removal. */
+/**
+ * Unico sitio que nombra `expedientes`. El nucleo habla con el puerto. El id
+ * publico lleva `legacy:` para no chocar con uno nativo, y `nativeCode` queda
+ * nulo porque esta fila todavia no es un expediente del CRM nuevo.
+ */
 @Injectable()
 export class LegacyUnitFilesReader implements UnitFilesLegacy {
-    /** Reuses the independent read-only pool and the one global legacy gate. */
+    /** Pool de solo lectura y la bandera global. No abre otra conexion. */
     constructor(
         @Inject(ConfigService) private readonly config: ConfigService,
         @Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService,
     ) {}
 
-    /** Checked immediately before every operation, not merely at construction. */
+    /** Se vuelve a leer en cada operacion. Un texto no cuenta como encendido. */
     enabled(): boolean {
         return isLegacyCrmEnabled(this.config);
     }
 
-    /** Distinct choices share the native project bridge, anti-join and global source gate. */
+    /**
+     * Valores distintos para un filtro, en el mismo puente y sin los expedientes
+     * ya copiados. La collation binaria no junta mayusculas distintas, y el
+     * cursor `>` sigue ese mismo orden.
+     *
+     * `LOCATE` busca el texto tal cual: `%` y `_` no son comodines. Apagado
+     * devuelve una lista vacia.
+     */
     async options(filter: UnitOptionFilter, take: number): Promise<string[]> {
         if (!this.enabled()) return [];
         const field = sql`CONVERT(${sql.ref(`e.${UNIT_FIELDS[filter.kind].source}`)} USING utf8mb4) COLLATE utf8mb4_bin`;
@@ -56,7 +85,11 @@ export class LegacyUnitFilesReader implements UnitFilesLegacy {
         }
     }
 
-    /** Only projected fields are fetched, with bounded criteria and no global ID array. */
+    /**
+     * Pagina por `id_expediente`, no por un arreglo de ids. Solo trae los campos
+     * del resumen. Sin proyectos autorizados no se consulta: un `IN` vacio no
+     * es un listado de todo el legado.
+     */
     async list(filter: UnitFilter, projects: UnitProjectBinding[], after: number, take: number): Promise<UnitSeekRow[]> {
         if (!this.enabled()) return [];
         if (!projects.length) return [];
@@ -75,7 +108,11 @@ export class LegacyUnitFilesReader implements UnitFilesLegacy {
         }
     }
 
-    /** Full-scope facet counts retain native precedence and the read-only transaction boundary. */
+    /**
+     * Conteos de una faceta. El criterio omite esa misma faceta para no contar
+     * solo el valor que el usuario ya eligio. Nulos se agrupan como texto vacio.
+     * El expediente nativo sigue ganando: no entra en el conteo.
+     */
     async facets(filter: UnitFacetFilter, take: number): Promise<UnitFacet[]> {
         if (!this.enabled()) return [];
         const field = sql`CONVERT(COALESCE(${sql.ref(facetFields[filter.kind])},'') USING utf8mb4) COLLATE utf8mb4_bin`;
@@ -94,7 +131,12 @@ export class LegacyUnitFilesReader implements UnitFilesLegacy {
         }
     }
 
-    /** Detail retains all business fields, and uses the same verified project mapping. */
+    /**
+     * Detalle completo de un id viejo. Sin fila, o sin el puente de proyecto,
+     * devuelve `null`: no es un fallo de la fuente. La referencia externa solo
+     * sale de `ID_interno_expediente`, y solo si trae texto. No se fabrica un
+     * id de otro proveedor.
+     */
     async detail(legacyId: number): Promise<UnitDetail | null> {
         if (!this.enabled()) return null;
         const fields = sql.join(Object.entries(UNIT_FIELDS).map(([key, field]) => sql`${sql.ref(`e.${field.source}`)} AS ${sql.id(key)}`));

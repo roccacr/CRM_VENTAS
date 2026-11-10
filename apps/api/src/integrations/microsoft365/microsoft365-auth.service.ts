@@ -21,24 +21,25 @@ interface Microsoft365Config {
 }
 
 /**
- * Adapter real de Microsoft 365 sobre MSAL Node y Microsoft Graph.
+ * Login Microsoft con MSAL y Graph. La cache sale serializada para que
+ * identidad la cifre; este servicio no la guarda.
  *
- * La cache MSAL viaja como string serializado hacia identity para cifrarse y
- * persistirse. El adapter puede usar access tokens en memoria para Graph, pero
- * nunca los devuelve al frontend ni los guarda en claro.
+ * El access token vive en memoria para Graph o para quien llama el puerto.
+ * No se devuelve al navegador ni se escribe en claro. Cada operacion crea su
+ * cliente: la cache de un usuario no se mezcla con la de otro.
  */
 @Injectable()
 export class Microsoft365AuthService implements MicrosoftAuthProvider {
     private readonly crypto = new CryptoProvider();
     private readonly logger = new Logger(Microsoft365AuthService.name);
 
-    /**
-     * Inyecta configuracion validada. No se conecta a Microsoft al arrancar.
-     */
+    /** No llama a Microsoft al arrancar. La configuracion se lee en cada operacion. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
     /**
-     * Construye la URL de autorizacion Microsoft con PKCE, state y nonce.
+     * Arma la URL con PKCE `S256`, `state` y `nonce` nuevos. Esos tres vuelven
+     * al servidor para atar el callback. `select_account` evita que un navegador
+     * compartido entre en silencio con otra cuenta de Microsoft.
      */
     async startLogin(input?: { calendar?: boolean }): Promise<MicrosoftLoginChallenge> {
         const microsoftConfig = this.readConfig();
@@ -65,7 +66,9 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
     }
 
     /**
-     * Intercambia el authorization code por tokens MSAL y lee perfil/foto.
+     * Cambia el codigo por tokens y lee la foto. Sin una cuenta del tenant
+     * configurado, con los campos minimos y que no sea invitada, el login no sigue.
+     * La foto ausente no rechaza la cuenta.
      */
     async completeCallback(input: MicrosoftCallbackInput): Promise<MicrosoftAuthenticatedAccount> {
         const microsoftConfig = this.readConfig();
@@ -94,7 +97,9 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
     }
 
     /**
-     * Rehidrata cache MSAL cifrada fuera del adapter y renueva token en silencio.
+     * La cache ya llega descifrada. Si falta la cuenta, el token sale vacio o
+     * Microsoft pide interaccion, la respuesta es `interactionRequired` con un
+     * motivo. Otro error se propaga. La cache nueva vuelve serializada.
      */
     async acquireTokenSilent(input: { homeAccountId: string; msalCacheSerialized: string; scopes?: string[] }): Promise<MicrosoftSilentTokenResult> {
         const microsoftConfig = this.readConfig();
@@ -132,7 +137,9 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
     }
 
     /**
-     * Lee la foto de Graph. La ausencia de foto no falla login.
+     * 404, un estado no exitoso, un MIME fuera de la lista o un corte a los 5 s
+     * dejan la foto en nulo. El login no falla por la foto. Sin `Content-Type`
+     * se asume `image/jpeg` y despues se valida contra la misma lista.
      */
     async readProfilePhoto(accessToken: string): Promise<MicrosoftProfilePhoto | null> {
         try {
@@ -175,8 +182,9 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
     }
 
     /**
-     * Exige que MSAL devuelva una cuenta. Sin cuenta no hay identidad canonica
-     * segura para mapear contra CRM.
+     * Hace falta token, `homeAccountId`, tenant, `localAccountId` y usuario.
+     * El tenant tiene que ser el configurado. Un UPN con `#ext#` es una cuenta
+     * invitada y se rechaza con el mismo mensaje: el cliente no distingue el motivo.
      */
     private assertAccount(result: AuthenticationResult | null, expectedTenantId: string): AccountInfo {
         const account = result?.account;
@@ -200,9 +208,7 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
         return account.username.toLowerCase().includes("#ext#");
     }
 
-    /**
-     * Crea un cliente MSAL por operacion para evitar cache compartida entre usuarios.
-     */
+    /** Un cliente por operacion. La autoridad es el tenant configurado, no `common`. */
     private createClient(config: Microsoft365Config): ConfidentialClientApplication {
         const msalConfig: Configuration = {
             auth: {
@@ -216,14 +222,18 @@ export class Microsoft365AuthService implements MicrosoftAuthProvider {
     }
 
     /**
-     * Lee configuracion Microsoft. Es fail-fast por request: si el operador no
-     * configuro Microsoft completo, el endpoint no inicia un flujo inseguro.
+     * Agrega calendario solo si `ENABLE_CALENDAR_EXTERNAL` es `true`. Quien llama
+     * esto ya decidio que el login lo pide. La renovacion silenciosa no pasa por aqui.
      */
-    /** El consentimiento de calendario se pide al iniciar sesión; nunca durante la renovación básica. */
     private loginScopes(base: string[]): string[] {
         return this.config.get<boolean>("ENABLE_CALENDAR_EXTERNAL") === true ? [...new Set([...base, "Calendars.ReadWrite", "Calendars.Read.Shared", "Place.Read.All"])] : base;
     }
 
+    /**
+     * Falla la peticion si falta cualquier dato de Microsoft. No arranca un flujo
+     * a medias. Con `ENABLE_ORDER_DOCUMENTS` en `true`, `Files.ReadWrite.All`
+     * entra en la lista base y tambien en la renovacion silenciosa.
+     */
     private readConfig(): Microsoft365Config {
         const tenantId = this.config.getOrThrow<string>("MICROSOFT_TENANT_ID");
         const clientId = this.config.getOrThrow<string>("MICROSOFT_CLIENT_ID");

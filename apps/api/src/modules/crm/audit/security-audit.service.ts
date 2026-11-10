@@ -8,7 +8,7 @@ import { type AuditActorSnapshot, getCapturedAuditActor, readAuditActor } from "
 import { RecordAuditService } from "./record-audit.service.js";
 import { appendSecurityBusinessChange } from "./record-audit-bridge.js";
 
-/** Re-exported for callers of the audit service. */
+/** El llamador de auditoria recibe el actor sin importar el archivo que lo captura. */
 export type { AuditActorSnapshot } from "./audit-actor.js";
 
 // ============================================================================
@@ -18,7 +18,7 @@ export type { AuditActorSnapshot } from "./audit-actor.js";
 // payload y lo persiste en la tabla canonica de auditoria.
 // ============================================================================
 
-/** Event context supplied only by trusted server-side business operations. */
+/** El llamador de confianza arma el evento. Este servicio no decide el paso de negocio. */
 export interface SecurityAuditEvent {
     eventType: string;
     summary: string;
@@ -31,7 +31,7 @@ export interface SecurityAuditEvent {
     metadata?: Record<string, unknown> | null;
 }
 
-/** Handle or transaction; `isTransaction` lets commercial audit insist on the business transaction. */
+/** `isTransaction` distingue la transaccion del negocio. La bitacora comercial no acepta el pool suelto. */
 type AuditWriteExecutor = Pick<Kysely<CrmDatabase>, "insertInto" | "selectFrom"> & { readonly isTransaction?: boolean };
 
 /** Longitud maxima real de `audit_security_event.ip_address_security_event`. */
@@ -69,7 +69,7 @@ const truncateNullableAuditText = (value: string | null | undefined, maxLength: 
     return value.slice(0, maxLength);
 };
 
-/** Column values of a security event row. */
+/** Valores de la fila. La metadata viaja como texto JSON para no armar SQL en el llamador. */
 const securityEventValues = (event: SecurityAuditEvent, publicId: string, metadata: SecurityAuditEvent["metadata"]) => ({
     public_id_security_event: publicId,
     event_type_security_event: event.eventType,
@@ -83,10 +83,13 @@ const securityEventValues = (event: SecurityAuditEvent, publicId: string, metada
     created_at_security_event: new Date(),
 });
 
-/** Adds the captured actor snapshot to the event metadata. */
+/** Agrega el actor capturado. Solo codigo y nombre de rol, no la membresia viva. */
 const metadataWithActor = (event: SecurityAuditEvent, actor: AuditActorSnapshot | undefined): SecurityAuditEvent["metadata"] => (actor ? { ...event.metadata, actor: { publicId: actor.publicId, name: actor.name, roles: actor.roles.map(({ code, name }) => ({ code, name })) } } : event.metadata);
 
-/** Commercial audit needs the business transaction and an actor captured by the server before mutation. */
+/**
+ * Sin transaccion o sin actor capturado antes del cambio, la bitacora comercial
+ * no sigue. Un objeto parecido que no salio del servidor es 403.
+ */
 function commercialActor(executor: AuditWriteExecutor, actor: AuditActorSnapshot | undefined, captured: AuditActorSnapshot | undefined): AuditActorSnapshot {
     if (!executor.isTransaction) throw new BadRequestException("Commercial audit requires the business transaction");
     if (!actor) throw new BadRequestException("Commercial audit requires a captured actor");
@@ -111,7 +114,7 @@ export class SecurityAuditService {
         @Inject(RecordAuditService) private readonly records: RecordAuditService = new RecordAuditService(database),
     ) {}
 
-    /** Capture before changing access, so a self-edit cannot rewrite its own authorizing roles. */
+    /** Se captura antes de cambiar el acceso. Asi una edicion propia no reescribe los roles que la autorizaron. */
     async captureActor(actorUserId: number, executor: Pick<Kysely<CrmDatabase>, "selectFrom"> = this.database.db): Promise<AuditActorSnapshot | undefined> {
         return readAuditActor(executor, actorUserId);
     }
@@ -124,10 +127,11 @@ export class SecurityAuditService {
      * path de auditoria parametrizado.
      */
     async record(event: SecurityAuditEvent, executor: AuditWriteExecutor = this.database.db): Promise<void> {
-        // Preserve attribution after an actor is renamed, without copying authentication data.
+        // El nombre queda en el evento aunque despues se renombre. No se copian credenciales.
         const actor = await this.resolveActor(event, executor);
         const captured = this.records.enabled ? getCapturedAuditActor(actor) : undefined;
         const publicId = ulid();
+        // El cambio comercial solo sigue si la bitacora de registros esta encendida y el evento trae un changeSet. Si esta apagada, el evento de seguridad se guarda igual.
         if (this.records.enabled && event.metadata?.changeSet !== undefined) {
             const verified = commercialActor(executor, actor, captured);
             await appendSecurityBusinessChange(this.records, executor as Transaction<CrmDatabase>, { event, actor: verified, operationId: publicId });

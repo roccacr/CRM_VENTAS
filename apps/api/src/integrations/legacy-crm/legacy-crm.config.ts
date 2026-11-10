@@ -1,12 +1,14 @@
 /**
- * Conexión aislada al CRM viejo.
+ * Pool aislado del CRM viejo, solo para lecturas.
  *
- * Queda apagada si no hay nombre de base. Cuando se abre, reutiliza las
- * credenciales `DB_*` del entorno, pero con otro pool y otra base. La cuenta
- * compartida no es de solo lectura a nivel de privilegio, así que cada
- * conexión de este pool se marca `READ ONLY` antes de usarse. Los seis catalogos
- * solo sincronizan escrituras con el opt-in productivo de escritura separado,
- * mediante la transacción nativa, nunca mediante este pool.
+ * Sin nombre de base no se abre. Reutiliza host, usuario, clave y TLS de
+ * `DB_*`, pero la base y el cupo son otros. La cuenta compartida puede
+ * escribir, asi que cada conexion de este pool se marca `READ ONLY` al salir.
+ * Si ese `SET` falla, la conexion se destruye: devolverla al pool dejaria una
+ * sesion que si puede mutar.
+ *
+ * Las escrituras de catalogo, contrato, bancos y adendum no usan este pool.
+ * Van por la transaccion nativa y por su propia compuerta.
  */
 import type { ConfigService } from "@nestjs/config";
 import { Kysely, MysqlDialect } from "kysely";

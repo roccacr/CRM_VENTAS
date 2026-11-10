@@ -5,7 +5,7 @@ export interface PreviousOrderObservation {
     completedAt: string | null;
     recordedAt: string;
 }
-/** El hash detecta igualdad, no orden. Solo aceptar contenido distinto cuando las lecturas no se solapan. */
+/** El hash dice si el contenido es el mismo, no que hora es. Sin cursor previo, la observacion no esta vieja. */
 export function isStaleOrderObservation(input: { event: PersistedOrderEvent; cursor: { observed: string | number | null; hash: string | null }; hash: string; previous: PreviousOrderObservation | null }): boolean {
     if (input.cursor.observed === null) return false;
     const modified = Date.parse(input.event.event.sourceModifiedAt);
@@ -20,7 +20,7 @@ function windowIsStale(input: Parameters<typeof isStaleOrderObservation>[0]): bo
     if (previous === null) return true;
     const start = Date.parse(input.event.event.snapshotReadStartedAt ?? "");
     const end = Date.parse(input.event.event.snapshotReadCompletedAt ?? "");
-    // Para eventos historicos sin ventana, el COMMIT previo es el limite conservador de transicion.
+    // Un evento viejo sin ventana usa el commit anterior como limite. Si las lecturas se pisan y el hash cambio, esta vieja.
     const previousEnd = Date.parse(previous.completedAt ?? previous.recordedAt);
     if (![start, end, previousEnd].every(Number.isFinite)) return true;
     if (end < previousEnd) return true;

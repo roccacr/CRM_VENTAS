@@ -8,27 +8,35 @@ import { followUpSourceQuery, readFollowUpRecord, readFollowUpSource } from "../
 import { formalizationClosedThisYear } from "../../modules/crm/sales/sales-orders/formalization-closure.query.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
-/** Read-only legacy projection. Ambiguous provider relationships remain null instead of duplicating orders. */
+/**
+ * Proyeccion de seguimiento, solo lectura, sobre la transaccion del llamador.
+ *
+ * Un lead, admin, correo, proyecto o expediente repetido no se une: el `NOT EXISTS`
+ * deja ese lado en nulo en vez de duplicar la orden. Un alias nativo, activo o
+ * borrado, oculta la orden vieja. El flag 1 o 0 se conserva; cualquier otro valor
+ * queda nulo y no cuenta como verdadero.
+ */
 @Injectable()
 export class LegacyFollowUpReader implements FollowUpLegacyReader {
-    /** Reuses the configured legacy switch while executing on the caller's shared snapshot. */
+    /** Usa el interruptor del pool. La consulta corre en la foto que ya abrio el llamador. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
-    /** Uses the existing integration switch; never opens a new request-scoped pool. */
+    /** El pool existe. No abre otro por peticion. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
-    /** Alias shadowing includes inactive/deleted native orders: authority never falls back implicitly. */
+    /** El alias nativo tapa la orden vieja aunque el nativo este inactivo o borrado. */
     read(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, access: FollowUpAccess) {
         return readFollowUpSource(tx, followUpSourceQuery(this.base(period), query, access));
     }
-    /** Bounds the source projection to the requested identity before classification. */
+    /** Recorta la misma proyeccion a una orden antes de clasificarla. */
     readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
         return readFollowUpRecord(tx, this.base(period, id));
     }
-    /** Exposes the read-only source projection for global portfolio pagination. */
+    /** La misma proyeccion, sin filtro de id, para paginar el portafolio. */
     projection(period: FollowUpPeriod) {
         return this.base(period);
     }
+    /** Activa, o caida pero con contrato firmado. El correo nativo solo entra si un solo admin lo tiene. */
     private base(period: FollowUpPeriod, id?: string) {
         return sql`
             SELECT o.id_ov AS sortId,CONCAT('legacy:',o.id_ov) COLLATE utf8mb4_unicode_ci AS id,'legacy' AS source,

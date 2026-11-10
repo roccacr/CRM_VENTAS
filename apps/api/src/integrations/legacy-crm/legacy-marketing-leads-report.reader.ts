@@ -12,17 +12,27 @@ import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 import { legacyAppointmentDate } from "./legacy-marketing-appointments.reader.js";
 
 const states: Record<string, AppointmentState> = { pendiente: "scheduled", completado: "completed", cancelado: "cancelled", scheduled: "scheduled", completed: "completed", cancelled: "cancelled" };
-/** Reads old evidence in the approved native read-only snapshot, without importing records. */
+/**
+ * Evidencia del reporte de leads, solo lectura. No importa registros.
+ *
+ * Apagado, el llamador omite la fuente. Encendido, un fallo tumba el reporte
+ * entero. Perdido es exactamente `segimineto_lead` binario `07-LEAD-PERDIDO`.
+ * La caida solo se une si es manual (`estado_caida=3` y `segui=0`) o uno de los
+ * ids historicos confirmados. El motivo conocido gana; si no, el codigo es
+ * `legacy:{id}` con el nombre recortado. La campana solo trae nombre cuando
+ * `id_NetsauiteCampana` es unico. Usuarios, proyectos y alias salen vacios: este
+ * reader no resuelve directorios nativos. Una fecha de cita invalida se marca, no se tira.
+ */
 @Injectable()
 export class LegacyMarketingLeadsReportReader implements MarketingLeadsReportLegacyReader {
-    /** Existing integration owns configuration; this reader never changes it. */
+    /** La configuracion la tiene el pool. Este reader no la cambia. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
-    /** Disabled legacy is omitted; enabled-source failure fails the whole report. */
+    /** El pool existe. Un fallo posterior no se convierte en reporte vacio. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
-    // El catálogo mezcla actividades y motivos: estado3/segui0 son pérdidas manuales; se conservan motivos históricos y automáticos confirmados.
-    /** Provider lead/campaign references are never mistaken for legacy primary keys. */
+    // El catalogo mezcla actividades y motivos: estado 3 y segui 0 son perdidas manuales; se conservan los motivos historicos y automaticos confirmados.
+    /** `idinterno_lead` y el id de campana no se confunden con la llave local. Con evento nativo, el estado sale de el y la fecha es su inicio menos 6 horas; si ese evento esta borrado, el estado es cancelado. El enlace nativo usa `legacy-pk:{id_lead}`. */
     async read(tx: Transaction<CrmDatabase>): Promise<ReportSource> {
         const leads = await readReportPages(
             async (offset) =>

@@ -1,6 +1,6 @@
 # Project Skill Registry
 
-Revisión documental03/11/2026: el inventario vigente está en [85](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md). Los recibos, hashes, instalación o despliegue inferiores conservan su fecha; no se reejecutaron ni acreditan el árbol actual.
+El [estado del proyecto](README.md#estado-documental-vigente--2026-11-10) enlaza los contratos vigentes. Los recibos, hashes e instalaciones de este registro conservan su fecha histórica.
 
 ## Revisión documental — 2026-11-02
 

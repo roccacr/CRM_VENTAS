@@ -16,28 +16,27 @@ import { NetsuiteOrderEventService } from "./netsuite-order-event.service.js";
 import { reconcileImportRelations } from "./netsuite-order-import.relations.js";
 import { NetsuiteRestletClient } from "./netsuite-restlet.client.js";
 
-/** Authorized provider reads and manual database synchronization; never updates ERP records. */
+/**
+ * Lecturas autorizadas y sincronizacion hacia la base. Este servicio no escribe en el ERP.
+ * La foto de la orden se suelta antes de llamar a NetSuite.
+ */
 @Injectable()
 export class NetsuiteSalesOrderService {
-    /**
-     *
-     */
+    /** Identidad, base, RESTlet y el escritor durable. Ninguno se llama al construir. */
     constructor(
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(NetsuiteOrderRepository) private readonly repository: NetsuiteOrderRepository,
         @Inject(NetsuiteRestletClient) private readonly client: NetsuiteRestletClient,
         @Inject(NetsuiteOrderEventService) private readonly events: NetsuiteOrderEventService,
     ) {}
-    /**
-     *
-     */
+    /** Resuelve la orden en la base y despues lee el proveedor. El JSON externo no se persiste. */
     async read(session: string | undefined, input: unknown) {
         const resolved = await this.authorized(session, input, (target, check) => this.repository.resolve(target, check));
-        // Release the database snapshot before the external request.
+        // La foto de la base se suelta antes de la llamada externa.
         const data = await this.client.readSalesOrder(resolved.netsuiteId);
         return { schemaVersion: 1 as const, order: resolved, data };
     }
-    /** Same role, deny and resource checks as the provider read, with no external request. */
+    /** Misma autoridad que la lectura del proveedor, sin salir a NetSuite. Un query extra se rechaza. */
     async readDatabase(session: string | undefined, input: unknown, query: unknown = {}) {
         return this.authorized(session, input, (target, check) => {
             const parsed = z
@@ -48,7 +47,7 @@ export class NetsuiteSalesOrderService {
             return this.repository.readDatabase(target, check, parsed.data.historyCursor);
         });
     }
-    /** Read-only audit timeline shares the independent order permission and active-record gate. */
+    /** La bitacora usa el permiso de la orden. El adendum entra solo si ese permiso de lectura esta concedido. */
     async readHistory(session: string | undefined, input: unknown, query: unknown = {}) {
         return this.authorized(session, input, (target, check, profile) => {
             const parsed = z
@@ -59,7 +58,7 @@ export class NetsuiteSalesOrderService {
             return this.repository.readHistory(target, check, parsed.data.cursor, formalizationPermissionScope(profile, "formalizacion.orders.addendum.read").allowed);
         });
     }
-    /** Metadata is available even if the provider is down; it never contacts NetSuite. */
+    /** Dice el entorno y si la escritura manual esta habilitada. No llama a NetSuite, aunque el proveedor este caido. */
     async synchronizationContext(session: string | undefined, input: unknown) {
         return this.authorized(session, input, async (target, check, profile) => {
             await this.repository.resolve(target, check);
@@ -68,7 +67,7 @@ export class NetsuiteSalesOrderService {
             return { ...context, canSynchronize: allowed && this.events.synchronizationEnabled(context.environment) };
         });
     }
-    /** Pull from the provider, then apply the same field matrix and transactional writer as events. */
+    /** Lee la foto verificada y la aplica con el mismo escritor que el webhook. El navegador no manda campos. Si el permiso cambia durante la lectura, no se escribe. */
     async synchronize(session: string | undefined, input: unknown) {
         return this.authorized(session, input, async (target, check, profile) => {
             if (!formalizationPermissionScope(profile, "formalizacion.orders.stage.update").allowed) throw new ForbiddenException("No tiene permiso para sincronizar esta orden.");
@@ -116,13 +115,12 @@ export class NetsuiteSalesOrderService {
         });
     }
 
-    /**
-     *
-     */
+    /** La cola reutiliza la extraccion. El actor ya viene resuelto y se vuelve a bloquear dentro de la transaccion. */
     async executeQueuedImport(tranid: string, actor: Parameters<NetsuiteOrderRepository["captureSynchronizationActor"]>[1]) {
         return this.executeImport(tranid, () => Promise.resolve(actor), true);
     }
 
+    /** El numero del snapshot tiene que ser el pedido. La cola si puede crear alias que faltan; la llamada directa no. Un responsable sin cuenta no tira la orden. */
     private async executeImport(tranid: string, actor: () => Promise<Parameters<NetsuiteOrderRepository["captureSynchronizationActor"]>[1]>, queued = false) {
         const context = this.client.integrationContext();
         if (!this.events.synchronizationEnabled(context.environment)) throw new ServiceUnavailableException("Importación NetSuite deshabilitada para este ambiente.");
@@ -162,6 +160,7 @@ export class NetsuiteSalesOrderService {
         return undefined;
     }
 
+    /** La foto tiene que traer las tres marcas de tiempo y `crm_sync_projection=1`. Si no, no se sincroniza contra una libreria vieja. */
     private async verifiedEvent(netsuiteId: string, context: ReturnType<NetsuiteRestletClient["integrationContext"]>) {
         const raw = await this.client.readSalesOrderSnapshot(netsuiteId);
         const metadata = z.looseObject({ sourceModifiedAt: z.iso.datetime(), snapshotReadStartedAt: z.iso.datetime(), snapshotReadCompletedAt: z.iso.datetime() }).safeParse(raw);

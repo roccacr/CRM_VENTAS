@@ -1,10 +1,30 @@
-# CRM TINK: inicio y continuidad
+# Habita (CRM TINK)
+
+## Estado documental vigente — 2026-11-10
+
+Este corte revisa los nueve commits de `06a489c..4ad7a59` de la rama
+`temp/crm-tink-api-frontend-inicial`, que cambiaron 211 archivos, y contrasta
+por separado el árbol local. El [changelog](CHANGELOG.md) detalla cada commit.
+
+| Estado | Referencia | Alcance |
+| --- | --- | --- |
+| Última publicación con evidencia registrada | `63139a8`, release `20261109185625-63139a8-local` | El 9 de noviembre se verificaron login y readiness HTTP 200, logo oficial y versión `v2.0.0` en el bundle público. La comprobación fue pública. |
+| Commits locales | `3f2537c`, `6d38014`, `4ad7a59` | Validación de identificadores, tolerancia a tiempos malformados y ampliación de pruebas API y frontend. Al inspeccionar el repositorio, la rama local estaba tres commits por delante de su remoto. |
+| Trabajo local sin commit | Árbol de trabajo del 10 de noviembre | Etiqueta `v2.0.1`, paginación de 500 y rendimiento de Catálogos, cambios de Formalización, integración de entregas de NetSuite con migración 074 y flujo de promoción por artefacto. Su presencia en el árbol local no acredita publicación ni ejecución de la migración. |
+
+- **API e integraciones.** La [reconciliación del API](apps/api/Arquitectura/90-Reconciliacion-API-20261110.md) resume los cambios de NetSuite, Formalización, identidad, calendario y catálogos. Los cambios críticos exigen revisión adversarial, propiedades y fuzzing según [AGENTS.md](AGENTS.md).
+- **Frontend.** La [reconciliación del frontend](apps/frontend/Arquitectura/33-Reconciliacion-Frontend-20261110.md) distingue las vistas y sus permisos. El menú de acciones bajo demanda afecta la tabla compartida por Proyectos, Campañas, Clases, Ubicaciones, Subsidiarias y Corredores. Usuarios, Auditoría, Expedientes y Bancos tienen otras implementaciones de tabla.
+- **Operación.** La [guía de publicación](deploy/habita/README.md) distingue el publicador manual del flujo de promoción local. El [checklist operativo](<Pendiente Roberto.md>) reúne las validaciones pendientes.
+
+Los resultados de pruebas y de despliegue pertenecen a la revisión en que se
+obtuvieron. Este corte actualiza documentación y no certifica el estado de CI,
+el acceso autenticado en producción ni la ejecución de integraciones externas.
 
 Asignación bancaria de órdenes: [contrato87](apps/api/Arquitectura/87-Orden-Asignacion-Bancaria.md). Botón `Asignar banco` en el detalle de Formalización, ejecutivo existente o nuevo y bitácora central para órdenes nativas/legacy; migración069 aplicada con aprobación. Acceso Owner/Jefe General con permisos efectivos, sin cambiar etapas ni importar órdenes.
 
-## Estado documental vigente — 2026-11-03
+## Antecedente documental — 2026-11-03
 
-El [informe85](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) reemplaza al72 como inventario vigente. Contrasta la rama `temp/crm-tink-api-frontend-inicial`, HEAD `4d446ed`, y sus cambios locales, incluidos archivos nuevos y la eliminación preparada. No acredita publicación de esos cambios.
+El [informe85](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) sustituyó al72 en ese corte. Contrasta la rama `temp/crm-tink-api-frontend-inicial`, HEAD `4d446ed`, y los cambios locales de entonces.
 
 - **NetSuite:** v1 conserva recepción sin persistencia; v2 tiene escritor durable autorizado y protegido, resolución BD nueva → vieja → no encontrada, mapeo declarativo, control de duplicados/orden de eventos y bitácora nativa. Solo se sincronizan campos confirmados; los internos del CRM se conservan. [73](apps/api/Arquitectura/73-Sincronizacion-Estados-Ordenes-NetSuite.md), [Matriz75](apps/api/Arquitectura/75-Matriz-Campos-Ordenes-NetSuite.md) y [Ampliación74](apps/api/Arquitectura/74-Ampliacion-Sincronizacion-Ordenes-NetSuite.md) fijan alcance y evidencia; no se certifica aceptación completa de Sandbox/producción.
 - **Formalización:** aprobación de Formalización para entrar en contratos, ocho etapas, origen de fondos obligatorio al salir de contratos y reglas de cuotas/traspaso/entrega triestado. Fondos propios → saldo; financiamiento → gestión bancaria en proceso. No regresar automáticamente de traspaso a saldo. [78](apps/api/Arquitectura/78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md), [Etapas52](apps/api/Arquitectura/52-Etapas-Responsables-y-Tiempos.md) y [Reglas78](apps/api/Arquitectura/78-Formalizacion-Origen-Fondos-y-Gestion-Bancaria.md).
@@ -53,7 +73,7 @@ El informe72 registra las comprobaciones nuevas, el fallo del comando raíz y
 los resultados separados de cada app. Los conteos del29 conservados debajo son
 históricos; no se presentan como resultados nuevos ni se suman suites solapadas.
 
-## Estado vigente - 2026-10-29
+## Estado histórico - 2026-10-29
 
 Este corte sustituye las descripciones de estado de los snapshots inferiores;
 conserva su evidencia histórica y no autoriza por sí mismo operaciones.
@@ -207,13 +227,16 @@ El corte `f2dc4f1` tuvo clon limpio y `check-all.cmd` aprobados: API 4583 prueba
 
 ## Leer en este orden
 
-Entrada actual: [Reconciliación del 3 de noviembre](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md). Antecedentes: [QA y resultados del 29 de octubre](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md), [seguimiento de notas](apps/api/Arquitectura/66-Notas-Enterprise-Seguimiento.md), [estado consolidado y plan aplicado](apps/api/Arquitectura/49-Estado-Actual-y-Cierre-Documental.md), [registro integral de entrega y pendientes](apps/api/Arquitectura/36-Registro-Entrega-Administracion.md), [auditoria y conflictos](apps/api/Arquitectura/37-Auditoria-Trazabilidad-y-Conflictos.md) y [comportamiento visual / QA](apps/frontend/Arquitectura/27-Entrega-Administracion-y-QA.md). Incluyen matriz solicitud -> codigo -> pruebas -> estado. Los documentos fechados anteriores conservan evidencia historica, no necesariamente estado operativo actual.
+Comenzar por el [estado documental del 10 de noviembre](#estado-documental-vigente--2026-11-10).
+La [reconciliación del 3 de noviembre](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md)
+y el [QA del 29 de octubre](apps/api/Arquitectura/67-Plan-QA-Regresiones-20261029.md)
+conservan el inventario y las pruebas de sus respectivos cortes.
 
 1. [Ley de producto](apps/api/Arquitectura/00-Producto-CRM-TINK-y-P0.md): alcance y restricciones.
-2. [Traspaso y estado del API](apps/api/Arquitectura/34-Cierre-Operativo-Administracion-P0-S1.md): implementacion, decisiones, riesgos y cierre.
-3. [Traspaso frontend](apps/frontend/Arquitectura/25-Continuidad-Administracion.md): pantallas, componentes, contratos y QA.
-4. [Indice API](apps/api/Arquitectura/00-Indice.md) e [indice frontend](apps/frontend/Arquitectura/00-Indice.md): diseno completo y vision futura.
-5. AGENTS.md raiz y de cada aplicacion antes de cambiar codigo.
+2. [Estado del API e integraciones](apps/api/Arquitectura/00-Indice.md).
+3. [Estado del frontend](apps/frontend/Arquitectura/30-Estado-Frontend-Verificado.md).
+4. [Guía de despliegue de Habita](deploy/habita/README.md).
+5. [Reglas del repositorio](AGENTS.md) y las de cada aplicación antes de cambiar código.
 
 ## Norte del producto
 

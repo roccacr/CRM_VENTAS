@@ -7,39 +7,47 @@ import type { ContractEvent, ContractEventWrite, ContractOrder, ContractTransiti
 import type { FormalizationApprovalLegacy, LegacyApprovalOrder } from "../../modules/crm/sales/sales-orders/formalization-approval.port.js";
 import { mapLegacySalesOrder } from "./sales-order.mapper.js";
 
-/** Only explicit numeric ERP checks authorize completion; unknown remains distinct from unchecked. */
+/** Solo 1 es verdadero y solo 0 es falso. Cualquier otro valor queda nulo: desconocido no es "sin marcar". */
 const completionFlag = (value: unknown): boolean | null => {
     if (value === 1) return true;
     if (value === 0) return false;
     return null;
 };
 
-/** Owner reconciliation must reject both absent and duplicate evidence at every hop. */
+/** Cero filas o mas de una anulan el dueno. No se elige la primera. */
 function uniqueOwnerEvidence<T>(rows: readonly T[]): T | undefined {
     return rows.length === 1 ? rows[0] : undefined;
 }
 
-/** Contract-only opt-in permits development as explicitly approved; catalog guards are unchanged. */
+/**
+ * Escritor de transicion de contrato y de aprobacion de formalizacion.
+ *
+ * No usa la compuerta de catalogos y no exige `NODE_ENV=production`. Exige
+ * fallback, el nombre exacto `crmdatabase-api` y, salvo lectura, `ENABLE_LEGACY_WRITES`.
+ * Todo corre dentro de la transaccion nativa. Desarrollo puede escribir solo
+ * si esas banderas estan encendidas a proposito.
+ */
 @Injectable()
 export class LegacyContractTransitionWriter implements ContractTransitionLegacy, FormalizationApprovalLegacy {
-    /** The caller already holds the parent lock; only this classification is changed. */
+    /** Solo cambia el origen de fondos, y solo a `own_funds` o `bank_financing`. El llamador ya bloqueo la orden. */
     async updatePurchaseFunds(tx: Transaction<CrmDatabase>, id: string, origin: "own_funds" | "bank_financing"): Promise<void> {
         this.assertEnabled(tx);
         await sql`UPDATE \`crmdatabase-api\`.ordenventa SET origen_fondos_compra_ov=${origin} WHERE id_ov=${Number(id)}`.execute(tx);
     }
-    /** Uses validated shared configuration without creating another connection. */
+    /** Lee la configuracion. No abre pool: la conexion es la transaccion nativa. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
     /**
-     * Fallback and exact schema are always required; mutations also require the explicit write flag,
-     * and the call must run inside the native business transaction so legacy and native writes commit together.
+     * Apagado es 503, no un no-op. La lectura tambien exige fallback y el esquema
+     * exacto. La mutacion suma `ENABLE_LEGACY_WRITES`. Sin `isTransaction` no corre:
+     * las dos bases tienen que confirmar juntas.
      */
     private assertEnabled(tx: unknown, readOnly = false): void {
         if ([this.config.get<unknown>("ENABLE_LEGACY_FALLBACK") !== true, !readOnly && this.config.get<unknown>("ENABLE_LEGACY_WRITES") !== true, this.config.get<unknown>("LEGACY_CRM_DB_NAME") !== "crmdatabase-api"].some(Boolean)) throw new ServiceUnavailableException("Legacy contract writes are disabled; explicit ENABLE_LEGACY_WRITES and exact legacy schema are required");
         if (tx === null || typeof tx !== "object" || Reflect.get(tx, "isTransaction") !== true) throw new ServiceUnavailableException("Legacy contract writes require the native business transaction");
     }
 
-    /** Promotion/import must take this parent lock before creating a native alias. */
+    /** `FOR UPDATE` antes de promover. Los nombres fisicos se conservan, incluido `contrado_frima_ov`. */
     async lock(tx: Transaction<CrmDatabase>, id: string, readOnly = false): Promise<ContractOrder | undefined> {
         this.assertEnabled(tx, readOnly);
         const result = await sql<Record<string, unknown>>`SELECT id_ov, contrado_frima_ov, status_ov, caida_ov, chekJefeVenta, aprobacion__rdr_ov, aprobacion_forma_ov, origen_fondos_compra_ov, cuotas_pagadas_completo_ov, unidad_traspasada_ov, entrega_llaves_ov, unidad_entregada_ov FROM \`crmdatabase-api\`.ordenventa WHERE id_ov = ${Number(id)} FOR UPDATE`.execute(tx);
@@ -62,7 +70,7 @@ export class LegacyContractTransitionWriter implements ContractTransitionLegacy,
         };
     }
 
-    /** Locks the authoritative legacy order before ERP confirmation or any local approval write. */
+    /** Bloquea la orden antes de confirmar el ERP. Activa es status 1 y caida 0. Formalizacion 1, 0 o desconocida. */
     async lockApproval(tx: Transaction<CrmDatabase>, id: string): Promise<LegacyApprovalOrder | undefined> {
         this.assertEnabled(tx);
         const { rows } = await sql<{ id: string; netsuiteId: string; active: number; prerequisitesApproved: number; formalization: number | null }>`
@@ -75,13 +83,13 @@ export class LegacyContractTransitionWriter implements ContractTransitionLegacy,
         return row ? { ...row, active: row.active === 1, prerequisitesApproved: row.prerequisitesApproved === 1, formalization: row.formalization === 1 ? "approved" : row.formalization === 0 ? "not_approved" : "unknown" } : undefined;
     }
 
-    /** Only the Formalization check changes; the caller has already confirmed the ERP result. */
+    /** Solo pone `aprobacion_forma_ov=1`. El llamador ya confirmo el resultado del ERP. */
     async approveFormalization(tx: Transaction<CrmDatabase>, id: string): Promise<void> {
         this.assertEnabled(tx);
         await sql`UPDATE \`crmdatabase-api\`.ordenventa SET aprobacion_forma_ov=1 WHERE id_ov=${Number(id)}`.execute(tx);
     }
 
-    /** Lock current lead and employee matches before attempting canonical identity reconciliation. */
+    /** Bloquea lead y admin. Cero o varias coincidencias cortan el dueno antes de mirar el correo. */
     private async ownerAdmin(tx: Transaction<CrmDatabase>, id: string) {
         const leads = await sql<{ employee: number | string | null }>`SELECT l.id_empleado_lead AS employee FROM \`crmdatabase-api\`.leads l JOIN \`crmdatabase-api\`.ordenventa o ON o.id_ov_lead=l.idinterno_lead WHERE o.id_ov=${Number(id)} FOR UPDATE`.execute(tx);
         const employee = uniqueOwnerEvidence(leads.rows)?.employee;
@@ -90,7 +98,10 @@ export class LegacyContractTransitionWriter implements ContractTransitionLegacy,
         return uniqueOwnerEvidence(admins.rows);
     }
 
-    /** Current locking reads reject duplicate lead, employee and email matches, never guess an owner. */
+    /**
+     * El correo se compara en `utf8mb4_bin` despues de recortar y pasar a minusculas.
+     * Otro admin con el mismo correo, o mas de un usuario nativo, deja el dueno en nulo.
+     */
     async owner(tx: Transaction<CrmDatabase>, id: string): Promise<string | null> {
         this.assertEnabled(tx);
         const admin = await this.ownerAdmin(tx, id);
@@ -103,7 +114,7 @@ export class LegacyContractTransitionWriter implements ContractTransitionLegacy,
         return uniqueOwnerEvidence(users.rows)?.publicId ?? null;
     }
 
-    /** FOR UPDATE reads current committed history after the parent lock, including alias races. */
+    /** Lee el ultimo evento ya confirmado, con el padre bloqueado. Al devolver el actor le quita el prefijo `CRM_THINK_V2:`. */
     async event(tx: Transaction<CrmDatabase>, id: string, operationId?: string): Promise<ContractEvent | undefined> {
         this.assertEnabled(tx);
         const filter = operationId === undefined ? sql`` : sql`AND operation_id_sales_order_state_event = ${operationId}`;
@@ -117,7 +128,11 @@ export class LegacyContractTransitionWriter implements ContractTransitionLegacy,
         return row ? { ...row, actor: row.actor?.startsWith("CRM_THINK_V2:") ? row.actor.slice("CRM_THINK_V2:".length) : row.actor } : undefined;
     }
 
-    /** SQL 021 has no public event ID or native actor FK; first explicit send is a transition. */
+    /**
+     * Inserta la transicion de auditoria. Actor y responsable salen con prefijo
+     * `CRM_THINK_V2:`. La hora es `UTC_TIMESTAMP(3)`. Esta tabla no tiene id
+     * publico ni llave al usuario nativo.
+     */
     async append(tx: Transaction<CrmDatabase>, id: string, event: ContractEventWrite): Promise<void> {
         this.assertEnabled(tx);
         if (event.purchaseFundsOrigin) await sql`UPDATE \`crmdatabase-api\`.ordenventa SET origen_fondos_compra_ov=${event.purchaseFundsOrigin} WHERE id_ov=${Number(id)}`.execute(tx);

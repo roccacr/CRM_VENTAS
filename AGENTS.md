@@ -32,7 +32,9 @@ Project-local skills are installed under `.agents/skills/`. Source revisions, in
 
 ## Scope
 
-Current documentation reconciliation (2026-11-03): [85 — Working-tree coverage](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) supersedes72 as the current inventory. Read native/legacy mapping, eight-stage Formalization, Graph/calendar and Adendum contracts before historical snapshots. Migration067 provisions real manual-marker grants for Owner, General and Formalization chief; individual denies still win. This documentation task authorizes no runtime, database or deployment actions.
+Current documentation reconciliation (2026-11-10): start with the [repository status](README.md#estado-documental-vigente--2026-11-10), the [API index](apps/api/Arquitectura/00-Indice.md), the [frontend index](apps/frontend/Arquitectura/00-Indice.md) and the [Habita deployment guide](deploy/habita/README.md). Keep the verified production release, local commits and uncommitted work separate when reporting status. Use the current native/legacy, Formalization, calendar and Adéndum contracts before historical snapshots.
+
+Historical documentation reconciliation (2026-11-03): [85 — Working-tree coverage](apps/api/Arquitectura/85-Reconciliacion-Documental-20261103.md) records the evidence of that cut. Migration 067 provisions manual-marker grants for Owner, General and Formalization chief, with individual denies taking precedence.
 
 Historical documentation reconciliation (2026-11-02): [72 — Commit and implementation coverage](apps/api/Arquitectura/72-Reconciliacion-Documental-20261102.md)
 is the historical inventory and evidence boundary of that cut. It covers reachable CRM commits

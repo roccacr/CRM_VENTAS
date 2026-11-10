@@ -1,15 +1,21 @@
 /**
- * Traduce una fila de `clases` al contrato canónico de catálogo.
+ * Fila de `clases` al contrato de catalogo.
  *
- * Conserva el id de NetSuite tal como viene. No se fabrica uno cuando la
- * columna es nula. El id de producción viejo queda en `id_old_produccion`
- * para excluirlo de lecturas posteriores. Solo el estado `1` se publica como activo.
+ * El id de NetSuite se conserva tal como viene. Si la columna es nula, no se
+ * fabrica una referencia. El id de produccion queda en `id_old_produccion`
+ * para que la lectura posterior lo excluya. Solo el estado `1` se publica
+ * como activo; `0` y `null` quedan inactivos. La tabla vieja no tiene detalle,
+ * asi que `detail` sale nulo: no se inventa uno que la fila no trae.
+ *
+ * El parseo no inventa una clase. La lectura convierte ese fallo en 503; la
+ * escritura lo deja salir para que la transaccion nativa no promueva una fila
+ * que este contrato no acepta.
  */
 import { z } from "zod";
 
 import type { CatalogItem } from "../../../modules/crm/catalogs/catalogs.types.js";
 
-/** Forma mínima de la fila. Un tipo distinto no se convierte en un valor del catálogo. */
+/** Forma minima de la fila. Otro tipo no se convierte en un valor del catalogo. */
 const legacyRow = z.object({
     legacyId: z.number().int().positive(),
     externalId: z.number().int().nullable(),
@@ -18,13 +24,15 @@ const legacyRow = z.object({
 });
 
 /**
- * Mapea una fila desconocida a un valor de catálogo.
+ * Traduce una fila desconocida.
  *
- * El prefijo `legacy:` evita que este id público se confunda con uno nativo.
- * No hay columna de actualización, por eso `updatedAt` va vacío.
+ * `legacy:` en el id publico evita que se confunda con uno nativo. No hay
+ * columna de actualizacion, asi que `updatedAt` va vacio. Un nombre nulo o en
+ * blanco se publica como "Sin asignar": el contrato nuevo exige nombre y la
+ * tabla vieja no.
  *
- * @param input - Fila cruda de la consulta
- * @throws {ZodError} Si id, nombre o estado no coinciden con la tabla vieja
+ * El estado de la referencia NetSuite no copia el de la clase. La referencia
+ * existe, o no existe; la clase puede estar inactiva y conservar su id.
  */
 export function mapLegacyClass(input: unknown): CatalogItem {
     const row = legacyRow.parse(input);

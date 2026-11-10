@@ -9,12 +9,12 @@ import { IdentityModule } from "../../modules/crm/identity/identity.module.js";
 import { NetsuiteModule } from "../netsuite/netsuite.module.js";
 import { OrderDocumentsGraph } from "./order-documents.graph.js";
 import { OrderDocumentsService } from "./order-documents.service.js";
-/** Frontera HTTP de documentos: sesión, permiso de orden y CSRF global en mutaciones. */
+/** Frontera HTTP. La ruta exige permiso de orden; el caso de uso exige ademas el permiso documental. Mutar pasa por el CSRF global. La respuesta no se guarda. */
 @Controller("formalization/orders/:source/:id/documents")
 export class OrderDocumentsController {
-    /** Delega las comprobaciones documentales y de recurso al caso de uso. */
+    /** La sesion sale de la cookie. El cuerpo no se valida aqui. */
     constructor(@Inject(OrderDocumentsService) private readonly service: OrderDocumentsService) {}
-    /** Consulta los archivos de una orden autorizada. */
+    /** Listar no crea la carpeta. */
     @Get("")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "formalization-order-read" })
@@ -22,7 +22,7 @@ export class OrderDocumentsController {
     list(@Req() request: CookieRequest, @Param("source") source: string, @Param("id") id: string) {
         return this.service.list(request.cookies[SESSION_COOKIE_NAME], { source, id });
     }
-    /** Crea la carpeta documental de la orden bajo demanda. */
+    /** Alta expresa. Responde 200, no 201: la carpeta puede ya existir. */
     @Post("folder")
     @HttpCode(200)
     @RouteSecurity("permission")
@@ -31,7 +31,7 @@ export class OrderDocumentsController {
     create(@Req() request: CookieRequest, @Param("source") source: string, @Param("id") id: string) {
         return this.service.create(request.cookies[SESSION_COOKIE_NAME], { source, id });
     }
-    /** Solicita vista previa o descarga de un archivo de esta carpeta. */
+    /** El enlace es una lectura. El POST no escribe el archivo, por eso no pide el permiso de escritura documental. */
     @Post("link")
     @HttpCode(200)
     @RouteSecurity("permission")
@@ -40,7 +40,7 @@ export class OrderDocumentsController {
     link(@Req() request: CookieRequest, @Param("source") source: string, @Param("id") id: string, @Body() body: unknown) {
         return this.service.link(request.cookies[SESSION_COOKIE_NAME], { source, id }, body);
     }
-    /** Inicia una carga fragmentada con una autorización cifrada. */
+    /** Devuelve un ticket cifrado. La URL de carga no sale en claro. */
     @Post("uploads")
     @HttpCode(200)
     @RouteSecurity("permission")
@@ -49,7 +49,7 @@ export class OrderDocumentsController {
     start(@Req() request: CookieRequest, @Param("source") source: string, @Param("id") id: string, @Body() body: unknown) {
         return this.service.start(request.cookies[SESSION_COOKIE_NAME], { source, id }, body);
     }
-    /** Sube un fragmento sin aceptar destinos externos aportados por el navegador. */
+    /** El navegador no elige el destino. El ticket ya trae la URL que el servidor acepto. */
     @Post("uploads/chunk")
     @HttpCode(200)
     @RouteSecurity("permission")
@@ -59,6 +59,6 @@ export class OrderDocumentsController {
         return this.service.chunk(request.cookies[SESSION_COOKIE_NAME], { source, id }, body);
     }
 }
-/** Registra la integración documental con identidad y resolución de órdenes existentes. */
+/** Identidad, NetSuite y auditoria entran porque la orden se resuelve antes de llamar a Graph. */
 @Module({ imports: [IdentityModule, NetsuiteModule, AuditModule], controllers: [OrderDocumentsController], providers: [OrderDocumentsService, OrderDocumentsGraph] })
 export class OrderDocumentsModule {}

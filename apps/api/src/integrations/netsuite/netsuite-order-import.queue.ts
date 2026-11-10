@@ -21,40 +21,30 @@ const numberSchema = z.strictObject({
         .regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,59}$/),
 });
 
-/**
- *
- */
+/** Cola de extraccion. Un proceso, un trabajo a la vez. El temporizador no retiene el apagado. */
 @Injectable()
 export class NetsuiteOrderImportQueue implements OnModuleInit, OnModuleDestroy {
     private timer?: ReturnType<typeof setInterval>;
     private busy = false;
-    /**
-     *
-     */
+    /** Guarda el actor ya resuelto, no la cookie de sesion. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(IdentityService) private readonly identity: IdentityService,
         @Inject(NetsuiteOrderRepository) private readonly repository: NetsuiteOrderRepository,
         @Inject(NetsuiteSalesOrderService) private readonly orders: NetsuiteSalesOrderService,
     ) {}
-    /**
-     *
-     */
+    /** Cada 5 segundos mira la cola. `unref` deja salir al proceso. */
     onModuleInit() {
         this.timer = setInterval(() => {
             void this.tick();
         }, 5000);
         this.timer.unref();
     }
-    /**
-     *
-     */
+    /** Corta el temporizador para que un recargo no deje dos ciclos. */
     onModuleDestroy() {
         clearInterval(this.timer);
     }
-    /**
-     *
-     */
+    /** El numero se normaliza a mayusculas. La misma persona y el mismo numero no abren otra fila viva; una fila fallida se rearma. */
     async enqueue(session: string | undefined, body: unknown) {
         const parsed = numberSchema.safeParse(body);
         if (!parsed.success) throw new BadRequestException("Indica el número exacto de la orden.");
@@ -80,9 +70,7 @@ export class NetsuiteOrderImportQueue implements OnModuleInit, OnModuleDestroy {
         void this.tick();
         return { queued: true, tranid };
     }
-    /**
-     *
-     */
+    /** Solo los avisos de quien consulta, como maximo 50. No lista la cola de otro usuario. */
     async notices(session: string | undefined) {
         const { user } = await this.identity.getCurrentUser(session);
         const { rows } = await sql<{ id: string; tranid: string; status: string; reason: string | null; read: number | string; orderId: string | null; orderSource: OrderLink["source"] | null }>`
@@ -96,9 +84,7 @@ export class NetsuiteOrderImportQueue implements OnModuleInit, OnModuleDestroy {
             ORDER BY updated_at_event_outbox DESC LIMIT 50`.execute(this.database.db);
         return rows.map((row) => ({ ...row, read: Number(row.read) === 1 }));
     }
-    /**
-     *
-     */
+    /** Marca leido solo un aviso propio ya entregado o fallido. Un pendiente no se cierra por aqui. */
     async markRead(session: string | undefined, id: string) {
         const { user } = await this.identity.getCurrentUser(session);
         await sql`UPDATE int_event_outbox SET payload_event_outbox=JSON_SET(payload_event_outbox,'$.read',1)
@@ -114,11 +100,12 @@ export class NetsuiteOrderImportQueue implements OnModuleInit, OnModuleDestroy {
             const job = await this.claim();
             if (job) await this.run(job);
         } catch {
-            // An uncommitted claim or an expired lease can be recovered by the next poll.
+            // Un reclamo sin commit o un arriendo vencido lo recupera el siguiente ciclo.
         } finally {
             this.busy = false;
         }
     }
+    /** Toma una fila con `FOR UPDATE` y la arrienda 5 minutos. El intento sube antes de trabajar. */
     private async claim() {
         return this.database.db.transaction().execute(async (tx) => {
             const { rows } = await sql<{ id: string; attempt: number; payload: unknown }>`
@@ -151,6 +138,7 @@ export class NetsuiteOrderImportQueue implements OnModuleInit, OnModuleDestroy {
             payload_event_outbox=JSON_SET(payload_event_outbox,'$.order',JSON_EXTRACT(${JSON.stringify(order)},'$'),'$.resultReason',JSON_EXTRACT(${JSON.stringify(reason)},'$')),
             updated_at_event_outbox=UTC_TIMESTAMP(3) WHERE id_event_outbox=${job.id} AND attempts_event_outbox=${job.attempt}`.execute(this.database.db);
     }
+    /** Si la orden ya esta, no se llama a NetSuite. Si la importacion falla y otra entrega ya la creo, se devuelve esa. Dos coincidencias son un error, no se elige una. */
     private async importOrFind(payload: z.infer<typeof jobSchema>) {
         const existing = await this.findExisting(payload.tranid);
         if (existing) return { order: existing };

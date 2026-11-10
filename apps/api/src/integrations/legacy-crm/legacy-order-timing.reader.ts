@@ -7,16 +7,24 @@ import type { OrderTimingLegacyReader } from "../../modules/crm/sales/sales-orde
 import { readOrderTiming } from "../../modules/crm/sales/sales-orders/order-timing.query.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
-/** Legacy ownership is resolved without conflating provider IDs with native public IDs. */
+/**
+ * Tiempos de la orden vieja. El id publicado es `legacy:{id}`, no un id publico nativo.
+ *
+ * `enabled` es la compuerta: apagado no es una fuente vacia y exitosa. Un lead o
+ * un admin repetido no concede dueno. Activa incluye la caida con contrato firmado.
+ * Pendiente de aprobacion exige jefe y desarrollador en 1 y formalizacion en 0;
+ * un flag desconocido no cuenta. El anio es el de America/Costa_Rica y el corte
+ * del dia es 06:00 UTC, medianoche de esa zona.
+ */
 @Injectable()
 export class LegacyOrderTimingReader implements OrderTimingLegacyReader {
-    /** Reuses the existing optional fallback switch, never a writable pool. */
+    /** El pool solo responde `enabled`. La consulta corre en la transaccion del llamador. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
-    /** Disabled legacy fallback is never silently treated as an available source. */
+    /** El pool existe. `find` no convierte un pool apagado en lista vacia. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
-    /** Ambiguous lead/admin references do not become resource authorization grants. */
+    /** El dueno nativo solo entra si el correo del admin es unico. Una referencia ambigua deja el dueno en nulo y la orden sigue. */
     async find(tx: Transaction<CrmDatabase>, id: string): Promise<TimingOrder | undefined> {
         const year = Number(new Intl.DateTimeFormat("en", { timeZone: "America/Costa_Rica", year: "numeric" }).format(new Date()));
         const start = `${String(year)}-01-01 06:00:00.000`;
@@ -39,7 +47,7 @@ export class LegacyOrderTimingReader implements OrderTimingLegacyReader {
         const row = result.rows[0];
         return row ? { ...row, active: row.active === 1, pendingApproval: row.pendingApproval === 1 } : undefined;
     }
-    /** Every page retains full-record duration calculations from the view. */
+    /** La duracion sale de la vista vieja, pagina completa. Aqui no se recalcula. */
     read(tx: Transaction<CrmDatabase>, id: string, page: TimingPagination) {
         return readOrderTiming(tx, { view: sql.table("crmdatabase-api.audit_sales_order_state_duration"), states: sql.table("crmdatabase-api.conf_sales_order_state") }, id, page);
     }

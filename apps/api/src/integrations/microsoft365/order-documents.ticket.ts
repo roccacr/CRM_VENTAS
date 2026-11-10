@@ -4,14 +4,21 @@ import { BadRequestException } from "@nestjs/common";
 import { z } from "zod";
 const ticketSchema = z.object({ user: z.string(), order: z.string(), folder: z.string(), name: z.string(), url: z.url(), size: z.number().int().positive(), expires: z.number() }).strict();
 export type UploadTicket = z.infer<typeof ticketSchema>;
-/** El uploadUrl concede acceso por sí solo: viaja únicamente cifrado, ligado a usuario y orden. */
+/**
+ * La URL de carga autoriza sola, asi que no viaja en claro. AES-256-GCM, IV nuevo
+ * de 12 bytes, y una clave derivada con HKDF del secreto de cookies. El paquete
+ * es IV, tag y cifrado, en base64url. Queda atado al usuario y a la orden.
+ */
 export function sealUploadTicket(value: UploadTicket, secret: string): string {
     const iv = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", Buffer.from(hkdfSync("sha256", secret, "crm-order-documents", "upload-ticket-v1", 32)), iv);
     const encrypted = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
     return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url");
 }
-/** Rechaza tickets alterados, vencidos o de otro usuario y orden antes de usar su URL. */
+/**
+ * Tag, usuario, orden o vencimiento fallan igual. El cliente no distingue si
+ * el ticket fue alterado, es de otra orden o ya expiro. Un campo extra tampoco entra.
+ */
 export function openUploadTicket(value: string, secret: string, user: string, order: string): UploadTicket {
     try {
         const bytes = Buffer.from(value, "base64url");

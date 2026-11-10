@@ -3,7 +3,7 @@
 Checklist central de avances y pendientes del CRM.
 
 **Responsable del seguimiento:** Roberto.
-**Última actualización documental:** 3 de noviembre de 2026, Costa Rica.
+**Última actualización documental:** 10 de noviembre de 2026, Costa Rica.
 **Origen:** pendientes anteriores del proyecto, avances registrados en esta conversación y reunión del 29 de octubre de 2026.
 
 ## Cómo mantener este documento
@@ -15,6 +15,14 @@ Checklist central de avances y pendientes del CRM.
 - Conservar las tareas terminadas para poder consultar el avance; no borrar su historia.
 - Actualizar la fecha de este documento cuando cambie el checklist.
 - Una tarea documentada no autoriza por sí sola escrituras, envíos, migraciones o despliegues.
+
+## Validaciones abiertas del corte de noviembre
+
+- [ ] **Validar Catálogos:** repetir en Chrome con registros reales la carga de 500, apertura de detalle, cambio de página y filtros. En Campañas se verificaron 294 registros en local. Apertura del detalle y filtros de páginas grandes aún pueden tener latencia.
+- [ ] **Validar Auditoría y Expedientes:** medir Auditoría con un lote mayor de 18 eventos y probar Expedientes con proyectos accesibles. En la sesión local de revisión se mostraron cero proyectos para Expedientes.
+- [ ] **Validar NetSuite y Formalización:** confirmar el contrato de entregas y el cierre con datos de prueba aislados, verificar la migración 074 antes de su eventual aplicación y probar el recorrido en el ambiente autorizado. La migración y las modificaciones locales no tienen aplicación registrada en este corte.
+- [ ] **Validar promoción por artefacto:** comprobar el flujo local contra el ambiente QA, los controles de promoción y el rollback antes de considerarlo operativo. El último release registrado se publicó con el procedimiento manual.
+- [ ] **Validar QA del siguiente release:** registrar resultado por commit de CI, persistencia MySQL y recorridos autenticados. Consultar el [estado del proyecto](README.md#estado-documental-vigente--2026-11-10).
 
 ## 1. Base del sistema, acceso y permisos
 

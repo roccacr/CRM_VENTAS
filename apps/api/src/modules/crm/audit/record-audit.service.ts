@@ -10,7 +10,7 @@ import { type AuditActorSnapshot, getCapturedAuditActor, readAuditActor } from "
 import type { AuditRecordEventTable } from "./record-audit.tables.js";
 import { prepareRecordAuditChange } from "./record-audit-change.js";
 
-/** Identifier text: no surrounding spaces or control characters. */
+/** Texto sin espacios alrededor ni caracteres de control. */
 const identifier = (maximum: number) =>
     z
         .string()
@@ -46,18 +46,18 @@ const inputSchema = z
     })
     .strict();
 
-/** Input contract; `allowedFields` is a plain array for callers while validation uses the schema. */
+/** El arreglo del llamador sigue siendo de solo lectura. El esquema valida el evento. */
 export type RecordAuditInput = Omit<z.infer<typeof inputSchema>, "allowedFields"> & { allowedFields: readonly string[] };
 const requiredMigrations = ["202610220023_record_audit", "202610220024_record_audit_identifier_collation"];
-/** Result of validating and diffing the snapshots. */
+/** Resultado de validar y diferenciar los snapshots. */
 type PreparedChange = ReturnType<typeof prepareRecordAuditChange>;
 
-/** Runtime validation is needed even for JavaScript consumers of the typed internal API. */
+/** Aunque el tipo de TypeScript lo prometa, el ejecutor tiene que ser la transaccion del negocio. */
 function assertTransaction(executor: unknown): asserts executor is Transaction<CrmDatabase> {
     if (executor === null || typeof executor !== "object" || Reflect.get(executor, "isTransaction") !== true) throw new BadRequestException("Record audit requires a business transaction");
 }
 
-/** Creates need no `before`, other actions need both snapshots, and a revert needs a reason. */
+/** Crear no trae `before`. El resto, salvo una nota, exige los dos lados. Un reverso exige motivo. */
 function assertSnapshots(data: z.infer<typeof inputSchema>): void {
     if (data.action === "revert" && !data.reason?.trim()) throw new BadRequestException("A reversal requires a reason");
     if (data.action === "annotation") return;
@@ -65,7 +65,7 @@ function assertSnapshots(data: z.infer<typeof inputSchema>): void {
     if (invalidBefore || data.after === null) throw new BadRequestException("Invalid record audit snapshots");
 }
 
-/** Validates the event shape, builds the diff and requires an actor captured by the server. */
+/** Valida la forma, arma el diff y exige un actor que el servidor haya capturado antes. */
 function prepareInput(input: RecordAuditInput) {
     const parsed = inputSchema.safeParse(input);
     if (!parsed.success) throw new BadRequestException("Invalid record audit event");
@@ -76,19 +76,19 @@ function prepareInput(input: RecordAuditInput) {
     return { data: parsed.data, change, actor };
 }
 
-/** Serialized snapshots, null when the record did not exist on that side. */
+/** Snapshots serializados. Nulo si ese lado del registro no existia. */
 const snapshotValues = (change: PreparedChange) => ({ before_record_event: change.before === null ? null : JSON.stringify(change.before), after_record_event: change.after === null ? null : JSON.stringify(change.after), changes_record_event: JSON.stringify(change.changes) });
-/** Optional request metadata columns. */
+/** Columnas opcionales de la peticion. No se inventan si no vinieron. */
 const requestValues = (data: RecordAuditInput) => ({ request_id_record_event: data.requestId ?? null, ip_address_record_event: data.ipAddress ?? null, user_agent_record_event: data.userAgent ?? null });
 
-/** Per-record version: rejects a stale expected version and the overflow of the 32-bit counter. */
+/** La version esperada tiene que coincidir. El contador de 32 bits no se desborda: al tope es conflicto. */
 function nextSequence(previous: number, expected: number | undefined): number {
     if (expected !== undefined && expected !== previous) throw new ConflictException("Audit version changed; reload the record");
     if (previous >= 4294967295) throw new ConflictException("Audit version limit reached");
     return previous + 1;
 }
 
-/** A successful retry returns the old event, never a new observation of the same operation. */
+/** El mismo `operationId` devuelve el evento viejo si el contenido coincide. Si no, es conflicto y no se observa otra vez. */
 function assertSameOperation(replay: Selectable<AuditRecordEventTable>, prepared: ReturnType<typeof prepareInput>): void {
     const { data, change, actor } = prepared;
     const effective = data.effectiveSource ?? data.source;
@@ -98,7 +98,7 @@ function assertSameOperation(replay: Selectable<AuditRecordEventTable>, prepared
     if (JSON.stringify(previous) !== JSON.stringify(requested)) throw new ConflictException("Audit operation reused with different content");
 }
 
-/** Converts mysql2 JSON results without depending on its string/object representation. */
+/** mysql2 puede devolver el JSON como texto o como objeto. Un arreglo no es un snapshot. */
 function decodeSnapshot(value: unknown): Record<string, unknown> | null {
     const decoded: unknown = typeof value === "string" ? JSON.parse(value) : value;
     if (decoded === null) return null;
@@ -109,12 +109,12 @@ function decodeSnapshot(value: unknown): Record<string, unknown> | null {
 /** Atribucion tecnicamente confiable: los servicios no se presentan como usuarios humanos. */
 const actorValues = (actor: AuditActorSnapshot) => ({ origin_record_event: actor.kind === "service" ? "integration" : "crm", actor_kind_record_event: actor.kind ?? "user" });
 
-/** Shared append-only writer; callers authorize resources and pass their OWN business transaction. */
+/** Escritura compartida y solo de alta. El llamador autoriza y pasa su propia transaccion. Apagada, no escribe. */
 @Injectable()
 export class RecordAuditService implements OnModuleInit {
     readonly enabled: boolean;
 
-    /** Defaults protect existing manual consumers; Nest injects the validated runtime configuration. */
+    /** El valor por defecto deja el servicio usable a mano. Nest inyecta la configuracion validada. Solo `true` lo enciende. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(ConfigService) config: ConfigService = new ConfigService(),
@@ -122,10 +122,10 @@ export class RecordAuditService implements OnModuleInit {
         this.enabled = config.get<boolean>("ENABLE_RECORD_AUDIT") === true;
     }
 
-    /** Enabling against an unprepared schema fails before requests are accepted. No automatic DDL. */
+    /** Si falta el esquema o las migraciones 023 y 024, el proceso no atiende. No hay DDL automatico. */
     async onModuleInit(): Promise<void> {
         if (!this.enabled) return;
-        // Retry this read-only startup gate only; commands and audit writes must never be replayed here.
+        // Solo se reintenta esta lectura de arranque. Un corte de conexion no reejecuta escrituras.
         for (let attempt = 0; attempt < 3; attempt++) {
             try {
                 await this.assertReady(this.database.db);
@@ -146,7 +146,7 @@ export class RecordAuditService implements OnModuleInit {
         if (!requiredMigrations.every((name) => migrations.rows.some((row) => row.name === name))) throw new ServiceUnavailableException("Record audit requires migrations 023 and 024");
     }
 
-    /** Resolve authenticated actor details from the server before mutating the aggregate. */
+    /** El actor se resuelve en el servidor, antes de mutar el agregado. Un usuario ausente no se inventa. */
     async captureActor(tx: Transaction<CrmDatabase>, actorUserId: number): Promise<AuditActorSnapshot> {
         assertTransaction(tx);
         const actor = await readAuditActor(tx, actorUserId, true);
@@ -154,7 +154,7 @@ export class RecordAuditService implements OnModuleInit {
         return actor;
     }
 
-    /** Strict partial snapshots cannot be used to claim full restoration support. */
+    /** Snapshot parcial. Apagada, es 503 y no un salto silencioso. El instante es `UTC_TIMESTAMP(3)`, no el reloj del cliente. */
     async append(tx: Transaction<CrmDatabase>, input: RecordAuditInput): Promise<{ publicId: string; sequence: number; replayed: boolean }> {
         assertTransaction(tx);
         if (!this.enabled) throw new ServiceUnavailableException("Record audit is disabled");
@@ -199,7 +199,7 @@ export class RecordAuditService implements OnModuleInit {
         return { publicId, sequence, replayed: false };
     }
 
-    /** Caller holds the business-parent lock; errors here must abort that entire transaction. */
+    /** El llamador ya tiene el bloqueo del padre. Un fallo aqui aborta esa transaccion. Si no hay identidad, se crea en el mismo commit. */
     private async lockRecord(tx: Transaction<CrmDatabase>, source: RecordAuditInput["source"]): Promise<{ id: string }> {
         const record = await tx.selectFrom("audit_record").select("id_record as id").where("source_schema_record", "=", source.schema).where("entity_type_record", "=", source.entity).where("source_table_record", "=", source.table).where("source_id_record", "=", source.id).forUpdate().executeTakeFirst();
         if (record) return record;

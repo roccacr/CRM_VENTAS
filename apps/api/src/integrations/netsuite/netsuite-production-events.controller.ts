@@ -5,12 +5,16 @@ import { RouteSecurity } from "../../common/security/route-security.decorator.js
 import { productionOrderEvent } from "./netsuite-order-event.contract.js";
 import { NetsuiteOrderEventService } from "./netsuite-order-event.service.js";
 
-/** Production only accepts durable v2 events from the bound NetSuite account. */
+/**
+ * Receptor de produccion. Solo el sobre v2 de la cuenta `4552704`.
+ * `public` omite la sesion; el token de servicio de produccion es la prueba.
+ * No hay camino v1. La respuesta no se guarda.
+ */
 @Controller("integrations/netsuite/production")
 export class NetsuiteProductionEventsController {
-    /** Reuses the transactional v2 writer. */
+    /** El mismo escritor que Sandbox. La cuenta la fija el sobre, no el llamador. */
     constructor(@Inject(NetsuiteOrderEventService) private readonly service: NetsuiteOrderEventService) {}
-    /** Validates the production envelope before any durable operation. */
+    /** El tope de 500000 bytes se mide sobre el JSON ya validado. Un sobre de Sandbox no entra. */
     @Post("order-events")
     @HttpCode(200)
     @Header("Cache-Control", "no-store")

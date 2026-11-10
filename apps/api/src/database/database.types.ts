@@ -13,16 +13,22 @@ import type { CrmSubsidiaryExternalReferenceTable, CrmSubsidiaryTable } from "..
 import type { CrmUnitFileExternalReferenceTable, CrmUnitFileTable } from "../modules/crm/unit-files/unit-files.tables.js";
 
 /**
- * Mapa de tablas Kysely para identidad y dominios CRM implementados en CRM_THINK_V2.
+ * Mapa fisico de Kysely para `CRM_THINK_V2`. Tipa los repositorios; no es el
+ * diccionario de negocio y una columna listada aqui no queda autorizada.
  *
- * Este archivo replica nombres fisicos SQL para que los repositories queden
- * tipados. No es el diccionario de negocio. El significado de columnas y los
- * comentarios MySQL viven en `Arquitectura/SQL/001_identity_schema_p0_s1.sql`
- * y en el diccionario de datos.
+ * `Generated` no se envia en el insert: la base asigna la clave o el default.
+ * `DateTime` se lee como `Date` y se escribe como `Date` o texto. Sesion,
+ * refresh y reset guardan solo el hash del token. El cache de Microsoft se
+ * guarda cifrado. `metadata` es texto opaco: este mapa no lo interpreta y no
+ * autoriza.
+ *
+ * Una tabla fuera de `CrmDatabase` no se puede consultar con este cliente. El
+ * significado de cada columna sigue en el SQL y en el diccionario.
  */
+
 /** Fecha de columna MySQL: se lee como Date y se acepta Date o texto al escribir. */
 type DateTime = ColumnType<Date, Date | string, Date | string>;
-/** Clave numérica generada por la base; no se envía al insertar. */
+/** Clave o default que asigna la base. El insert del runtime no la manda. */
 type GeneratedNumber = Generated<number>;
 
 /** Mapeo Kysely de la tabla `sec_user`. */
@@ -43,7 +49,7 @@ export interface SecUserTable {
     deleted_by_user_id_user: number | null;
 }
 
-/** Mapeo Kysely de la tabla `sec_auth_identity`. */
+/** Identidad de acceso. La clave local, si existe, es solo el hash; un proveedor sin clave propia lo deja nulo. */
 export interface SecAuthIdentityTable {
     id_auth_identity: GeneratedNumber;
     user_id_auth_identity: number;
@@ -62,7 +68,7 @@ export interface SecAuthIdentityTable {
     deleted_at_auth_identity: DateTime | null;
 }
 
-/** Mapeo Kysely de la tabla `sec_auth_session`. */
+/** Sesion. Del token solo se persiste el hash. La version de permisos viaja con ella para no seguir usando un perfil ya retirado. */
 export interface SecAuthSessionTable {
     id_auth_session: GeneratedNumber;
     public_id_auth_session: string;
@@ -80,7 +86,7 @@ export interface SecAuthSessionTable {
     revoked_by_user_id_auth_session: number | null;
 }
 
-/** Mapeo Kysely de la tabla `sec_microsoft_account`. */
+/** Cuenta Microsoft. El cache MSAL se persiste como ciphertext, IV, tag y version de llave. Este mapa no tiene el cache en claro. */
 export interface SecMicrosoftAccountTable {
     id_microsoft_account: GeneratedNumber;
     auth_identity_id_microsoft_account: number;
@@ -101,7 +107,7 @@ export interface SecMicrosoftAccountTable {
     updated_at_microsoft_account: DateTime;
 }
 
-/** Mapeo Kysely de la tabla `sec_user_profile_image`. */
+/** Foto guardada en la base. La respuesta no necesita redirigir a Graph ni leer el cache de Microsoft. */
 export interface SecUserProfileImageTable {
     id_user_profile_image: GeneratedNumber;
     user_id_user_profile_image: number;
@@ -119,7 +125,7 @@ export interface SecUserProfileImageTable {
     updated_at_user_profile_image: DateTime;
 }
 
-/** Mapeo Kysely de la tabla `sec_refresh_token`. */
+/** Refresh. Se guarda el hash, no el token. La familia agrupa las rotaciones de una misma cadena. */
 export interface SecRefreshTokenTable {
     id_refresh_token: GeneratedNumber;
     auth_session_id_refresh_token: number;
@@ -133,7 +139,7 @@ export interface SecRefreshTokenTable {
     revoked_reason_refresh_token: string | null;
 }
 
-/** Mapeo Kysely de la tabla `sec_local_password_reset_token`. */
+/** Reset local. El token en claro no esta en la tabla: solo su hash, el vencimiento y si ya se uso o se revoco. */
 export interface SecLocalPasswordResetTokenTable {
     id_local_password_reset_token: GeneratedNumber;
     auth_identity_id_local_password_reset_token: number;
@@ -148,7 +154,7 @@ export interface SecLocalPasswordResetTokenTable {
     active_key_local_password_reset_token: number | null;
 }
 
-/** Mapeo Kysely de la tabla `sec_role`. */
+/** Rol. Los modos de herencia son un conjunto cerrado y la base pone el default si el insert no los trae. */
 export interface SecRoleTable {
     id_role: GeneratedNumber;
     code_role: string;
@@ -253,9 +259,8 @@ export interface SecUserPermissionOverrideTable {
 }
 
 /**
- * Catálogo de sistemas externos enlazados al CRM.
- *
- * No guarda secretos ni tokens. Solo identifica el sistema, por ejemplo el CRM legado.
+ * Sistema externo enlazado al CRM. No guarda secretos ni tokens: solo el
+ * codigo con el que se reconoce, por ejemplo el CRM legado.
  */
 export interface IntExternalSystemTable {
     id_external_system: GeneratedNumber;
@@ -267,9 +272,8 @@ export interface IntExternalSystemTable {
 }
 
 /**
- * Vínculo entre un usuario CRM y un id externo.
- *
- * `metadata` queda como texto. Este mapa no lo interpreta ni lo usa para autorizar.
+ * Usuario CRM enlazado a un id externo. `metadata` queda como texto: no se
+ * interpreta en este mapa y no se usa para autorizar.
  */
 export interface IntUserExternalIdentityTable {
     id_user_external_identity: GeneratedNumber;
@@ -349,7 +353,7 @@ export interface CrmCatalogItemExternalReferenceTable {
     deleted_at_catalog_item_external_reference: DateTime | null;
 }
 
-/** Mapeo Kysely de la tabla `audit_security_event`. */
+/** Bitacora de seguridad. El resumen y la metadata no sustituyen el permiso que ya se comprobo al hacer la accion. */
 export interface AuditSecurityEventTable {
     id_security_event: GeneratedNumber;
     public_id_security_event: string;
@@ -364,6 +368,7 @@ export interface AuditSecurityEventTable {
     created_at_security_event: DateTime;
 }
 
+/** Tablas que este cliente puede nombrar. Sumar una es un cambio de este contrato, no un nombre armado dentro de un repositorio. */
 export interface CrmDatabase {
     conf_calendar_event_type: ConfCalendarEventTypeTable;
     crm_calendar_event: CrmCalendarEventTable;

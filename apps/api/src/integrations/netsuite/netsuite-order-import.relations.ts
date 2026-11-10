@@ -38,7 +38,7 @@ async function legacyCustomer(tx: Tx, id: string) {
     );
 }
 
-/** Reuse local relations before requesting data from NetSuite. */
+/** Primero se busca en Habita. Solo lo que no tiene una coincidencia unica pide datos a NetSuite. Mas de una fila es conflicto. */
 export async function missingImportRelation(tx: Tx, domain: "lead" | "subsidiary" | "user" | "unit_file", id: string): Promise<boolean> {
     if (await reference(tx, domain, id)) return false;
     if (domain === "unit_file") return !(await existingImportUnit(tx, id));
@@ -209,12 +209,12 @@ async function linkOwner(tx: Tx, id: string, system: number, fetched?: string | 
     return Boolean(user);
 }
 
-/** Stage aliases and dependent rows inside the same transaction as the order. */
+/** La oportunidad y `createdfrom` se guardan como captura. No se crean entidades de oportunidad ni de estimacion. Un responsable sin cuenta deja la orden y avisa; no se inventa el usuario. */
 export async function reconcileImportRelations(tx: Tx, input: { fields: Record<string, unknown>; orderId: string; netsuiteId: string; operationId: string; customer?: Customer | undefined; subsidiaryName?: string | null | undefined; ownerEmail?: string | null | undefined; unit?: ImportUnit | undefined }) {
     const { fields, orderId, netsuiteId, operationId, customer } = input;
     const { entity, custbody38, subsidiary, crm_owner_employee, opportunity } = readOrderRelationValues(fields);
     if (!entity) throw new ConflictException("La orden no contiene un cliente de NetSuite.");
-    // Serialize new aliases across different orders sharing the same entity.
+    // El sistema externo se bloquea para que dos ordenes no creen el mismo alias a la vez.
     const system = await tx.selectFrom("int_external_system").select("id_external_system").where("code_external_system", "=", "netsuite").where("status_external_system", "=", "active").forUpdate().executeTakeFirstOrThrow();
     const id = system.id_external_system;
     const unit = custbody38 ? await ensureAlias(tx, "unit_file", { id: custbody38, system: id }, () => importUnit(tx, custbody38, input.unit)) : null;

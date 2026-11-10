@@ -11,7 +11,10 @@ import { chunkInput, DOCUMENT_CHUNK_SIZE, DOCUMENT_READ, DOCUMENT_WRITE, itemInp
 import { OrderDocumentsGraph } from "./order-documents.graph.js";
 import { openUploadTicket, sealUploadTicket } from "./order-documents.ticket.js";
 
-/** Orquesta la autorización CRM y las operaciones documentales delegadas en Microsoft. */
+/**
+ * La ruta ya dejo pasar a quien lee la orden. Aqui se vuelve a exigir el permiso
+ * documental, la orden concreta y la bandera antes de hablar con Graph.
+ */
 @Injectable()
 export class OrderDocumentsService {
     /** Dependencias explícitas para resolver la orden antes de contactar al proveedor. */
@@ -24,10 +27,15 @@ export class OrderDocumentsService {
         @Inject(OrderDocumentsGraph) private readonly graph: OrderDocumentsGraph,
         @Inject(SecurityAuditService) private readonly audit: SecurityAuditService,
     ) {}
+    /** Deny gana a allow sobre el mismo codigo. Un allow no anula un deny. */
     private allowed(profile: IdentityProfile, permission: string) {
         return profile.permissions.some((p) => p.code === permission && p.effect === "allow") && !profile.permissions.some((p) => p.code === permission && p.effect === "deny");
     }
-    /** Cada operación resuelve autoridad nativa/legacy y permisos vigentes antes de contactar Graph. */
+    /**
+     * El permiso se mira antes que la bandera. Sin el, la respuesta es 403 aunque
+     * la integracion este apagada. La carpeta se nombra con el id de NetSuite.
+     * Escribir exige tambien el permiso de escritura.
+     */
     private async authorized(session: string | undefined, input: unknown, write: boolean) {
         const profile = await this.identity.getCurrentUser(session);
         if (!this.allowed(profile, DOCUMENT_READ) || (write && !this.allowed(profile, DOCUMENT_WRITE))) throw new ForbiddenException("No tienes permiso para esta operación documental.");
@@ -39,6 +47,7 @@ export class OrderDocumentsService {
         if (this.config.get<boolean>("ENABLE_ORDER_DOCUMENTS") !== true) throw new ServiceUnavailableException("La integración documental no está habilitada.");
         return { profile, order, group: this.config.getOrThrow<string>("MICROSOFT_DOCUMENTS_GROUP_ID"), root: this.config.getOrThrow<string>("MICROSOFT_ORDER_DOCUMENTS_ROOT_ID") };
     }
+    /** Sin la cuenta de Microsoft vinculada, o sin el consentimiento de archivos, es 403. No se llama a Graph a medias. */
     private async delegated<T>(session: string | undefined, callback: (token: string) => Promise<T>): Promise<T> {
         const value = await this.identity.withMicrosoftAccess(session, ["Files.ReadWrite.All"], callback);
         if (value === null) throw new ForbiddenException("Conecta Microsoft con la misma cuenta del CRM y autoriza el acceso a archivos.");
@@ -62,7 +71,7 @@ export class OrderDocumentsService {
             return false;
         }
     }
-    /** Consulta la carpeta y sus archivos sin crear recursos externos. */
+    /** Listar no crea la carpeta. Si no existe, los archivos salen vacios y `folder` queda nulo. */
     async list(session: string | undefined, input: unknown) {
         const context = await this.authorized(session, input, false);
         return this.delegated(session, async (token) => {
@@ -70,7 +79,7 @@ export class OrderDocumentsService {
             return { folder, reference: context.order.netsuiteId, files: folder ? await this.graph.files(token, context.group, folder.id, folder.driveId) : [], canWrite: this.allowed(context.profile, DOCUMENT_WRITE) };
         });
     }
-    /** Crea una carpeta únicamente por petición expresa y mantiene el nombre de NetSuite. */
+    /** Solo crea si no hay carpeta con el id de NetSuite. Si ya existe, `created` es false y no se inventa otro nombre. */
     async create(session: string | undefined, input: unknown) {
         const context = await this.authorized(session, input, true);
         await this.auditIntent(context, "create_folder");
@@ -90,7 +99,10 @@ export class OrderDocumentsService {
             return { url: await this.graph.link(token, { group: context.group, folder: folder.id, item: request.data.itemId, action: request.data.action }) };
         });
     }
-    /** Inicia una carga y cifra su autorización para mantener el uploadUrl en el servidor. */
+    /**
+     * El ticket vence en lo que ocurra antes: la hora de Graph o una hora desde ahora.
+     * Una fecha invalida o ya pasada no emite ticket. La URL de carga queda adentro.
+     */
     async start(session: string | undefined, input: unknown, raw: unknown) {
         const parsed = uploadInput.safeParse(raw);
         if (!parsed.success) throw new BadRequestException("Archivo inválido. Máximo 250 MB y nombre sin caracteres reservados.");
@@ -105,7 +117,12 @@ export class OrderDocumentsService {
             return { chunkSize: DOCUMENT_CHUNK_SIZE, ticket: sealUploadTicket({ user: context.profile.user.publicId, order: context.order.netsuiteId, folder: folder.id, name: request.name, url: upload.uploadUrl, size: request.size, expires }, this.config.getOrThrow<string>("COOKIE_SECRET")) };
         });
     }
-    /** Revalida permisos, carpeta y rango antes de subir cada fragmento. */
+    /**
+     * El base64 tiene que sobrevivir el viaje de ida y vuelta; uno no canonico se
+     * rechaza. El offset es multiplo de 320 KiB y el largo es un fragmento entero
+     * o el resto exacto. Si la carpeta ya no es la del ticket, no se sube. Un fallo
+     * de auditoria despues de una carga completa no se presenta como archivo no subido.
+     */
     async chunk(session: string | undefined, input: unknown, raw: unknown) {
         const parsed = chunkInput.safeParse(raw);
         if (!parsed.success) throw new BadRequestException("Fragmento de archivo inválido.");

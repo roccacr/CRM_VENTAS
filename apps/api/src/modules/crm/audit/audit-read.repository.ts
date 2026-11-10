@@ -21,9 +21,9 @@ interface AuditRow extends AuditContextRow {
 }
 const moduleValue = sql<string | null>`NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.metadata_security_event, '$.moduleCode')), 'null')`;
 const catalogValue = sql<string | null>`NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.metadata_security_event, '$.catalogCode')), 'null')`;
-// Freeze the event's actor name; old or non-string snapshots retain the joined fallback.
+// El nombre sale del snapshot si es texto. Un evento viejo o un valor que no es texto usa el usuario unido.
 const actorNameValue = sql<string | null>`case when JSON_TYPE(JSON_EXTRACT(e.metadata_security_event, '$.actor.name')) = 'STRING' then JSON_UNQUOTE(JSON_EXTRACT(e.metadata_security_event, '$.actor.name')) else ${sql.ref("actor.display_name_user")} end`;
-// Paths are internal constants; typed scalar extraction excludes objects, arrays and JSON null.
+// La ruta es una constante. Solo se extrae un escalar de texto: un objeto, un arreglo o un nulo JSON no salen.
 const jsonString = (path: string) => sql<string | null>`case when JSON_TYPE(JSON_EXTRACT(e.metadata_security_event, ${sql.lit(path)})) = 'STRING' then NULLIF(JSON_UNQUOTE(JSON_EXTRACT(e.metadata_security_event, ${sql.lit(path)})), 'null') else null end`;
 const sectionValue = jsonString("$.sectionCode");
 const contextSelections = [
@@ -44,18 +44,18 @@ const contextSelections = [
 const USER_EVENTS = ["user_created", "user_updated", "user_status_updated", "user_access_replaced"];
 const ROLE_EVENTS = ["role_updated", "role_deleted", "role_permissions_replaced"];
 
-/** Read-only, parameterized audit queries with a bounded primary-key seek. */
+/** Consulta parametrizada y solo de lectura. La pagina avanza por llave, no por offset. */
 @Injectable()
 export class AuditReadRepository {
-    /** Reuses the approved new-database pool; legacy is never queried. */
+    /** Pool de la base nueva. La vieja no se consulta desde aqui. */
     constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
 
-    /** Uses only native evidence; authorization stays in AuditReadService. */
+    /** Evidencia nativa. Quien puede verla ya se decidio en el servicio. */
     async leadTimeline(recordId: string, query: unknown) {
         return new LeadHistoryReader(this.database).timeline(recordId, query);
     }
 
-    /** Fetch only public event fields and the versioned snapshot, never raw metadata. */
+    /** Campos publicos y el snapshot versionado. La metadata cruda no se selecciona. */
     async detail(publicId: string) {
         return this.database.db
             .selectFrom("audit_security_event as e")
@@ -69,7 +69,11 @@ export class AuditReadRepository {
             .executeTakeFirst();
     }
 
-    /** Fetch one look-ahead row without counting or materializing the full history. */
+    /**
+     * Una fila de mas para saber si hay otra pagina, sin contar toda la historia.
+     * Catalogos y administracion incluyen eventos sin modulo, para no perder filas viejas.
+     * El resto exige modulo y seccion. `LOCATE` trata `%` y `_` como texto.
+     */
     async list(query: AuditQueryDto, before?: number): Promise<AuditRow[]> {
         let read = this.database.db
             .selectFrom("audit_security_event as e")

@@ -1,10 +1,10 @@
 /**
- * Módulo opcional del CRM viejo.
+ * Modulo opcional del CRM viejo.
  *
- * El core pide catálogos por el puerto `CATALOG_FALLBACK_READER`. No importa
- * este pool ni las tablas viejas. Si `ENABLE_LEGACY_FALLBACK` no es `true`,
- * la fábrica devuelve `null` y no abre conexiones. Antes de borrar esta
- * carpeta hay que quitar el registro del módulo en `AppModule`.
+ * El nucleo pide puertos, no este pool ni las tablas viejas. Si
+ * `ENABLE_LEGACY_FALLBACK` no es `true`, la fabrica devuelve `null` y no abre
+ * conexiones. `FORMALIZATION_APPROVAL_LEGACY` es el mismo escritor que el de
+ * transicion de contrato: una sola compuerta y la misma transaccion.
  */
 import { Global, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -56,9 +56,7 @@ import { LegacyProjectsWriter } from "./projects/legacy-projects.writer.js";
 import { LegacySubsidiariesWriter } from "./subsidiaries/legacy-subsidiaries.writer.js";
 import { LegacyUnitFilesReader } from "./unit-files/legacy-unit-files.reader.js";
 
-/**
- *
- */
+/** Un solo registro global. Cada modulo de negocio inyecta su puerto, no una segunda copia del pool. */
 @Global()
 @Module({
     providers: [

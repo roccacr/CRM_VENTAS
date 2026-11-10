@@ -2,7 +2,15 @@ import { readFileSync } from "node:fs";
 
 import type { PoolOptions } from "mysql2";
 
-/** Puerto MySQL usado cuando `DB_PORT` no viene definido. */
+/**
+ * Mismas opciones de mysql2 para el runtime, el migrador y los scripts.
+ *
+ * Este archivo no elige la base. El servicio de la API solo acepta
+ * `CRM_THINK_V2`; un script puede pasar otro nombre y aun asi hereda TLS
+ * verificado y `multipleStatements: false`.
+ */
+
+/** Mismo puerto que el default de `DB_PORT`. Quien arma un pool fuera de Zod no inventa otro. */
 export const DEFAULT_MYSQL_PORT = 3306;
 
 export interface MysqlPoolOptionsInput {
@@ -12,18 +20,20 @@ export interface MysqlPoolOptionsInput {
     port: number;
     user: string;
     connectionLimit: number;
-    /** Maximo de peticiones en espera de conexion; 0 (default de mysql2) = sin limite. */
+    /** Tope de la cola. Si no se envia, no se escribe la opcion y mysql2 deja su default, que es cola sin limite. */
     queueLimit?: number;
     ssl: boolean;
     sslCaPath?: string;
 }
 
 /**
- * Construye la configuracion TLS para MySQL.
+ * TLS solo cuando el llamador lo pidio. Sin TLS la opcion no se escribe: el
+ * driver abre en claro y no recibe un objeto SSL vacio.
  *
- * Para RDS se debe usar el bundle CA oficial y mantener
- * `rejectUnauthorized: true`. Bajar la verificacion a `false` queda prohibido:
- * resolveria el handshake ocultando MITM o certificados incorrectos.
+ * Con TLS, `rejectUnauthorized` queda en true con o sin CA. Sin archivo se usan
+ * las CA del proceso; con archivo, el PEM se lee una vez al armar el pool. Un
+ * path inexistente falla aqui, antes de abrir conexiones. Bajar la verificacion
+ * ocultaria un certificado distinto o un intermediario.
  */
 const buildSslOptions = (input: MysqlPoolOptionsInput): PoolOptions["ssl"] => {
     if (!input.ssl) {
@@ -41,10 +51,11 @@ const buildSslOptions = (input: MysqlPoolOptionsInput): PoolOptions["ssl"] => {
 };
 
 /**
- * Construye opciones mysql2 comunes para runtime y runner schema-only.
+ * Pool comun. `multipleStatements: false` rechaza varias sentencias en un solo
+ * string, tambien en los scripts que reutilizan esta funcion.
  *
- * Mantener `multipleStatements: false` aqui evita que cada consumidor tenga
- * que recordar el guardrail contra statement-stacking.
+ * `queueLimit` solo se copia si el llamador lo trajo. El API manda el suyo; un
+ * script de una conexion no hereda el cupo del proceso HTTP.
  */
 export const buildMysqlPoolOptions = (input: MysqlPoolOptionsInput): PoolOptions => {
     const poolOptions: PoolOptions = {

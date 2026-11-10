@@ -1,9 +1,9 @@
 import type { ColumnType } from "kysely";
 
-/** Server-assigned timestamp: readable and insertable (optional), never updatable. */
+/** Fecha asignada por el servidor. Se lee y se inserta. No se actualiza. */
 type RecordedAt = ColumnType<Date, Date | string | undefined, never>;
 
-/** Logical audit identity (one row per audited entity), deliberately independent of operational foreign keys. */
+/** Identidad logica de lo auditado, aparte de las llaves operativas. Borrar el negocio no exige borrar esta fila. */
 export interface AuditRecordTable {
     id_record: string;
     source_schema_record: string;
@@ -13,7 +13,7 @@ export interface AuditRecordTable {
     created_at_record: RecordedAt;
 }
 
-/** Physical 023 event columns; writers expose insertion only, never update/delete. */
+/** Columnas fisicas del evento. El tipo solo permite insertar: actualizar y borrar no estan en el contrato. */
 export interface AuditRecordEventTable {
     id_record_event: string;
     record_id_record_event: string;

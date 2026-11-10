@@ -1,16 +1,9 @@
-// ============================================================================
-// Constantes canonicas del producto CRM TINK.
-//
-// Este archivo evita que valores de gobierno se repitan como literales sueltos
-// dentro del runtime. Los SQL y documentos pueden mencionar el nombre fisico de
-// la base; el codigo ejecutable debe importar esta constante.
-// ============================================================================
-
 /**
- * Nombre fisico aprobado de la base nueva del CRM.
+ * Nombre fisico de la base nueva. El runtime importa esta constante; no repite
+ * el literal en SQL ejecutable ni en validadores.
  *
- * Es parte de la ley de producto: `DB_NAME` nunca debe apuntar a
- * `crmdatabase-api` ni a otra base compartida por error de configuracion. La
- * base vieja, cuando se habilite, vive aislada en `src/integrations/legacy-crm`.
+ * `DB_NAME` tiene que ser exactamente este valor. Un entorno mal apuntado no
+ * puede abrir `crmdatabase-api` ni otra base compartida desde el proceso nuevo.
+ * La base vieja, cuando se habilita, vive aparte en `src/integrations/legacy-crm`.
  */
 export const APPROVED_DATABASE_NAME = "CRM_THINK_V2";

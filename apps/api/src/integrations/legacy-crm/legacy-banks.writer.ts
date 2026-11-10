@@ -5,23 +5,35 @@ import { sql, type Transaction } from "kysely";
 import type { CrmDatabase } from "../../database/database.types.js";
 import type { Bank, BankAdvisor } from "../../modules/crm/banks/banks.types.js";
 import type { BanksLegacyAccess } from "../../modules/crm/banks/banks-legacy.port.js";
-/** Banks-only opt-in; other catalog production guards retain their existing restrictions. */
+/**
+ * Espejo de bancos dentro de la transaccion nativa. No abre el pool legado.
+ *
+ * Si el fallback esta apagado, no copia y el banco queda solo en el CRM nuevo.
+ * Si el fallback esta encendido, escribir exige `ENABLE_LEGACY_WRITES` y el
+ * nombre exacto `crmdatabase-api`. Si falta cualquiera de las dos, el alta
+ * nativa no sigue: un espejo a medias no se disfraza de exito. No exige
+ * `NODE_ENV=production`; esa condicion pertenece a la compuerta de catalogos.
+ *
+ * La identidad publica y la version las manda el CRM nuevo. Un id que ya
+ * existe no se adopta, y una version distinta no se pisa.
+ */
 @Injectable()
 export class LegacyBanksWriter implements BanksLegacyAccess {
-    /** Reads explicit mirror opt-ins without opening another connection. */
+    /** Solo lee la configuracion. La conexion es la transaccion que trae el llamador. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
-    /** Fails before native writes if an enabled fallback cannot be mirrored. */
+    /** Corta antes de la escritura nativa cuando el espejo pedido no se puede cumplir. */
     assertWritable(): void {
         if (this.config.get<unknown>("ENABLE_LEGACY_FALLBACK") !== true) return;
         if (this.config.get<unknown>("ENABLE_LEGACY_WRITES") !== true || this.config.get<unknown>("LEGACY_CRM_DB_NAME") !== "crmdatabase-api") throw new ServiceUnavailableException("Banks mirror requires explicit legacy writes and exact legacy schema.");
     }
+    /** La transaccion tiene que ser la nativa. Sin `isTransaction` no hay espejo. */
     private enabled(tx: unknown): boolean {
         this.assertWritable();
         if (this.config.get<unknown>("ENABLE_LEGACY_FALLBACK") !== true) return false;
         if (tx === null || typeof tx !== "object" || Reflect.get(tx, "isTransaction") !== true) throw new ServiceUnavailableException("Banks mirror requires the native transaction.");
         return true;
     }
-    /** Copies the native bank public identity, values and version atomically. */
+    /** Alta si no hay version esperada. Actualizacion solo si la version bloqueada coincide y cambia una fila. */
     async writeBank(tx: Transaction<CrmDatabase>, bank: Bank, expectedVersion?: number): Promise<void> {
         if (!this.enabled(tx)) return;
         const current = await sql<{ version: number }>`SELECT version_bank AS version FROM \`crmdatabase-api\`.crm_bank WHERE public_id_bank=${bank.publicId} FOR UPDATE`.execute(tx);
@@ -34,7 +46,7 @@ export class LegacyBanksWriter implements BanksLegacyAccess {
         const result = await sql`UPDATE \`crmdatabase-api\`.crm_bank SET name_bank=${bank.name},status_bank=${bank.status},version_bank=${bank.version},created_at_bank=${new Date(bank.createdAt)},updated_at_bank=${new Date(bank.updatedAt)} WHERE public_id_bank=${bank.publicId} AND version_bank=${expectedVersion}`.execute(tx);
         if (result.numAffectedRows !== 1n) throw new ConflictException({ statusCode: 409, code: "BANK_VERSION_CONFLICT", message: "Legacy bank changed." });
     }
-    /** Resolves the mirror parent locally and preserves the native advisor identity. */
+    /** El asesor cuelga del banco ya espejado. Sin ese padre, no se crea un asesor suelto. */
     async writeAdvisor(tx: Transaction<CrmDatabase>, advisor: BankAdvisor, expectedVersion?: number): Promise<void> {
         if (!this.enabled(tx)) return;
         const parents = await sql<{ id: string }>`SELECT CAST(id_bank AS CHAR) AS id FROM \`crmdatabase-api\`.crm_bank WHERE public_id_bank=${advisor.bankPublicId} FOR UPDATE`.execute(tx);

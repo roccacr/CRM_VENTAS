@@ -2,6 +2,12 @@ import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
 import type { LeadProfileCommercialPage, LeadProfileSource } from "../../modules/crm/leads/lead-profile.contract.js";
+
+/**
+ * Etiquetas cerradas de oportunidad. La clave es la columna fisica, con su
+ * nombre historico (`Motico_Condicion`, `fecha_Condicion`, `custbody13`). No se
+ * selecciona una columna que no este en este mapa.
+ */
 const opportunityFields = {
     id_oport: "Identificador local",
     id_oportunidad_oport: "Identificador externo",
@@ -71,7 +77,12 @@ const estimateFields = {
     envioPreReservaCaida: "Envío de pre-reserva caída",
     fechaClienteComprobante_est: "Fecha del comprobante del cliente",
 };
-/** La FK comercial apunta a idinterno_lead, nunca al id local ni al nombre del cliente. */
+/**
+ * La relacion es `idinterno_lead` (`entity_oport` o `idLead_est`), nunca el id
+ * local ni el nombre del cliente. Sin referencia, la pagina sale vacia y
+ * disponible: no es un fallo. Cada valor se publica como texto. Pagina de 50,
+ * tope de 3000 ms.
+ */
 export async function readLegacyLeadCommercial(tx: Transaction<CrmDatabase>, lead: LeadProfileSource, kind: "opportunities" | "estimates", page: number): Promise<LeadProfileCommercialPage> {
     if (!lead.reference) return { items: [], total: 0, hasMore: false, page, available: true };
     const opportunity = kind === "opportunities";

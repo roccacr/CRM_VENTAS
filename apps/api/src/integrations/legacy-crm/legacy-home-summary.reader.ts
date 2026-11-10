@@ -8,20 +8,27 @@ import { aggregateNumber, type HomeSummaryPeriod, type StageAggregateRow, stageC
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
 /**
- * Legacy side of the Home counters. `shadowed` marks legacy orders that already have a native alias:
- * they are excluded from every counter and reported in `duplicatesExcluded`. Approvals are the legacy
- * flags (sales head, RDR, formalization). One bounded result, using the same native transaction for cross-schema snapshot consistency. */
+ * Contadores de inicio del lado viejo, un solo agregado en la misma transaccion.
+ *
+ * `shadowed` es la orden que ya tiene alias nativo. Sale de todos los conteos de
+ * etapa y entra en `duplicatesExcluded`. Si ese total no viene, el agregado se
+ * rechaza: no se publica cero por un hueco. Un flag distinto de 1 o 0 queda nulo
+ * y no suma. La etapa ausente cuenta como `contract_pending_send`.
+ */
 @Injectable()
 export class LegacyHomeSummaryReader implements HomeSummaryLegacyReader {
-    /** Reuses the configured fallback switch; no additional pool is opened. */
+    /** El pool solo responde `enabled`. El agregado no abre otra conexion. */
     constructor(@Inject(LegacyCrmDatabaseService) private readonly database: LegacyCrmDatabaseService) {}
 
-    /** Disabled fallback contributes no rows and triggers no aggregate SELECT. */
+    /** Apagado devuelve vacio y no lanza el `SELECT`. */
     enabled(): boolean {
         return this.database.isConfigured();
     }
 
-    /** Personal activity already selected its identities; resolve only those labels in one bounded SELECT. */
+    /**
+     * Etiquetas de ordenes que la actividad ya eligio. Como maximo seis ids, cada
+     * uno un entero positivo de hasta diez digitos. Fuera de eso, no se consulta.
+     */
     async orderLabels(tx: Transaction<CrmDatabase>, ids: readonly string[]) {
         if (!this.enabled() || !ids.length) return [];
         if (ids.length > 6 || !ids.every((id) => /^[1-9][0-9]{0,9}$/.test(id))) throw new Error("Invalid activity order IDs");
@@ -29,7 +36,7 @@ export class LegacyHomeSummaryReader implements HomeSummaryLegacyReader {
         return result.rows;
     }
 
-    /** Every native alias shadows legacy. Any effective closure this year credits an eligible order once, even after reopening. */
+    /** El cierre del anio acredita la orden una vez, aunque despues se reabra. El alias nativo no entra en las etapas. */
     async aggregate(tx: Transaction<CrmDatabase>, period: HomeSummaryPeriod) {
         const result = await sql<StageAggregateRow>`
             SELECT /*+ MAX_EXECUTION_TIME(1500) */

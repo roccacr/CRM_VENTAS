@@ -25,7 +25,7 @@ function canonical(value: unknown): string {
 const digest = (value: unknown): string => createHash("sha256").update(canonical(value)).digest("hex");
 const MAX_EVENT_CLOCK_SKEW_MS = 60_000;
 
-/** A future revision or read window can make subsequent legitimate observations appear stale. */
+/** Una fecha futura de mas de 60 segundos se rechaza. Si no, un reloj adelantado dejaria viejas las lecturas siguientes. */
 function assertCursorTimestamps(event: PersistedOrderEvent["event"]): void {
     const latest = Date.now() + MAX_EVENT_CLOCK_SKEW_MS;
     const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt } = event;
@@ -43,7 +43,7 @@ export class NetsuiteOrderEventService {
         @Inject(ConfigService) private readonly config: ConfigService,
     ) {}
 
-    /** Los eventos fallidos se pueden reenviar con el mismo UUID y payload. */
+    /** Un fallo se puede reenviar con el mismo UUID y el mismo cuerpo. Una lectura vieja es 409 y exige consultar NetSuite de nuevo. La respuesta positiva sale despues del commit. */
     async receive(event: PersistedOrderEvent, manual?: ManualOrderSynchronization) {
         this.assertPersistenceEnabled(event);
         assertCursorTimestamps(event.event);
@@ -59,12 +59,12 @@ export class NetsuiteOrderEventService {
         }
     }
 
-    /** Disabled local persistence also blocks manual writes to a shared database. */
+    /** El receptor y la bandera de persistencia tienen que estar encendidos. Apagado tambien bloquea la escritura manual sobre esta base. */
     synchronizationEnabled(environment: "production" | "sandbox"): boolean {
         const prefix = environment === "production" ? "NETSUITE_PRODUCTION_EVENTS" : "NETSUITE_LOCAL_EVENTS";
         return isNetsuiteEventReceiverEnabled(this.config, environment) && this.config.get<boolean>(prefix + "_PERSIST") === true;
     }
-    /** Direct callers must pass the same account and deployment gates as HTTP. */
+    /** Quien llama directo pasa por la misma cuenta y el mismo ambiente que el HTTP. */
     private assertPersistenceEnabled(event: PersistedOrderEvent): void {
         const production = event.source.environment === "production";
         const source = production ? productionOrderEvent.shape.source : persistedOrderEvent.shape.source;
@@ -74,7 +74,7 @@ export class NetsuiteOrderEventService {
     }
 
     private async recordFailure(event: PersistedOrderEvent, identity: { payloadHash: string; snapshotHash: string }, error: unknown): Promise<never> {
-        // Una transaccion independiente deja evidencia aun despues del rollback comercial.
+        // Otra transaccion guarda la evidencia aunque la comercial haya vuelto atras. El log, si esa tambien falla, lleva ids y hash, no el snapshot.
         const original = error instanceof OrderEventPersistenceError ? error.original : error;
         const message = original instanceof HttpException ? original.message : "Fallo al actualizar la orden o confirmar su bitacora.";
         const context = error instanceof OrderEventPersistenceError ? error.context : undefined;
@@ -91,7 +91,7 @@ export class NetsuiteOrderEventService {
 function orderSnapshotHash(fields: PersistedOrderEvent["snapshot"]["data"]["fields"]): string {
     const relations = readOrderRelationValues(fields);
     const direct = [...mapOrderFlags(fields, "native", {}), ...mapOrderFields(fields, "native", {})].map(({ field, after }) => ({ field, after }));
-    // Omitted means preserve; explicit null means clear. They must never share a snapshot hash.
+    // Ausente conserva el valor. Nulo explicito lo limpia. No pueden compartir hash.
     if (fields.crm_sync_projection === 1 && Object.hasOwn(fields, "custbody37") && !direct.some(({ field }) => field === "custbody37")) direct.push({ field: "custbody37", after: null });
     const deliveryField = NETSUITE_DELIVERY_DATE_FIELD;
     if (Object.hasOwn(fields, deliveryField)) direct.push({ field: deliveryField, after: calendarDate(fields[deliveryField]) });

@@ -7,11 +7,11 @@ import { getRecordAuditSourceChange } from "./audit-change-set.js";
 import type { RecordAuditService } from "./record-audit.service.js";
 import type { SecurityAuditEvent } from "./security-audit.service.js";
 
-/** Server-built changeset attached to the security event; client input never reaches this type. */
+/** El cambio tiene que haber sido armado en el servidor. El cliente no llena este tipo. */
 type SourceChange = NonNullable<ReturnType<typeof getRecordAuditSourceChange>>;
-/** Fixed registry entry: [table, primary-key column, public lookup column]. Only these names reach SQL. */
+/** Tabla, llave y columna de busqueda fijas. Esos nombres son los unicos que llegan al SQL. */
 type Definition = readonly [string, string, string];
-/** Catalog code -> physical table, so the audited source row can be locked and identified. */
+/** Codigo de catalogo a tabla fisica, para bloquear la fila real y leer su id. */
 const catalogTables: Record<string, Definition> = {
     projects: ["crm_project", "id_project", "public_id_project"],
     campaigns: ["crm_campaign", "id_campaign", "public_id_campaign"],
@@ -21,16 +21,16 @@ const catalogTables: Record<string, Definition> = {
     brokers: ["crm_broker", "id_broker", "public_id_broker"],
     files: ["crm_catalog_item", "id_catalog_item", "public_id_catalog_item"],
 };
-/** Maps administrative verbs to the record-audit action vocabulary; deactivate/reactivate/delete are all state changes. */
+/** Desactivar, reactivar y borrar son cambio de estado. No se registran como borrado fisico. */
 const actions = { create: "create", update: "update", deactivate: "state_change", reactivate: "state_change", delete: "state_change" } as const;
 
-/** Rejects catalog codes outside the registry (own-property check blocks prototype keys). */
+/** Fuera del registro no hay tabla. `hasOwn` evita que una clave del prototipo elija una. */
 function catalogDefinition(code: unknown): Definition {
     if (typeof code !== "string" || !Object.hasOwn(catalogTables, code)) throw new BadRequestException("Unsupported commercial audit entity");
     return catalogTables[code] as Definition;
 }
 
-/** Resolves which table backs an audited entity (catalog item, user or role). */
+/** Banco, asesor, catalogo, usuario o rol. Otra entidad no se audita por este puente. */
 function businessDefinition(change: SourceChange, catalogCode: unknown): Definition {
     switch (change.entity) {
         case "bank":
@@ -48,10 +48,10 @@ function businessDefinition(change: SourceChange, catalogCode: unknown): Definit
     }
 }
 
-/** Native canonical PK is obtained from the locked source row, never from client ID formatting. */
+/** El id canonico sale de la fila bloqueada. Cero o dos filas no sirven, y el id tiene que ser un entero positivo. */
 async function resolveSource(tx: Transaction<CrmDatabase>, change: SourceChange, catalogCode: unknown) {
     const [table, primaryKey, lookup] = businessDefinition(change, catalogCode);
-    // Identifiers are fixed by the server registry, not interpolated from request data.
+    // Los identificadores salen del registro, no del texto de la peticion.
     const identity = await sql<{ id: string }>`SELECT CAST(${sql.ref(primaryKey)} AS CHAR) AS id FROM ${sql.table(table)} WHERE ${sql.ref(lookup)} = ${change.recordId} FOR UPDATE`.execute(tx);
     if (identity.rows.length !== 1) throw new BadRequestException("Audit source record is unavailable");
     const id = identity.rows[0]?.id;
@@ -59,10 +59,10 @@ async function resolveSource(tx: Transaction<CrmDatabase>, change: SourceChange,
     return { schema: "CRM_THINK_V2" as const, entity: change.entity, table, id };
 }
 
-/** Truncates caller metadata to the column widths of the audit table. */
+/** IP y agente se recortan al ancho de la columna para no tumbar la transaccion. */
 const networkContext = (event: SecurityAuditEvent) => ({ ipAddress: event.ipAddress?.slice(0, 80), userAgent: event.userAgent?.slice(0, 500) });
 
-/** Existing administrative snapshots are explicitly partial, not full restoration images. */
+/** El snapshot administrativo es parcial. No es una imagen para restaurar el registro. */
 export async function appendSecurityBusinessChange(records: RecordAuditService, tx: Transaction<CrmDatabase>, context: { event: SecurityAuditEvent; actor: AuditActorSnapshot; operationId: string }): Promise<void> {
     const { event, actor, operationId } = context;
     const change = getRecordAuditSourceChange(event.metadata?.changeSet);

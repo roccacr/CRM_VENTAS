@@ -7,10 +7,11 @@ import { Microsoft365AuthService } from "./microsoft365-auth.service.js";
 import { Microsoft365CalendarService } from "./microsoft365-calendar.service.js";
 
 /**
- * Integracion Microsoft 365 aislada del core de identidad.
+ * Microsoft 365 queda detras de puertos. Identidad no importa MSAL.
  *
- * Exporta un puerto para login OIDC/Graph y el cifrador de cache MSAL. Identity
- * puede usar ambos sin importar MSAL directamente.
+ * `MICROSOFT_AUTH_PROVIDER` y `EXTERNAL_CALENDAR` son el mismo objeto que su
+ * servicio (`useExisting`), no una segunda instancia. El cifrador de la cache
+ * sale de aqui para que identidad persista el token cifrado sin conocer MSAL.
  */
 @Global()
 @Module({
