@@ -7,6 +7,8 @@ import { type FollowUpItem, getFollowUp } from "../../src/services/formalization
 import type { NetsuitePrimary } from "../../src/services/formalization/netsuite-primary";
 import { installBrowserApiDoubles } from "../support/browser";
 
+// Static toasts mount a separate React root; these tests cover the order and catalog behavior.
+vi.mock("antd/es/notification", () => ({ default: { success: vi.fn() } }));
 afterEach(cleanup);
 const order: FollowUpItem = { id: "legacy:208", source: "legacy", number: "RDR673", nativeCode: null, client: null, project: null, unit: null, responsible: null, state: { code: "pending_approval", label: "Pendientes de aprobación", since: null, days: null }, nextStep: "", completedThisYear: false };
 it.each([

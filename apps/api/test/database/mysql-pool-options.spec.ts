@@ -78,12 +78,8 @@ describe("buildMysqlPoolOptions", () => {
     });
 
     it("falla rapido si el CA bundle configurado no existe", () => {
-        expect(() =>
-            buildMysqlPoolOptions({
-                ...BASE_POOL_INPUT,
-                ssl: true,
-                sslCaPath: join(tmpdir(), "crm-think-ca-inexistente.pem"),
-            }),
-        ).toThrow("ENOENT: no such file or directory, open 'C:\\Users\\ROBERT~1\\AppData\\Local\\Temp\\crm-think-ca-inexisten");
+        temporaryDirectory = mkdtempSync(join(tmpdir(), "crm-think-ca-"));
+        const sslCaPath = join(temporaryDirectory, "missing.pem");
+        expect(() => buildMysqlPoolOptions({ ...BASE_POOL_INPUT, ssl: true, sslCaPath })).toThrow(expect.objectContaining({ code: "ENOENT", path: sslCaPath }));
     });
 });

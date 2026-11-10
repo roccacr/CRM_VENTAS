@@ -47,6 +47,8 @@ const expectDrawerReferenceLayout = (drawer: HTMLElement, projects: boolean) => 
     expect(within(drawer).queryAllByText("Estado de referencia")).toHaveLength(2 - projectCount);
 };
 
+// Static toasts mount a separate React root; these tests cover the order and catalog behavior.
+vi.mock("antd/es/message", () => ({ default: { success: vi.fn(), error: vi.fn() } }));
 describe("CatalogItemsPage", () => {
     it("allows legacy Campaigns editing and status changes with the Projects presentation", () => {
         render(<CatalogItemDetailDrawer canEdit canInactivate catalogLabel="Campañas" error={null} isLoading={false} item={{ ...item, publicId: "legacy:campaigns:42" }} open position={1} total={1} onClose={vi.fn()} onEdit={vi.fn()} onRefresh={vi.fn()} onStatusAction={vi.fn()} onSelectPrevious={vi.fn()} onSelectNext={vi.fn()} projectView />);
