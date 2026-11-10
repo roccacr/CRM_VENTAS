@@ -115,6 +115,7 @@ function expectedCodes(route: (typeof routes)[number]): string[] {
         "POST /formalization/contracts/send": ["formalizacion.contracts.send"],
         "POST /formalization/contracts/revert": ["formalizacion.contracts.revert"],
         "POST /formalization/orders/:source/:id/netsuite/sync": ["formalizacion.orders.read", "formalizacion.orders.stage.update"],
+        "POST /formalization/orders/netsuite/import": ["formalizacion.orders.read", "formalizacion.orders.stage.update"],
         "POST /formalization/orders/stage": ["formalizacion.orders.stage.update"],
         "POST /formalization/orders/approve": ["formalizacion.orders.approve"],
         "GET /formalization/orders/addendum": ["formalizacion.orders.read", "formalizacion.orders.addendum.read"],
@@ -167,6 +168,7 @@ function expectedIdentityCodes(route: (typeof routes)[number]): string[] {
 }
 
 function expectedStatus(route: (typeof routes)[number]): number {
+    if (route.name === "importOrder") return 202;
     if (route.name === "synchronize") return 201;
     const command = route.method === "POST" && !["complete", "reopen", "archive"].includes(route.name);
     return command && !route.path.startsWith("/formalization/") && !route.path.startsWith("/calendar/") ? 201 : 200;
@@ -222,7 +224,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     it("requires a descriptor on every registered permission handler", () => {
-        expect(new Set(routes.map((route) => route.handler)).size).toBe(115);
+        expect(new Set(routes.map((route) => route.handler)).size).toBe(116);
         expect(routes.some((route) => route.path === "/formalization/orders/:source/:id/documents")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/home/summary")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/leads/report")).toBe(true);
@@ -261,6 +263,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     function requestPayload(route: (typeof routes)[number]) {
+        if (route.name === "importOrder") return 202;
         if (route.name === "synchronize") return {};
         if (route.path.startsWith("/catalogs/banks/")) return banksPayload(route);
         return route.path.startsWith("/formalization/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression", ...(route.path === "/formalization/orders/stage" ? { targetState: "bank_management" } : {}) } : { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" };

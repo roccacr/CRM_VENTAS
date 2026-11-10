@@ -26,6 +26,7 @@ export function inspectSuiteScripts(source = SOURCE) {
         if (files.has(file)) return;
         visiting.add(file);
         const content = readFileSync(file, "utf8");
+        if (/(?:["']Bearer [a-f0-9]{64}["'])/i.test(content)) throw new Error(`Credencial de webhook incrustada: ${local}`);
         // Compila sintaxis y lee el AST; no ejecuta define ni sus callbacks.
         const tree = ts.createSourceFile(local, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
         if (tree.parseDiagnostics.length) throw new Error(`Sintaxis invalida: ${local}`);

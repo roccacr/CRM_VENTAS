@@ -63,5 +63,6 @@ jobs:
           shared=/var/www/habita-crm/shared
           scp "${options[@]}" "$id.tar.gz" "$SSH_TARGET:$shared/"
           scp "${options[@]}" activate-release.sh "$SSH_TARGET:$shared/$id-activate.sh"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$GITHUB_REF_NAME" --jq .object.sha)" = "$GITHUB_SHA"
           ssh "${options[@]}" "$SSH_TARGET" "bash '$shared/$id-activate.sh' '$id' '$digest' artifact '$WEB_ORIGIN' '$API_ORIGIN' '$DEPLOY_TARGET'"
           printf 'Release verificado: `%s` (%s)\n' "$id" "$sha" >> "$GITHUB_STEP_SUMMARY"

@@ -21,7 +21,7 @@ function copyFixture(from, to) {
 
 it("maps the three unified scripts to their actual File Cabinet paths with hashes and version", () => {
     const result = inspectSuiteScripts();
-    assert.equal(result.version, "2026.11.10.3");
+    assert.equal(result.version, "2026.11.10.4");
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_RL_CRM_Habita.js"));
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_LIB_CRM_habita.js"));
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_UE_CRM_Habita.js"));
@@ -53,6 +53,22 @@ for (const [name, content] of [
         }
     });
 }
+
+it("rejects an embedded webhook credential without printing its value", () => {
+    const temp = mkdtempSync(join(tmpdir(), "crm-package-test-"));
+    const synthetic = "a".repeat(64);
+    try {
+        copyFixture(source, temp);
+        const library = join(temp, "SS2_1_LIB_CRM_habita.js");
+        writeFileSync(library, readFileSync(library, "utf8") + '\nconst synthetic = "Bearer ' + synthetic + '";\n');
+        assert.throws(
+            () => inspectSuiteScripts(temp),
+            (error) => error instanceof Error && /Credencial de webhook incrustada/.test(error.message) && !error.message.includes(synthetic),
+        );
+    } finally {
+        rmSync(temp, { recursive: true, force: true });
+    }
+});
 
 it("requires the version embedded in the unified library", () => {
     const temp = mkdtempSync(join(tmpdir(), "crm-package-test-"));

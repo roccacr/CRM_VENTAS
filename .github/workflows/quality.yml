@@ -37,6 +37,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Reject embedded NetSuite webhook credentials
+        if: matrix.app == 'api'
+        run: node --input-type=module -e "import { inspectSuiteScripts } from './scripts/package-netsuite.mjs'; inspectSuiteScripts();"
+
       - run: pnpm format:check && pnpm lint && pnpm typecheck
       - run: pnpm test:coverage
       - run: pnpm build
@@ -52,8 +56,18 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Check build files before publishing artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden=$(find dist \( -type l -o -iname '.env*' -o -iname '*.key' -o -iname '*.pem' -o -iname '*.pfx' -o -iname '*.p12' \) -print -quit)
+          if [[ -n "$forbidden" ]]; then
+            echo '::error::El build contiene un enlace o un archivo de configuración privado.'
+            exit 1
+          fi
+
       - name: Preserve the build verified by CI
-        if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && (vars.HABITA_QA_ENABLED == 'true' || vars.HABITA_PRODUCTION_ENABLED == 'true')
+        if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: habita-build-${{ matrix.app }}
@@ -62,7 +76,7 @@ jobs:
           retention-days: 7
 
   package-habita:
-    if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && (vars.HABITA_QA_ENABLED == 'true' || vars.HABITA_PRODUCTION_ENABLED == 'true')
+    if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH
     needs: [quality, dependency-audit, habita-netsuite]
     runs-on: ubuntu-24.04
     timeout-minutes: 10

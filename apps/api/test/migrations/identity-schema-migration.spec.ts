@@ -167,6 +167,7 @@ describe("identity schema migration parser", () => {
             "202611030071_sales_order_bank_assignment_unlink",
             "202611030072_formalization_addendum_sent",
             "202611030073_lead_qualification",
+            "202611100074_netsuite_order_delivery",
         ]);
     });
 

@@ -27,7 +27,7 @@ describe("real Home read path with fake SQL results (not SQL execution)", () => 
                 expect(query.sql).toContain("SUM(");
                 expect(query.sql).toContain("ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1");
                 expect(query.sql).not.toMatch(/\b(INSERT|UPDATE|DELETE|FOR UPDATE)\b|LIMIT 500|OFFSET/);
-                expect(query.parameters).toHaveLength(2);
+                expect(query.parameters).toHaveLength(5);
             }
             expect(f.queries[1]?.sql).toContain("EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)");
             // A second request must consult both sources again, without a counter cache.

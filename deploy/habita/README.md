@@ -207,7 +207,7 @@ de NetSuite repite casos relevantes en MariaDB/InnoDB desechable. La
 persistencia MySQL general se informa por separado y no bloquea el empaquetado.
 
 La promoción solo aplica a un push en la rama protegida configurada en
-`HABITA_RELEASE_BRANCH` con `HABITA_QA_ENABLED=true` o `HABITA_PRODUCTION_ENABLED=true`. El empaquetado espera
+`HABITA_RELEASE_BRANCH` aunque la promoción esté desactivada. El empaquetado espera
 los controles de calidad de ambas apps, la auditoría de dependencias y
 NetSuite. El mismo archivo pasa de QA a producción cuando
 `HABITA_PRODUCTION_ENABLED=true` y QA ha terminado correctamente. Cada
@@ -220,7 +220,7 @@ El identificador del artefacto tiene formato
 completo. La etiqueta del encabezado muestra su revisión corta. El
 paquete incluye los builds y los archivos mínimos de runtime. La clave
 SSH y la lista de hosts conocidos vienen del entorno correspondiente
-y se usan en archivos temporales privados.
+y se usan en archivos temporales privados. En producción, el workflow puede reutilizar `SCADMINAPIS` cuando no existe una llave propia del entorno.
 
 ### Habilitación
 

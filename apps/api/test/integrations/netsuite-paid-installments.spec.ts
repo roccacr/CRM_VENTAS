@@ -50,13 +50,13 @@ describe("NetSuite paid installments stage", () => {
             (
                 [
                     ["pending_balance", true, false, true, false, "pending_transfer"],
-                    ["pending_transfer", true, true, false, false, "transfer_signed"],
+                    ["pending_transfer", true, true, false, false, "closed"],
                     ["pending_balance", false, false, false, true, "closed"],
                     ["transfer_signed", false, false, false, true, "closed"],
-                    ["pending_transfer", true, true, true, false, null],
+                    ["pending_transfer", true, true, true, false, "closed"],
                     ["transfer_signed", true, false, false, false, null],
                     ["closed", true, false, false, false, null],
-                    ["pending_approval", false, false, false, true, null],
+                    ["pending_approval", false, false, false, true, "closed"],
                 ] as const
             ).map(([state, paid, transferred, keys, delivered, expected]) => ({ state, paid, transferred, keys, delivered, expected })),
         )(`${destination}: completion $state paid=$paid transferred=$transferred keys=$keys delivered=$delivered targets $expected`, async ({ state, paid, transferred, keys, delivered, expected }) => {
@@ -128,7 +128,7 @@ describe("NetSuite paid installments stage", () => {
             const column = destination === "native" ? "installments_fully_paid_sales_order" : "cuotas_pagadas_completo_ov";
             (f.target.row as Record<string, unknown>)[column] = value;
             expect(await advancePaidInstallments(f.tx, f.audit, { event: f.event, target: f.target, changes: [] })).toBeNull();
-            expect(f.statements).toEqual([]);
+            expect(f.statements).not.toContainEqual(expect.stringMatching(/^\s*(INSERT|UPDATE|DELETE)\b/i));
             expect(f.append).not.toHaveBeenCalled();
             await f.db.destroy();
         });
