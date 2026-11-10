@@ -7,16 +7,16 @@ import { RequirePermission } from "../../../common/security/require-permission.d
 import { RouteSecurity } from "../../../common/security/route-security.decorator.js";
 import { BankAdvisorIdDto, BankContextDto, BankIdDto, BankStatusDto, CreateBankAdvisorDto, CreateBankDto, ListBanksQueryDto, UpdateBankAdvisorDto, UpdateBankDto } from "./banks.dto.js";
 import { BanksService } from "./banks.service.js";
-/** Explicit DTO types keep validation active under tsx/esbuild without emitted metadata. */
+/** El tipo va explícito: sin metadata emitida el pipe no valida. Un campo de más se rechaza. */
 const validateInput = (expectedType: Type<unknown>) => new ValidationPipe({ expectedType, transform: true, whitelist: true, forbidNonWhitelisted: true });
 
-/** Dedicated routes preserve the bank/advisor contract; no ERP fields or local PKs are exposed. */
+/** Rutas propias de banco y ejecutivo. No salen campos del ERP ni llaves numéricas. */
 @ApiTags("banks")
 @Controller("catalogs/banks/items")
 export class BanksController {
-    /** Delegates session-bound operations to the bank application service. */
+    /** La sesión sale de la cookie. El permiso de ruta es la primera puerta; el servicio vuelve a evaluar el deny. */
     constructor(@Inject(BanksService) private readonly banks: BanksService) {}
-    /** Lists the requested server-filtered page. */
+    /** Devuelve la página que pidió el servidor, ya filtrada. */
     @Get()
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "read" })
@@ -24,7 +24,7 @@ export class BanksController {
     list(@Query(validateInput(ListBanksQueryDto)) query: ListBanksQueryDto, @Req() request: CookieRequest) {
         return this.banks.listBanks(request.cookies[SESSION_COOKIE_NAME], query);
     }
-    /** Returns a bank by canonical public identity. */
+    /** Consulta el banco por su ULID público. */
     @Get(":bankId")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "read" })
@@ -32,7 +32,7 @@ export class BanksController {
     get(@Param(validateInput(BankIdDto)) ids: BankIdDto, @Query(validateInput(BankContextDto)) query: BankContextDto, @Req() request: CookieRequest) {
         return this.banks.getBank(request.cookies[SESSION_COOKIE_NAME], ids.bankId, query);
     }
-    /** Creates a bank with its audited reason. */
+    /** Crea el banco con el motivo que va a la bitácora. La IP y el agente salen de la petición. */
     @Post()
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "create" })
@@ -40,7 +40,7 @@ export class BanksController {
     create(@Body(validateInput(CreateBankDto)) body: CreateBankDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.banks.createBank(request.cookies[SESSION_COOKIE_NAME], body, { ipAddress: request.ip, userAgent });
     }
-    /** Edits a bank using optimistic concurrency. */
+    /** Edita el banco solo si la versión del cuerpo sigue siendo la de la fila. */
     @Patch(":bankId")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "update" })
@@ -48,7 +48,7 @@ export class BanksController {
     update(@Param(validateInput(BankIdDto)) ids: BankIdDto, @Body(validateInput(UpdateBankDto)) body: UpdateBankDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.banks.updateBank(request.cookies[SESSION_COOKIE_NAME], ids.bankId, body, { ipAddress: request.ip, userAgent });
     }
-    /** Changes only the bank state; advisor states remain independent. */
+    /** Activo exige actualizar e inactivo exige inactivar. El estado de los ejecutivos no se arrastra. */
     @Patch(":bankId/status")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "status" })
@@ -56,7 +56,7 @@ export class BanksController {
     status(@Param(validateInput(BankIdDto)) ids: BankIdDto, @Body(validateInput(BankStatusDto)) body: BankStatusDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.banks.bankStatus(request.cookies[SESSION_COOKIE_NAME], ids.bankId, body, { ipAddress: request.ip, userAgent });
     }
-    /** Lists advisors belonging to the route bank. */
+    /** Lista ejecutivos del banco de la ruta, no de otro. */
     @Get(":bankId/advisors")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "read" })
@@ -64,7 +64,7 @@ export class BanksController {
     advisors(@Param(validateInput(BankIdDto)) ids: BankIdDto, @Query(validateInput(ListBanksQueryDto)) query: ListBanksQueryDto, @Req() request: CookieRequest) {
         return this.banks.listAdvisors(request.cookies[SESSION_COOKIE_NAME], ids.bankId, query);
     }
-    /** Creates a contact only while its bank is active. */
+    /** El alta se pide aquí. Que el banco esté activo se confirma al persistir. */
     @Post(":bankId/advisors")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "create" })
@@ -72,7 +72,7 @@ export class BanksController {
     createAdvisor(@Param(validateInput(BankIdDto)) ids: BankIdDto, @Body(validateInput(CreateBankAdvisorDto)) body: CreateBankAdvisorDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.banks.createAdvisor(request.cookies[SESSION_COOKIE_NAME], ids.bankId, body, { ipAddress: request.ip, userAgent });
     }
-    /** Edits contact details without changing the parent bank. */
+    /** Edita el contacto. La ruta fija el banco y el cuerpo no lo cambia. */
     @Patch(":bankId/advisors/:advisorId")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "update" })
@@ -80,7 +80,7 @@ export class BanksController {
     updateAdvisor(@Param(validateInput(BankAdvisorIdDto)) ids: BankAdvisorIdDto, @Body(validateInput(UpdateBankAdvisorDto)) body: UpdateBankAdvisorDto, @Req() request: CookieRequest, @Headers("user-agent") userAgent?: string) {
         return this.banks.updateAdvisor(request.cookies[SESSION_COOKIE_NAME], ids, body, { ipAddress: request.ip, userAgent });
     }
-    /** Changes only the advisor state with an expected version. */
+    /** Cambia solo el estado del ejecutivo, con la versión que el cliente leyó. */
     @Patch(":bankId/advisors/:advisorId/status")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "catalog", catalog: "banks", action: "status" })

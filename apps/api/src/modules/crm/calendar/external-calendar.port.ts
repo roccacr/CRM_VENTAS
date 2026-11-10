@@ -17,6 +17,7 @@ export interface ExternalFeedEvent extends ExternalBusyEvent {
     location: string | null;
     outlook?: OutlookEventDetail | undefined;
 }
+/** `unknown` no es libre: no se pudo confirmar el horario y la sala no se ofrece como disponible. */
 export type RoomAvailability = "available" | "busy" | "unknown";
 export interface ExternalRoom {
     address: string;

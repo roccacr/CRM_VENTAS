@@ -108,6 +108,7 @@ export class CalendarExternalService {
         return profile;
     }
     private async delegated<T>(session: string | undefined, scopes: string[], callback: (token: string) => Promise<T>): Promise<{ status: "connected"; data: T } | { status: "consent_required" | "unavailable" | "conflict" }> {
+        // La bandera tiene que ser exactamente true. Apagada, el evento nativo sigue y la entrega queda no disponible.
         if (this.config.get<boolean>("ENABLE_CALENDAR_EXTERNAL") !== true) return { status: "unavailable" };
         try {
             const data = await this.identity.withMicrosoftAccess(session, scopes, callback);

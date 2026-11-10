@@ -13,15 +13,15 @@ import { CalendarExternalService } from "./calendar-external.service.js";
 import { CalendarLookupService } from "./calendar-lookup.service.js";
 import { CalendarNotificationsController, CalendarNotificationsService } from "./calendar-notifications.js";
 
-/** One protected contract for every module; event ownership is never inferred from a browser role. */
+/** Un contrato para todos los módulos. El dueño del evento sale de la fila, no de un rol que pinte el navegador. El cuerpo llega sin tipo y el servicio lo cierra. */
 @Controller("calendar")
 export class CalendarController {
-    /** Injects the existing identity, persistence or audit dependencies. */
+    /** Identidad, persistencia y bitácora ya existentes. Este controlador no abre la base vieja. */
     constructor(
         @Inject(CalendarService) private readonly service: CalendarService,
         @Inject(CalendarExternalService) private readonly external: CalendarExternalService,
     ) {}
-    /** Returns calendars and type forms allowed by the authenticated profile. */
+    /** Calendarios y tipos que el perfil puede leer. La respuesta no se guarda en caché. */
     @Get("calendars")
     @Header("Cache-Control", "no-store")
     @RouteSecurity("permission")
@@ -29,7 +29,7 @@ export class CalendarController {
     calendars(@Req() request: CookieRequest) {
         return this.service.calendars(request.cookies[SESSION_COOKIE_NAME]);
     }
-    /** Lists authorized overlays for a bounded visible interval. */
+    /** Eventos del intervalo visible. Cada módulo pedido se vuelve a autorizar. */
     @Get("events")
     @Header("Cache-Control", "no-store")
     @RouteSecurity("permission")
@@ -44,7 +44,8 @@ export class CalendarController {
     @RequirePermission({ kind: "calendar", action: "read" })
     detail(@Req() request: CookieRequest, @Param("id") id: string) {
         return this.service.detail(request.cookies[SESSION_COOKIE_NAME], id);
-    } /** Bounded suggestions recheck note, lead and order permissions independently. */
+    }
+    /** Sugerencias acotadas. El permiso del calendario no sustituye el de la nota, el lead o la orden. */
     @Get("lookup")
     @Header("Cache-Control", "no-store")
     @RouteSecurity("permission")
@@ -69,7 +70,7 @@ export class CalendarController {
     rooms(@Req() request: CookieRequest, @Query() query: unknown) {
         return this.external.rooms(request.cookies[SESSION_COOKIE_NAME], query);
     }
-    /** Creates a native event with server actor and atomic audit. */
+    /** Alta nativa. El actor sale de la sesión y la bitácora va en la misma transacción. Responde 200: el cuerpo trae el resultado, no solo el alta. */
     @Post("events")
     @HttpCode(200)
     @Header("Cache-Control", "no-store")
@@ -85,7 +86,7 @@ export class CalendarController {
     updateOutlook(@Req() request: CookieRequest, @Param("id") id: string, @Body() body: unknown) {
         return this.external.updateOwnEvent(request.cookies[SESSION_COOKIE_NAME], id, body);
     }
-    /** Edits a native event using its expected version. */
+    /** Cambia el ciclo de vida. Va antes de `events/:id` para que `status` no se lea como el id del evento. */
     @Patch("events/:id/status")
     @Header("Cache-Control", "no-store")
     @RouteSecurity("permission")
@@ -93,7 +94,7 @@ export class CalendarController {
     changeStatus(@Req() request: CookieRequest, @Param("id") id: string, @Body() body: unknown) {
         return this.service.changeStatus(request.cookies[SESSION_COOKIE_NAME], id, body);
     }
-    /** Edits fields without changing the event lifecycle. */
+    /** Edita campos. El estado se cambia por su propia ruta. */
     @Patch("events/:id")
     @Header("Cache-Control", "no-store")
     @RouteSecurity("permission")
@@ -102,6 +103,9 @@ export class CalendarController {
         return this.service.save(request.cookies[SESSION_COOKIE_NAME], body, id);
     }
 }
-/** Wires the shared calendar API to existing identity and audit modules. */
+/**
+ * Calendario nativo con identidad, bitácora y el marcador de adéndum.
+ * El lector legado y el puerto de Outlook no se registran aquí: llegan por su token.
+ */
 @Module({ imports: [IdentityModule, AuditModule, SalesOrderAddendumModule], controllers: [CalendarController, CalendarNotificationsController], providers: [CalendarNotificationsService, CalendarExternalService, CalendarRepository, CalendarService, CalendarLookupService] })
 export class CalendarModule {}

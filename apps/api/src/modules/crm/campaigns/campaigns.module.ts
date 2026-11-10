@@ -14,7 +14,8 @@ import { CampaignsRepository } from "./campaigns.repository.js";
 import { CampaignsService } from "./campaigns.service.js";
 
 /**
- * Registers the independent Campaigns domain and its audited dependencies.
+ * Agregado propio. Identidad y bitácora entran como dependencias.
+ * Este módulo no registra el lector ni el escritor del CRM viejo, y no exporta otro pool.
  */
 @Module({
     imports: [AuditModule, IdentityModule],

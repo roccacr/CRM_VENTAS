@@ -4,7 +4,7 @@ import { IsString, MaxLength, MinLength } from "class-validator";
 
 import { CreateCatalogItemDto } from "../catalogs/dto/catalog-items.dto.js";
 
-/** Preserves shared validation except the verified Brokers name limit. */
+/** Misma validación del catálogo, salvo el nombre: el compartido corta en 180 y la columna del corredor admite 250. Se recorta y exige al menos 2. */
 export class CreateBrokerDto extends OmitType(CreateCatalogItemDto, ["name"] as const) {
     @ApiProperty({ description: "Nombre visible del corredor.", maxLength: 250 })
     @Transform(({ value }: { readonly value: unknown }) => (typeof value === "string" ? value.trim() : value))
@@ -14,5 +14,5 @@ export class CreateBrokerDto extends OmitType(CreateCatalogItemDto, ["name"] as 
     name!: string;
 }
 
-/** Updates retain the same required fields and audit reason as creation. */
+/** Editar exige los mismos campos y el mismo motivo que el alta. No hay un cuerpo que mueva solo el nombre. */
 export class UpdateBrokerDto extends CreateBrokerDto {}

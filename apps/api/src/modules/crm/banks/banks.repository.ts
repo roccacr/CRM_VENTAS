@@ -18,15 +18,16 @@ const advisorColumns = sql`a.public_id_bank_advisor AS publicId,b.public_id_bank
 const iso = (value: Date | string): string => new Date(value).toISOString();
 const mapBank = (row: BankRow): Bank => ({ ...row, version: Number(row.version), advisorCount: Number(row.advisorCount), createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) });
 const mapAdvisor = (row: AdvisorRow): BankAdvisor => ({ ...row, version: Number(row.version), createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) });
-/** Native authority; mirror and audit share one native transaction, with parent locks before child locks. */
+/** La autoridad es el CRM nuevo. Si hay espejo, entra en la misma transacción, y el banco se bloquea antes que el ejecutivo. */
 @Injectable()
 export class BanksRepository {
-    /** Uses only the native connection, atomic audit and the optional mirror port. */
+    /** Solo la conexión nativa. El puerto del espejo es opcional: sin él el catálogo se escribe igual. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(SecurityAuditService) private readonly audit: SecurityAuditService,
         @Optional() @Inject(BANKS_LEGACY_ACCESS) private readonly legacy?: BanksLegacyAccess,
     ) {}
+    /** El límite y el desplazamiento se vuelven a cerrar aquí, aunque el DTO ya los haya validado. */
     // eslint-disable-next-line complexity -- Independent bounds close both pagination inputs before SQL.
     private pagination(query: ListBanksQueryDto) {
         const limit = query.limit ?? 25,
@@ -34,7 +35,7 @@ export class BanksRepository {
         if (!Number.isInteger(limit) || limit < 1 || limit > 500 || !Number.isInteger(offset) || offset < 0 || offset > 2147483647) throw new BadRequestException("Paginación inválida.");
         return { limit, offset };
     }
-    /** Returns a bounded bank page with the complete filtered total. */
+    /** Página acotada y total del mismo filtro. No consulta la base vieja. En el texto, `%` y `_` siguen siendo comodines. */
     async listBanks(query: ListBanksQueryDto) {
         const { limit, offset } = this.pagination(query);
         const status = query.status ? sql`AND b.status_bank=${query.status}` : sql``;
@@ -43,14 +44,14 @@ export class BanksRepository {
         const rows = await sql<BankRow>`SELECT ${bankColumns} FROM crm_bank b WHERE 1=1 ${status} ${search} ORDER BY b.name_bank,b.public_id_bank LIMIT ${limit} OFFSET ${offset}`.execute(this.database.db);
         return { items: rows.rows.map(mapBank), total: Number(count.rows[0]?.total ?? 0) };
     }
-    /** Finds the native authoritative bank, never a legacy fallback. */
+    /** El banco se lee por el id público nativo. No hay fallback a la base vieja. */
     async getBank(id: string, executor: Executor = this.database.db): Promise<Bank> {
         const result = await sql<BankRow>`SELECT ${bankColumns} FROM crm_bank b WHERE b.public_id_bank=${id}`.execute(executor);
         const row = result.rows[0];
         if (!row) throw new NotFoundException("Banco no encontrado.");
         return mapBank(row);
     }
-    /** Returns the bounded advisor page scoped to its bank. */
+    /** Ejecutivos de ese banco. El mismo patrón busca nombre, correo, teléfono y área. */
     async listAdvisors(id: string, query: ListBanksQueryDto) {
         await this.getBank(id);
         const { limit, offset } = this.pagination(query);
@@ -62,6 +63,7 @@ export class BanksRepository {
         const rows = await sql<AdvisorRow>`SELECT ${advisorColumns} ${from} ORDER BY a.name_bank_advisor,a.public_id_bank_advisor LIMIT ${limit} OFFSET ${offset}`.execute(this.database.db);
         return { items: rows.rows.map(mapAdvisor), total: Number(count.rows[0]?.total ?? 0) };
     }
+    /** Bloquea la fila por el ULID. El id numérico sale de esa fila, no del cliente. */
     private async lockBank(tx: Transaction<CrmDatabase>, id: string) {
         const result = await sql<{ id: string; version: number; status: string }>`SELECT CAST(id_bank AS CHAR) AS id,version_bank AS version,status_bank AS status FROM crm_bank WHERE public_id_bank=${id} FOR UPDATE`.execute(tx);
         const row = result.rows[0];
@@ -74,12 +76,14 @@ export class BanksRepository {
         if (!row) throw new NotFoundException("Ejecutivo no encontrado.");
         return mapAdvisor(row);
     }
+    /** El actor se captura dentro de la transacción, antes del cambio. Un usuario borrado no sirve. */
     private async actor(tx: Transaction<CrmDatabase>, context: BankAuditContext) {
         const row = await tx.selectFrom("sec_user").select("id_user").where("public_id_user", "=", context.actorPublicId).where("deleted_at_user", "is", null).executeTakeFirstOrThrow();
         const snapshot = await this.audit.captureActor(row.id_user, tx);
         if (!snapshot) throw new BadRequestException("Actor no disponible.");
         return { id: row.id_user, snapshot };
     }
+    /** El cambio pasa por la lista cerrada. Conteos y fechas no se vuelven campos de bitácora. Activar es reactivate; inactivar es deactivate. */
     // eslint-disable-next-line max-params -- Audit binds trusted context, actor, snapshots and the business action.
     private async record(tx: Transaction<CrmDatabase>, context: BankAuditContext, actor: { id: number; snapshot: AuditActorSnapshot }, before: Bank | BankAdvisor | null, after: Bank | BankAdvisor, kind: BankChange["kind"]) {
         const entity = "bankPublicId" in after ? "bank_advisor" : "bank";
@@ -97,6 +101,7 @@ export class BanksRepository {
             tx,
         );
     }
+    /** Nombre de banco y correo de ejecutivo comparten el mismo conflicto. El mensaje no dice cuál de los dos chocó. */
     private async duplicate<T>(operation: () => Promise<T>): Promise<T> {
         try {
             return await operation();
@@ -105,10 +110,11 @@ export class BanksRepository {
             throw error;
         }
     }
+    /** La versión esperada tiene que ser la actual. En el tope de 32 bits no se incrementa: también es conflicto. */
     private assertVersion(current: number, expected: number) {
         if (current !== expected || expected >= 4294967295) throw new ConflictException("El registro cambió; actualice la información.");
     }
-    /** Commits native bank, mirror and actor audit together. */
+    /** Banco, espejo y bitácora salen en el mismo commit. Si el espejo pedido no se puede cumplir, corta antes de escribir. */
     async mutateBank(id: string | undefined, change: BankChange, context: BankAuditContext): Promise<Bank> {
         this.legacy?.assertWritable();
         return this.duplicate(() =>
@@ -134,7 +140,7 @@ export class BanksRepository {
                 }),
         );
     }
-    /** Locks the native parent before editing a child and mirrors by public identity. */
+    /** Bloquea el banco antes del ejecutivo. Un banco inactivo no admite altas. El espejo usa el id público. */
     async mutateAdvisor(ids: { bankId: string; advisorId?: string }, change: AdvisorChange, context: BankAuditContext): Promise<BankAdvisor> {
         this.legacy?.assertWritable();
         return this.duplicate(() =>

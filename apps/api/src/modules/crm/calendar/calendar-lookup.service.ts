@@ -19,6 +19,7 @@ type Tx = Transaction<CrmDatabase>;
 type Selection = { search: string; limit: number; id?: string; ids?: readonly string[]; leads?: CalendarLink[] | undefined };
 const querySchema = z.strictObject({ moduleCode: z.enum(CALENDAR_MODULES), kind: z.enum(["users", "notes", "leads", "orders"]), search: z.string().trim().max(1000).default(""), limit: z.number().int().min(1).max(100).default(20), leads: z.string().max(5000).optional() }).refine((query) => query.search.length <= 100 || (query.kind === "users" && query.search.includes(",")));
 const nativeId = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
+/** El selector legado cabe en 15 dígitos. El contrato del evento admite más; aquí un id más largo no se resuelve. */
 const legacyId = /^[1-9][0-9]{0,14}$/;
 const knownScopes = ["self", "assigned", "own_area", "own_area_and_children", "all_areas"];
 const activeOrder = sql`o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL`;
@@ -29,7 +30,7 @@ const orderNumber = sql<string>`COALESCE((SELECT MIN(x.transaction_number_sales_
 function validIdentity(link: CalendarLink): boolean {
     return (link.source === "native" ? nativeId : legacyId).test(link.id) && (link.entityType !== "note" || link.source === "native");
 }
-/** Whitelist the response even when a query gains internal columns later. */
+/** La respuesta solo lleva id, origen y rótulos. Una columna interna que aparezca en la consulta no sale. */
 function item(row: CalendarLookupItem): CalendarLookupItem {
     return { id: row.id, source: row.source, label: row.label, ...(row.secondary ? { secondary: row.secondary } : {}), ...(row.lead ? { lead: row.lead } : {}) };
 }
@@ -38,16 +39,16 @@ function canOpenLinkedRecord(profile: IdentityProfile, link: CalendarLink): bool
     if (link.entityType !== "lead") return false;
     return profile.permissions.some((p) => p.code === "lead.profile.read" && p.effect === "allow") && !profile.permissions.some((p) => p.code === "lead.profile.read" && p.effect === "deny");
 }
-/** Bounded, source-qualified selections. Calendar permission never substitutes for resource authorization. */
+/** Selección acotada y con origen. Poder abrir el calendario no autoriza la nota, el lead ni la orden. */
 @Injectable()
 export class CalendarLookupService {
-    /** Reuses the native read-only snapshot and existing organizational seller policy. */
+    /** Usa la foto de lectura del calendario y el alcance de vendedores que ya existe. El legado solo entra si el fallback está exactamente activo. */
     constructor(
         @Inject(ConfigService) private readonly config: ConfigService,
         @Inject(CalendarRepository) private readonly snapshot: CalendarRepository,
     ) {}
 
-    /** The parent supplies a fresh server profile; no client access/type metadata authorizes a lookup. */
+    /** El perfil lo trae el servidor. Un dato de acceso enviado por el cliente no autoriza la búsqueda. Un carácter suelto en leads u órdenes no consulta. */
     async lookup(profile: IdentityProfile, input: unknown): Promise<{ items: CalendarLookupItem[] }> {
         const parsed = querySchema.safeParse(input);
         if (!parsed.success) throw new BadRequestException("Selección de calendario inválida.");
@@ -64,9 +65,9 @@ export class CalendarLookupService {
     }
 
     /**
-     * Rechecks exact identities on the save transaction and returns identities only.
-     * The parent must additionally check calendar.read for the event's actual module before invoking its save callback.
-     * Retired legacy aliases are rejected, preserving command identities and hashes.
+     * Vuelve a resolver cada identidad dentro de la transacción del guardado y devuelve solo identidades.
+     * Quien llama tiene que haber comprobado la lectura del módulo real del evento.
+     * Un alias legado que ya tiene fila nativa se rechaza. No se elige una de varias.
      */
     async validateLinks(tx: Tx, profile: IdentityProfile, links: readonly CalendarLink[]): Promise<CalendarLink[]> {
         if (!calendarRouteAccess(profile, "read")) throw new ForbiddenException("Calendario no autorizado.");
@@ -80,7 +81,7 @@ export class CalendarLookupService {
         return parsed.data;
     }
 
-    /** Presentation hides unavailable relations; infrastructure errors must still fail the read. */
+    /** 400, 403 o 404 dejan la relación como no editable. Otro error sí falla la lectura. */
     async canManageLinks(tx: Tx, profile: IdentityProfile, links: readonly CalendarLink[]): Promise<boolean> {
         try {
             await this.validateLinks(tx, profile, links);
@@ -92,8 +93,8 @@ export class CalendarLookupService {
     }
 
     /**
-     * Hydrates persisted selections only after the parent checks event editability and its calendar module.
-     * Restricted relations expose only exact participant descriptors, never partial linked-resource labels.
+     * Arma los rótulos después de que quien llama comprobó que el evento se puede editar.
+     * Si una relación no se puede abrir, no sale ningún rótulo de vínculo. Los usuarios invitados sí pueden salir.
      */
     async selectionOptions(tx: Tx, profile: IdentityProfile, input: { links: readonly CalendarLink[]; participants: readonly CalendarParticipant[] }): Promise<CalendarSelectionOptions> {
         if (!calendarRouteAccess(profile, "read")) throw new ForbiddenException("Calendario no autorizado.");
@@ -233,7 +234,7 @@ export class CalendarLookupService {
         return this.config.get<unknown>("ENABLE_LEGACY_FALLBACK") === true;
     }
     private async users(tx: Tx, query: Selection): Promise<CalendarLookupItem[]> {
-        // This is the calendar invitation directory, including dormant accounts, as in note invitations.
+        // Directorio de invitación, con cuentas inactivas y pendientes, igual que en las notas. `LOCATE` trata `%` y `_` como texto.
         if (query.ids?.length === 0) return [];
         let identity = sql`(${query.search}='' OR LOCATE(${query.search},display_name_user)>0 OR LOCATE(${query.search},normalized_email_user)>0)`;
         const tokens = query.search
@@ -262,7 +263,7 @@ export class CalendarLookupService {
         ).rows;
     }
     private async leadScope(tx: Tx, profile: IdentityProfile): Promise<{ filter: RawBuilder<unknown> | undefined; needsOwner: boolean }> {
-        // Standalone leads follow the existing lead/Captacion resource grants. Formalizacion is handled separately below.
+        // El lead suelto usa `lead.read` o, si no está, `mercadeo.leads.read`. Un alcance desconocido o un deny no se interpretan. Formalización se resuelve aparte.
         const code = profile.permissions.some((p) => p.code === "lead.read") ? "lead.read" : "mercadeo.leads.read";
         const entries = profile.permissions.filter((p) => p.code === code);
         const scopes = entries.flatMap((p) => (p.effect === "allow" ? [p.scope] : []));
@@ -275,7 +276,7 @@ export class CalendarLookupService {
         const sellers = await this.visibleSellers(tx, profile, scopes);
         return { filter: sellers.size ? sql`u.public_id_user IN (${sql.join([...sellers])})` : sql`FALSE`, needsOwner: true };
     }
-    /** Matches the established seller scope, reusing the existing cycle-safe descendant expansion. */
+    /** El alcance del vendedor reutiliza la expansión de hijos que ya corta los ciclos. Más de 1000 unidades o 10000 miembros se niega; no se recorta en silencio. */
     private async visibleSellers(tx: Tx, profile: IdentityProfile, scopes: readonly string[]): Promise<ReadonlySet<string>> {
         const visible = new Set([profile.user.publicId]);
         if (!scopes.some((scope) => scope === "own_area" || scope === "own_area_and_children")) return visible;
@@ -323,7 +324,7 @@ export class CalendarLookupService {
             ORDER BY ${query.search ? sql`l.nombre_lead,l.id_lead` : sql`l.id_lead DESC`} LIMIT ${query.limit}`.execute(tx)
         ).rows;
     }
-    /** Same ambiguity guards as the existing legacy order reader; unresolved owners never gain seller access. */
+    /** El mismo corte de ambigüedad del lector de órdenes. Dos admins con el mismo id o el mismo correo no se resuelven con el menor: el dueño queda sin acceso de vendedor. */
     private legacyOwner(): RawBuilder<unknown> {
         return sql`LEFT JOIN ${sql.table("crmdatabase-api.admins")} a ON a.idnetsuite_admin=l.id_empleado_lead
             AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.admins")} sibling WHERE sibling.idnetsuite_admin=a.idnetsuite_admin AND sibling.id_admin<>a.id_admin)
@@ -331,7 +332,7 @@ export class CalendarLookupService {
             AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.admins")} sibling WHERE NULLIF(LOWER(TRIM(sibling.email_admin)),'') COLLATE utf8mb4_bin=NULLIF(LOWER(TRIM(a.email_admin)),'') COLLATE utf8mb4_bin AND sibling.id_admin<>a.id_admin)`;
     }
     private async orders(tx: Tx, profile: IdentityProfile, source: "native" | "legacy", query: Selection): Promise<CalendarLookupItem[]> {
-        // The implemented detail policy covers all sellers for the two operational Formalizacion roles.
+        // Ver la orden exige el permiso de formalización. No se filtra por el vendedor de la orden.
         if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("Órdenes no autorizadas.");
         const filter = this.orderLeadFilter(query, source);
         if (source === "native") {
@@ -353,7 +354,7 @@ export class CalendarLookupService {
     }
     private async assertUnmapped(tx: Tx, link: CalendarLink): Promise<void> {
         if (link.source !== "legacy") return;
-        // These native mappings remain authoritative even when the optional legacy source is disabled.
+        // El vínculo nativo manda aunque el fallback legado esté apagado. Una o varias filas nativas rechazan el id viejo.
         let rows: { id: string }[];
         if (link.entityType === "sales_order") rows = (await sql<{ id: string }>`SELECT DISTINCT o.public_id_sales_order AS id FROM crm_sales_order o WHERE o.id_old_produccion_sales_order=${link.id} OR EXISTS(SELECT 1 FROM ${orderReferences} WHERE ${activeOrderReference} AND s.code_external_system='legacy_crm' AND x.external_id_sales_order_external_reference=${link.id}) LIMIT 2`.execute(tx)).rows;
         else rows = (await sql<{ id: string }>`SELECT DISTINCT l.public_id_lead AS id FROM crm_lead l JOIN crm_lead_external_reference x ON x.lead_id_lead_external_reference=l.id_lead JOIN int_external_system s ON s.id_external_system=x.external_system_id_lead_external_reference WHERE s.code_external_system='legacy_crm' AND s.status_external_system='active' AND x.status_lead_external_reference='active' AND x.external_id_lead_external_reference=${link.id} LIMIT 2`.execute(tx)).rows;

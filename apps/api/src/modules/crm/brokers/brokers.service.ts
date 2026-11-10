@@ -14,7 +14,8 @@ import { IdentityService } from "../identity/identity.service.js";
 import { BrokersRepository } from "./brokers.repository.js";
 
 /**
- * Applies Brokers authorization and mutation rules through shared operations.
+ * Autorización y normalización compartidas, persistencia propia de `crm_broker`.
+ * Aquí solo se acepta el código `brokers`. La forma `legacy:brokers:N` se deja pasar; el repositorio rechaza un N que no quepa en un entero de 32 bits con signo.
  */
 @Injectable()
 export class BrokersService extends CatalogItemOperations {

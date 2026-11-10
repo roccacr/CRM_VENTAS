@@ -15,7 +15,8 @@ import { CreateCatalogItemDto, ListCatalogItemsQueryDto, UpdateCatalogItemDto, U
 import { CampaignsService } from "./campaigns.service.js";
 
 /**
- * Exposes Campaigns routes using the established catalog API contract.
+ * Contrato de catálogo, con cookie de sesión. El permiso de ruta es la primera puerta; el servicio vuelve a evaluar el efectivo.
+ * El cuerpo es el compartido: el nombre corta en 180, no en un tope propio de campaña.
  */
 @ApiTags("campaigns")
 @Controller("catalogs/campaigns")
@@ -24,7 +25,7 @@ export class CampaignsController {
     constructor(@Inject(CampaignsService) private readonly catalogs: CampaignsService) {}
 
     /**
-     * Lista campañas nativas y, si el fallback está activo, los que aún no migraron.
+     * Lista campañas nativas y, si el fallback está activo, las que aún no migraron.
      *
      * La cookie identifica la sesión. El permiso de lectura lo resuelve el servicio.
      */
@@ -39,7 +40,7 @@ export class CampaignsController {
     /**
      * Crea una campaña nativa.
      *
-     * IP y user agent viajan solo para la auditoría. No se guardan como dato dla campaña.
+     * IP y user agent viajan solo para la auditoría. No se guardan como dato de la campaña.
      */
     @Post("items")
     @RouteSecurity("permission")
@@ -68,6 +69,7 @@ export class CampaignsController {
     /**
      * Activa o inactiva la campaña.
      *
+     * La acción de ruta `status` no es un permiso: activo exige actualizar e inactivo exige inactivar.
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")

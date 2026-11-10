@@ -14,7 +14,8 @@ import { IdentityService } from "../identity/identity.service.js";
 import { CampaignsRepository } from "./campaigns.repository.js";
 
 /**
- * Applies Campaigns authorization and mutation rules through shared operations.
+ * Autorización y normalización compartidas, persistencia propia de `crm_campaign`.
+ * Aquí solo se acepta el código `campaigns`. La forma `legacy:campaigns:N` se deja pasar; el repositorio rechaza un N que no quepa en un entero de 32 bits con signo.
  */
 @Injectable()
 export class CampaignsService extends CatalogItemOperations {

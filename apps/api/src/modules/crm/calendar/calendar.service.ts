@@ -19,7 +19,7 @@ import type { ExternalFeedEvent } from "./external-calendar.port.js";
 
 const lookupQuery = z.strictObject({ moduleCode: z.enum(CALENDAR_MODULES), kind: z.enum(["users", "notes", "leads", "orders"]), search: z.string().trim().max(1000).default(""), leads: z.string().max(5000).optional() }).refine((query) => query.search.length <= 100 || (query.kind === "users" && query.search.includes(",")));
 
-/** Strict DTO parsing rejects forged origins, unknown fields and unbounded date intervals before SQL. */
+/** El cuerpo se cierra antes del SQL. Un campo de más o un origen inventado comparten el mismo error. */
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
     const parsed = schema.safeParse(input);
     if (!parsed.success) throw new BadRequestException("Solicitud de calendario inválida.");
@@ -61,10 +61,11 @@ function canReadDetail(row: CalendarRow, profile: IdentityProfile): boolean {
     const access = calendarAccess(profile, row.originModule, "read");
     const invited = row.participants?.some((participant) => participant.userId === profile.user.publicId);
     return !denied && ((access.allowed && (!access.ownOnly || row.ownerPublicId === profile.user.publicId)) || invited === true);
-} /** Named module origins are independent of the user's current set of roles. */
+}
+/** El origen del evento es el módulo guardado. No se deduce del rol que la persona tenga hoy. */
 @Injectable()
 export class CalendarService {
-    /** Injects the existing identity, persistence or audit dependencies. */
+    /** Identidad, persistencia, bitácora, selección y el marcador de adéndum. El lector legado llega por su token. */
     // Los colaboradores conservan responsabilidades separadas; el marcador reutiliza la transacción del evento.
     // eslint-disable-next-line max-params
     constructor(
@@ -87,14 +88,15 @@ export class CalendarService {
                 return { schemaVersion: 1, crmDetail: await this.readCrmDetail(tx, row, profile, true) };
             }),
         );
-    } /** Calendar entry does not grant permission to search its linked business records. */
+    }
+    /** Entrar al calendario no autoriza buscar la nota, el lead ni la orden. */
     async lookup(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const query = parse(lookupQuery, input);
         if (!calendarAccess(profile, query.moduleCode, "read").allowed) throw new ForbiddenException("No tiene acceso a este calendario.");
         return this.safely(() => this.selections.lookup(profile, query));
     }
-    /** Lists only the calendars and capabilities allowed by the current profile. */
+    /** Solo los calendarios que este perfil puede leer, con alta y edición calculadas aparte. */
     async calendars(session?: string) {
         const profile = await this.identity.getCurrentUser(session);
         const modules = CALENDAR_MODULES.filter((code) => calendarAccess(profile, code, "read").allowed);
@@ -104,7 +106,11 @@ export class CalendarService {
             return { schemaVersion: 1 as const, calendars: modules.map((moduleCode) => ({ moduleCode, label: CALENDAR_MODULE_LABELS[moduleCode], color: CALENDAR_COLORS[moduleCode], canCreate: calendarAccess(profile, moduleCode, "create").allowed, canUpdate: calendarAccess(profile, moduleCode, "update").allowed, types: types.filter((type) => type.moduleCode === moduleCode).map(({ moduleCode: _module, ...type }) => type) })) };
         });
     }
-    /** Reads bounded, authorized events without inventing historical module ownership. */
+    /**
+     * Intervalo de hasta 93 días. Cada módulo pedido, y el de contexto, tienen que poder leerse.
+     * Más de 500 entre nativos, legado y Outlook es conflicto: no se recorta la página.
+     * Si Outlook está conectado y la cita programada ya no está en ese buzón, no se muestra en su fecha vieja.
+     */
     async list(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const query = parse(calendarListQuery, input);
@@ -132,7 +138,7 @@ export class CalendarService {
             });
         });
     }
-    /** Validates the command and records its event and audit atomically. */
+    /** Solo el organizador cambia el estado, y solo desde el módulo de origen. Completar no publica en Outlook; cancelar y reactivar sí pueden. */
     async changeStatus(session: string | undefined, id: string, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         const command = parse(calendarStatusInput, input);
@@ -202,6 +208,7 @@ export class CalendarService {
         const assigned = input.links?.some((link) => link.entityType !== "note" && !before?.links?.some((existing) => existing.entityType === link.entityType && existing.source === link.source && existing.id === link.id));
         if (assigned) throw new ForbiddenException("No tiene permiso para asignar eventos a un lead en Formalización.");
     }
+    /** Hasta 366 días. Un día completo tiene que empezar y terminar a las 06:00 UTC, medianoche de Costa Rica, con fin exclusivo. */
     private validateEvent(input: CalendarInput): void {
         interval(input.start, input.end, 366);
         if (
@@ -219,11 +226,11 @@ export class CalendarService {
         const configured = Boolean(findCalendarEventType(row.typeCode, row.originModule));
         const canManageStatus = [configured, row.source === "native", row.originModule === context, access.allowed, ownerPublicId === profile.user.publicId].every(Boolean);
         const canEdit = canManageStatus && row.status !== "cancelled";
-        // Invitation access is event-only; attendees do not inherit linked-record or guest-directory access.
+        // Estar invitado deja ver el evento. No hereda los vínculos ni el directorio de invitados.
         const relations = canEdit ? { participants: event.participants, links: event.links } : { participants: undefined, links: undefined };
         return { ...event, ...relations, selectionOptions: undefined, allDay: Boolean(row.allDay), details: calendarDetails(row.details), canEdit, canManageStatus, orderLinksLocked: calendarOrderLinksLocked(row) };
     }
-    /** Private/retired relations stay stored without leaking through broader calendar editing scopes. */
+    /** Quien no puede editar no recibe vínculos ni participantes. Una relación que este actor no puede gestionar tampoco se ofrece para reemplazarla. */
     private async present(tx: Transaction<CrmDatabase>, row: CalendarRow, { profile, context }: { profile: IdentityProfile; context: CalendarModuleCode }): Promise<CalendarEvent> {
         const projected = this.project(row, profile, context);
         const event = { ...projected, crmDetail: row.source === "native" ? await this.readCrmDetail(tx, row, profile) : undefined };

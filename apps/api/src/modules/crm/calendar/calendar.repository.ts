@@ -41,7 +41,8 @@ export function calendarStoredMetadata(row: CalendarRow) {
     const configured = findCalendarEventType(row.typeCode, row.originModule);
     const stored: unknown = typeof row.storedMetadata === "string" ? JSON.parse(row.storedMetadata) : row.storedMetadata;
     return storedMetadataSchema.parse({ typeLabel: configured?.tipo ?? row.typeCode, typeColor: configured?.color ?? null, ...(stored as Record<string, unknown> | undefined) });
-} /** Bounded normalized metadata, never arbitrary JSON returned from storage. */
+}
+/** Del JSON guardado solo salen referencia, Teams y sala. Lo demás, incluido el candado del adéndum, no se proyecta como detalle editable. */
 export function calendarDetails(value: unknown): { reference?: string; teamsRequested?: boolean; roomAddress?: string } {
     const decoded: unknown = typeof value === "string" ? JSON.parse(value) : value;
     if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) return {};
@@ -69,19 +70,19 @@ function snapshot(row: CalendarRow, commandHash?: string) {
         ...(commandHash ? { commandHash } : {}),
     };
 }
-/** Calendar queries and audited native commands share the canonical pool and transaction. */
+/** Consultas y comandos usan el pool nativo. Sin bitácora encendida el guardado responde 503 y no escribe el evento. */
 @Injectable()
 export class CalendarRepository {
-    /** Injects the existing identity, persistence or audit dependencies. */
+    /** Pool nativo y bitácora de registros. El actor se captura dentro de la transacción de escritura. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(RecordAuditService) private readonly audit: RecordAuditService,
     ) {}
-    /** Runs both calendar sources in one repeatable read-only snapshot. */
+    /** Una foto de lectura repetible y solo lectura. Aquí no se puede escribir ni ver una fila confirmada a medias. */
     read<T>(callback: (tx: Transaction<CrmDatabase>) => Promise<T>): Promise<T> {
         return this.database.db.transaction().setIsolationLevel("repeatable read").setAccessMode("read only").execute(callback);
     }
-    /** Returns active types only for the authorized module selection. */
+    /** Tipos activos de los módulos autorizados. El rótulo y el color salen del catálogo; un tipo que ya no está ahí no se ofrece para crear. */
     async types(tx: Transaction<CrmDatabase>, modules: readonly string[]): Promise<CalendarType[]> {
         if (!modules.length) return [];
         const rows = (
@@ -97,7 +98,7 @@ export class CalendarRepository {
             })
             .sort((a, b) => CALENDAR_EVENT_TYPES.findIndex((type) => type.codigo === a.code) - CALENDAR_EVENT_TYPES.findIndex((type) => type.codigo === b.code));
     }
-    /** Reads bounded, authorized events without inventing historical module ownership. */
+    /** Hasta 501 filas. El módulo amplio ve el equipo; el propio, solo lo que organiza. La invitación no atraviesa un deny. Coincidir con Outlook alarga la ventana, no el permiso. */
     async list(tx: Transaction<CrmDatabase>, scope: CalendarReadScope): Promise<CalendarRow[]> {
         if (!scope.modules.length) return [];
         const broad = scope.broadModules.length ? sql`o.code_org_unit IN (${sql.join(scope.broadModules)})` : sql`FALSE`;
@@ -122,12 +123,16 @@ export class CalendarRepository {
         const [hydrated] = await readCalendarRelations(tx, [row]);
         return hydrated ?? row;
     }
-    /** An actor lock serializes retries before creation; event locks/version protect concurrent edits. */
-    // Preserve the established positional command API with a final transaction validation callback.
+    /**
+     * El usuario activo se bloquea antes de crear, para serializar el reintento.
+     * El mismo `operationId` y el mismo contenido devuelven la fila ya guardada. Otro contenido es conflicto.
+     * Solo el organizador edita, desde el módulo de origen, con la versión leída. Un cancelado no cambia campos; el cambio de estado sí entra, con el estado esperado.
+     */
+    // El callback de validación corre dentro de esta transacción, después de resolver el tipo y antes de escribir.
     // eslint-disable-next-line max-params
     async save(actorPublicId: string, input: CalendarInput | CalendarUpdate, ownOnly: boolean, publicId?: string, validate?: (tx: Transaction<CrmDatabase>, before: CalendarRow | null, typeCode?: string) => Promise<void>, transition?: CalendarStatusTransition): Promise<CalendarRow> {
         if (!this.audit.enabled) throw new ServiceUnavailableException("La gestión del calendario requiere bitácora habilitada.");
-        // One transaction deliberately owns replay, event, relations and audit rollback.
+        // Reintento, evento, relaciones y bitácora revierten juntos. Un fallo no deja el evento sin su aviso.
         // eslint-disable-next-line complexity, sonarjs/cognitive-complexity
         return this.database.db.transaction().execute(async (tx) => {
             const actor = await tx.selectFrom("sec_user").select("id_user").where("public_id_user", "=", actorPublicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).forUpdate().executeTakeFirst();
@@ -184,7 +189,7 @@ export class CalendarRepository {
             return after;
         });
     }
-    /** Persist only validated event fields; the caller appends audit before committing. */
+    /** Solo campos ya validados. La zona al crear es America/Costa_Rica. El candado del adéndum se guarda junto al detalle y no lo manda el cliente como campo suelto. */
     private async write(tx: Transaction<CrmDatabase>, input: CalendarInput, context: { actorId: number; moduleId: number; typeId: number; typeCode: string; publicId: string | undefined; before: CalendarRow | null }): Promise<string> {
         if (!findCalendarEventType(context.typeCode, input.moduleCode)) throw new ConflictException("Este tipo de evento no está habilitado para el módulo.");
         const addendumRelations = calendarAddendumRelations(input, context.before, context.typeCode);

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { CALENDAR_MODULES } from "./calendar.contract.js";
 import definitions from "./calendar-event-types.json" with { type: "json" };
 
-/** Configuration is validated before queries; malformed or duplicate definitions fail closed. */
+/** El JSON se valida al cargar. Una definición mal formada o un código repetido impiden arrancar. No se inventa un tipo. */
 export const calendarEventTypesSchema = z
     .array(
         z.strictObject({
@@ -21,10 +21,10 @@ export const calendarEventTypesSchema = z
     .max(100)
     .refine((types) => new Set(types.map((type) => type.codigo)).size === types.length, "Códigos duplicados");
 
-/** Single global definition. A module entry describes availability, never user authorization. */
+/** Una sola definición global. Que un módulo aparezca aquí dice que el tipo se ofrece ahí, no que la persona pueda usarlo. */
 export const CALENDAR_EVENT_TYPES = Object.freeze(calendarEventTypesSchema.parse(definitions).map((type) => Object.freeze({ ...type, modulos: Object.freeze(type.modulos) })));
 
-/** Resolve only the exact configured type/module pair; historical types remain readable. */
+/** Solo el par código y módulo que sigue en el catálogo. Un tipo que salió de la lista puede leerse como evento; editarlo se rechaza en otro punto. */
 export function findCalendarEventType(code: string, module: string) {
     return CALENDAR_EVENT_TYPES.find((type) => type.codigo === code && type.modulos.some((allowed) => allowed === module));
 }

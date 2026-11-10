@@ -1,9 +1,10 @@
 import type { ColumnType, Generated } from "kysely";
 
 type DateTime = ColumnType<Date, Date | string, Date | string>;
+/** Se lee. Este tipo no permite insertarla ni actualizarla: la clave no se escribe desde la aplicación. */
 type Digest = ColumnType<Buffer, never, never>;
 
-/** Per-module event configuration; migration 051 adds the initial general form. */
+/** Tipo por módulo. Estar en el catálogo no autoriza a la persona. */
 export interface ConfCalendarEventTypeTable {
     form_key_calendar_event_type: string;
     id_calendar_event_type: Generated<number>;
@@ -17,7 +18,7 @@ export interface ConfCalendarEventTypeTable {
     updated_at_calendar_event_type: Generated<DateTime>;
 }
 
-/** One native event; switching the visible module never changes its origin. */
+/** Un evento nativo. Cambiar el módulo visible no cambia su origen. La zona guardada al crear es America/Costa_Rica. */
 export interface CrmCalendarEventTable {
     details_calendar_event: ColumnType<unknown, string | null, string | null>;
     legacy_calendar_id_calendar_event: number | null;
@@ -45,7 +46,7 @@ export interface CrmCalendarEventTable {
     deleted_at_calendar_event: DateTime | null;
 }
 
-/** A participant can respond without gaining event or linked-record editing rights. */
+/** Responder no da derecho a editar el evento ni sus vínculos. Revocar no borra la fila. */
 export interface CrmCalendarParticipantTable {
     id_calendar_participant: Generated<number>;
     public_id_calendar_participant: string;
@@ -65,7 +66,7 @@ export interface CrmCalendarParticipantTable {
     updated_at_calendar_participant: Generated<DateTime>;
 }
 
-/** Native public record links require an authorized entity resolver in the future API. */
+/** Vínculo por id público. Archivar pone fecha; no se borra en físico. */
 export interface CrmCalendarEventLinkTable {
     id_calendar_event_link: Generated<number>;
     event_id_calendar_event_link: number;
@@ -78,7 +79,7 @@ export interface CrmCalendarEventLinkTable {
     deleted_at_calendar_event_link: DateTime | null;
 }
 
-/** Optional commercial detail; appointments are not the entire calendar. */
+/** Detalle comercial opcional. Una cita no es todo el calendario. */
 export interface CrmCalendarAppointmentTable {
     event_id_calendar_appointment: number;
     lead_id_calendar_appointment: number | null;
@@ -92,7 +93,7 @@ export interface CrmCalendarAppointmentTable {
     updated_at_calendar_appointment: Generated<DateTime>;
 }
 
-/** Per-user bell state is independent from RSVP and external message delivery. */
+/** Campana por persona. No es la respuesta RSVP ni el envío del correo externo. */
 export interface CrmCalendarNotificationTable {
     id_calendar_notification: Generated<number>;
     public_id_calendar_notification: string;
@@ -108,7 +109,7 @@ export interface CrmCalendarNotificationTable {
     updated_at_calendar_notification: Generated<DateTime>;
 }
 
-/** Provider/calendar identity only; authentication secrets remain outside this schema. */
+/** Identidad del buzón. El secreto de autenticación no vive en esta tabla. */
 export interface IntCalendarConnectionTable {
     id_calendar_connection: Generated<number>;
     public_id_calendar_connection: string;
@@ -123,7 +124,7 @@ export interface IntCalendarConnectionTable {
     updated_at_calendar_connection: Generated<DateTime>;
 }
 
-/** Multiple mailbox copies retain one native event and separate remote concurrency versions. */
+/** Varias copias de buzón apuntan a un solo evento nativo. Cada una guarda su versión remota. La clave binaria no se escribe desde aquí. */
 export interface IntCalendarEventSyncTable {
     id_calendar_event_sync: Generated<number>;
     event_id_calendar_event_sync: number;

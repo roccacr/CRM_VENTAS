@@ -13,7 +13,11 @@ import type { IdentityProfile } from "../identity/identity.types.js";
 import { CALENDAR_MODULES, type CalendarModuleCode, type CalendarRow } from "./calendar.contract.js";
 import { calendarAccess } from "./calendar-access.js";
 
-/** Avisos nativos atómicos con el evento; no equivalen a invitaciones o respuestas de Exchange. */
+/**
+ * Aviso nativo en la misma transacción del evento. No es una invitación ni una respuesta de Exchange.
+ * El organizador no se avisa a sí mismo. Un correo sin usuario no tiene campana.
+ * Si la clave única ya existe, el aviso no se reescribe.
+ */
 export async function saveCalendarNotifications(tx: Transaction<CrmDatabase>, before: CalendarRow | null, after: CalendarRow, actorId: number): Promise<void> {
     const previous = new Set((before?.participants ?? []).flatMap((p) => (p.userId ? [p.userId] : [])));
     for (const userId of new Set((after.participants ?? []).flatMap((p) => (p.userId ? [p.userId] : [])))) {
@@ -46,7 +50,7 @@ export class CalendarNotificationsService {
         const denied = CALENDAR_MODULES.filter((module) => profile.permissions.some((p) => p.code === `${module}.calendar.read` && p.effect === "deny"));
         return sql`u.public_id_user=${profile.user.publicId} AND u.status_user='active' AND u.deleted_at_user IS NULL AND e.deleted_at_calendar_event IS NULL AND o.status_org_unit='active' AND o.deleted_at_org_unit IS NULL AND ${denied.length ? sql`o.code_org_unit NOT IN (${sql.join(denied)})` : sql`TRUE`} AND n.dismissed_at_calendar_notification IS NULL AND n.visible_at_calendar_notification<=UTC_TIMESTAMP(3) AND (n.expires_at_calendar_notification IS NULL OR n.expires_at_calendar_notification>UTC_TIMESTAMP(3)) AND EXISTS(SELECT 1 FROM crm_calendar_participant p WHERE p.event_id_calendar_participant=e.id_calendar_event AND p.user_id_calendar_participant=u.id_user AND p.status_calendar_participant='active' AND p.revoked_at_calendar_participant IS NULL)`;
     }
-    /** Devuelve hasta cien avisos y el total de pendientes autorizados. */
+    /** Hasta cien avisos y el total de pendientes autorizados. Un deny de lectura del módulo oculta el aviso aunque la persona esté invitada. Si ese módulo no se puede abrir, el contexto es el primer módulo legible. */
     async list(session: string | undefined) {
         const profile = await this.identity.getCurrentUser(session);
         const readable = CALENDAR_MODULES.filter((module) => calendarAccess(profile, module, "read").allowed);
@@ -58,7 +62,7 @@ export class CalendarNotificationsService {
         );
         return { items: result.rows.map(({ unreadCount: _count, ...item }) => ({ ...item, contextModule: readable.includes(item.moduleCode) ? item.moduleCode : readable[0] })), unreadCount: Number(result.rows[0]?.unreadCount ?? 0) };
     }
-    /** Marca lectura exclusivamente para el destinatario vigente. */
+    /** Acuse de todos los avisos de ese evento, solo para esta sesión. Un id ajeno o inexistente responde igual: no revela si el aviso existe. */
     async acknowledge(session: string | undefined, eventId: string) {
         if (!/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(eventId)) throw new BadRequestException("Evento inválido.");
         const profile = await this.identity.getCurrentUser(session);
@@ -66,7 +70,7 @@ export class CalendarNotificationsService {
         await sql`UPDATE crm_calendar_notification n JOIN crm_calendar_event e ON e.id_calendar_event=n.event_id_calendar_notification JOIN sec_user u ON u.id_user=n.recipient_user_id_calendar_notification JOIN sec_org_unit o ON o.id_org_unit=e.origin_module_id_calendar_event SET n.read_at_calendar_notification=COALESCE(n.read_at_calendar_notification,UTC_TIMESTAMP(3)) WHERE e.public_id_calendar_event=${eventId} AND ${this.visibility(profile)}`.execute(this.database.db);
         return { ok: true };
     }
-    /** Marca un único aviso desde la campana. */
+    /** Un solo aviso. Repetir el acuse no mueve la fecha de lectura. */
     async read(session: string | undefined, id: string) {
         if (
             !z
@@ -86,13 +90,10 @@ export class CalendarNotificationsService {
 export class CalendarNotificationsController {
     /** Reutiliza sesión y conexión nativas. */
     constructor(@Inject(CalendarNotificationsService) private readonly service: CalendarNotificationsService) {}
-    /**
-     *
-     */
+    /** Consulta sin marcar lectura. La respuesta no se guarda en caché. La ruta solo exige sesión; el servicio vuelve a mirar el permiso. */
     @Get()
     @Header("Cache-Control", "no-store")
     @RouteSecurity("authenticated")
-    /** Consulta sin marcar lectura. */
     list(@Req() request: CookieRequest) {
         return this.service.list(request.cookies[SESSION_COOKIE_NAME]);
     }
@@ -102,12 +103,9 @@ export class CalendarNotificationsController {
     acknowledge(@Req() request: CookieRequest, @Param("eventId") eventId: string) {
         return this.service.acknowledge(request.cookies[SESSION_COOKIE_NAME], eventId);
     }
-    /**
-     *
-     */
+    /** Acuse de un aviso. Va después de la ruta del evento para que `events` no se lea como un id. */
     @Put(":id/read")
     @RouteSecurity("authenticated")
-    /** Acuse individual idempotente. */
     read(@Req() request: CookieRequest, @Param("id") id: string) {
         return this.service.read(request.cookies[SESSION_COOKIE_NAME], id);
     }

@@ -23,9 +23,7 @@ function requiredRelations(links: readonly CalendarLink[]): CalendarAddendumRela
 }
 const same = (left: CalendarLink, right: CalendarLink) => left.source === right.source && left.id === right.id && left.entityType === right.entityType;
 
-/**
- *
- */
+/** El candado guardado, o un adéndum de Formalización, impide mover la orden y el cliente. */
 export function calendarOrderLinksLocked(row: CalendarRow): boolean {
     if (readCalendarAddendumLock(row.details)) return true;
     return row.originModule === "formalizacion" && row.typeCode === "adendum";
@@ -39,9 +37,7 @@ function historicalRelations(before: CalendarRow | null): CalendarAddendumRelati
     return null;
 }
 
-/**
- *
- */
+/** Si el cuerpo no trae vínculos, se conservan los de la fila. Omitirlos no los borra. */
 export function effectiveCalendarLinks(input: CalendarInput, before: CalendarRow | null): readonly CalendarLink[] {
     if (input.links !== undefined) return input.links;
     return before?.links ?? [];

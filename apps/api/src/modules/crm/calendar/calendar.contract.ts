@@ -7,7 +7,9 @@ export const CALENDAR_COLORS: Readonly<Record<CalendarModuleCode, string>> = { f
 const publicId = z.string().regex(/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
 const instant = z.iso.datetime().refine((value) => Number.isFinite(Date.parse(value)));
 const text = (length: number) => z.string().trim().max(length);
+/** Un participante es un usuario o un correo, no los dos ni ninguno. El objeto no admite campos de más. */
 export const calendarParticipant = z.strictObject({ userId: publicId.optional(), email: z.string().trim().toLowerCase().pipe(z.email().max(254)).optional() }).refine((value) => Boolean(value.userId) !== Boolean(value.email), "Exactly one participant identity is required");
+/** El nativo es un ULID. El legado no puede ser una nota y tiene que ser un entero positivo. */
 export const calendarLink = z.strictObject({ entityType: z.enum(["note", "lead", "sales_order"]), source: z.enum(["native", "legacy"]), id: text(160).min(1) }).refine((link) => (link.source === "native" ? /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(link.id) : link.entityType !== "note" && /^[1-9][0-9]{0,19}$/.test(link.id)), "Invalid source identity");
 export type CalendarParticipant = z.infer<typeof calendarParticipant>;
 export type CalendarLink = z.infer<typeof calendarLink>;
@@ -23,6 +25,7 @@ export const calendarEventInput = z.strictObject({
     moduleCode: z.enum(CALENDAR_MODULES),
     typeId: publicId,
     publishToCalendar: z.boolean().optional(),
+    /** La versión de Outlook no admite `*` ni saltos de línea: no puede colarse en un encabezado. */
     expectedOutlookVersion: z
         .string()
         .min(1)
@@ -40,6 +43,7 @@ export const calendarEventInput = z.strictObject({
     details: z.strictObject({ reference: text(160).optional(), teamsRequested: z.boolean().optional(), roomAddress: z.email().max(254).optional() }).default({}),
     operationId: z.uuid(),
 });
+/** La versión esperada se detiene antes del tope de 32 bits: el siguiente valor todavía cabe. */
 export const calendarEventUpdate = calendarEventInput.extend({ expectedVersion: z.number().int().min(1).max(4294967294) });
 export const calendarStatusInput = z.strictObject({ moduleCode: z.enum(CALENDAR_MODULES), action: z.enum(["complete", "cancel", "reactivate"]), expectedStatus: z.enum(["scheduled", "completed", "cancelled"]), expectedVersion: z.number().int().min(1).max(4294967294), operationId: z.uuid(), expectedOutlookVersion: z.string().max(512).optional(), reason: text(1000).optional() }).refine((value) => value.action !== "cancel" || Boolean(value.reason?.trim()), "La cancelación requiere motivo.");
 export type CalendarStatusInput = z.infer<typeof calendarStatusInput>;
@@ -68,11 +72,11 @@ export interface OutlookAttendee extends OutlookPerson {
     kind: "required" | "optional" | "resource";
     response: OutlookResponse;
 }
-/** Read-only facts Outlook already holds about an event; none of it grants access to CRM records or allows writing back. */
+/** Hechos que Outlook ya tiene. No autorizan un registro del CRM ni una escritura de vuelta. */
 export interface OutlookEventDetail {
     organizer: OutlookPerson | null;
     attendees: OutlookAttendee[];
-    /** Total reported by Outlook; `attendees` is capped. */
+    /** Total que reporta Outlook. `attendees` viene recortado y no es la lista completa. */
     attendeeCount: number;
     isOrganizer: boolean;
     myResponse: OutlookResponse | null;
@@ -91,7 +95,7 @@ export interface CalendarEvent {
     originModule: CalendarModuleCode | null;
     outlookId?: string;
     outlookVersion?: string;
-    /** Organizer, attendees and meeting data for synchronized and Outlook-only events. */
+    /** Organizador, asistentes y reunión, tanto si el evento está sincronizado como si solo existe en Outlook. */
     outlookDetail?: OutlookEventDetail | undefined;
     typeId: string;
     typeCode: string;
@@ -109,14 +113,14 @@ export interface CalendarEvent {
     details: { reference?: string; teamsRequested?: boolean; roomAddress?: string };
     participants?: CalendarParticipant[] | undefined;
     links?: CalendarLink[] | undefined;
-    /** False when existing relations cannot be exposed or replaced by this actor. */
+    /** Falso cuando este actor no puede ver ni reemplazar las relaciones que ya tiene el evento. */
     linksEditable?: boolean;
     /** Bloqueo histórico de cliente y orden impuesto por el servidor al crear un Adéndum. */
     orderLinksLocked?: boolean;
-    /** Authorized presentation labels; never trusted as command data. */
+    /** Rótulos para mostrar. No se aceptan como orden de escritura. */
     selectionOptions?: CalendarSelectionOptions | undefined;
 }
-/** Internal fields never reach HTTP; ownership is checked before projecting a row. */
+/** Campos internos. No salen por HTTP. La propiedad se comprueba antes de proyectar la fila. */
 export interface CalendarRow extends Omit<CalendarEvent, "canEdit" | "allDay" | "details" | "source" | "originModule"> {
     storedMetadata?: unknown;
     source: "native" | "legacy";

@@ -7,11 +7,11 @@ export interface CalendarReadScope {
     actorPublicId: string;
     modules: readonly CalendarModuleCode[];
     broadModules: readonly CalendarModuleCode[];
-    /** Explicit origin read denies override invitation-based visibility. */
+    /** Un deny explícito de lectura del módulo gana a la invitación. */
     excludedInviteModules?: readonly string[];
     start: string;
     end: string;
-    /** Native IDs matched to the current user's Outlook interval; the usual ACL still applies. */
+    /** Ids nativos que coinciden con el intervalo de Outlook de esta persona. Amplían la ventana, no el permiso. */
     externalEventIds?: readonly string[];
 }
 export interface CalendarLegacyReader {

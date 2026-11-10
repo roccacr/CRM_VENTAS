@@ -6,7 +6,7 @@ import type { CrmDatabase } from "../../../database/database.types.js";
 import type { CalendarInput, CalendarLink, CalendarParticipant, CalendarRow } from "./calendar.contract.js";
 import type { CrmCalendarParticipantTable } from "./calendar.tables.js";
 
-/** Batch reads identities only; linked records and participant labels are never joined. */
+/** Lee solo identidades. No une el registro vinculado ni el rótulo del participante: eso se autoriza aparte. */
 export async function readCalendarRelations(tx: Transaction<CrmDatabase>, rows: CalendarRow[]): Promise<CalendarRow[]> {
     if (!rows.length) return rows;
     const ids = rows.map((row) => row.internalId);
@@ -19,7 +19,10 @@ export async function readCalendarRelations(tx: Transaction<CrmDatabase>, rows: 
     return rows.map((row) => ({ ...row, participants: participants.filter((p) => p.eventId === row.internalId).flatMap((p): CalendarParticipant[] => (p.userId ? [{ userId: p.userId }] : p.email ? [{ email: p.email }] : [])), links: links.filter((link) => link.eventId === row.internalId).map(({ entityType, source, id }) => ({ entityType, source, id })) }));
 }
 
-/** Replace supplied sets under the event lock; omitted sets preserve existing relations and RSVP. */
+/**
+ * Solo reemplaza el conjunto que vino en el cuerpo. Omitir participantes o vínculos conserva los actuales y su respuesta.
+ * Un vínculo que sale se archiva. El mismo par, si vuelve, se reactiva en vez de duplicarse.
+ */
 export async function saveCalendarRelations(tx: Transaction<CrmDatabase>, eventId: number, actorId: number, input: CalendarInput): Promise<void> {
     if (input.participants !== undefined) await saveParticipants(tx, eventId, actorId, input.participants);
     if (input.links !== undefined) {
@@ -40,7 +43,7 @@ async function saveParticipants(tx: Transaction<CrmDatabase>, eventId: number, a
     for (const requested of participants) {
         const participant = await canonicalParticipant(tx, requested);
         const key = JSON.stringify(participant);
-        // The picker and a typed email may identify the same person; retain the first invitation unchanged.
+        // El selector y un correo escrito pueden ser la misma persona. Se queda la primera invitación y no se toca su respuesta.
         if (seen.has(key)) continue;
         seen.add(key);
         const retainedId = await saveParticipant(tx, { eventId, actorId }, participant, existing);
@@ -77,7 +80,7 @@ function isActiveParticipant(participant: Selectable<CrmCalendarParticipantTable
     return participant.status_calendar_participant === "active" && participant.revoked_at_calendar_participant === null;
 }
 
-/** A registered email grants invitation visibility to that existing account, never a new account or role. */
+/** Un correo que ya es una cuenta se invita como ese usuario. No se crea cuenta ni rol. Un usuario borrado o fuera de activo, inactivo y pendiente no entra. */
 async function canonicalParticipant(tx: Transaction<CrmDatabase>, participant: CalendarParticipant): Promise<CalendarParticipant> {
     if (participant.userId) return participant;
     const email = participant.email?.trim().toLowerCase();

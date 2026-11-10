@@ -3,7 +3,11 @@ import { hasGlobalMarketingRead } from "../marketing/marketing-read.policy.js";
 import { CALENDAR_MODULES, type CalendarModuleCode } from "./calendar.contract.js";
 
 export type CalendarAction = "read" | "create" | "update" | "assign_lead";
-/** Effective module membership plus exact allow/no-deny; Owner is resolved by the existing profile policy. */
+/**
+ * Hace falta la unidad del módulo, un allow con alcance conocido y ningún deny.
+ * Escribir también exige poder leer. Un alcance de persona deja el calendario en lo propio.
+ * La lectura global de Mercadeo o el rol de Formalización amplían la población solo al leer; no autorizan otro módulo ni eventos ajenos para escribir.
+ */
 export function calendarAccess(profile: IdentityProfile, moduleCode: CalendarModuleCode, action: CalendarAction): { allowed: boolean; ownOnly: boolean } {
     const membership = profile.orgUnits.some((unit) => unit.code === moduleCode && unit.status === "active");
     const code = `${moduleCode}.calendar.${action}`;
@@ -16,10 +20,10 @@ export function calendarAccess(profile: IdentityProfile, moduleCode: CalendarMod
     const globalMarketingRead = [action === "read", moduleCode === "mercadeo", hasGlobalMarketingRead(profile)].every(Boolean);
     // La cartera de Formalización se consulta por equipo: el rol amplía población, nunca sustituye permiso ni membresía.
     const globalFormalizationRead = [action === "read", moduleCode === "formalizacion", profile.roles.some((role) => role.status === "active" && ["formalizacion", "jefe_formalizaciones"].includes(role.code))].every(Boolean);
-    // Writing cannot expose an event outside the effective read scope.
+    // Escribir no puede ver más de lo que la lectura ya dejó. Si la lectura es propia, la escritura también.
     return { allowed: allowed && read.allowed, ownOnly: read.ownOnly || (!globalMarketingRead && !globalFormalizationRead && !grants.some((grant) => ["own_area", "own_area_and_children", "all_areas"].includes(grant.scope ?? ""))) };
 }
-/** The global guard grants only entry; the service validates every requested module and resource. */
+/** El guard solo abre la puerta si algún módulo permite la acción. El servicio vuelve a mirar el módulo y el recurso pedidos. */
 export function calendarRouteAccess(profile: IdentityProfile, action: CalendarAction): boolean {
     return CALENDAR_MODULES.some((moduleCode) => calendarAccess(profile, moduleCode, action).allowed);
 }

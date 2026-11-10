@@ -16,7 +16,7 @@ import { CreateBrokerDto, UpdateBrokerDto } from "./brokers.dto.js";
 import { BrokersService } from "./brokers.service.js";
 
 /**
- * Exposes Brokers routes using the established catalog API contract.
+ * Contrato de catálogo, con cookie de sesión. El permiso de ruta es la primera puerta; el servicio vuelve a evaluar el efectivo.
  */
 @ApiTags("brokers")
 @Controller("catalogs/brokers")
@@ -25,7 +25,7 @@ export class BrokersController {
     constructor(@Inject(BrokersService) private readonly catalogs: BrokersService) {}
 
     /**
-     * Lista corredores nativas y, si el fallback está activo, los que aún no migraron.
+     * Lista corredores nativos y, si el fallback está activo, los que aún no migraron.
      *
      * La cookie identifica la sesión. El permiso de lectura lo resuelve el servicio.
      */
@@ -38,7 +38,7 @@ export class BrokersController {
     }
 
     /**
-     * Crea un corredor nativa.
+     * Crea un corredor nativo.
      *
      * IP y user agent viajan solo para la auditoría. No se guardan como dato del corredor.
      */
@@ -69,6 +69,7 @@ export class BrokersController {
     /**
      * Activa o inactiva el corredor.
      *
+     * La acción de ruta `status` no es un permiso: activo exige actualizar e inactivo exige inactivar.
      * El motivo va en el cuerpo porque el cambio queda auditado en la misma transacción.
      */
     @Patch("items/:itemPublicId/status")
