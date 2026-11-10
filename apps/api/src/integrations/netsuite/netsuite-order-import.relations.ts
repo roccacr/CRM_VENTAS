@@ -179,7 +179,8 @@ async function assertNewContact(tx: Tx, email: string) {
 
 async function importCampaign(tx: Tx, system: number, customer: Customer) {
     const externalId = customer.campaign?.trim();
-    if (!externalId || !/^[1-9]\d*$/.test(externalId)) {
+    // NetSuite usa IDs negativos para campañas de sistema, por ejemplo -3 (Llamada).
+    if (!externalId || !/^-?[1-9]\d*$/.test(externalId)) {
         throw new ConflictException("El cliente no tiene un ID de campaña de NetSuite válido.");
     }
     const campaign = await one(

@@ -432,12 +432,15 @@ it.each([0, 1, 2])("resolves only one exact NetSuite transaction number (%i matc
     expect(record.load).not.toHaveBeenCalled();
 });
 
-it("looks up a customer by internal ID and returns the permitted fields", () => {
-    const lookupFields = vi.fn(() => ({ firstname: "Ana", lastname: "Prueba", email: "synthetic@example.test", leadsource: [{ value: 651, text: "Gogetit Leads" }], privateField: "omitted" }));
+it.each([
+    { campaignId: 651, campaignName: "Gogetit Leads" },
+    { campaignId: -3, campaignName: "Llamada" },
+])("looks up a customer and preserves campaign ID $campaignId", ({ campaignId, campaignName }) => {
+    const lookupFields = vi.fn(() => ({ firstname: "Ana", lastname: "Prueba", email: "synthetic@example.test", leadsource: [{ value: campaignId, text: campaignName }], privateField: "omitted" }));
     const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields } });
     expect(restlet.get?.({ module: "leads", action: "importCustomer", id: "2034401" })).toEqual({
         status: 200,
-        data: { id: "2034401", fullName: "Ana Prueba", email: "synthetic@example.test", company: null, phone: null, campaign: "651", campaignName: "Gogetit Leads" },
+        data: { id: "2034401", fullName: "Ana Prueba", email: "synthetic@example.test", company: null, phone: null, campaign: String(campaignId), campaignName },
     });
     expect(lookupFields).toHaveBeenCalledOnce();
 });

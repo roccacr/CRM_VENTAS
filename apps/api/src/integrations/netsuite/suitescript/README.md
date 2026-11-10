@@ -14,6 +14,9 @@ buscar la referencia externa de la campaña. Si falta, concilia por
 guarda el vínculo en la BD nueva dentro de la transacción de importación.
 Cuando el cliente carece de un origen comercial conciliado, Habita usa o crea
 el origen de respaldo `netsuite` («Importado desde NetSuite»).
+Las campañas de sistema pueden tener IDs negativos válidos, como `-3`
+(Llamada). Se conserva el signo al resolver el catálogo legado y al guardar
+la referencia externa. El ID interno del CRM conserva su identidad propia.
 
 La ficha de expediente devuelve también `projectName` mediante `getText` del
 mismo campo que entrega `projectId`. El importador resuelve primero el vínculo
