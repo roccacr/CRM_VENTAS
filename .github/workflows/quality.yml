@@ -54,7 +54,7 @@ jobs:
 
       - name: Preserve the build verified by CI
         if: github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && vars.HABITA_QA_ENABLED == 'true'
-        uses: actions/upload-artifact@b7c566a772e6b6fb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: habita-build-${{ matrix.app }}
           path: apps/${{ matrix.app }}/dist
@@ -80,7 +80,7 @@ jobs:
           path: apps/frontend/dist
       - name: Package and record commit and SHA-256
         run: python3 deploy/habita/package-ci-release.py release-package
-      - uses: actions/upload-artifact@b7c566a772e6b6fb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: habita-release
           path: release-package/
