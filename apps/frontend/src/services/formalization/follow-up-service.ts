@@ -28,6 +28,12 @@ export interface FollowUpItem {
     readonly seller?: { id: string | null; name: string } | null;
     readonly changedBy?: { id: string | null; name: string } | null;
     readonly state: { code: string; label: string; since: string | null; days: number | null };
+    readonly salesManagementApproved?: boolean | null;
+    readonly developerApproved?: boolean | null;
+    readonly formalizationApproved?: boolean | null;
+    readonly commercialClosureSigned?: boolean | null;
+    readonly contractSignedCheck?: boolean | null;
+    readonly saleLostCheck?: boolean | null;
     readonly approvalsComplete?: boolean;
     readonly saleLost?: boolean;
     readonly contractSigned?: boolean | undefined;
@@ -119,6 +125,12 @@ function item(value: unknown): FollowUpItem {
         state: { code: text(state.code), label: text(state.label), since: nullable(state.since, date), days: nullable(state.days, count) },
         ...optionalSaleLost(data.saleLost),
         ...(data.contractSigned === undefined ? {} : { contractSigned: bool(data.contractSigned) }),
+        ...optionalCompletionFlag("salesManagementApproved", data.salesManagementApproved),
+        ...optionalCompletionFlag("developerApproved", data.developerApproved),
+        ...optionalCompletionFlag("formalizationApproved", data.formalizationApproved),
+        ...optionalCompletionFlag("commercialClosureSigned", data.commercialClosureSigned),
+        ...optionalCompletionFlag("contractSignedCheck", data.contractSignedCheck),
+        ...optionalCompletionFlag("saleLostCheck", data.saleLostCheck),
         ...optionalCompletionFlag("installmentsFullyPaid", data.installmentsFullyPaid),
         ...optionalCompletionFlag("unitTransferred", data.unitTransferred),
         ...optionalCompletionFlag("keysDelivered", data.keysDelivered),
@@ -129,7 +141,7 @@ function item(value: unknown): FollowUpItem {
         completedThisYear: bool(data.completedThisYear),
     };
 }
-function optionalCompletionFlag(field: "installmentsFullyPaid" | "unitTransferred" | "keysDelivered" | "unitDelivered", value: unknown) {
+function optionalCompletionFlag(field: "installmentsFullyPaid" | "unitTransferred" | "keysDelivered" | "unitDelivered" | "salesManagementApproved" | "developerApproved" | "formalizationApproved" | "commercialClosureSigned" | "contractSignedCheck" | "saleLostCheck", value: unknown) {
     return value === undefined ? {} : { [field]: nullable(value, bool) };
 }
 function optionalFunds(value: unknown) {

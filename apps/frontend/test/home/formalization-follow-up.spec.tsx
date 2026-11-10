@@ -38,7 +38,7 @@ it("keeps the order drawer open with its revalidated stage after approval remove
     await waitFor(() => {
         expect(apiRequest).toHaveBeenCalledWith("/formalization/orders/legacy/271/record");
     });
-    expect(await screen.findByRole("button", { name: "Ver orden completa" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Ver orden completa" })).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Avance de Formalización" }).getAttribute("aria-valuenow")).toBe("2");
     expect(apiRequest).not.toHaveBeenCalledWith(expect.stringContaining("/netsuite"));
 });
@@ -77,8 +77,8 @@ it("renders canonical rows read-only, returned counts and nullable values", asyn
     const table = within(await screen.findByRole("region", { name: "Órdenes filtradas" }));
     expect(table.getByText("Etiqueta del servidor")).toBeTruthy();
     expect(table.getByText("Acción del servidor")).toBeTruthy();
-    expect(screen.getByText("Tiempo no disponible")).toBeTruthy();
-    expect(screen.getByText("26 órdenes")).toBeTruthy();
+    expect(screen.getByText("Tiempo no disponible")).toBeInTheDocument();
+    expect(screen.getByText("26 órdenes")).toBeInTheDocument();
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
     expect(screen.queryByRole("option", { name: /Pendientes de aprobación/ })).toBeNull();
 });
@@ -91,7 +91,7 @@ it.each([true, false])("shows only the pending badge/queue with effective adendu
     expect(Boolean(screen.queryByText("Adéndum pendiente"))).toBe(readable);
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
     expect(Boolean(screen.queryByRole("option", { name: "Pendientes de adéndum (1)" }))).toBe(readable);
-    expect(screen.getByText("26 órdenes")).toBeTruthy();
+    expect(screen.getByText("26 órdenes")).toBeInTheDocument();
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
 });
 it("does not present a missing legacy-compatible addendum count as zero or undefined", async () => {
@@ -106,7 +106,7 @@ it("does not present a missing legacy-compatible addendum count as zero or undef
     );
     await screen.findByText("OV-REAL");
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
-    expect(screen.getByRole("option", { name: "Pendientes de adéndum (—)" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Pendientes de adéndum (—)" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Pendientes de adéndum (0)" })).toBeNull();
 });
 it.each(["completed", "cancelled"] as const)("refreshes the pending queue, badge and count after confirming an addendum as %s", async (target) => {
@@ -140,6 +140,10 @@ it.each(["completed", "cancelled"] as const)("refreshes the pending queue, badge
         />,
     );
     fireEvent.click(await screen.findByText("OV-ADENDUM-QUEUE"));
+    await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Adéndum de la orden" })).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Adéndum de la orden" }));
     fireEvent.click(await screen.findByRole("button", { name: target === "completed" ? "Marcar adéndum como completado" : "Cancelar adéndum" }));
     await waitFor(() => {
         expect(vi.mocked(apiRequest).mock.calls.some(([path, opts]) => path === "/formalization/orders/addendum" && opts?.method === "POST")).toBe(true);
@@ -222,7 +226,7 @@ it("shows a successful empty result with zero rather than an error", async () =>
     vi.mocked(apiRequest).mockResolvedValue({ ...payload(), items: [], page: { number: 1, size: 25, total: 0, totalPages: 0 } });
     render(<FormalizationFollowUpPreview {...props} />);
     await screen.findByText("No hay órdenes para estos filtros.");
-    expect(screen.getByText("0 órdenes")).toBeTruthy();
+    expect(screen.getByText("0 órdenes")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
 });
 it("gates Home reads by effective allow without deny (active role not required), and removes revoked rows", async () => {
@@ -265,23 +269,23 @@ it("fences a new load when returning to a previously completed filter", async ()
     await chooseFollowUpFilter("Bandeja de seguimiento", /^Gestión bancaria \(/);
     fireEvent.keyDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }), { key: "Backspace" });
     expect(screen.queryByText("OV-REAL")).toBeNull();
-    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.getByRole("status")).toBeInTheDocument();
 });
 it("keeps salesperson separate when stage responsibility is unknown", async () => {
     const data = payload();
     vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, seller: { id: "seller", name: "Ana" }, changedBy: { id: "author", name: "Luis" } })) });
     render(<FormalizationFollowUpPreview {...props} />);
     await screen.findByText("Sin responsable registrado");
-    expect(screen.getByText("Vendedor: Ana")).toBeTruthy();
-    expect(screen.getByText("Autor del cambio: Luis")).toBeTruthy();
-    expect(screen.getByText("Tiempo no disponible")).toBeTruthy();
+    expect(screen.getByText("Vendedor: Ana")).toBeInTheDocument();
+    expect(screen.getByText("Autor del cambio: Luis")).toBeInTheDocument();
+    expect(screen.getByText("Tiempo no disponible")).toBeInTheDocument();
 });
 it.each([true, false])("shows the change author only when different from responsibility: %s", async (same) => {
     const data = payload();
     vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, responsible: { id: "owner", name: "Responsable etapa" }, seller: { id: "seller", name: "Ana" }, changedBy: { id: same ? "owner" : "author", name: same ? "Responsable etapa" : "Luis" } })) });
     render(<FormalizationFollowUpPreview {...props} />);
     await screen.findByText("Responsable etapa");
-    expect(screen.getByText("Vendedor: Ana")).toBeTruthy();
+    expect(screen.getByText("Vendedor: Ana")).toBeInTheDocument();
     expect(screen.queryByText(/^Autor del cambio:/) !== null).toBe(!same);
 });
 it.each([false, true])("Home passes update permission, deny wins: %s", async (denied) => {
@@ -323,7 +327,7 @@ it("saving a live drawer preserves it and refreshes its record, list and Home ba
         expect(summaryReads()).toBeGreaterThan(before);
     });
     await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Ver orden completa" })).toBeTruthy();
+        expect(screen.getByRole("button", { name: "Ver orden completa" })).toBeInTheDocument();
         expect(screen.getByRole("progressbar", { name: "Avance de Formalización" }).getAttribute("aria-valuenow")).toBe("3");
     });
 });
@@ -345,7 +349,7 @@ it.each([null, "", "cliente@example.com\r\nBcc:otro@example.com"])("does not com
     render(<FormalizationFollowUpPreview {...props} />);
     fireEvent.click(await screen.findByText("OV-REAL"));
     expect(screen.queryByRole("link", { name: "Abrir Outlook" })).toBeNull();
-    expect(screen.getByText("Correo del cliente no disponible")).toBeTruthy();
+    expect(screen.getByText("Correo del cliente no disponible")).toBeInTheDocument();
 });
 it("hides Outlook in other stages even with a client email", async () => {
     const data = payload();
@@ -367,8 +371,8 @@ it("opens the real order in the complete page and returns with the current filte
     });
     fireEvent.click(await screen.findByText("OV-COMPLETA"));
     fireEvent.click(await screen.findByRole("button", { name: "Ver orden completa" }));
-    expect(await screen.findByRole("heading", { name: "Orden de venta OV-COMPLETA" })).toBeTruthy();
-    expect(screen.getByText("real@example.com")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Orden de venta OV-COMPLETA" })).toBeInTheDocument();
+    expect(screen.getByText("real@example.com")).toBeInTheDocument();
     expect(new URL(screen.getByRole("link", { name: "Abrir Outlook" }).getAttribute("href") ?? "").searchParams.get("to")).toBe("real@example.com");
     expect(screen.queryByRole("combobox", { name: "Etapa de Formalización" })).toBeNull();
     expect(screen.queryByText("Restablecer ejemplo")).toBeNull();
@@ -387,7 +391,7 @@ it("opens the full record above the workspace in the Habita and preserves the li
     render(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[detail, allow]} />);
     fireEvent.click(await screen.findByText("OV-PAGINA"));
     fireEvent.click(await screen.findByRole("button", { name: "Ver orden completa" }));
-    expect(await screen.findByRole("heading", { name: "Orden de venta OV-PAGINA" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Orden de venta OV-PAGINA" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Listado de órdenes" })).toBeNull();
     const record = screen.getByRole("region", { name: "Orden de venta OV-PAGINA" });
     expect(record.querySelector("h1")?.textContent).toBe("Orden de venta OV-PAGINA");
@@ -395,7 +399,7 @@ it("opens the full record above the workspace in the Habita and preserves the li
     expect(record.textContent).not.toContain("Cliente y unidad");
     expect(screen.queryByRole("button", { name: "Restablecer ejemplo" })).toBeNull();
     fireEvent.click(screen.getByRole("link", { name: "Órdenes de venta" }));
-    expect(await screen.findByRole("heading", { name: "Listado de órdenes" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Listado de órdenes" })).toBeInTheDocument();
 });
 
 it("shows the shared compact timeline inside the side panel", async () => {
@@ -410,7 +414,7 @@ it("shows the shared compact timeline inside the side panel", async () => {
     const timeline = screen.getByRole("region", { name: "Etapas de Formalización" });
     expect(timeline.classList.contains("formalization-record-progress--compact")).toBe(true);
     expect(within(timeline).getAllByRole("listitem")).toHaveLength(8);
-    expect(screen.getByRole("button", { name: "Ver orden completa" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ver orden completa" })).toBeInTheDocument();
 });
 
 it("revalidates only the committed Habita order and preserves provider details after a stage change", async () => {
@@ -444,8 +448,8 @@ it("revalidates only the committed Habita order and preserves provider details a
     expect(recordReads()).toBe(beforeRecord + 1);
     expect(reads().some(([path]) => path.includes("recordId="))).toBe(false);
     expect(screen.queryByText("Cargando datos de la orden…")).toBeNull();
-    expect(screen.getByRole("button", { name: "Registrar siguiente etapa" })).toBeTruthy();
-    expect(screen.getByText("US Dollar")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Registrar siguiente etapa" })).toBeInTheDocument();
+    expect(screen.getByText("US Dollar")).toBeInTheDocument();
     window.history.replaceState({}, "", "/home/formalization");
 });
 
@@ -453,7 +457,7 @@ it("approvals-only reads the list without an umbrella grant", async () => {
     render(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
     await screen.findByText("OV-REAL");
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
-    expect(screen.getByRole("option", { name: /Pendientes de aprobación/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Pendientes de aprobación/ })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /Gestión bancaria/ })).toBeNull();
     expect(reads()).toHaveLength(1);
 });
@@ -495,7 +499,7 @@ it("detail-only direct URL restores without banner, list or count reads", async 
         return Promise.reject(new Error("provider unavailable"));
     });
     render(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[detail]} />);
-    expect(await screen.findByRole("heading", { name: /Orden de venta DETAIL-ONLY/ })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: /Orden de venta DETAIL-ONLY/ })).toBeInTheDocument();
     expect(reads()).toHaveLength(0);
     expect(vi.mocked(apiRequest).mock.calls.some(([path]) => path.includes("/home/summary"))).toBe(false);
     window.history.replaceState({}, "", "/home/formalization");
@@ -504,7 +508,7 @@ it("detail-only direct URL restores without banner, list or count reads", async 
 it("an explicit detail deny clears an open drawer while preserving category list access", async () => {
     const { rerender } = render(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[allow, detail]} />);
     fireEvent.click(await screen.findByText("OV-REAL"));
-    expect(await screen.findByRole("button", { name: "Ver orden completa" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Ver orden completa" })).toBeInTheDocument();
     rerender(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[allow, detail, { ...detail, effect: "deny" }]} />);
     expect(screen.queryByRole("button", { name: "Ver orden completa" })).toBeNull();
     await screen.findByText("OV-REAL");

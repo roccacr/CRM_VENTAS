@@ -43,7 +43,7 @@ it("walks through attachment, email and signature with dates and a discardable h
     expect(screen.getByRole("button", { name: "Enviar contrato" }).hasAttribute("disabled")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Enviar contrato" }));
     expect(screen.getByLabelText("Destinatario *")).toHaveProperty("value", "demo-ov-101@example.invalid");
-    expect(screen.getByText("Adjunto: contrato-DEMO-OV-101.pdf")).toBeTruthy();
+    expect(screen.getByText("Adjunto: contrato-DEMO-OV-101.pdf")).toBeInTheDocument();
     submitDialog();
     fireEvent.click(screen.getByRole("button", { name: "Contrato firmado" }));
     fireEvent.click(screen.getByRole("button", { name: "Usar documento de ejemplo" }));
@@ -76,7 +76,7 @@ it("presents other advisor data and records it only in the local example history
     fireEvent.change(screen.getByLabelText("Teléfono del asesor · Opcional"), { target: { value: "00000000" } });
     submitDialog();
     expect(screen.getByRole("status").textContent).toContain("Crédito en proceso");
-    expect(screen.getByText(/Teléfono: 00000000/)).toBeTruthy();
+    expect(screen.getByText(/Teléfono: 00000000/)).toBeInTheDocument();
 });
 
 it("shows both proposed exception and closure outcomes without granting real authorization", () => {
@@ -105,9 +105,9 @@ it("explains fixed banking durations and opens the same order from the indicator
             }}
         />,
     );
-    expect(screen.getByText("18 días transcurridos")).toBeTruthy();
-    expect(screen.getByText("5 días finalizada")).toBeTruthy();
-    expect(screen.getByText("7 días")).toBeTruthy();
+    expect(screen.getByText("18 días transcurridos")).toBeInTheDocument();
+    expect(screen.getByText("5 días finalizada")).toBeInTheDocument();
+    expect(screen.getByText("7 días")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "DEMO-OV-103" }));
     expect(selected).toBe("DEMO-OV-103");
 });
@@ -117,8 +117,8 @@ it("opens an explicit preview without changing the order or offering real submis
     const order = FORMALIZATION_EXAMPLES[1];
     render(<FormalizationOrderPreview order={order} onBack={() => undefined} />);
     fireEvent.click(screen.getByRole("button", { name: "Contrato firmado" }));
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.queryByText("Simulación visual. No se envían correos ni archivos, ni se modifica ningún registro real.")).toBeNull();
     expect(order.contract).toBe("Enviado · Pendiente de firma");
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
 });

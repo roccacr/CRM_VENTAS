@@ -13,7 +13,7 @@ function expectSourcePredicates(queries: CompiledQuery[]) {
     for (const [index, prefix] of ["", "NOT shadowed AND "].entries()) {
         const query = queries[index]?.sql ?? "";
         expect(query).toContain(index === 0 ? "o.contract_signed_sales_order='yes'" : "o.contrado_frima_ov=1");
-        const completionPredicates: Record<string, string> = { pending_transfer: " AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0", transfer_signed: " AND installments_paid=1 AND unit_transferred=1 AND keys_delivered=0 AND unit_delivered=0" };
+        const completionPredicates: Record<string, string> = { pending_transfer: " AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0", transfer_signed: " AND installments_paid=1 AND keys_delivered=0 AND unit_delivered=0" };
         for (const [stage, alias] of [
             ["bank_management", "banking"],
             ["pending_balance", "balance"],
@@ -77,11 +77,11 @@ describe("Home aggregate SQL", () => {
     });
     it("normalizes empty aggregates and rejects unsafe numeric results", () => {
         expect(stageCountsFromRow({ toSend: null, pendingSignature: null, banking: null, bankingInProgress: 0, balance: null, transferPending: null, transferSigned: null, closedThisYear: null })).toEqual({ contracts: { toSend: 0, pendingSignature: 0 }, banking: 0, bankingInProgress: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 });
-        expect(() => stageCountsFromRow(undefined)).toThrow();
-        expect(() => stageCountsFromRow({} as never)).toThrow();
-        expect(() => aggregateNumber(undefined as never)).toThrow();
+        expect(() => stageCountsFromRow(undefined)).toThrow("Missing Home aggregate row");
+        expect(() => stageCountsFromRow({} as never)).toThrow("Invalid Home aggregate count");
+        expect(() => aggregateNumber(undefined as never)).toThrow("Invalid Home aggregate count");
         expect(aggregateNumber("1234567")).toBe(1234567);
-        for (const value of ["", " ", "1.0000000000000001", "01", "+1", "-1", "1e3", "1.0", "9007199254740993", "NaN", -1, 1.5]) expect(() => aggregateNumber(value)).toThrow();
+        for (const value of ["", " ", "1.0000000000000001", "01", "+1", "-1", "1e3", "1.0", "9007199254740993", "NaN", -1, 1.5]) expect(() => aggregateNumber(value)).toThrow("Invalid Home aggregate count");
         expect(aggregateNumber(null)).toBe(0);
         expect(aggregateNumber("0")).toBe(0);
         expect(aggregateNumber("9007199254740991")).toBe(Number.MAX_SAFE_INTEGER);

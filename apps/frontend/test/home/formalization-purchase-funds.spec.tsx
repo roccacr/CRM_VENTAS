@@ -56,7 +56,7 @@ it("requires refresh after a conflict and never overwrites the changed order", a
     fireEvent.click(screen.getByRole("button", { name: "Editar fondos de compra" }));
     fireEvent.change(await screen.findByLabelText("Origen de los fondos"), { target: { value: "own_funds" } });
     fireEvent.click(screen.getByRole("button", { name: /Guardar fondos/ }));
-    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Guardar fondos/ }).hasAttribute("disabled")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Actualizar orden" }));
     expect(refresh).toHaveBeenCalledOnce();
@@ -68,9 +68,9 @@ it("keeps confirmed success when the parent refresh fails", async () => {
     fireEvent.click(screen.getByRole("button", { name: "Editar fondos de compra" }));
     fireEvent.change(await screen.findByLabelText("Origen de los fondos"), { target: { value: "own_funds" } });
     fireEvent.click(screen.getByRole("button", { name: /Guardar fondos/ }));
-    expect(await screen.findByText("Fondos guardados. Actualiza la orden para ver el dato actualizado.")).toBeTruthy();
+    expect(await screen.findByText("Fondos guardados. Actualiza la orden para ver el dato actualizado.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Guardar fondos/ })).toBeNull();
-    expect(screen.getByText("Fondos propios")).toBeTruthy();
+    expect(screen.getByText("Fondos propios")).toBeInTheDocument();
 });
 
 it.each([

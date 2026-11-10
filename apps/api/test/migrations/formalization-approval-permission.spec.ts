@@ -7,6 +7,7 @@ import type { DatabaseService } from "../../src/database/database.service.js";
 import type { SecurityAuditService } from "../../src/modules/crm/audit/security-audit.service.js";
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
 import type { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
+import { anyOf } from "../support/throws.js";
 
 const code = "formalizacion.orders.approve";
 const description = "Permite marcar únicamente la aprobación de Formalización después de la confirmación de NetSuite; no modifica las demás aprobaciones ni omite otras validaciones.";
@@ -140,7 +141,9 @@ describe("formalization approval permission migration", () => {
     ] satisfies Options[])("rejects unsafe configuration before writes: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(
+                anyOf("Formalization approval permission requires CRM_THINK_V2", "Formalization approval permission requires native InnoDB security tables", "Formalization approval permission requires active jefe_formalizaciones role", "Formalization approval permission requires Owner migration attribution", "Formalization approval permission conflicts with existing configuration; reconci", "Revoked or conflicting role grant requires explicit reconciliation"),
+            );
             expect(writes(f.queries)).toEqual([]);
             expect(f.transactions).toEqual(["begin", "rollback"]);
         } finally {

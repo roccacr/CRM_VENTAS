@@ -69,7 +69,9 @@ describe("identity transactional change history", () => {
     it.each(["roles", "areas"] as const)("rejects stale preserved %s under the lock before any write", async (kind) => {
         const f = fixture();
         try {
-            await expect(f.directory.update({ validateAccess: () => Promise.resolve(), actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: kind === "roles" ? ["owner"] : ["sales"], orgUnitCodes: kind === "areas" ? ["formalizacion"] : ["ventas"], accessMethods: ["local"], externalReferences: [], reason: "Stale access regression" })).rejects.toThrow();
+            await expect(f.directory.update({ validateAccess: () => Promise.resolve(), actorPublicId: "actor", userPublicId: "user", preserveAssignments: true, displayName: "Changed", email: "changed@example.test", normalizedEmail: "changed@example.test", roleCode: "sales", roleCodes: kind === "roles" ? ["owner"] : ["sales"], orgUnitCodes: kind === "areas" ? ["formalizacion"] : ["ventas"], accessMethods: ["local"], externalReferences: [], reason: "Stale access regression" })).rejects.toThrow(
+                "Las asignaciones cambiaron; se requiere role.assign.",
+            );
             expect(f.queries.filter((query) => /^(update|insert|delete)/.test(query.sql))).toEqual([]);
             expect(f.record).not.toHaveBeenCalled();
         } finally {

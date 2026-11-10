@@ -144,6 +144,29 @@ describe("CatalogItemsPage", () => {
         expect(screen.queryByRole("button", { name: "Actualizar proyectos" })).not.toBeInTheDocument();
     });
 
+    it("mounts a row menu only on demand and opens the existing edit form", async () => {
+        const catalog = ADMINISTRATION_CATALOGS[0];
+        if (!catalog) throw new Error("Catalog missing");
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+        fireEvent.click(await screen.findByRole("button", { name: `Acciones de ${item.name}` }));
+        fireEvent.click(await screen.findByRole("menuitem", { name: /Editar/ }));
+        expect(await screen.findByRole("button", { name: "Guardar cambios" })).toBeInTheDocument();
+    });
+
+    it("renders markup-like catalog values as text in the table", async () => {
+        const catalog = ADMINISTRATION_CATALOGS.find(({ code }) => code === "projects");
+        if (!catalog) throw new Error("Projects catalog missing");
+        const markup = '<img data-catalog-injection="true">';
+        const record = { ...item, name: markup, detail: markup, externalReferences: item.externalReferences.map((reference) => ({ ...reference, externalId: markup })) };
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [record], total: 1 });
+        render(<CatalogItemsPage catalog={catalog} />);
+        const row = await screen.findByRole("row", { name: `Ver detalle de ${markup}` });
+        expect(within(row).getAllByText(markup)).toHaveLength(3);
+        expect(row.querySelector("[data-catalog-injection]")).toBeNull();
+    });
+
     it("aligns project filter tracks with measured table headers", async () => {
         const geometry = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
             const index = this instanceof HTMLTableCellElement ? this.cellIndex : 0;
@@ -386,7 +409,7 @@ describe("CatalogItemsPage", () => {
     it("shows loading feedback while retaining rows during the next page request", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 291 });
+        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1291 });
         render(<CatalogItemsPage catalog={catalog} />);
         await screen.findByText(item.name);
         await waitFor(() => expect(screen.queryByRole("status", { name: "Cargando proyectos" })).not.toBeInTheDocument());
@@ -395,13 +418,13 @@ describe("CatalogItemsPage", () => {
         expect(screen.getByRole("status", { name: "Cargando proyectos" })).toBeInTheDocument();
         expect(screen.getByText(item.name)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Página siguiente" })).toBeDisabled();
-        expect(screen.getByRole("combobox", { name: "Filas por página" })).toHaveValue("100");
+        expect(screen.getByRole("combobox", { name: "Filas por página" })).toHaveValue("500");
     });
 
     it("reuses fetched pages without requests or a loader and keeps the grid mounted", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        const response = { catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 291 };
+        const response = { catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1291 };
         mockListCatalogItems.mockResolvedValueOnce(response).mockResolvedValueOnce({ ...response, items: [{ ...item, publicId: "second", name: "Second project" }] });
         render(<CatalogItemsPage catalog={catalog} />);
         await screen.findByText(item.name);
@@ -424,7 +447,7 @@ describe("CatalogItemsPage", () => {
     it("invalidates cached pages on explicit refresh", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 291 });
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1291 });
         render(<CatalogItemsPage catalog={catalog} />);
         await screen.findByText(item.name);
         fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
@@ -444,34 +467,34 @@ describe("CatalogItemsPage", () => {
     it("fetches the next API page instead of accumulating rows", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 291 });
-        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [{ ...item, publicId: "second", name: "Second project" }], total: 291 });
+        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1291 });
+        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [{ ...item, publicId: "second", name: "Second project" }], total: 1291 });
         render(<CatalogItemsPage catalog={catalog} />);
         expect(await screen.findByRole("searchbox", { name: "Buscar:" })).toBeInTheDocument();
         expect(screen.queryByRole("radio", { name: /Todos/ })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
         await waitFor(() => {
-            expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ offset: 100, limit: 100, moduleCode: "administration" }));
+            expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ offset: 500, limit: 500, moduleCode: "administration" }));
         });
         expect(await screen.findByText("Second project")).toBeInTheDocument();
         expect(screen.queryByText(item.name)).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Cargar más" })).not.toBeInTheDocument();
     });
 
-    it.each([10, 50, 100, 200])("fetches exactly the selected %i row limit and resets to page one", async (size) => {
+    it.each([10, 50, 100, 200, 500])("fetches exactly the selected %i row limit and resets to page one", async (size) => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 291 });
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1291 });
         render(<CatalogItemsPage catalog={catalog} />);
         await screen.findByText(item.name);
         fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
         await waitFor(() => {
-            expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ offset: 100 }));
+            expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ offset: 500 }));
         });
         await waitFor(() => expect(screen.getByRole("combobox", { name: "Filas por página" })).toBeEnabled());
         fireEvent.change(screen.getByRole("combobox", { name: "Filas por página" }), { target: { value: String(size) } });
         await waitFor(() => {
-            if (size === 100) expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
+            if (size === 500) expect(mockListCatalogItems).toHaveBeenCalledTimes(2);
             else expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ offset: 0, limit: size }));
         });
         expect(screen.getByRole("button", { name: "Página anterior" })).toBeDisabled();
@@ -485,25 +508,25 @@ describe("CatalogItemsPage", () => {
     it("fetches last and previous API pages and disables Next at the boundary", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 291 });
+        mockListCatalogItems.mockResolvedValue({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1291 });
         render(<CatalogItemsPage catalog={catalog} />);
         await screen.findByText(item.name);
         fireEvent.click(screen.getByRole("button", { name: "Última página" }));
         await waitFor(() => {
-            expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ limit: 100, offset: 200 }));
+            expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ limit: 500, offset: 1000 }));
         });
         await waitFor(() => expect(screen.getByRole("button", { name: "Página siguiente" })).toBeDisabled());
         await waitFor(() => expect(screen.getByRole("button", { name: "Página anterior" })).toBeEnabled());
         fireEvent.click(screen.getByRole("button", { name: "Página anterior" }));
         await waitFor(() => {
-            expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ offset: 100 }));
+            expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ offset: 500 }));
         });
     });
 
     it("returns to the last available page when the API total shrinks", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        const response = { catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 291 };
+        const response = { catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1291 };
         mockListCatalogItems
             .mockResolvedValueOnce(response)
             .mockResolvedValueOnce({ ...response, items: [], total: 1 })
@@ -514,7 +537,7 @@ describe("CatalogItemsPage", () => {
         await waitFor(() => {
             expect(mockListCatalogItems).toHaveBeenCalledTimes(3);
         });
-        expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ limit: 100, offset: 0 }));
+        expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, expect.objectContaining({ limit: 500, offset: 0 }));
         await waitFor(() => expect(screen.getByRole("button", { name: "Página siguiente" })).toBeDisabled());
         expect(screen.getByText(item.name)).toBeInTheDocument();
     });
@@ -540,9 +563,9 @@ describe("CatalogItemsPage", () => {
     it("retains the current page and permits retry after a page request fails", async () => {
         const catalog = ADMINISTRATION_CATALOGS[0];
         if (!catalog) throw new Error("Catalog missing");
-        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 291 });
+        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [item], total: 1291 });
         mockListCatalogItems.mockRejectedValueOnce(new Error("Network failure"));
-        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [{ ...item, publicId: "second", name: "Second project" }], total: 291 });
+        mockListCatalogItems.mockResolvedValueOnce({ catalog: { code: catalog.code, label: catalog.label, moduleCode: catalog.moduleCode }, items: [{ ...item, publicId: "second", name: "Second project" }], total: 1291 });
         render(<CatalogItemsPage catalog={catalog} />);
         fireEvent.click(await screen.findByRole("button", { name: "Página siguiente" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar el catálogo");
@@ -552,13 +575,13 @@ describe("CatalogItemsPage", () => {
         expect(await screen.findByText("Second project")).toBeInTheDocument();
     });
 
-    it("loads each catalog with its module and an initial API page of 100", async () => {
+    it("loads each catalog with its module and an initial API page of 500", async () => {
         for (const catalog of ADMINISTRATION_CATALOGS) {
             const { unmount } = render(<CatalogItemsPage catalog={catalog} />);
 
             expect(await screen.findByRole("heading", { name: catalog.label })).toBeInTheDocument();
             await waitFor(() => {
-                expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, { limit: 100, offset: 0, moduleCode: "administration", status: "all" });
+                expect(mockListCatalogItems).toHaveBeenLastCalledWith(catalog.code, { limit: 500, offset: 0, moduleCode: "administration", status: "all" });
             });
 
             unmount();

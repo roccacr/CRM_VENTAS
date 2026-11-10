@@ -1,5 +1,6 @@
 import Button from "antd/es/button";
 import Card from "antd/es/card";
+import Popover from "antd/es/popover";
 import { useEffect, useRef, useState } from "react";
 
 import { ApiClientError } from "../../services/api/api-client";
@@ -15,9 +16,39 @@ function writeFailure(failure: unknown) {
 }
 
 /** Marcador único por orden; sus acciones no completan ni cancelan los eventos del calendario. */
-export function FormalizationOrderAddendum({ item, permissions, refreshVersion = 0, onChanged }: { readonly item: FollowUpItem; readonly permissions: readonly AddendumPermission[]; readonly refreshVersion?: number; readonly onChanged?: OnChanged }) {
+export function FormalizationOrderAddendum({ item, permissions, refreshVersion = 0, onChanged, marker = false }: { readonly item: FollowUpItem; readonly permissions: readonly AddendumPermission[]; readonly refreshVersion?: number; readonly onChanged?: OnChanged; readonly marker?: boolean }) {
     if (!canReadOrderAddendum(permissions)) return null;
-    return <OrderAddendumContent key={`${item.source}:${item.id}:${String(refreshVersion)}`} item={item} canUpdate={canUpdateOrderAddendum(permissions)} canMarkSent={canMarkOrderAddendumSent(permissions)} onChanged={onChanged} />;
+    const Content = marker ? OrderAddendumMarker : OrderAddendumContent;
+    return <Content key={`${item.source}:${item.id}:${String(refreshVersion)}`} item={item} canUpdate={canUpdateOrderAddendum(permissions)} canMarkSent={canMarkOrderAddendumSent(permissions)} onChanged={onChanged} />;
+}
+
+/** Marcador compacto bajo la etapa; sus acciones viven en un popover para no ocupar una sección. */
+function OrderAddendumMarker({ item, canUpdate, canMarkSent, onChanged }: { readonly item: FollowUpItem; readonly canUpdate: boolean; readonly canMarkSent: boolean; readonly onChanged: OnChanged }) {
+    const model = useOrderAddendum(item, canUpdate, canMarkSent, onChanged);
+    const status = model.data?.status ?? "none";
+    const label = model.data ? labels[status] : model.error ? "No disponible" : "Consultando…";
+    const hasActions = [model.editable, model.sendable, Boolean(model.error), model.stale].some(Boolean);
+    const chip = (
+        <button type="button" className="addendum-marker" data-status={model.data ? status : "loading"} aria-label="Adéndum de la orden" aria-busy={model.busy} disabled={!hasActions}>
+            <span className="addendum-marker__dot" aria-hidden="true" />
+            Adéndum: <strong>{label}</strong>
+        </button>
+    );
+    if (!hasActions) return chip;
+    return (
+        <Popover
+            trigger="click"
+            placement="bottomLeft"
+            content={
+                <div className="addendum-marker__panel">
+                    {model.data && <AddendumDetails model={model} compact />}
+                    <AddendumFailure model={model} />
+                </div>
+            }
+        >
+            {chip}
+        </Popover>
+    );
 }
 
 function useOrderAddendum(item: FollowUpItem, canUpdate: boolean, canMarkSent: boolean, onChanged: OnChanged) {
@@ -115,13 +146,15 @@ function OrderAddendumContent({ item, canUpdate, canMarkSent, onChanged }: { rea
     );
 }
 type AddendumModel = ReturnType<typeof useOrderAddendum>;
-function AddendumDetails({ model }: { readonly model: AddendumModel }) {
+function AddendumDetails({ model, compact = false }: { readonly model: AddendumModel; readonly compact?: boolean }) {
     if (!model.data) return !model.error && <p>Consultando adéndum…</p>;
     return (
         <>
-            <p>
-                Condición: <strong>{labels[model.data.status ?? "none"]}</strong>
-            </p>
+            {!compact && (
+                <p>
+                    Condición: <strong>{labels[model.data.status ?? "none"]}</strong>
+                </p>
+            )}
             <AddendumMetadata data={model.data} />
             {model.sendable && (
                 <Button

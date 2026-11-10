@@ -58,6 +58,12 @@ export class FollowUpRepository {
                 CASE o.unit_transferred_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS unitTransferred,
                 CASE o.keys_delivered_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS keysDelivered,
                 CASE o.unit_delivered_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS unitDelivered,
+                (SELECT CASE a.status_sales_order_approval WHEN 'approved' THEN 1 WHEN 'not_approved' THEN 0 ELSE NULL END FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='sales_management') AS salesManagementApproved,
+                (SELECT CASE a.status_sales_order_approval WHEN 'approved' THEN 1 WHEN 'not_approved' THEN 0 ELSE NULL END FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='developer') AS developerApproved,
+                (SELECT CASE a.status_sales_order_approval WHEN 'approved' THEN 1 WHEN 'not_approved' THEN 0 ELSE NULL END FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order AND a.type_code_sales_order_approval='formalization') AS formalizationApproved,
+                CASE o.commercial_closure_signed_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS commercialClosureSigned,
+                CASE o.contract_signed_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS contractSignedCheck,
+                CASE o.cancelled_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS saleLostCheck,
                 COALESCE(o.cancelled_sales_order='yes',0) AS saleLost,
                 COALESCE(o.contract_signed_sales_order='yes',0) AS contractSigned,
                 (SELECT COUNT(*) FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order

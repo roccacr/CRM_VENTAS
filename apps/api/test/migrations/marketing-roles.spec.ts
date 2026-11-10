@@ -2,6 +2,7 @@ import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospecto
 import { describe, expect, it } from "vitest";
 
 import { marketingRolesMigration } from "../../migrations/schema-only/202610230028_marketing_roles.js";
+import { anyOf } from "../support/throws.js";
 
 const catalogs = ["project", "campaign", "class", "broker", "file", "subsidiary", "location"].map((name) => `mercadeo.catalog_${name}.read`);
 const sections = ["home", "leads", "appointments", "calendar"].map((name) => `mercadeo.${name}.read`);
@@ -90,7 +91,9 @@ describe("Marketing roles migration without shared MySQL fixtures", () => {
         const f = fixture(options);
         const initial = structuredClone(f.state);
         try {
-            await expect(marketingRolesMigration.up(f.db)).rejects.toThrow();
+            await expect(marketingRolesMigration.up(f.db)).rejects.toThrow(
+                anyOf("Marketing roles require CRM_THINK_V2", "Marketing role conflicts with existing configuration; explicit reconciliation re", "Marketing permission conflicts with existing configuration", "Marketing grant was revoked; refusing silent reactivation", "Marketing requires an active Mercadeo module", "Marketing roles require an active Owner without a role.assign deny", "Marketing migration requires InnoDB identity/audit tables", "Injected audit failure"),
+            );
             expect(f.state).toEqual(initial);
         } finally {
             await f.db.destroy();

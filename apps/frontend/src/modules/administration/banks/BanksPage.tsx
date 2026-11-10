@@ -222,7 +222,7 @@ function useBanks(contextModuleCode: CatalogContextModuleCode) {
                 setError(null);
             }
         });
-        void listBanks({ moduleCode: contextModuleCode, search: filters.search, status: filters.status, limit: 25, offset: (filters.page - 1) * 25 })
+        void listBanks({ moduleCode: contextModuleCode, search: filters.search, status: filters.status, limit: 500, offset: (filters.page - 1) * 500 })
             .then((result) => {
                 if (active && token === epoch.current) setBanks(result);
             })
@@ -522,7 +522,7 @@ function BankList({ model, actionButtons }: { readonly model: BankModel; readonl
             )}
             <Pagination
                 current={filters.page}
-                pageSize={25}
+                pageSize={500}
                 total={banks.total}
                 showSizeChanger={false}
                 showTotal={(total) => `${String(total)} bancos`}

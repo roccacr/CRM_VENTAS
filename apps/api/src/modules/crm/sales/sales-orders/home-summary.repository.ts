@@ -51,7 +51,7 @@ export class HomeSummaryRepository {
                 SUM(approved AND COALESCE(stage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send')) AS toSend,
                 SUM(approved AND stage='contract_pending_signature') AS pendingSignature,
                 SUM(contract_signed AND stage='bank_management') AS banking, SUM(contract_signed AND stage='bank_management_in_progress') AS bankingInProgress, SUM(contract_signed AND stage='pending_balance') AS balance,
-                SUM(contract_signed AND stage='pending_transfer' AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0) AS transferPending, SUM(contract_signed AND stage='transfer_signed' AND installments_paid=1 AND unit_transferred=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned,
+                SUM(contract_signed AND stage='pending_transfer' AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0) AS transferPending, SUM(contract_signed AND stage='transfer_signed' AND installments_paid=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned,
                 SUM(contract_signed AND completed_this_year AND unit_delivered=1) AS closedThisYear
             FROM (
                 SELECT e.to_state_code_sales_order_state_event AS stage, COALESCE(o.contract_signed_sales_order='yes',0) AS contract_signed,

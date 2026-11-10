@@ -47,7 +47,19 @@ export interface FollowUpPeriod {
 const named = z.object({ id: z.string().min(1), name: z.string().min(1) });
 const stateCodes = ["unclassified", "pending_approval", "contract_pending_send", "contract_pending_signature", "bank_management", "bank_management_in_progress", "pending_balance", "pending_transfer", "transfer_signed", "closed"] as const;
 /** Only the requested projection crosses the boundary; only the explicitly requested client email, never raw contact payload. */
+const optionalOrderCheck = z
+    .union([z.boolean(), z.literal(0), z.literal(1)])
+    .nullable()
+    .optional()
+    .transform((value) => (value == null ? null : Boolean(value)));
+
 export const followUpRow = z.object({
+    salesManagementApproved: optionalOrderCheck,
+    developerApproved: optionalOrderCheck,
+    formalizationApproved: optionalOrderCheck,
+    commercialClosureSigned: optionalOrderCheck,
+    contractSignedCheck: optionalOrderCheck,
+    saleLostCheck: optionalOrderCheck,
     id: z.string().min(1),
     source: z.enum(["native", "legacy"]),
     number: z.string().min(1),

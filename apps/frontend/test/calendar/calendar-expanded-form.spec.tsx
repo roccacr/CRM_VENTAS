@@ -36,7 +36,7 @@ it("retains native and legacy identities with the same id independently", async 
     const type = screen.getByRole("combobox", { name: "Tipo" });
     const title = screen.getByLabelText("Nombre del evento");
     expect(type.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole("region", { name: "Relaciones" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Relaciones" })).toBeInTheDocument();
     const notes = screen.getByRole("group", { name: "Notas vinculadas" });
     const inputs = notes.querySelectorAll("input[type=checkbox]");
     if (!inputs[0] || !inputs[1]) throw new Error("Missing options");
@@ -74,7 +74,7 @@ it("omits restricted relations from PATCH and hides relation lookups", async () 
     vi.mocked(apiRequest).mockResolvedValue({ items: [] });
     const event: CalendarEvent = { id: "restricted-event", source: "native", originModule: "ventas", typeId: "type", typeCode: "general", title: "Restricted", description: null, location: null, start: "2026-10-29T15:00:00Z", end: "2026-10-29T16:00:00Z", allDay: false, status: "scheduled", version: 3, canEdit: true, formKey: "ventas.general.v1", details: {}, linksEditable: false };
     render(<CalendarEventDrawer event={event} date="2026-10-29" calendar={calendar} currentModule="ventas" onClose={vi.fn()} onSaved={vi.fn()} onRefresh={vi.fn()} />);
-    expect(screen.getByText("Relaciones restringidas; se conservan sin cambios")).toBeTruthy();
+    expect(screen.getByText("Relaciones restringidas; se conservan sin cambios")).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Notas vinculadas" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Guardar evento" }));
     await waitFor(() => {

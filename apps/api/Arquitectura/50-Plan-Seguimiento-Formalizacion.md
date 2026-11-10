@@ -22,7 +22,7 @@ prevalecen sobre los predicados históricos de este documento:
   a `bank_management_in_progress`; sin origen no hay avance. Origen y etapa se
   guardan con la misma transacción y auditoría; el replay compara su elección histórica.
 - Traspasos pendientes exige cuotas sí, unidad traspasada no y unidad entregada no.
-  Traspaso firmado exige cuotas sí, traspasada sí, llaves no y entregada no.
+  Traspaso firmado exige cuotas sí, llaves no y entregada no. El avance automático requiere además Unidad traspasada. El registro manual desde Traspaso pendiente admite confirmación pendiente en NetSuite y muestra una advertencia.
   Unidad entregada sí habilita cierre aunque los otros tres sean desconocidos.
   NULL nunca sustituye un no confirmado. Se conservan firma, permisos y versión.
 - El cierre anual exige evidencia `closed` en el año de Costa Rica y unidad
@@ -35,6 +35,8 @@ prevalecen sobre los predicados históricos de este documento:
   a un destino posterior confirmado, conservando responsable y actor integración.
   Flags, visita, auditorías y cursor comparten transacción. No revierten etapas
   ni permiten regresar a saldo una vez iniciado el traspaso.
+
+Debajo de Avance de Formalización, el resumen lateral y la orden completa muestran diez checks sincronizados en solo lectura. Cada valor se distingue como Marcado, Desmarcado o Sin dato. El panel reutiliza la consulta de seguimiento en ambas bases.
 
 Adéndum es una capacidad independiente: [83](83-Adendum-Migracion-065-y-Rollback.md)
 y [84](84-Adendum-Manual-Migracion-066-y-Permisos.md). El permiso de banner solo da

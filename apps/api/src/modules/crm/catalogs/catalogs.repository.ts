@@ -23,7 +23,7 @@ const INACTIVE_STATUS = "inactive";
 /** Página cuando el cliente no pide un tamaño. */
 const DEFAULT_LIMIT = 100;
 /** Tope para no devolver el catálogo completo en una sola respuesta. */
-const MAX_LIMIT = 200;
+const MAX_LIMIT = 500;
 
 /** Conexión o transacción. Las lecturas de mutación usan la transacción para ver lo que todavía no se confirmó. */
 type CatalogExecutor = Pick<Kysely<CrmDatabase>, "deleteFrom" | "insertInto" | "selectFrom" | "transaction" | "updateTable">;

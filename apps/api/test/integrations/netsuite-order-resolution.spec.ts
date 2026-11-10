@@ -1,3 +1,4 @@
+import { ForbiddenException } from "@nestjs/common";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler } from "kysely";
 import { expect, it, vi } from "vitest";
 
@@ -6,6 +7,7 @@ import { NetsuiteOrderRepository } from "../../src/integrations/netsuite/netsuit
 import { NetsuiteSalesOrderService } from "../../src/integrations/netsuite/netsuite-sales-order.service.js";
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
 import type { TimingOrder } from "../../src/modules/crm/sales/sales-orders/order-timing.contract.js";
+import { anyOf } from "../support/throws.js";
 
 const publicId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 function fixture(native = true, externalIds = ["123"], live?: { version: number; session: boolean }) {
@@ -57,7 +59,7 @@ it.each([true, false])("resolves authorized source native=%s before one provider
             expect(f.legacy.find).not.toHaveBeenCalled();
             expect(f.queries[0]?.sql).toContain("s.code_external_system='netsuite'");
         } else {
-            expect(f.legacy.find).toHaveBeenCalled();
+            expect(f.legacy.find).toHaveBeenCalledTimes(1);
             expect(f.queries[0]?.sql).toContain("id_ov_netsuite");
         }
         expect(f.queries.every((q) => !/INSERT|UPDATE|DELETE/.test(q.sql))).toBe(true);
@@ -72,7 +74,7 @@ it.each(["no-permission", "direct-deny", "inactive", "banner-only"])("blocks %s 
         if (mode === "direct-deny") f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
         if (mode === "inactive") f.order.active = false;
         if (mode === "banner-only") f.profile.permissions = [{ code: "formalizacion.home.stages.read", effect: "allow", scope: "self", source: "role" }];
-        await expect(f.service.read("session", { source: "native", id: publicId })).rejects.toThrow();
+        await expect(f.service.read("session", { source: "native", id: publicId })).rejects.toThrow(anyOf("Permiso insuficiente para consultar la orden.", "Orden disponible no encontrada."));
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
         expect(f.legacy.find).not.toHaveBeenCalled();
         expect(f.queries).toHaveLength(0);
@@ -83,7 +85,7 @@ it.each(["no-permission", "direct-deny", "inactive", "banner-only"])("blocks %s 
 it.each([{ ids: [] }, { ids: ["123", "456"] }, { ids: ["odoo-id"] }])("refuses missing, ambiguous or non-NetSuite reference %j", async ({ ids }) => {
     const f = fixture(true, ids);
     try {
-        await expect(f.service.read("session", { source: "native", id: publicId })).rejects.toThrow();
+        await expect(f.service.read("session", { source: "native", id: publicId })).rejects.toThrow(anyOf("La orden no tiene una referencia NetSuite valida.", "Referencia NetSuite ambigua."));
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
         expect(f.legacy.find).not.toHaveBeenCalled();
     } finally {
@@ -122,7 +124,7 @@ it.each(["deny", "inactive", "category"])("blocks the database read for %s witho
         if (mode === "category") {
             f.profile.permissions = [{ code: "formalizacion.home.banking.read", effect: "allow", scope: "self", source: "role" }];
         }
-        await expect(f.service.readDatabase("session", { source: "legacy", id: "208" })).rejects.toThrow();
+        await expect(f.service.readDatabase("session", { source: "legacy", id: "208" })).rejects.toThrow(anyOf("Permiso insuficiente para consultar la orden.", "Orden disponible no encontrada."));
         expect(f.queries).toHaveLength(0);
         expect(f.legacy.find).not.toHaveBeenCalled();
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
@@ -140,7 +142,7 @@ it.each(["deny", "category", "banner-only", "inactive"])("history blocks %s befo
         }
         if (mode === "banner-only") f.profile.permissions = [{ code: "formalizacion.home.approvals.read", effect: "allow", scope: "self", source: "role" }];
         if (mode === "inactive") f.order.active = false;
-        await expect(f.service.readHistory("session", { source: "native", id: publicId })).rejects.toThrow();
+        await expect(f.service.readHistory("session", { source: "native", id: publicId })).rejects.toThrow(anyOf("Permiso insuficiente para consultar la orden.", "Orden disponible no encontrada."));
         expect(f.queries).toHaveLength(0);
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
     } finally {
@@ -165,7 +167,7 @@ it.each(["version", "revoked", "expired"])("manual synchronization locks live au
     f.profile.session = { publicId: "session", status: "active", permissionVersion: 1, expiresAt: "2099-01-01T00:00:00Z", expiresInSeconds: 3600 };
     const repo = new NetsuiteOrderRepository(f.repository as never, f.legacy as never, {} as never);
     try {
-        await expect(f.db.transaction().execute((tx) => repo.authorizeSynchronization(tx, { target: { source: "legacy", id: "208" }, netsuiteId: "123", destination: { destination: "native", id: "42" }, check: () => undefined, profile: f.profile }))).rejects.toThrow();
+        await expect(f.db.transaction().execute((tx) => repo.authorizeSynchronization(tx, { target: { source: "legacy", id: "208" }, netsuiteId: "123", destination: { destination: "native", id: "42" }, check: () => undefined, profile: f.profile }))).rejects.toThrow(ForbiddenException);
         expect(f.queries.some((q) => q.sql.includes("from `sec_user`") && q.sql.includes("for update"))).toBe(true);
         if (mode !== "version") {
             const query = f.queries.find((q) => q.sql.includes("from `sec_auth_session`"));

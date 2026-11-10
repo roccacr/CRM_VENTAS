@@ -346,3 +346,243 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* ==========================================================================
+   Acciones de la etapa — same visual language as "Avance de Formalización":
+   same frame, header band and rhythm; one clear primary action, one quiet
+   destination note, and secondary actions grouped below a single divider.
+   ========================================================================== */
+.formalization-stage-editor {
+    gap: 0;
+    padding: 0;
+    border: 1px solid var(--ent-border, #b4c0d0);
+    border-radius: 6px;
+    background: #fff;
+}
+
+.formalization-stage-editor > :not(.formalization-stage-editor__head) {
+    margin-inline: 16px;
+}
+
+.formalization-stage-editor > :not(.formalization-stage-editor__head):not(:empty) {
+    margin-top: 16px;
+}
+
+.formalization-stage-editor > :last-child {
+    margin-bottom: 16px;
+}
+
+.formalization-stage-editor .formalization-stage-editor__head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--ent-divider, #e4e9f2);
+    background: var(--ent-tint, #f5f7fa);
+}
+
+.formalization-stage-editor .formalization-stage-editor__head h3 {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.formalization-stage-editor .formalization-stage-editor__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 8px;
+}
+
+/* Primary action + destination: a button with a soft explanatory card under it. */
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:first-child {
+    display: grid;
+    flex: 0 0 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--ent-divider, #e4e9f2);
+}
+
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:first-child > .ant-btn {
+    justify-self: start;
+    min-width: 168px;
+    height: 34px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:first-child > span {
+    padding: 10px 12px;
+    border: 1px solid var(--ent-divider, #e4e9f2);
+    border-left: 3px solid #b7d9c6;
+    border-radius: 6px;
+    background: var(--ent-tint, #f5f7fa);
+    color: #5d6b82;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:first-child > span strong {
+    color: #18222f;
+    font-weight: 700;
+}
+
+/* Secondary actions: quiet outline buttons on one row, caption beside "Paso anterior". */
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:not(:first-child) {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 0;
+    border: 0;
+}
+
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:not(:first-child) > .ant-btn,
+.formalization-stage-editor .formalization-stage-editor__actions .formalization-stage-editor__move {
+    height: 30px;
+    padding: 0 14px;
+    border: 1px solid #c3ccd9;
+    border-radius: 6px;
+    background: #fff;
+    color: #3c4f68;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:not(:first-child) > .ant-btn:not(:disabled):hover,
+.formalization-stage-editor .formalization-stage-editor__actions .formalization-stage-editor__move:not(:disabled):hover {
+    border-color: #18222f;
+    background: var(--ent-tint, #f5f7fa);
+    color: #18222f;
+}
+
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:not(:first-child) > span {
+    padding: 0;
+    border: 0;
+    color: #6b7a90;
+    font-size: 12px;
+}
+
+.formalization-stage-editor .formalization-stage-editor__actions > .formalization-stage-editor__advance:not(:first-child) > span strong {
+    color: #2f3a4b;
+}
+
+/* Feedback and requirement messages read as quiet helper text. */
+.formalization-stage-editor > p {
+    color: #5d6b82;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+.formalization-stage-editor > p[role="alert"] {
+    color: #b42318;
+}
+
+/* Marcador de adéndum: chip discreto bajo la etapa, mismo lenguaje que el chip de etapa. */
+.addendum-marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid #d2dae5;
+    border-radius: 999px;
+    background: #fff;
+    color: #5d6b82;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1;
+    cursor: default;
+}
+.addendum-marker strong {
+    color: #2f3a4b;
+    font-weight: 600;
+}
+.addendum-marker__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #a8b3c4;
+}
+.addendum-marker:not(:disabled) {
+    cursor: pointer;
+}
+.addendum-marker:not(:disabled):hover {
+    border-color: #8fa1b8;
+    background: #f5f7fa;
+}
+.addendum-marker[data-status="pending"] {
+    border-color: #f0c98a;
+    background: #fdf1de;
+}
+.addendum-marker[data-status="pending"] .addendum-marker__dot {
+    background: #e08a00;
+}
+.addendum-marker[data-status="sent"] {
+    border-color: #b9cdf0;
+    background: #eaf1fd;
+}
+.addendum-marker[data-status="sent"] .addendum-marker__dot {
+    background: #2f6bd6;
+}
+.addendum-marker[data-status="completed"] {
+    border-color: #b7d9c6;
+    background: #e9f6ef;
+}
+.addendum-marker[data-status="completed"] .addendum-marker__dot {
+    background: #087443;
+}
+.addendum-marker[data-status="cancelled"] .addendum-marker__dot {
+    background: #b42318;
+}
+.addendum-marker__panel {
+    display: grid;
+    gap: 8px;
+    max-width: 280px;
+    font-size: 12.5px;
+}
+.addendum-marker__panel p {
+    margin: 0;
+}
+.addendum-marker__panel .record-actions {
+    display: grid;
+    gap: 6px;
+}
+
+.formalization-order-markers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+/* Encabezado del drawer: etapa y marcadores en una sola fila ordenada, misma altura, separados por una línea fina. */
+.formalization-order-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 8px;
+}
+.formalization-order-meta > * {
+    flex: 0 0 auto;
+}
+.formalization-order-meta__sep {
+    width: 1px;
+    height: 16px;
+    background: #d2dae5;
+}
+.formalization-order-meta .addendum-marker {
+    height: 24px;
+    padding: 0 9px;
+    gap: 5px;
+    font-size: 11.5px;
+    white-space: nowrap;
+}
+.addendum-marker[data-status="set"] .addendum-marker__dot {
+    background: #087443;
+}
+.addendum-marker[data-status="missing"] {
+    border-color: #f0b8b2;
+    background: #fdecea;
+}
+.addendum-marker[data-status="missing"] .addendum-marker__dot {
+    background: #b42318;
+}

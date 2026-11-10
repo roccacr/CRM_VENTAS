@@ -181,3 +181,39 @@ No se probaron escrituras de negocio ni se acredita sincronizacion E2E.
 El local compartia la misma BD y PERSIST=true; se cambio a false para evitar que
 Sandbox sobrescriba datos reales. Worker local recargado despues de ese cambio.
 Las instrucciones y archivos concretos estan en [ACTIVAR-NETSUITE.md](ACTIVAR-NETSUITE.md).
+
+## CI/CD con GitHub Actions
+
+El workflow `CRM quality` ejecuta formato, lint, tipos, pruebas con cobertura y build en cada push y PR. Las pruebas se ejecutan una sola vez por app. Para un push a la rama protegida
+`HABITA_RELEASE_BRANCH`, los builds de API y frontend se guardan en paralelo.
+El empaquetado espera a ambos controles de calidad, auditoría de dependencias
+y pruebas de NetSuite. MySQL general conserva su estado informativo. QA y
+producción reciben el mismo archivo, con SHA del commit y SHA-256 del paquete.
+El frontend usa el origen del navegador para hablar con el proxy de cada entorno.
+
+### Habilitación
+
+1. Confirmar y proteger la rama de release en GitHub. Configurar las variables
+   de repositorio `HABITA_RELEASE_BRANCH` y `HABITA_QA_ENABLED=true`.
+2. Configurar los entornos `habita-qa` y `production`, restringidos a esa rama.
+   Cada entorno requiere las variables `HABITA_SSH_TARGET` (usuario@host),
+   `HABITA_WEB_ORIGIN` y `HABITA_API_ORIGIN`, más los secretos
+   `HABITA_SSH_KEY` y `HABITA_SSH_KNOWN_HOSTS`. Usar credenciales dedicadas
+   por entorno y registrar la clave de host a partir de una fuente confiable.
+3. Preparar una instancia QA independiente con el mismo layout de Habita,
+   configuración propia, API en puerto 3100 y proxy de mismo origen. En cada
+   servidor, crear `/var/www/habita-crm/shared/deploy-environment` con su nombre
+   exacto (`habita-qa` o `production`), propiedad de administración y solo lectura
+   para el usuario de despliegue. El activador valida esa identidad antes de
+   extraer el release. Se requiere un release inicial sano en cada host.
+4. Probar un fallo de CI, una promoción sana y un rollback en QA. Activar
+   `HABITA_PRODUCTION_ENABLED=true` solo después de esa validación y configurar
+   revisión del entorno si el plan de GitHub lo admite. Ante una activación
+   fallida, revisar el rollback y relanzar el workflow completo para generar un
+   nuevo identificador de release.
+
+El activador conserva `shared/api.env`, instala las dependencias de runtime
+desde el lockfile, cambia `current` de forma atómica y recarga `habita-pm2`.
+Compara el HTML publicado con el build y valida el health de la API. Si falla,
+restaura y comprueba el release anterior. Las migraciones se ejecutan por
+separado. Los despliegues parciales quedan para después de validar este flujo.

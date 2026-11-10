@@ -12,6 +12,17 @@ for name, digest in {**meta['sourceFiles'], **meta['artifactFiles']}.items():
     file = (root / name).resolve()
     assert file.is_relative_to(root) and file.is_file(), 'Invalid release file'
     assert hashlib.sha256(file.read_bytes()).hexdigest() == digest, 'Release checksum mismatch: ' + name
+if sys.argv[2:] == ["--artifact"]:
+    expected = set(meta["sourceFiles"]) | set(meta["artifactFiles"]) | {"deployment-manifest.json"}
+    actual = set()
+    for file in root.rglob("*"):
+        assert not file.is_symlink(), "Unexpected symbolic link"
+        if file.is_file():
+            actual.add(file.relative_to(root).as_posix())
+    assert actual == expected, "Unexpected files in release"
+    print(json.dumps({"verifiedFiles": len(expected), "baseCommit": meta["baseCommit"]}))
+    sys.exit(0)
+
 tracked = subprocess.check_output(['git', '-C', str(root), 'ls-files', '-z']).decode().split('\0')
 removed = set(meta['deletedFiles']) | {name for name in tracked if name and name not in meta['sourceFiles']}
 for name in removed:

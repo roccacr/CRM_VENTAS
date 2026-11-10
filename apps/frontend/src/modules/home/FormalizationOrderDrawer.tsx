@@ -38,7 +38,7 @@ function Value({ children }: { readonly children: string | null | undefined }) {
 
 function Section({ title, items }: { readonly title: string; readonly items: readonly { readonly key: string; readonly label: string; readonly value: React.ReactNode }[] }) {
     return (
-        <Card size="small" title={title}>
+        <Card size="small" title={title} className="formalization-compact-card formalization-compact-card--fields">
             <OrderSectionFields items={items} />
         </Card>
     );
@@ -84,7 +84,7 @@ function OrderFooter({ position, total, onSelectPrevious, onSelectNext }: Omit<P
 /**
  *
  */
-function OrderTitle({ item }: { readonly item: FollowUpItem | null }) {
+function OrderTitle({ item, markers }: { readonly item: FollowUpItem | null; readonly markers: React.ReactNode }) {
     if (!item) return <>Detalle de la orden</>;
     return (
         <div className="user-detail-drawer__identity">
@@ -96,8 +96,10 @@ function OrderTitle({ item }: { readonly item: FollowUpItem | null }) {
                 <Typography.Text type="secondary" ellipsis={{ tooltip: item.client ?? "Sin cliente" }}>
                     {item.client ?? "Sin cliente"}
                 </Typography.Text>
-                <span className="user-detail-drawer__identity-meta">
+                <span className="user-detail-drawer__identity-meta formalization-order-meta">
                     <StageChip label={item.state.label} />
+                    <span className="formalization-order-meta__sep" aria-hidden="true" />
+                    {markers}
                 </span>
             </div>
         </div>
@@ -131,7 +133,38 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
             closable={{ "aria-label": "Cerrar detalle de la orden", placement: ADMINISTRATION_DRAWER_CLOSE_PLACEMENT }}
             destroyOnHidden
             open={item !== null}
-            title={<OrderTitle item={item} />}
+            title={
+                <OrderTitle
+                    item={item}
+                    markers={
+                        item && (
+                            <>
+                                <FormalizationOrderAddendum
+                                    marker
+                                    item={item}
+                                    permissions={stagePermissions}
+                                    refreshVersion={calendarRevision}
+                                    onChanged={() => {
+                                        setCalendarRevision((value) => value + 1);
+                                        return onStageSaved?.();
+                                    }}
+                                />
+                                <FormalizationPurchaseFunds
+                                    marker
+                                    key={`funds:${item.source}:${item.id}:${String(item.stateVersion)}:${String(item.purchaseFundsOrigin)}`}
+                                    item={item}
+                                    allowed={canUpdateStage}
+                                    onSaved={() => onStageSaved?.()}
+                                    onRefresh={() => {
+                                        onClose();
+                                        onRefreshOrder?.();
+                                    }}
+                                />
+                            </>
+                        )
+                    }
+                />
+            }
             styles={{ ...ADMINISTRATION_DRAWER_PROPS.styles, wrapper: { ...ADMINISTRATION_DRAWER_PROPS.styles.wrapper, maxWidth: "100vw" }, body: { minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" } }}
             footer={<OrderFooter position={position} total={total} onSelectPrevious={onSelectPrevious} onSelectNext={onSelectNext} />}
             onClose={onClose}
@@ -155,7 +188,7 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                         />
                     </div>
                     <FormalizationFiniquito item={item} allowed={canUpdateStage} />
-                    <FormalizationRecordProgress state={item.state.code} compact />
+                    <FormalizationRecordProgress item={item} compact />
                     <FormalizationStageEditor
                         key={`${item.source}:${item.id}:${String(item.stateVersion)}:${item.state.code}:${String(item.purchaseFundsOrigin)}`}
                         item={item}
@@ -167,26 +200,10 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                             onRefreshOrder?.();
                         }}
                     />
-                    <FormalizationOrderAddendum
-                        item={item}
-                        permissions={stagePermissions}
-                        refreshVersion={calendarRevision}
-                        onChanged={() => {
-                            setCalendarRevision((value) => value + 1);
-                            return onStageSaved?.();
-                        }}
-                    />
-                    <FormalizationPurchaseFunds
-                        key={`funds:${item.source}:${item.id}:${String(item.stateVersion)}:${String(item.purchaseFundsOrigin)}`}
-                        item={item}
-                        allowed={canUpdateStage}
-                        onSaved={() => onStageSaved?.()}
-                        onRefresh={() => {
-                            onClose();
-                            onRefreshOrder?.();
-                        }}
-                    />
                     <OutlookCompose item={item} />
+                    <div className="formalization-drawer-divider" role="separator" aria-label="Cliente y seguimiento">
+                        <span>Cliente y seguimiento</span>
+                    </div>
                     <FormalizationClientContent
                         key={`${item.source}:${item.id}`}
                         item={item}

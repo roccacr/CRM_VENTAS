@@ -13,7 +13,7 @@ export const FORMALIZATION_QUEUE_HELP: Readonly<Record<FollowUpQueue, string>> =
     bank: eligible + "Contrato firmado y etapa Gestión bancaria (Sin iniciar) o Gestión bancaria en proceso. Las órdenes con Fondos propios pasan directo a Pendiente de saldo.",
     balance: eligible + "Contrato firmado y etapa Pendiente de saldo. Llega desde Contratos con Fondos propios o después de completar la gestión bancaria. Aquí se confirma el pago completo para continuar.",
     transfer: eligible + "Cuotas pagadas: sí. Unidad traspasada: no. Unidad entregada: no. Llaves: cualquiera. Contrato firmado y etapa Traspasos pendientes.",
-    signed: eligible + "Cuotas pagadas y Unidad traspasada: sí. Entrega de llaves y Unidad entregada: no. Contrato firmado y etapa Traspaso firmado.",
+    signed: eligible + "Cuotas pagadas: sí. Entrega de llaves y Unidad entregada: no. Contrato firmado y etapa Traspaso firmado. La firma manual puede quedar pendiente de confirmación en NetSuite.",
     closed: eligible + "Unidad entregada y contrato firmado: sí. Cierre registrado este año, con horario de Costa Rica. Cuotas, traspaso y llaves no condicionan el cierre.",
 };
 

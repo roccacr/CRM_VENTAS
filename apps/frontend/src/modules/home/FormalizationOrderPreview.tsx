@@ -461,7 +461,7 @@ export function FormalizationOrderRecord({
                 </div>
             </header>
             <FormalizationFiniquito item={item} allowed={canUpdateStage} />
-            <FormalizationRecordProgress state={item.state.code} />
+            <FormalizationRecordProgress item={item} />
             <RecordStageActions
                 key={item.source + ":" + item.id}
                 item={item}

@@ -953,7 +953,11 @@
 .administration-users-datatable-menu button:focus-visible {
     background: #f2f4f7;
     color: #101828;
-    outline: none;
+}
+
+.administration-users-datatable-menu button:focus-visible {
+    outline: 2px solid #101828;
+    outline-offset: -2px;
 }
 
 .administration-users-datatable-menu button:disabled {

@@ -333,6 +333,10 @@ function CatalogLoadState({ error, isLoading, projectView }: { readonly error: s
     );
 }
 
+function logCatalogCache(catalog: string, page: number, pageSize: number, rows: number): void {
+    if (import.meta.env.DEV && import.meta.env.MODE !== "test") console.info("[Habita Catálogos] caché", JSON.stringify({ catalog, page, pageSize, rows }));
+}
+
 /** One API-backed pager; DataTables renders only this page, never a second local page. */
 function CatalogPagination({ page, pageSize, total, loaded, disabled, isLoading, onChange }: { readonly page: number; readonly pageSize: number; readonly total: number; readonly loaded: number; readonly disabled: boolean; readonly isLoading: boolean; readonly onChange: (page: number, pageSize: number) => void }) {
     const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -354,7 +358,7 @@ function CatalogPagination({ page, pageSize, total, loaded, disabled, isLoading,
                             onChange(1, Number(event.target.value));
                         }}
                     >
-                        {[10, 50, 100, 200].map((size) => (
+                        {[10, 50, 100, 200, 500].map((size) => (
                             <option key={size} value={size}>
                                 {size}
                             </option>
@@ -481,7 +485,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     const [pendingStatusAction, setPendingStatusAction] = useState<StatusAction | null>(null);
     const [reason, setReason] = useState("");
     const [total, setTotal] = useState(0);
-    const [pagination, setPagination] = useState({ page: 1, pageSize: 100 });
+    const [pagination, setPagination] = useState({ page: 1, pageSize: 500 });
     const currentPage = useRef(pagination);
     const [selection, setSelection] = useState<{ publicId: string; catalogCode: string; context: string; open: boolean } | null>(null);
     const isDetailOpen = selection?.catalogCode === catalog.code && selection.context === contextModuleCode && selection.open;
@@ -529,7 +533,7 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
     }, []);
 
     const loadItems = useCallback(
-        function loadPage(target = { page: 1, pageSize: 100 }, refresh = false) {
+        function loadPage(target = { page: 1, pageSize: 500 }, refresh = false) {
             if (scopeRef.current !== scope || permissionScopeRef.current !== scope || !permissionsRef.current.read) return;
             const sequence = ++loadSequence.current;
             if (refresh) pageCache.current.clear();
@@ -537,11 +541,13 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
             const cached = pageCache.current.get(key);
             setError(null);
             if (cached) {
+                logCatalogCache(catalog.code, target.page, target.pageSize, cached.items.length);
                 showPage(target, cached);
                 setIsLoading(false);
                 return;
             }
             setIsLoading(true);
+            const start = performance.now();
             void listCatalogItems(catalog.code, { limit: target.pageSize, offset: (target.page - 1) * target.pageSize, moduleCode: contextModuleCode, status: "all" })
                 .then((response) => {
                     if (sequence !== loadSequence.current) return;
@@ -552,8 +558,8 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                         return;
                     }
                     pageCache.current.set(key, response);
-                    // Bound retained batches to 20 (at most 4,000 records).
-                    if (pageCache.current.size > 20) {
+                    // Bound retained batches to 8 (at most 4,000 records).
+                    if (pageCache.current.size > 8) {
                         const oldest = pageCache.current.keys().next().value;
                         if (oldest !== undefined) pageCache.current.delete(oldest);
                     }
@@ -564,6 +570,10 @@ export function CatalogItemsPage({ catalog, contextLabel = "Administración", co
                     setError(getApiErrorMessage(loadError, "No pudimos cargar el catálogo."));
                 })
                 .finally(() => {
+                    if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
+                        const timing = performance.measure("habita:catalog:request", { start, detail: { catalog: catalog.code, pageSize: target.pageSize } });
+                        console.info("[Habita Catálogos] petición", JSON.stringify({ catalog: catalog.code, page: target.page, pageSize: target.pageSize, durationMs: Math.round(timing.duration) }));
+                    }
                     if (sequence !== loadSequence.current) return;
                     setIsLoading(false);
                 });

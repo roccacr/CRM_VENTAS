@@ -63,7 +63,7 @@ export const CORS_ALLOWED_HEADERS = ["Content-Type", CSRF_HEADER_NAME, CSRF_HEAD
 // OpenAPI autorizado solo para identidad. No mover estos valores a controllers:
 // el contrato se publica desde bootstrap, no desde un endpoint comercial.
 export const OPENAPI_DOC_PATH = "openapi/identity";
-export const OPENAPI_TITLE = "CRM TINK Identity API";
+export const OPENAPI_TITLE = "Habita Identity API";
 export const OPENAPI_DESCRIPTION = "Contrato minimo de identidad del runtime BFF.";
 export const OPENAPI_VERSION = "1.0.0";
 export const OPENAPI_TAG = "identity";

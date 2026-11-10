@@ -39,12 +39,14 @@ flowchart TD
   C --> D{Firma y selección explícita}
   D -->|Sin origen| E[Avance bloqueado]
   D -->|Fondos propios| G[Pendiente de saldo]
-  D -->|Financiamiento bancario| F[Gestión bancaria en proceso]
+  D -->|Financiamiento bancario| H[Gestión bancaria · Sin iniciar]
+  H -->|Iniciar gestión bancaria| F[Gestión bancaria en proceso]
   F --> G
-  H[Gestión bancaria existente] --> F
 ```
 
-Gestión bancaria permanece para órdenes existentes; no se inventan movimientos.
+Las órdenes financiadas entran en Sin iniciar. Desde En proceso, Paso anterior
+regresa a Sin iniciar con el permiso y motivo correspondientes. Las órdenes
+existentes conservan su estado hasta que se registre una transición.
 Las órdenes en etapas posteriores sin origen conservan su etapa. Si vuelven a
 Contratos pendientes, deben elegir origen antes de salir nuevamente.
 
@@ -261,6 +263,8 @@ se evalúa con valores confirmados; NULL/desconocido no equivale a desmarcado.
 | Traspasos pendientes | Sí | No | Cualquiera | No |
 | Traspaso firmado | Sí | Sí | No | No |
 | Formalización cerrada | Cualquiera | Cualquiera | Cualquiera | Sí |
+
+Desde Traspaso pendiente se puede registrar la firma manualmente si NetSuite aún no confirma Unidad traspasada. La interfaz muestra una advertencia y la orden aparece en la bandeja Traspaso firmado. Esta excepción conserva los requisitos de cuotas, llaves y entrega de unidad y aplica a ambas bases.
 
 Correspondencias de origen:
 

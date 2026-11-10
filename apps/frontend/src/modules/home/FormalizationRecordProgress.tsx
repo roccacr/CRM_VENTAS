@@ -7,6 +7,7 @@ import SendOutlined from "@ant-design/icons/SendOutlined";
 import SwapOutlined from "@ant-design/icons/SwapOutlined";
 import WalletOutlined from "@ant-design/icons/WalletOutlined";
 
+import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { ORDER_STAGES } from "../../services/formalization/order-stage-service";
 
 const PROGRESS_ICONS: Record<string, typeof SendOutlined> = {
@@ -48,8 +49,78 @@ function ProgressHeader({ current, closed }: { readonly current: number; readonl
     );
 }
 
+type CheckKey = "salesManagementApproved" | "developerApproved" | "formalizationApproved" | "contractSignedCheck" | "installmentsFullyPaid" | "unitTransferred" | "keysDelivered" | "unitDelivered" | "commercialClosureSigned" | "saleLostCheck";
+/** Agrupados por momento del proceso; el orden original de NetSuite se conserva dentro de cada grupo. */
+const ORDER_CHECK_GROUPS: readonly { readonly title: string; readonly checks: readonly (readonly [CheckKey, string])[] }[] = [
+    {
+        title: "Aprobaciones",
+        checks: [
+            ["salesManagementApproved", "Jefatura de Ventas"],
+            ["developerApproved", "Desarrolladora"],
+            ["formalizationApproved", "Formalización"],
+        ],
+    },
+    {
+        title: "Contrato y pagos",
+        checks: [
+            ["contractSignedCheck", "Contrato firmado"],
+            ["installmentsFullyPaid", "Cuotas pagadas por completo"],
+        ],
+    },
+    {
+        title: "Traspaso y entrega",
+        checks: [
+            ["unitTransferred", "Unidad traspasada"],
+            ["keysDelivered", "Entrega de llaves"],
+            ["unitDelivered", "Unidad entregada"],
+            ["commercialClosureSigned", "Cierre firmado"],
+        ],
+    },
+    { title: "Alerta", checks: [["saleLostCheck", "Venta caída"]] },
+];
+
+function checkState(key: CheckKey, value: boolean | null | undefined): { state: string; text: string } {
+    if (value == null) return { state: "unknown", text: "Sin dato" };
+    if (key === "saleLostCheck") return value ? { state: "alert", text: "Marcado" } : { state: "ok", text: "Desmarcado" };
+    return value ? { state: "on", text: "Marcado" } : { state: "off", text: "Desmarcado" };
+}
+
+function OrderChecks({ item }: { readonly item: FollowUpItem }) {
+    return (
+        <section className="formalization-record-checks" aria-label="Checks de NetSuite">
+            <h3>Checks de NetSuite</h3>
+            <div className="formalization-record-checks__groups">
+                {ORDER_CHECK_GROUPS.map((group) => (
+                    <div key={group.title} className="formalization-record-checks__group" role="group" aria-label={group.title}>
+                        <dl>
+                            {group.checks.map(([key, label]) => {
+                                const { state, text } = checkState(key, item[key]);
+                                return (
+                                    <div key={key} data-state={state}>
+                                        <dt>
+                                            <span className="formalization-record-checks__icon" aria-hidden="true">
+                                                {(state === "on" || state === "ok") && <CheckOutlined />}
+                                                {state === "alert" && "!"}
+                                            </span>
+                                            {label}
+                                        </dt>
+                                        <dd className="formalization-sr" data-checked={item[key] === true}>
+                                            {text}
+                                        </dd>
+                                    </div>
+                                );
+                            })}
+                        </dl>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
 /** Position in the workflow, not proof of historical visits: users can jump stages. */
-export function FormalizationRecordProgress({ state, compact = false }: { readonly state: string; readonly compact?: boolean }) {
+export function FormalizationRecordProgress({ item, compact = false }: { readonly item: FollowUpItem; readonly compact?: boolean }) {
+    const state = item.state.code;
     const closed = state === "closed";
     const current = closed ? RECORD_PROGRESS_STAGES.length - 1 : RECORD_PROGRESS_STAGES.findIndex((stage) => stage.code === state);
     return (
@@ -67,6 +138,7 @@ export function FormalizationRecordProgress({ state, compact = false }: { readon
                     </li>
                 ))}
             </ol>
+            <OrderChecks item={item} />
         </section>
     );
 }

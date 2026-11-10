@@ -50,7 +50,7 @@ const normalizeExternalReferences = (references: CreateCatalogItemDto["externalR
     return assigned;
 };
 
-/** Acepta el límite ya numérico o el que llegó como query string. Fuera de 1 a 200 no se consulta. */
+/** Acepta el límite ya numérico o el que llegó como query string. Fuera de 1 a 500 no se consulta. */
 const normalizeQueryLimit = (limit: ListCatalogItemsQueryDto["limit"]): number | undefined => {
     if (limit === undefined) {
         return undefined;
@@ -58,7 +58,7 @@ const normalizeQueryLimit = (limit: ListCatalogItemsQueryDto["limit"]): number |
 
     const normalizedLimit = typeof limit === "number" ? limit : Number(limit);
 
-    if (!Number.isInteger(normalizedLimit) || normalizedLimit < 1 || normalizedLimit > 200) {
+    if (!Number.isInteger(normalizedLimit) || normalizedLimit < 1 || normalizedLimit > 500) {
         throw new BadRequestException("Límite de catálogos inválido.");
     }
 

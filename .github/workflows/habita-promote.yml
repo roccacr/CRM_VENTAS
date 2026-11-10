@@ -1,0 +1,64 @@
+name: Habita promotion
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: ${{ inputs.target }}
+    concurrency:
+      group: habita-deploy-${{ inputs.target }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: habita-release
+          path: release-package
+      - name: Activate the verified release
+        shell: bash
+        env:
+          DEPLOY_TARGET: ${{ inputs.target }}
+          GH_TOKEN: ${{ github.token }}
+          SSH_KEY: ${{ secrets.HABITA_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HABITA_SSH_KNOWN_HOSTS }}
+          SSH_TARGET: ${{ vars.HABITA_SSH_TARGET }}
+          WEB_ORIGIN: ${{ vars.HABITA_WEB_ORIGIN }}
+          API_ORIGIN: ${{ vars.HABITA_API_ORIGIN }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = push
+          [[ $DEPLOY_TARGET == habita-qa || $DEPLOY_TARGET == production ]]
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$GITHUB_REF_NAME" --jq .object.sha)" = "$GITHUB_SHA"
+          [[ $SSH_TARGET =~ ^[a-z_][a-z0-9_-]*@[a-zA-Z0-9.-]+$ ]]
+          for origin in "$WEB_ORIGIN" "$API_ORIGIN"; do
+            [[ $origin =~ ^https://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]]
+          done
+          test -n "$SSH_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          cd release-package
+          read -r id digest sha < release.txt
+          [[ $id =~ ^[0-9]{14}-[a-f0-9]{7}-ci-[0-9]+-[0-9]+$ ]]
+          [[ $digest =~ ^[a-f0-9]{64}$ ]]
+          test "$sha" = "$GITHUB_SHA"
+          printf '%s  %s\n' "$digest" "$id.tar.gz" | sha256sum --check
+          tar -xOzf "$id.tar.gz" ./deploy/habita/activate-release.sh | cmp -s - activate-release.sh
+          umask 077
+          auth=$(mktemp -d)
+          trap 'rm -f "$auth/key" "$auth/known_hosts"; rmdir "$auth"' EXIT
+          printf '%s\n' "$SSH_KEY" > "$auth/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$auth/known_hosts"
+          options=(-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o UserKnownHostsFile="$auth/known_hosts" -i "$auth/key")
+          shared=/var/www/habita-crm/shared
+          scp "${options[@]}" "$id.tar.gz" "$SSH_TARGET:$shared/"
+          scp "${options[@]}" activate-release.sh "$SSH_TARGET:$shared/$id-activate.sh"
+          ssh "${options[@]}" "$SSH_TARGET" "bash '$shared/$id-activate.sh' '$id' '$digest' artifact '$WEB_ORIGIN' '$API_ORIGIN' '$DEPLOY_TARGET'"
+          printf 'Release verificado: `%s` (%s)\n' "$id" "$sha" >> "$GITHUB_STEP_SUMMARY"

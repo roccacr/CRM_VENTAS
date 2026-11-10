@@ -114,6 +114,10 @@
     gap: 6px;
 }
 
+.catalog-row-actions:has(.catalog-row-actions__active) > [data-catalog-actions] {
+    display: none;
+}
+
 .catalog-items-status {
     display: inline-flex;
     align-items: center;

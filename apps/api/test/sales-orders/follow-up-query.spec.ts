@@ -38,7 +38,7 @@ describe("bounded federated follow-up SQL", () => {
             expect(compiled.sql).not.toContain("SUM(TRUE)");
             expect(visible).not.toContain("unitDelivered=");
             expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1 AND unitTransferred=0 AND unitDelivered=0))");
-            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND unitTransferred=1 AND keysDelivered=0 AND unitDelivered=0))");
+            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND keysDelivered=0 AND unitDelivered=0))");
             expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND completedThisYear=1 AND unitDelivered=1))");
             expect(compiled.sql).toContain("FROM visible WHERE projectId IS NOT NULL");
         } finally {

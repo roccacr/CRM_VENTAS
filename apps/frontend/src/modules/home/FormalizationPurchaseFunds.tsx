@@ -2,6 +2,7 @@ import "./FormalizationPurchaseFunds.css";
 
 import Button from "antd/es/button";
 import Card from "antd/es/card";
+import Popover from "antd/es/popover";
 import Tag from "antd/es/tag";
 import { useRef, useState } from "react";
 
@@ -90,8 +91,66 @@ function fundsFailure(failure: unknown) {
     return { stale: [401, 403, 404, 409].includes(failure.status), uncertain: false, message: failure.status === 409 ? "La orden cambió. Actualízala antes de guardar." : "No se pudieron guardar los fondos. Revisa tu acceso y actualiza la orden." };
 }
 
+/** Marcador compacto bajo la etapa: al abrirlo carga y muestra el editor, sin botón «Editar» aparte. */
+function PurchaseFundsMarker(props: Props) {
+    const edit = useFundsEdit(props);
+    const [open, setOpen] = useState(false);
+    const current = edit.confirmed ?? (edit.snapshot ? edit.snapshot.purchaseFundsOrigin : props.item.purchaseFundsOrigin);
+    const chip = (
+        <button type="button" className="addendum-marker" data-status={current ? "set" : "missing"} aria-label="Fondos de compra" disabled={!props.allowed}>
+            <span className="addendum-marker__dot" aria-hidden="true" />
+            Fondos: <strong>{fundsLabel(current)}</strong>
+        </button>
+    );
+    if (!props.allowed) return chip;
+    const changeOpen = (next: boolean) => {
+        setOpen(next);
+        if (next && !edit.snapshot && edit.confirmed === undefined) void edit.load();
+        if (!next && !edit.busy) edit.cancel();
+    };
+    return (
+        <Popover
+            trigger="click"
+            placement="bottomLeft"
+            open={open}
+            onOpenChange={changeOpen}
+            content={
+                <MarkerPanel
+                    edit={edit}
+                    onRefresh={props.onRefresh}
+                    onClose={() => {
+                        changeOpen(false);
+                    }}
+                />
+            }
+        >
+            {chip}
+        </Popover>
+    );
+}
+
+function MarkerPanel({ edit, onRefresh, onClose }: { readonly edit: ReturnType<typeof useFundsEdit>; readonly onRefresh: () => void; readonly onClose: () => void }) {
+    return (
+        <div className="addendum-marker__panel formalization-purchase-funds">
+            {edit.busy && !edit.snapshot && <span>Cargando…</span>}
+            <FundsEditor edit={edit} onCancel={onClose} />
+            {edit.confirmed !== undefined && <span role="status">Fondos guardados.</span>}
+            {edit.error && <div role="alert">{edit.error}</div>}
+            {[edit.stale, edit.uncertain, edit.confirmed !== undefined].some(Boolean) && (
+                <Button size="small" disabled={edit.busy} onClick={onRefresh}>
+                    Actualizar orden
+                </Button>
+            )}
+        </div>
+    );
+}
+
 /** Compact classification card shared by the drawer and full order. */
-export function FormalizationPurchaseFunds(props: Props) {
+export function FormalizationPurchaseFunds(props: Props & { readonly marker?: boolean }) {
+    return props.marker ? <PurchaseFundsMarker {...props} /> : <PurchaseFundsCard {...props} />;
+}
+
+function PurchaseFundsCard(props: Props) {
     const edit = useFundsEdit(props);
     const current = edit.confirmed ?? (edit.snapshot ? edit.snapshot.purchaseFundsOrigin : props.item.purchaseFundsOrigin);
     return (
@@ -113,10 +172,10 @@ export function FormalizationPurchaseFunds(props: Props) {
     );
 }
 
-function FundsEditor({ edit }: { readonly edit: ReturnType<typeof useFundsEdit> }) {
+function FundsEditor({ edit, onCancel }: { readonly edit: ReturnType<typeof useFundsEdit>; readonly onCancel?: () => void }) {
     if (edit.confirmed !== undefined) return null;
     if (!edit.snapshot)
-        return (
+        return onCancel ? null : (
             <Button
                 size="small"
                 loading={edit.busy}
@@ -163,6 +222,7 @@ function FundsEditor({ edit }: { readonly edit: ReturnType<typeof useFundsEdit> 
                         disabled={edit.busy}
                         onClick={() => {
                             edit.cancel();
+                            onCancel?.();
                         }}
                     >
                         Cancelar

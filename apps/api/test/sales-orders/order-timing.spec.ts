@@ -53,13 +53,13 @@ describe("per-visit order timing", () => {
         const f = setup();
         f.legacy.find.mockResolvedValue({ id: "901", publicId: "legacy:901", active: true, pendingApproval: true, ownerId: "actor" });
         await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).resolves.toMatchObject({ order: { id: "legacy:901" } });
-        expect(f.legacy.read).toHaveBeenCalled();
+        expect(f.legacy.read).toHaveBeenCalledTimes(1);
     });
     it("reads other sellers with a self read grant", async () => {
         const f = setup();
         f.profile.permissions = [{ code: "formalizacion.orders.read", effect: "allow", scope: "self", source: "override" }];
         f.legacy.find.mockResolvedValue({ id: "901", publicId: "legacy:901", active: true, pendingApproval: false, approved: 1, rawStage: "contract_pending_send", contractSigned: 0, completedThisYear: 0, ownerId: "another" });
         await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).resolves.toMatchObject({ order: { id: "legacy:901" } });
-        expect(f.legacy.read).toHaveBeenCalled();
+        expect(f.legacy.read).toHaveBeenCalledTimes(1);
     });
 });

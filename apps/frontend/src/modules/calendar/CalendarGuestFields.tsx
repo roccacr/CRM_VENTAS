@@ -1,6 +1,7 @@
 import MailOutlined from "@ant-design/icons/MailOutlined";
 import { useEffect, useState } from "react";
 
+import { confirmAction } from "../../components/feedback/confirm-action";
 import { FormHelp } from "../../components/forms/FormHelp";
 import { type CalendarLink, type CalendarLookupItem, type CalendarLookupKind, type CalendarModule, getCalendarLookup } from "../../services/calendar/calendar-service";
 import type { useCalendarEventForm } from "./useCalendarEventForm";
@@ -167,11 +168,19 @@ function Lookup({ kind, label, model, locked, moduleCode }: { readonly kind: Cal
                 const owner = model.orderOptions.find((item) => item.source === order.source && item.id === order.id)?.lead;
                 return !owner || (owner.source === lead.source && owner.id === lead.id);
             });
-        if (related.length && !window.confirm("Al quitar este lead se retirarán sus órdenes vinculadas y las que no tienen relación confirmada. ¿Continuar?")) return;
-        model.change(
-            "links",
-            remaining.filter((link) => !related.some((order) => order.entityType === link.entityType && order.source === link.source && order.id === link.id)),
-        );
+        const apply = () => {
+            model.change(
+                "links",
+                remaining.filter((link) => !related.some((order) => order.entityType === link.entityType && order.source === link.source && order.id === link.id)),
+            );
+        };
+        if (!related.length) {
+            apply();
+            return;
+        }
+        void confirmAction({ title: "Quitar lead", content: "Al quitar este lead se retirarán sus órdenes vinculadas y las que no tienen relación confirmada.", okText: "Quitar lead" }).then((accepted) => {
+            if (accepted) apply();
+        });
     };
     const toggleLead = (item: CalendarLookupItem, checked: boolean, remaining: CalendarLink[]) => {
         if (!checked) {

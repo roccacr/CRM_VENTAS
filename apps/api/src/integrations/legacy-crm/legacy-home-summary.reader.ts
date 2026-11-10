@@ -35,7 +35,7 @@ export class LegacyHomeSummaryReader implements HomeSummaryLegacyReader {
                 SUM(NOT shadowed AND approved AND COALESCE(stage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send')) AS toSend,
                 SUM(NOT shadowed AND approved AND stage='contract_pending_signature') AS pendingSignature,
                 SUM(NOT shadowed AND contract_signed AND stage='bank_management') AS banking, SUM(NOT shadowed AND contract_signed AND stage='bank_management_in_progress') AS bankingInProgress, SUM(NOT shadowed AND contract_signed AND stage='pending_balance') AS balance,
-                SUM(NOT shadowed AND contract_signed AND stage='pending_transfer' AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0) AS transferPending, SUM(NOT shadowed AND contract_signed AND stage='transfer_signed' AND installments_paid=1 AND unit_transferred=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned,
+                SUM(NOT shadowed AND contract_signed AND stage='pending_transfer' AND installments_paid=1 AND unit_transferred=0 AND unit_delivered=0) AS transferPending, SUM(NOT shadowed AND contract_signed AND stage='transfer_signed' AND installments_paid=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned,
                 SUM(NOT shadowed AND contract_signed AND completed_this_year AND unit_delivered=1) AS closedThisYear,
                 SUM(shadowed) AS duplicatesExcluded
             FROM (

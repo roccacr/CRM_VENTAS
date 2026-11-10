@@ -92,7 +92,7 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
     const [projectIds, setProjectIds] = useState<string[]>([]);
     const [status, setStatus] = useState<string>();
     const [codeMatch, setCodeMatch] = useState("");
-    const [limit, setLimit] = useState(50);
+    const [limit, setLimit] = useState(500);
     const [active, setActive] = useState<UnitFilter>();
     const [searchScope, setSearchScope] = useState<UnitFilter>();
     const [paneChoices, setPaneChoices] = useState<UnitPaneChoices>();
@@ -407,7 +407,7 @@ function UnitFilesContent({ contextModuleCode, contextLabel }: { readonly contex
                             setLimit(value);
                             if (active) void load({ ...active, limit: value, cursor: undefined }, 0, [undefined]);
                         }}
-                        options={[10, 50, 100].map((value) => ({ value, label: String(value) }))}
+                        options={[10, 50, 100, 500].map((value) => ({ value, label: String(value) }))}
                     />
                     <Button aria-label="Página anterior" icon={<ChevronLeft size={16} />} disabled={index === 0 || busy} onClick={() => active && void load({ ...active, cursor: cursors[index - 1] }, index - 1, cursors)} />
                     <Button

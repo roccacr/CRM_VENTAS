@@ -91,7 +91,7 @@ it("does not display or persist failure details", async () => {
         expect(console.error).toHaveBeenCalledOnce();
     });
     expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("private");
-    expect(screen.getByText("Sin campos nuevos", { exact: false })).toBeTruthy();
+    expect(screen.getByText("Sin campos nuevos", { exact: false })).toBeInTheDocument();
 });
 
 it("exposes loading until the request resolves", async () => {

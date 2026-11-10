@@ -20,8 +20,8 @@ it("shows real actions and shares only the current StrictMode request", async ()
             <FormalizationHomeInsights enabled />
         </StrictMode>,
     );
-    expect(await screen.findByText(/BC552/)).toBeTruthy();
-    expect(screen.getByText(/Pendientes de aprobación → Por enviar/)).toBeTruthy();
+    expect(await screen.findByText(/BC552/)).toBeInTheDocument();
+    expect(screen.getByText(/Pendientes de aprobación → Por enviar/)).toBeInTheDocument();
     expect(apiRequest).toHaveBeenCalledExactlyOnceWith("/formalization/home/recent-activity");
 });
 it("does not request movements without permission or while the Home is hidden", () => {
@@ -41,14 +41,14 @@ it("loads fresh data when returning Home and when the refresh version changes", 
 it("reports an empty personal feed without invented movements", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ ...response, items: [] });
     render(<FormalizationHomeInsights enabled />);
-    expect(await screen.findByText("Aún no has registrado movimientos en órdenes de venta.")).toBeTruthy();
+    expect(await screen.findByText("Aún no has registrado movimientos en órdenes de venta.")).toBeInTheDocument();
 });
 it("shows a retryable error instead of sample data", async () => {
     vi.mocked(apiRequest).mockRejectedValueOnce(new Error("private details"));
     render(<FormalizationHomeInsights enabled />);
     expect((await screen.findByRole("alert")).textContent).not.toContain("private details");
     fireEvent.click(screen.getByRole("button", { name: "Reintentar movimientos" }));
-    expect(await screen.findByText(/BC552/)).toBeTruthy();
+    expect(await screen.findByText(/BC552/)).toBeInTheDocument();
 });
 it("rejects more than six entries rather than accepting an unbounded response", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ ...response, items: Array.from({ length: 7 }, () => event) });

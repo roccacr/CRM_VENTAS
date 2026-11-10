@@ -5,6 +5,7 @@ import type { IdentityService } from "../../src/modules/crm/identity/identity.se
 import type { NotesRepository } from "../../src/modules/crm/notes/notes.repository.js";
 import { NotesService } from "../../src/modules/crm/notes/notes.service.js";
 import type { OrderTimingService } from "../../src/modules/crm/sales/sales-orders/order-timing.service.js";
+import { anyOf } from "../support/throws.js";
 const id = "01K00000000000000000000000";
 const note = { internalId: 7, publicId: id, authorId: 1, authorPublicId: "actor", authorName: "Actor", moduleCode: "mercadeo", title: null, text: "Privado", color: "#FFFF88", priority: "normal", status: "open", visibility: "private", version: 1, createdAt: "2026-10-27T00:00:00Z", updatedAt: "2026-10-27T00:00:00Z", completedAt: null, archivedAt: null };
 const profile = { user: { publicId: "actor" }, roles: [{ code: "owner", status: "active" }], permissions: ["read", "create", "edit_own", "resolve_own", "archive_own"].map((action) => ({ code: `mercadeo.notes.${action}`, effect: "allow", scope: "assigned" })) };
@@ -63,7 +64,7 @@ describe("protected notes service", () => {
         timing.read.mockRejectedValue(new ForbiddenException());
         expect((await service.read("session", id, { moduleCode: "formalizacion" })).note.context).toBeNull();
         await service.edit("session", id, { moduleCode: "formalizacion", operationId: "operation_00000001", expectedVersion: 1, text: "Changed" });
-        expect(repo.edit).toHaveBeenCalled();
+        expect(repo.edit).toHaveBeenCalledTimes(1);
     });
     it("creates private Home notes without contacting legacy or changing other entities", async () => {
         await service.create("session", { moduleCode: "mercadeo", operationId: "operation_00000001", text: "Llamar" });
@@ -100,7 +101,7 @@ describe("registered context authorization", () => {
     });
     it("denies an unknown view and a known view without its current read permission", async () => {
         for (const code of ["marketing-unknown", "marketing-leads", "sales-home"]) {
-            await expect(service.create("session", { moduleCode: "mercadeo", operationId: "operation_00000001", text: "Test", context: { kind: "view", code } })).rejects.toThrow();
+            await expect(service.create("session", { moduleCode: "mercadeo", operationId: "operation_00000001", text: "Test", context: { kind: "view", code } })).rejects.toThrow(anyOf("Vista de notas no registrada en el modulo.", "Permiso de vista insuficiente."));
         }
         expect(repo.create).not.toHaveBeenCalled();
     });
@@ -109,7 +110,7 @@ describe("registered context authorization", () => {
         identity.getCurrentUser.mockResolvedValue({ ...profile, permissions: [...profile.permissions, read] });
         const command = { moduleCode: "mercadeo", operationId: "operation_00000001", text: "Test", context: { kind: "view", code: "marketing-leads" } };
         await service.create("session", command);
-        expect(repo.create).toHaveBeenCalled();
+        expect(repo.create).toHaveBeenCalledTimes(1);
         identity.getCurrentUser.mockResolvedValue({ ...profile, permissions: [...profile.permissions, read, { ...read, effect: "deny" }] });
         await expect(service.create("session", command)).rejects.toBeInstanceOf(ForbiddenException);
     });

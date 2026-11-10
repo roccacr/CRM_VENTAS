@@ -18,6 +18,8 @@ const followUpRowProjection = sql`JSON_OBJECT('sortId',CAST(sortId AS CHAR),'id'
                 'changedBy',IF(changedByName IS NULL,NULL,JSON_OBJECT('id',changedById,'name',changedByName)),
                 'stateCode',stateCode,'stateSince',IF(rawStage=stateCode,DATE_FORMAT(effectiveAt,'%Y-%m-%dT%H:%i:%s.000Z'),NULL),
                 'stateVersion',stateVersion,'approvalsComplete',approved,'contractSigned',contractSigned,'saleLost',saleLost,'addendumStatus',addendumStatus,
+                'salesManagementApproved',salesManagementApproved,'developerApproved',developerApproved,'formalizationApproved',formalizationApproved,
+                'commercialClosureSigned',commercialClosureSigned,'contractSignedCheck',contractSignedCheck,'saleLostCheck',saleLostCheck,
                 'unitTransferred',unitTransferred,'keysDelivered',keysDelivered,'unitDelivered',unitDelivered,'installmentsFullyPaid',installmentsFullyPaid,'purchaseFundsOrigin',purchaseFundsOrigin,'completedThisYear',completedThisYear)`;
 
 /** Shared exact banner predicates preserve independent annual closure and addendum membership. */
@@ -37,7 +39,8 @@ function followUpMatches(access: FollowUpAccess) {
     };
     const visibility = { ...stages };
     stages.transfer = sql`contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1 AND unitTransferred=0 AND unitDelivered=0`;
-    stages.signed = sql`contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND unitTransferred=1 AND keysDelivered=0 AND unitDelivered=0`;
+    // La firma registrada manualmente aparece mientras NetSuite confirma el traspaso.
+    stages.signed = sql`contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND keysDelivered=0 AND unitDelivered=0`;
     stages.closed = sql`contractSigned=1 AND completedThisYear=1 AND unitDelivered=1`;
     for (const queue of Object.keys(stages) as Exclude<FollowUpQueue, "all">[]) {
         const key = queue === "send" || queue === "signature" ? "contracts" : queue;

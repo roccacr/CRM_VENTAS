@@ -84,7 +84,7 @@ function nextOrderStage(item: FollowUpItem, origin: string): string | null {
     }
     if (current === "contract_pending_signature") {
         if (origin === "own_funds") return "pending_balance";
-        if (origin === "bank_financing") return "bank_management_in_progress";
+        if (origin === "bank_financing") return "bank_management";
         return null;
     }
     return ORDER_STAGES[ORDER_STAGES.findIndex((stage) => stage.code === current) + 1]?.code ?? null;
@@ -161,13 +161,22 @@ function AdvanceAction({ item, model }: { readonly item: FollowUpItem; readonly 
 /** Explain the blocked destination beside the disabled next-step button. */
 function AdvanceDestination({ item, next }: { readonly item: FollowUpItem; readonly next: { code: string; label: string } }) {
     const restriction = stageTargetRestriction(item, next.code);
+    const guidance = restriction ?? manualSignatureWarning(item, next.code);
     return (
         <span>
-            {restriction ?? (
+            {next.code ? (
                 <>
-                    {"Pasar\u00e1 a "}
+                    {restriction ? "Destino: " : "Pasará a "}
                     <strong>{next.label}</strong>
+                    {guidance && (
+                        <>
+                            <br />
+                            {guidance}
+                        </>
+                    )}
                 </>
+            ) : (
+                next.label
             )}
         </span>
     );
@@ -178,10 +187,10 @@ function PreviousAction({ item, model, onChoose }: { readonly item: FollowUpItem
     if (!model.canSkip) return null;
     let code = ORDER_STAGES[ORDER_STAGES.findIndex((stage) => stage.code === item.state.code) - 1]?.code;
     if (item.state.code === "pending_balance" && item.purchaseFundsOrigin === "own_funds") code = "contract_pending_signature";
-    if (item.state.code === "bank_management_in_progress" && item.purchaseFundsOrigin === "bank_financing") code = "contract_pending_signature";
     const previous = ORDER_STAGES.find((stage) => stage.code === code);
     if (!previous) return null;
-    const disabled = [model.disabled, model.confirming, model.uncertain, !model.destinationAllowed(previous.code), stageTargetRestriction(item, previous.code, true) !== null].some(Boolean);
+    const restriction = model.destinationAllowed(previous.code) ? stageTargetRestriction(item, previous.code, true) : "No tienes permiso para volver a esta etapa.";
+    const disabled = [model.disabled, model.confirming, model.uncertain, restriction !== null].some(Boolean);
     return (
         <div className="formalization-stage-editor__advance">
             <Button
@@ -194,7 +203,11 @@ function PreviousAction({ item, model, onChoose }: { readonly item: FollowUpItem
                 Paso anterior
             </Button>
             <span>
-                Volverá a <strong>{previous.label}</strong>
+                {restriction ?? (
+                    <>
+                        Volverá a <strong>{previous.label}</strong>
+                    </>
+                )}
             </span>
         </div>
     );
@@ -366,6 +379,7 @@ function DestinationRequirement({ item, target }: { readonly item: FollowUpItem;
 function StageConfirmation({ item, model }: { readonly item: FollowUpItem; readonly model: ReturnType<typeof useStageEdit> }) {
     const { confirming, eligible, busy, canSave, setConfirming, setTarget, pending, save, selected, exceptional, reason } = model;
     if (!confirming) return null;
+    const warning = manualSignatureWarning(item, selected?.code);
     return (
         <Modal
             title="Confirmar cambio de etapa"
@@ -391,16 +405,22 @@ function StageConfirmation({ item, model }: { readonly item: FollowUpItem; reado
             <p>
                 ¿Guardar la etapa {selected?.label} para la orden {item.number}?
             </p>
+            {warning && <p>{warning}</p>}
             {exceptional && <p>Motivo: {reason.trim()}</p>}
         </Modal>
     );
 }
 
+function manualSignatureWarning(item: FollowUpItem, target?: string): string | null {
+    if (item.state.code !== "pending_transfer" || target !== "transfer_signed" || item.unitTransferred === true) return null;
+    return "NetSuite aún no confirma «Unidad traspasada». Si ya se firmó el traspaso, puedes registrarlo manualmente.";
+}
+
 const SIGNATURE_REQUIRED = "Se requiere el contrato firmado para pasar a Gestión bancaria o etapas posteriores.";
-const INSTALLMENTS_REQUIRED = "Se requiere confirmar Cuotas canceladas en NetSuite para pasar a Pendiente de traspaso o etapas posteriores.";
-const PENDING_TRANSFER_REQUIRED = "Se requiere confirmar Cuotas canceladas: Sí, Unidad traspasada: No y Unidad entregada: No en NetSuite para pasar a Traspaso pendiente. Llaves entregadas no condiciona esta etapa.";
-const TRANSFER_SIGNED_REQUIRED = "Se requiere confirmar Cuotas canceladas: Sí, Unidad traspasada: Sí, Llaves entregadas: No y Unidad entregada: No en NetSuite para pasar a Traspaso firmado.";
-const CLOSED_REQUIRED = "Se requiere confirmar Unidad entregada: Sí en NetSuite para cerrar. Cuotas canceladas, Unidad traspasada y Llaves entregadas no condicionan el cierre.";
+const INSTALLMENTS_REQUIRED = "Confirma en NetSuite que esté marcado «Cuotas pagadas por completo».";
+const PENDING_TRANSFER_REQUIRED = "En NetSuite, marca «Cuotas pagadas por completo» y deja desmarcadas «Unidad traspasada» y «Unidad entregada». La entrega de llaves es opcional en esta etapa.";
+const TRANSFER_SIGNED_REQUIRED = "En NetSuite, marca «Cuotas pagadas por completo» y «Unidad traspasada». Deja desmarcadas «Entrega de llaves» y «Unidad entregada».";
+const CLOSED_REQUIRED = "Se requiere confirmar Unidad entregada: Sí en NetSuite para cerrar. Cuotas pagadas por completo, Unidad traspasada y Llaves entregadas no condicionan el cierre.";
 const BALANCE_RETURN_FORBIDDEN = "No se permite volver a Pendiente de saldo desde traspaso o etapas posteriores.";
 const SEND_REQUIRED = "Primero registra el envío del contrato y completa la etapa Pendiente de firma.";
 /** Unknown/missing signature never enables a later destination; the API repeats this under the order lock. */
@@ -418,7 +438,7 @@ function installmentsTargetRestriction(item: FollowUpItem, target: string): stri
     if ([target === "pending_balance", currentIndex >= transferIndex].every(Boolean)) return BALANCE_RETURN_FORBIDDEN;
     if (target === "closed") return item.unitDelivered === true ? null : CLOSED_REQUIRED;
     if (target === "pending_transfer") return [item.installmentsFullyPaid === true, item.unitTransferred === false, item.unitDelivered === false].every(Boolean) ? null : PENDING_TRANSFER_REQUIRED;
-    if (target === "transfer_signed") return [item.installmentsFullyPaid === true, item.unitTransferred === true, item.keysDelivered === false, item.unitDelivered === false].every(Boolean) ? null : TRANSFER_SIGNED_REQUIRED;
+    if (target === "transfer_signed") return [item.installmentsFullyPaid === true, [item.unitTransferred === true, item.state.code === "pending_transfer"].some(Boolean), item.keysDelivered === false, item.unitDelivered === false].every(Boolean) ? null : TRANSFER_SIGNED_REQUIRED;
     return null;
 }
 function SignatureRequirement({ item }: { readonly item: FollowUpItem }) {
@@ -436,7 +456,7 @@ function stageFailure(failure: unknown): { stale: boolean; message: string } {
         ["PURCHASE_FUNDS_ORIGIN_REQUIRED", "Selecciona el origen de fondos de compra para salir de Contratos."],
         ["CONTRACT_SIGNATURE_REQUIRED", SIGNATURE_REQUIRED],
         ["INSTALLMENTS_FULLY_PAID_REQUIRED", INSTALLMENTS_REQUIRED],
-        ["FORMALIZATION_COMPLETION_FLAGS_REQUIRED", "Avance bloqueado: revisa Cuotas canceladas, Unidad traspasada, Llaves entregadas y Unidad entregada en NetSuite para la etapa seleccionada."],
+        ["FORMALIZATION_COMPLETION_FLAGS_REQUIRED", "Avance bloqueado: revisa Cuotas pagadas por completo, Unidad traspasada, Llaves entregadas y Unidad entregada en NetSuite para la etapa seleccionada."],
         ["PENDING_BALANCE_RETURN_FORBIDDEN", BALANCE_RETURN_FORBIDDEN],
         ["CONTRACT_SEND_REQUIRED", SEND_REQUIRED],
     ]).get(code);

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { formalizationOrderAddendumMigration as migration, planAddendumColumns } from "../../migrations/schema-only/202611030065_formalization_order_addendum.js";
 import { parseLegacyAddendumArgs, runLegacyAddendum } from "../../scripts/migrate-legacy-addendum.js";
 import { selectSchemaMigrations } from "../../scripts/run-schema-migrations.js";
+import { anyOf } from "../support/throws.js";
 
 const code = "formalizacion.orders.addendum.update";
 const definition = { code, module: "formalizacion", action: "update", description: "Gestionar estado de adéndum", status: "active" };
@@ -94,7 +95,9 @@ describe("marcador único de adéndum y permiso", () => {
     it.each([{ database: "crmdatabase-api" }, { engine: "MyISAM" }, { kind: "VIEW" }, { roles: [] }, { actors: [] }, ...Object.keys(definition).map((key) => ({ permissions: [{ ...definition, [key]: "drift" }] })), ...columns("native").map((column) => ({ columns: [{ ...column, type: "varchar(32)" }] })), { columns: [{ ...columns("native")[2], extra: "on update CURRENT_TIMESTAMP(3)" }] }] satisfies Options[])("preflight completo rechaza drift antes del primer DDL: %j", async (options) => {
         const f = fixture(options);
         try {
-            await expect(migration.up(f.db)).rejects.toThrow();
+            await expect(migration.up(f.db)).rejects.toThrow(
+                /Addendum destination mismatch|Addendum requires an InnoDB base table|Formalization order addendum permission requires all authorized active roles|Formalization order addendum permission requires Owner migration attribution|Formalization order addendum permission conflicts with existing configuration; r|Addendum column drift: addendum_status_sales_order|Addendum column drift: addendum_version_sales_order|Addendum column drift: addendum_changed_at_sales_order/,
+            );
             expect(writes(f.queries)).toEqual([]);
         } finally {
             await f.db.destroy();
@@ -145,7 +148,7 @@ describe("marcador único de adéndum y permiso", () => {
 
 describe("CLI legacy explícito y acotado a tres columnas", () => {
     it.each([[], ["--apply"], ["--apply=CRM_THINK_V2"], ["--plan", "--apply=crmdatabase-api"]].map((args) => ({ args })))("rechaza argumentos no exactos: %j", ({ args }) => {
-        expect(() => parseLegacyAddendumArgs(args)).toThrow();
+        expect(() => parseLegacyAddendumArgs(args)).toThrow("Use exactly --plan or --apply=crmdatabase-api");
     });
     it.each([false, true])("solo aplica con opción explícita; apply=%s", async (apply) => {
         const f = fixture({ source: "legacy" });
@@ -165,7 +168,7 @@ describe("CLI legacy explícito y acotado a tres columnas", () => {
     it.each([{ database: "CRM_THINK_V2" }, { engine: "MyISAM" }, { kind: "VIEW" }, { lock: 0 }, ...columns("legacy").map((column) => ({ columns: [{ ...column, nullable: column.nullable === "YES" ? "NO" : "YES" }] }))] satisfies Options[])("rechaza destino/columnas incompatibles sin DDL: %j", async (options) => {
         const f = fixture({ source: "legacy", ...options });
         try {
-            await expect(runLegacyAddendum(f.db, true)).rejects.toThrow();
+            await expect(runLegacyAddendum(f.db, true)).rejects.toThrow(anyOf("Addendum destination mismatch", "Addendum requires an InnoDB base table", "Legacy addendum lock unavailable", "Addendum column drift: estado_adendum_ov", "Addendum column drift: version_adendum_ov", "Addendum column drift: fecha_adendum_ov"));
             expect(writes(f.queries)).toEqual([]);
         } finally {
             await f.db.destroy();

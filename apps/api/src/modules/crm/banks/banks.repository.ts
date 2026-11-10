@@ -31,7 +31,7 @@ export class BanksRepository {
     private pagination(query: ListBanksQueryDto) {
         const limit = query.limit ?? 25,
             offset = query.offset ?? 0;
-        if (!Number.isInteger(limit) || limit < 1 || limit > 200 || !Number.isInteger(offset) || offset < 0 || offset > 2147483647) throw new BadRequestException("Paginación inválida.");
+        if (!Number.isInteger(limit) || limit < 1 || limit > 500 || !Number.isInteger(offset) || offset < 0 || offset > 2147483647) throw new BadRequestException("Paginación inválida.");
         return { limit, offset };
     }
     /** Returns a bounded bank page with the complete filtered total. */
