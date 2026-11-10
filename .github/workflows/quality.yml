@@ -105,6 +105,8 @@ jobs:
     uses: ./.github/workflows/habita-promote.yml
     with:
       target: production
+    secrets:
+      KAPSO_SSH_KEY: ${{ secrets.SCADMINAPIS }}
 
   dependency-audit:
     name: Dependencies / ${{ matrix.app }}

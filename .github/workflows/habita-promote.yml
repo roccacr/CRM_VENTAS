@@ -6,6 +6,9 @@ on:
       target:
         required: true
         type: string
+    secrets:
+      KAPSO_SSH_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -28,8 +31,8 @@ jobs:
         env:
           DEPLOY_TARGET: ${{ inputs.target }}
           GH_TOKEN: ${{ github.token }}
-          SSH_KEY: ${{ secrets.HABITA_SSH_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.HABITA_SSH_KNOWN_HOSTS }}
+          SSH_KEY: ${{ secrets.HABITA_SSH_KEY || (inputs.target == 'production' && secrets.KAPSO_SSH_KEY) || '' }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HABITA_SSH_KNOWN_HOSTS || vars.HABITA_SSH_KNOWN_HOSTS }}
           SSH_TARGET: ${{ vars.HABITA_SSH_TARGET }}
           WEB_ORIGIN: ${{ vars.HABITA_WEB_ORIGIN }}
           API_ORIGIN: ${{ vars.HABITA_API_ORIGIN }}

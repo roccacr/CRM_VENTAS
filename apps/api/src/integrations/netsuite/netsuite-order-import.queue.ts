@@ -170,13 +170,13 @@ export class NetsuiteOrderImportQueue implements OnModuleInit, OnModuleDestroy {
 
     private async findExisting(tranid: string): Promise<OrderLink | null> {
         const { rows } = await sql<OrderLink>`
-            SELECT o.public_id_sales_order AS id,'native' AS source
+            SELECT CONVERT(o.public_id_sales_order USING utf8mb4) COLLATE utf8mb4_unicode_ci AS id,'native' AS source
             FROM crm_sales_order o JOIN crm_sales_order_external_reference r ON r.sales_order_id_sales_order_external_reference=o.id_sales_order
             JOIN int_external_system s ON s.id_external_system=r.external_system_id_sales_order_external_reference
             WHERE s.code_external_system='netsuite' AND s.status_external_system='active' AND r.status_sales_order_external_reference='active'
             AND r.transaction_number_sales_order_external_reference=${tranid} AND o.deleted_at_sales_order IS NULL
             UNION ALL
-            SELECT CAST(v.id_ov AS CHAR),'legacy' FROM ${sql.table("crmdatabase-api.ordenventa")} v
+            SELECT CAST(v.id_ov AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci,'legacy' FROM ${sql.table("crmdatabase-api.ordenventa")} v
             WHERE v.id_ov_tranid=${tranid} AND NOT EXISTS (SELECT 1 FROM crm_sales_order o WHERE o.id_old_produccion_sales_order=v.id_ov)
             LIMIT 2`.execute(this.database.db);
         if (rows.length > 1) throw new BadRequestException("El número de orden tiene más de una coincidencia en Habita.");

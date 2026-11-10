@@ -218,7 +218,7 @@ export class NetsuiteOrderEventRepository {
         return changes;
     }
 
-    private canIgnoreMissingOwner(domain: string, error: unknown, allowed: boolean): boolean {
+    private canIgnoreMissingOwner(domain: string | null, error: unknown, allowed: boolean): boolean {
         return allowed && domain === "user" && error instanceof ConflictException;
     }
 
