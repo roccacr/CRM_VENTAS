@@ -10,6 +10,7 @@ export interface AddendumIdentity {
 export interface AddendumOrder extends AddendumIdentity {
     internalId: string;
     active: boolean;
+    deleted?: boolean;
     status: AddendumStatus | null;
     version: number;
     changedAt: string | null;

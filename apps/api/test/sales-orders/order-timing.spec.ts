@@ -37,10 +37,10 @@ describe("per-visit order timing", () => {
         expect(f.legacy.find).not.toHaveBeenCalled();
         expect(f.legacy.read).not.toHaveBeenCalled();
     });
-    it("does not fall back when an existing native alias is inactive", async () => {
+    it("reads inactive native timing without falling back", async () => {
         const f = setup();
         f.repository.find.mockResolvedValue({ id: "42", publicId, active: false, pendingApproval: false, approved: 1, rawStage: "contract_pending_send", contractSigned: 0, completedThisYear: 0, ownerId: "actor" });
-        await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).rejects.toMatchObject({ status: 404 });
+        await expect(f.service.read("session", { source: "legacy", id: "901" }, {})).resolves.toMatchObject({ order: { source: "native", id: publicId } });
         expect(f.legacy.find).not.toHaveBeenCalled();
     });
     it("reads real legacy timing and keeps unknown process dates null", async () => {

@@ -26,9 +26,9 @@ export class NetsuiteOrderRepository {
         @Inject(HomeSummaryRepository) private readonly snapshot: HomeSummaryRepository,
     ) {}
     /** La referencia tiene que ser una sola y un entero positivo. Dos filas son ambiguas, no se elige la primera. */
-    async resolve(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void) {
+    async resolve(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, includeInactive = false) {
         return this.resolveSafely(async (tx) => {
-            const { source, order } = await this.authoritative(tx, target, checkAccess);
+            const { source, order } = await this.authoritative(tx, target, checkAccess, includeInactive);
             const netsuiteId = await this.reference(tx, source, order.id);
             return { source, id: order.publicId, netsuiteId };
         });
@@ -36,7 +36,7 @@ export class NetsuiteOrderRepository {
     /** La ficha de base no usa credenciales del proveedor y no crea una orden nativa. */
     async readDatabase(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string) {
         return this.resolveSafely(async (tx) => {
-            const { source, order } = await this.authoritative(tx, target, checkAccess);
+            const { source, order } = await this.authoritative(tx, target, checkAccess, true);
             const data = await readOrderRecord(tx, source, order.id, order.publicId, { legacyEnabled: this.legacy.enabled() });
             const client = await readOrderClientContext(tx, data, { legacyEnabled: this.legacy.enabled(), ...(cursor ? { cursor } : {}) });
             return { ...data, lead: data.lead ? { ...data.lead, status: client.status, followUpReason: client.followUpReason } : null, clientHistory: client.history };
@@ -45,7 +45,7 @@ export class NetsuiteOrderRepository {
     /** La bitacora sale despues de la misma autoridad y el mismo alcance. El adendum se lee solo si el perfil lo permite. */
     async readHistory(target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, cursor?: string, canReadAddendum = false) {
         return this.resolveSafely(async (tx) => {
-            const { source, order } = await this.authoritative(tx, target, checkAccess);
+            const { source, order } = await this.authoritative(tx, target, checkAccess, true);
             return readOrderHistory(tx, source, order.id, { legacyEnabled: this.legacy.enabled(), canReadAddendum, ...(cursor ? { cursor } : {}) });
         });
     }
@@ -72,7 +72,8 @@ export class NetsuiteOrderRepository {
         return this.resolveSafely((tx) => missingImportRelation(tx, domain, id));
     }
 
-    private async authoritative(tx: Transaction<CrmDatabase>, target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void) {
+    // eslint-disable-next-line complexity -- La autoridad nativa separa las lecturas históricas de las mutaciones exclusivas de activas.
+    private async authoritative(tx: Transaction<CrmDatabase>, target: { source: "native" | "legacy"; id: string }, checkAccess: (order: TimingOrder) => void, includeInactive = false) {
         let source: "native" | "legacy" = "native";
         let order = await this.native.find(tx, target.source, target.id);
         if (!order && target.source === "legacy") {
@@ -80,7 +81,7 @@ export class NetsuiteOrderRepository {
             source = "legacy";
             order = await this.legacy.find(tx, target.id);
         }
-        if (!order || !order.active) throw new NotFoundException("Orden disponible no encontrada.");
+        if (!order || order.deleted || (!includeInactive && !order.active)) throw new NotFoundException("Orden disponible no encontrada.");
         checkAccess(order);
         return { source, order };
     }

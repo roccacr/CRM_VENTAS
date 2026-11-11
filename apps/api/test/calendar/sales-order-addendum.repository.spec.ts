@@ -252,3 +252,13 @@ it("allows a historical pending marker without reason to be sent without backfil
         await f.db.destroy();
     }
 });
+
+it.each([false, true])("reads inactive addendum without permitting mutation legacy=%s", async (legacy) => {
+    const f = setup({ legacy, inactive: true });
+    try {
+        const identity = { source: legacy ? ("legacy" as const) : ("native" as const), id: legacy ? "78" : id };
+        await expect(f.repo.read(identity)).resolves.toMatchObject({ active: false, status: "pending" });
+    } finally {
+        await f.db.destroy();
+    }
+});

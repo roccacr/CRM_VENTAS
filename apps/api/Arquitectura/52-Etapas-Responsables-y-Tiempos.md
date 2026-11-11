@@ -311,3 +311,33 @@ se comprobó en la BD nativa después de aplicar la migración.
 ## Continuacion implementada: aprobacion confirmada en NetSuite (2026-10-28)
 
 El bloqueo503 de preparacion descrito en el corte anterior queda sustituido por el flujo de [63 - Aprobacion Formalizacion](63-Aprobacion-Formalizacion-NetSuite.md): permiso independiente ya verificado en BD para jefe_formalizaciones; PUT Sandbox custbodyid_firma_rc; confirmacion exacta antes de guardar la aprobacion en la fuente autoritativa y su bitacora. El detalle local revalida estado sin recargar toda la proyeccion NetSuite. Despliegue del RESTlet y primera aprobacion real siguen pendientes; no confundir implementacion/pruebas con una operacion de proveedor ejecutada. Las demas reglas de secuencia, firma y permisos no cambian.
+
+## Lectura de órdenes inactivas - 2026-11-11
+
+La búsqueda exacta por número de orden en Formalización incluye ambas BDs,
+incluso si la orden está inactiva o fuera de las bandejas activas. Conserva el
+fallback exacto existente cuando los filtros no devuelven filas y exige
+`formalizacion.orders.read`. No importa ni reactiva registros encontrados.
+
+La ficha directa (`/record`), los datos de BD, tiempos, historial, adéndum y
+asignación bancaria permiten leer inactivas. La autoridad nativa prevalece sobre
+su alias legacy; las nativas borradas lógicamente siguen ocultas y nunca provocan
+fallback a legacy. Los permisos, denies y validaciones de identidad se conservan.
+
+Los banners y la distribución por proyecto usan la proyección activa anterior,
+independiente de los candidatos históricos de la búsqueda. Las validaciones de
+escritura, cambios de etapa, sincronización y asignaciones no se amplían.
+Esto corrige el caso RDR611: encontrada en legacy con `status_ov=0`, notificada
+como completada por la cola, pero rechazada antes al abrir su detalle.
+No requiere migraciones ni cambios de estado en la BD.
+
+
+Verificación del cambio local: las consultas compiladas de ficha y búsqueda
+se ejecutaron contra producción dentro de una transacción de solo lectura:
+devolvieron `legacy:85 / RDR611`, con una coincidencia de búsqueda y cero
+coincidencias en su portafolio activo. No se modificaron filas ni se desplegó.
+Las propiedades y fuzz de identidad/permisos usan `fast-check`, 100 casos por
+propiedad y semilla `20261111` en `order-record-read.spec.ts`.
+La revisión adversarial independiente sobre `509f217 + diff local` ejecutó
+81 pruebas HTTP/autorización y resolución sin hallazgos bloqueantes; sus
+fixtures son sintéticos, no una prueba visual en producción.

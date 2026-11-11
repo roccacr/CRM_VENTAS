@@ -8,6 +8,7 @@ export interface BankAssignmentIdentity {
 export interface BankAssignmentOrder extends BankAssignmentIdentity {
     internalId: string;
     active: boolean;
+    deleted?: boolean;
 }
 export const BANK_ASSIGNMENT_LEGACY = Symbol("BANK_ASSIGNMENT_LEGACY");
 export interface BankAssignmentLegacy {

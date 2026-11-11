@@ -12,22 +12,23 @@ export class FollowUpRepository {
     /** Incluye alias inactivos y borrados para que un registro nativo con autoridad no caiga al CRM viejo. */
     async findRecordAuthority(tx: Transaction<CrmDatabase>, source: "native" | "legacy", id: string) {
         const where = source === "native" ? sql`o.public_id_sales_order=${id}` : sql`o.id_old_produccion_sales_order=${Number(id)}`;
-        const result = await sql<{ publicId: string; active: number }>`
-            SELECT o.public_id_sales_order AS publicId,
+        const result = await sql<{ publicId: string; active: number; deleted: number }>`
+            SELECT o.public_id_sales_order AS publicId,(o.deleted_at_sales_order IS NOT NULL) AS deleted,
                 (o.status_sales_order='active' AND (o.cancelled_sales_order='no' OR (o.cancelled_sales_order='yes' AND o.contract_signed_sales_order='yes')) AND o.deleted_at_sales_order IS NULL) AS active
             FROM crm_sales_order o WHERE ${where} LIMIT 1`.execute(tx);
         const row = result.rows[0];
-        return row ? { publicId: row.publicId, active: row.active === 1 } : undefined;
+        return row ? { publicId: row.publicId, active: row.active === 1, deleted: row.deleted === 1 } : undefined;
     }
     /** Un SELECT acotado. Une proyecto, contacto y vendedor por la llave explícita del lead de la orden. */
     read(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, access: FollowUpAccess) {
         return readFollowUpSource(tx, followUpSourceQuery(this.base(period), query, access));
     }
     /** Federa las filas de origen antes de los permisos, los filtros y la página global acotada. */
-    readCombined(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, options: { access: FollowUpAccess; legacy?: RawBuilder<unknown> }) {
+    readCombined(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, options: { access: FollowUpAccess; legacy?: RawBuilder<unknown>; searchLegacy?: RawBuilder<unknown> }) {
         const { access, legacy } = options;
         const base = legacy ? sql`${this.base(period)} UNION ALL ${legacy}` : this.base(period);
-        return readFollowUpSource(tx, followUpSourceQuery(base, query, access));
+        const searchBase = access.exactOrderSearch && query.search ? (options.searchLegacy ? sql`${this.base(period, undefined, true)} UNION ALL ${options.searchLegacy}` : this.base(period, undefined, true)) : base;
+        return readFollowUpSource(tx, followUpSourceQuery(base, query, access, searchBase));
     }
     /** Usa la misma autoridad nativa y la proyección vieja opcional dentro de una sola foto. */
     projectDistribution(tx: Transaction<CrmDatabase>, period: FollowUpPeriod, options: { access: FollowUpAccess; legacy?: RawBuilder<unknown> }) {
@@ -36,9 +37,9 @@ export class FollowUpRepository {
     }
     /** Acota la proyección de origen a la identidad pedida antes de clasificar. */
     readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
-        return readFollowUpRecord(tx, this.base(period, id));
+        return readFollowUpRecord(tx, this.base(period, id, true));
     }
-    private base(period: FollowUpPeriod, id?: string) {
+    private base(period: FollowUpPeriod, id?: string, includeInactive = false) {
         return sql`
             SELECT o.id_sales_order AS sortId,o.public_id_sales_order AS id,'native' AS source,
                 COALESCE((SELECT NULLIF(TRIM(x.transaction_number_sales_order_external_reference),'') FROM crm_sales_order_external_reference x
@@ -83,6 +84,6 @@ export class FollowUpRepository {
                 WHERE latest.sales_order_id_sales_order_state_event=o.id_sales_order ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
             LEFT JOIN sec_user responsible ON responsible.id_user=e.responsible_user_id_sales_order_state_event
             LEFT JOIN sec_user actor ON actor.id_user=e.actor_user_id_sales_order_state_event
-            WHERE ${id === undefined ? sql`TRUE` : sql`o.public_id_sales_order=${id}`} AND o.status_sales_order='active' AND (o.cancelled_sales_order='no' OR (o.cancelled_sales_order='yes' AND o.contract_signed_sales_order='yes')) AND o.deleted_at_sales_order IS NULL`;
+            WHERE ${id === undefined ? sql`TRUE` : sql`o.public_id_sales_order=${id}`} AND ${includeInactive ? sql`TRUE` : sql`o.status_sales_order='active' AND (o.cancelled_sales_order='no' OR (o.cancelled_sales_order='yes' AND o.contract_signed_sales_order='yes'))`} AND o.deleted_at_sales_order IS NULL`;
     }
 }

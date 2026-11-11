@@ -1,11 +1,12 @@
 import "reflect-metadata";
 
+import { DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler } from "kysely";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IdentityService } from "../../src/modules/crm/identity/identity.service.js";
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
 import { bankAssignmentInput, bankAssignmentUnlinkInput, OrderBankAssignmentService } from "../../src/modules/crm/sales/sales-orders/order-bank-assignment.js";
-import type { OrderBankAssignmentRepository } from "../../src/modules/crm/sales/sales-orders/order-bank-assignment.repository.js";
+import { OrderBankAssignmentRepository } from "../../src/modules/crm/sales/sales-orders/order-bank-assignment.repository.js";
 const id = "01K8SJ7KXKWWPMAWEA8NXGWW83";
 const body = { bankPublicId: id, advisorPublicId: id, expectedVersion: 0, reason: "Asignación solicitada" };
 function fixture() {
@@ -86,4 +87,26 @@ describe("Order bank assignment authorization and validation", () => {
         await expect(f.service.change("session", { source: "native", id: "123" }, body)).rejects.toMatchObject({ status: 400 });
         expect(f.repository.change).not.toHaveBeenCalled();
     });
+});
+
+it.each([false, true])("reads inactive banking without allowing unlink legacy=%s", async (legacy) => {
+    const driver = new DummyDriver();
+    driver.acquireConnection = async () => {
+        const connection = await DummyDriver.prototype.acquireConnection.call(driver);
+        connection.executeQuery = (query) =>
+            Promise.resolve({
+                rows: (query.sql.includes("FROM crm_sales_order o WHERE") ? (legacy ? [] : [{ id, internalId: "85", active: 0, deleted: 0 }]) : query.sql.includes("from `sec_user`") ? [{ id_user: 1 }] : []) as never[],
+            });
+        return connection;
+    };
+    const db = new Kysely({ dialect: { createDriver: () => driver, createAdapter: () => new MysqlAdapter(), createIntrospector: (instance) => new MysqlIntrospector(instance), createQueryCompiler: () => new MysqlQueryCompiler() } });
+    const old = { read: vi.fn().mockResolvedValue({ source: "legacy", id: "85", internalId: "85", active: false }) };
+    const repository = new OrderBankAssignmentRepository({ db } as never, { enabled: true, captureActor: vi.fn().mockResolvedValue({}) } as never, {} as never, old);
+    const identity = { source: legacy ? ("legacy" as const) : ("native" as const), id: legacy ? "85" : id };
+    try {
+        await expect(repository.read(identity)).resolves.toMatchObject({ bank: null, advisor: null });
+        await expect(repository.unlink(identity, { expectedVersion: 0, reason: "Retirar", actorPublicId: "actor" })).rejects.toMatchObject({ status: 404 });
+    } finally {
+        await db.destroy();
+    }
 });

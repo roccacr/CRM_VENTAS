@@ -30,7 +30,7 @@ export class SalesOrderAddendumRepository {
         return this.database.db
             .transaction()
             .setAccessMode("read only")
-            .execute((tx) => this.resolve(tx, identity, false));
+            .execute((tx) => this.resolve(tx, identity, false, true));
     }
 
     /** Conteo independiente de etapas/aprobaciones, en la misma instantánea para ambas fuentes. */
@@ -177,7 +177,7 @@ export class SalesOrderAddendumRepository {
         const rows = (
             await sql<
                 Omit<AddendumOrder, "source" | "lead"> & { leadId: number | null }
-            >`SELECT CAST(o.id_sales_order AS CHAR) AS internalId,o.public_id_sales_order AS id,(o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL) AS active,o.addendum_status_sales_order AS status,o.addendum_version_sales_order AS version,DATE_FORMAT(o.addendum_changed_at_sales_order,'%Y-%m-%dT%H:%i:%s.%fZ') AS changedAt,o.addendum_note_sales_order AS note,o.lead_id_sales_order AS leadId FROM crm_sales_order o WHERE ${filter} LIMIT 2 ${ending}`.execute(
+            >`SELECT CAST(o.id_sales_order AS CHAR) AS internalId,o.public_id_sales_order AS id,(o.deleted_at_sales_order IS NOT NULL) AS deleted,(o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL) AS active,o.addendum_status_sales_order AS status,o.addendum_version_sales_order AS version,DATE_FORMAT(o.addendum_changed_at_sales_order,'%Y-%m-%dT%H:%i:%s.%fZ') AS changedAt,o.addendum_note_sales_order AS note,o.lead_id_sales_order AS leadId FROM crm_sales_order o WHERE ${filter} LIMIT 2 ${ending}`.execute(
                 tx,
             )
         ).rows;
@@ -185,10 +185,11 @@ export class SalesOrderAddendumRepository {
         const row = rows[0];
         if (!row) return undefined;
         const leads = row.leadId === null ? [] : (await sql<{ id: string }>`SELECT public_id_lead AS id FROM crm_lead WHERE id_lead=${row.leadId} AND deleted_at_lead IS NULL ${ending}`.execute(tx)).rows;
-        return { ...row, active: Number(row.active) === 1, source: "native", lead: leads.length === 1 && leads[0] ? { source: "native", id: leads[0].id } : null };
+        return { ...row, active: Number(row.active) === 1, deleted: Number(row.deleted) === 1, source: "native", lead: leads.length === 1 && leads[0] ? { source: "native", id: leads[0].id } : null };
     }
 
-    private async resolve(tx: Transaction<CrmDatabase>, identity: AddendumIdentity, lock: boolean): Promise<AddendumOrder> {
+    // eslint-disable-next-line complexity -- La autoridad nativa separa las lecturas históricas de las mutaciones exclusivas de activas.
+    private async resolve(tx: Transaction<CrmDatabase>, identity: AddendumIdentity, lock: boolean, includeInactive = false): Promise<AddendumOrder> {
         let order = await this.native(tx, identity, false);
         if (order) order = lock ? await this.native(tx, identity, true) : order;
         else if (identity.source === "legacy") {
@@ -196,7 +197,7 @@ export class SalesOrderAddendumRepository {
             // La promoción debe bloquear primero la orden antigua; la relectura actual evita escribir una copia retirada.
             order = lock ? ((await this.native(tx, identity, true)) ?? legacy) : legacy;
         }
-        if (!order || !order.active) throw new NotFoundException("Orden disponible no encontrada.");
+        if (!order || order.deleted || (!includeInactive && !order.active)) throw new NotFoundException("Orden disponible no encontrada.");
         return order;
     }
 

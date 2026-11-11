@@ -30,14 +30,14 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
     }
     /** Recorta la misma proyeccion a una orden antes de clasificarla. */
     readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod) {
-        return readFollowUpRecord(tx, this.base(period, id));
+        return readFollowUpRecord(tx, this.base(period, id, true));
     }
     /** La misma proyeccion, sin filtro de id, para paginar el portafolio. */
-    projection(period: FollowUpPeriod) {
-        return this.base(period);
+    projection(period: FollowUpPeriod, includeInactive = false) {
+        return this.base(period, undefined, includeInactive);
     }
-    /** Activa, o caida pero con contrato firmado. El correo nativo solo entra si un solo admin lo tiene. */
-    private base(period: FollowUpPeriod, id?: string) {
+    /** Los banners conservan la elegibilidad activa; la ficha y la búsqueda admiten inactivas sin reactivarlas. */
+    private base(period: FollowUpPeriod, id?: string, includeInactive = false) {
         return sql`
             SELECT o.id_ov AS sortId,CONCAT('legacy:',o.id_ov) COLLATE utf8mb4_unicode_ci AS id,'legacy' AS source,
                 COALESCE(NULLIF(TRIM(o.id_ov_tranid),''),CONCAT('OV-',o.id_ov)) COLLATE utf8mb4_unicode_ci AS number,NULL AS nativeCode,
@@ -82,6 +82,6 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
                 AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.expedientes")} sibling WHERE sibling.ID_interno_expediente=f.ID_interno_expediente AND sibling.id_expediente<>f.id_expediente)
             LEFT JOIN ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e ON e.id_sales_order_state_event=(SELECT latest.id_sales_order_state_event
                 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} latest WHERE latest.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
-            WHERE ${id === undefined ? sql`TRUE` : sql`o.id_ov=${Number(id)}`} AND o.status_ov=1 AND (o.caida_ov=0 OR (o.caida_ov=1 AND o.contrado_frima_ov=1)) AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
+            WHERE ${id === undefined ? sql`TRUE` : sql`o.id_ov=${Number(id)}`} AND ${includeInactive ? sql`TRUE` : sql`o.status_ov=1 AND (o.caida_ov=0 OR (o.caida_ov=1 AND o.contrado_frima_ov=1))`} AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
     }
 }

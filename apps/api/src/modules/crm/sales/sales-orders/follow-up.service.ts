@@ -37,7 +37,7 @@ export class FollowUpService {
         @Inject(FOLLOW_UP_LEGACY_READER) private readonly legacy: FollowUpLegacyReader,
         @Inject(HomeSummaryRepository) private readonly snapshot: HomeSummaryRepository,
     ) {}
-    /** Restaura un solo registro activo con autoridad. Las listas y los resúmenes del banner conservan permisos distintos. */
+    /** Restaura un registro, incluso inactivo, con autoridad. Las listas y los resúmenes del banner conservan permisos distintos. */
     async record(session: string | undefined, input: unknown) {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("No tiene permiso para consultar esta orden.");
@@ -51,7 +51,7 @@ export class FollowUpService {
                 const native = await this.repository.findRecordAuthority(tx, target.data.source, target.data.id);
                 let row: FollowUpDatabaseRow | undefined;
                 if (native) {
-                    if (!native.active) throw new NotFoundException("Orden disponible no encontrada.");
+                    if (native.deleted) throw new NotFoundException("Orden disponible no encontrada.");
                     row = await this.repository.readRecord(tx, native.publicId, period);
                 } else {
                     if (target.data.source === "native") throw new NotFoundException("Orden disponible no encontrada.");
@@ -103,7 +103,7 @@ export class FollowUpService {
         try {
             return await this.snapshot.readSnapshot(async (tx) => {
                 const enabled = this.legacy.enabled();
-                const result = await this.repository.readCombined(tx, { ...query, offset, limit: query.pageSize }, period, { access, ...(enabled ? { legacy: this.legacy.projection(period) } : {}) });
+                const result = await this.repository.readCombined(tx, { ...query, offset, limit: query.pageSize }, period, { access, ...(enabled ? { legacy: this.legacy.projection(period), ...(canReadOrder && query.search ? { searchLegacy: this.legacy.projection(period, true) } : {}) } : {}) });
                 const { total, counts } = result;
                 counts.bankInProgress = queues.bank ? (counts.bankInProgress ?? 0) : 0;
                 const projects = result.projects.sort((a, b) => a.name.localeCompare(b.name, "es"));

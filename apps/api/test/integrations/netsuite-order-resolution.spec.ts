@@ -67,12 +67,12 @@ it.each([true, false])("resolves authorized source native=%s before one provider
         await f.db.destroy();
     }
 });
-it.each(["no-permission", "direct-deny", "inactive", "banner-only"])("blocks %s before provider access", async (mode) => {
+it.each(["no-permission", "direct-deny", "deleted", "banner-only"])("blocks %s before provider access", async (mode) => {
     const f = fixture();
     try {
         if (mode === "no-permission") f.profile.permissions = [];
         if (mode === "direct-deny") f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
-        if (mode === "inactive") f.order.active = false;
+        if (mode === "deleted") f.order.deleted = true;
         if (mode === "banner-only") f.profile.permissions = [{ code: "formalizacion.home.stages.read", effect: "allow", scope: "self", source: "role" }];
         await expect(f.service.read("session", { source: "native", id: publicId })).rejects.toThrow(anyOf("Permiso insuficiente para consultar la orden.", "Orden disponible no encontrada."));
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
@@ -116,11 +116,11 @@ it("does not treat a native database failure as native absence", async () => {
     }
 });
 
-it.each(["deny", "inactive", "category"])("blocks the database read for %s without data projection or fallback", async (mode) => {
+it.each(["deny", "deleted", "category"])("blocks the database read for %s without data projection or fallback", async (mode) => {
     const f = fixture();
     try {
         if (mode === "deny") f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
-        if (mode === "inactive") f.order.active = false;
+        if (mode === "deleted") f.order.deleted = true;
         if (mode === "category") {
             f.profile.permissions = [{ code: "formalizacion.home.banking.read", effect: "allow", scope: "self", source: "role" }];
         }
@@ -133,7 +133,7 @@ it.each(["deny", "inactive", "category"])("blocks the database read for %s witho
     }
 });
 
-it.each(["deny", "category", "banner-only", "inactive"])("history blocks %s before reading audit rows", async (mode) => {
+it.each(["deny", "category", "banner-only", "deleted"])("history blocks %s before reading audit rows", async (mode) => {
     const f = fixture();
     try {
         if (mode === "deny") f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
@@ -141,7 +141,7 @@ it.each(["deny", "category", "banner-only", "inactive"])("history blocks %s befo
             f.profile.permissions = [{ code: "formalizacion.home.banking.read", effect: "allow", scope: "self", source: "role" }];
         }
         if (mode === "banner-only") f.profile.permissions = [{ code: "formalizacion.home.approvals.read", effect: "allow", scope: "self", source: "role" }];
-        if (mode === "inactive") f.order.active = false;
+        if (mode === "deleted") f.order.deleted = true;
         await expect(f.service.readHistory("session", { source: "native", id: publicId })).rejects.toThrow(anyOf("Permiso insuficiente para consultar la orden.", "Orden disponible no encontrada."));
         expect(f.queries).toHaveLength(0);
         expect(f.client.readSalesOrder).not.toHaveBeenCalled();
@@ -176,6 +176,20 @@ it.each(["version", "revoked", "expired"])("manual synchronization locks live au
             expect(query?.sql).toContain("for update");
         }
         expect(f.queries.every((q) => !/^\s*(INSERT|UPDATE|DELETE)/.test(q.sql))).toBe(true);
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it.each([true, false])("reads inactive order data and history native=%s while synchronization remains blocked", async (native) => {
+    const f = fixture(native);
+    f.order.active = false;
+    try {
+        await expect(f.service.readDatabase("session", { source: "legacy", id: "208" })).resolves.toMatchObject({ source: native ? "native" : "legacy" });
+        await expect(f.service.readHistory("session", { source: "legacy", id: "208" })).resolves.toBeDefined();
+        await expect(f.service.read("session", { source: "legacy", id: "208" })).resolves.toBeDefined();
+        const resolver = new NetsuiteOrderRepository(f.repository as never, f.legacy as never, { readSnapshot: (run: (tx: never) => Promise<unknown>) => f.db.transaction().execute((tx) => run(tx as never)) } as never);
+        await expect(resolver.resolve({ source: "legacy", id: "208" }, () => undefined)).rejects.toMatchObject({ status: 404 });
     } finally {
         await f.db.destroy();
     }

@@ -32,12 +32,13 @@ export class OrderBankAssignmentRepository {
                 ? sql`o.public_id_sales_order=${identity.id}`
                 : sql`(o.id_old_produccion_sales_order=${Number(identity.id)} OR EXISTS(SELECT 1 FROM crm_sales_order_external_reference x JOIN int_external_system s ON s.id_external_system=x.external_system_id_sales_order_external_reference WHERE x.sales_order_id_sales_order_external_reference=o.id_sales_order AND s.code_external_system='legacy_crm' AND s.status_external_system='active' AND x.status_sales_order_external_reference='active' AND x.external_id_sales_order_external_reference=${identity.id}))`;
         const ending = lock ? sql`FOR UPDATE` : sql``;
-        const rows = (await sql<{ id: string; internalId: string; active: number | string }>`SELECT public_id_sales_order AS id,CAST(id_sales_order AS CHAR) AS internalId,(status_sales_order='active' AND cancelled_sales_order='no' AND deleted_at_sales_order IS NULL) AS active FROM crm_sales_order o WHERE ${filter} LIMIT 2 ${ending}`.execute(tx)).rows;
+        const rows = (await sql<{ id: string; internalId: string; active: number | string; deleted: number | string }>`SELECT public_id_sales_order AS id,(deleted_at_sales_order IS NOT NULL) AS deleted,CAST(id_sales_order AS CHAR) AS internalId,(status_sales_order='active' AND cancelled_sales_order='no' AND deleted_at_sales_order IS NULL) AS active FROM crm_sales_order o WHERE ${filter} LIMIT 2 ${ending}`.execute(tx)).rows;
         if (rows.length > 1) throw new ConflictException("La identidad de la orden es ambigua.");
         const row = rows[0];
-        return row ? { ...row, source: "native", active: Number(row.active) === 1 } : undefined;
+        return row ? { ...row, source: "native", active: Number(row.active) === 1, deleted: Number(row.deleted) === 1 } : undefined;
     }
-    private async resolve(tx: Transaction<CrmDatabase>, identity: BankAssignmentIdentity, lock: boolean) {
+    // eslint-disable-next-line complexity -- La autoridad nativa separa las lecturas históricas de las mutaciones exclusivas de activas.
+    private async resolve(tx: Transaction<CrmDatabase>, identity: BankAssignmentIdentity, lock: boolean, includeInactive = false) {
         let order = await this.native(tx, identity, false);
         if (order) order = lock ? await this.native(tx, identity, true) : order;
         else if (identity.source === "legacy") {
@@ -45,7 +46,7 @@ export class OrderBankAssignmentRepository {
             // La promoción bloquea primero la orden vieja. Una lectura actual evita escribir sobre una copia ya retirada.
             order = lock ? ((await this.native(tx, identity, true)) ?? old) : old;
         }
-        if (!order?.active) throw new NotFoundException("Orden disponible no encontrada.");
+        if (!order || order.deleted || (!includeInactive && !order.active)) throw new NotFoundException("Orden disponible no encontrada.");
         return order;
     }
     // eslint-disable-next-line complexity -- Nullable links preserve the persisted version and timestamp after unlink.
@@ -78,7 +79,7 @@ export class OrderBankAssignmentRepository {
         return this.database.db
             .transaction()
             .setAccessMode("read only")
-            .execute(async (tx) => this.snapshot(tx, await this.resolve(tx, identity, false)));
+            .execute(async (tx) => this.snapshot(tx, await this.resolve(tx, identity, false, true)));
     }
     /** Guarda una asignación autorizada con control optimista de versión. */
     change(identity: BankAssignmentIdentity, command: AssignmentChange) {

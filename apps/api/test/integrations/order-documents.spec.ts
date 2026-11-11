@@ -35,7 +35,7 @@ describe("documentos autorizados de la orden", () => {
     it("resuelve 78 mediante NetSuite10518461, no por nombre ni ID local", async () => {
         const f = fixture();
         const result = await f.service.list("session", order);
-        expect(f.repository.resolve).toHaveBeenCalledWith(order, expect.any(Function));
+        expect(f.repository.resolve).toHaveBeenCalledWith(order, expect.any(Function), true);
         expect(f.graph.folder).toHaveBeenCalledWith("test-token", "group", "root", "10518461");
         expect(result.files).toHaveLength(1);
         expect(result.canWrite).toBe(true);
@@ -164,4 +164,15 @@ it("acepta la paginación canónica solo para el mismo drive y carpeta", async (
     expect(await graph.files("token", "g", "folder", "drive-a")).toHaveLength(1);
     fetch.mockResolvedValueOnce(new Response(JSON.stringify({ value: [], "@odata.nextLink": "https://graph.microsoft.com/v1.0/drives/other/items/folder/children?$skiptoken=next" })));
     await expect(graph.files("token", "g", "folder", "drive-a")).rejects.toMatchObject({ status: 502 });
+});
+
+it("reads inactive order documents but blocks creating folders", async () => {
+    const f = fixture();
+    f.repository.resolve.mockImplementation((_target, check: (order: unknown) => void) => {
+        check({ active: false, deleted: false });
+        return Promise.resolve({ ...order, netsuiteId: "10518461" });
+    });
+    await expect(f.service.list("session", order)).resolves.toHaveProperty("files");
+    await expect(f.service.create("session", order)).rejects.toMatchObject({ status: 404 });
+    expect(f.graph.createFolder).not.toHaveBeenCalled();
 });

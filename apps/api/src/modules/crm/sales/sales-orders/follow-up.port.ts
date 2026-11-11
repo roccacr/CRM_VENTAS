@@ -8,7 +8,7 @@ export const FOLLOW_UP_LEGACY_READER = Symbol("FOLLOW_UP_LEGACY_READER");
 export interface FollowUpLegacyReader {
     enabled(): boolean;
     /** Los alias de origen se componen en una lectura paginada global, sobre la foto compartida. */
-    projection(period: FollowUpPeriod): RawBuilder<unknown>;
+    projection(period: FollowUpPeriod, includeInactive?: boolean): RawBuilder<unknown>;
     readRecord(tx: Transaction<CrmDatabase>, id: string, period: FollowUpPeriod): Promise<FollowUpDatabaseRow | undefined>;
     read(tx: Transaction<CrmDatabase>, query: FollowUpRead, period: FollowUpPeriod, access: FollowUpAccess): Promise<FollowUpSourcePage>;
 }

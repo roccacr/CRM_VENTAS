@@ -192,7 +192,7 @@ it("resolves exact native authority without filtering inactive aliases or readin
     const { db, queries } = database([{ publicId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", active: 0 }]);
     try {
         await db.transaction().execute(async (tx) => {
-            expect(await new FollowUpRepository().findRecordAuthority(tx, "legacy", "208")).toEqual({ publicId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", active: false });
+            expect(await new FollowUpRepository().findRecordAuthority(tx, "legacy", "208")).toEqual({ publicId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", active: false, deleted: false });
             await new FollowUpRepository().findRecordAuthority(tx, "native", "01ARZ3NDEKTSV4RRFFQ69G5FAV");
         });
         expect(queries[0]?.sql).toContain("WHERE o.id_old_produccion_sales_order=? LIMIT 1");
@@ -326,4 +326,33 @@ describe("project distribution aggregates", () => {
         expect(statement).toContain("COLLATE utf8mb4_unicode_ci");
         await db.destroy();
     });
+});
+
+it("separates inactive search candidates from active banner membership", async () => {
+    const { db, queries } = database();
+    try {
+        await db.transaction().execute(async (tx) => {
+            const repository = new FollowUpRepository();
+            const legacy = new LegacyFollowUpReader({ isConfigured: () => true } as never);
+            await repository.readCombined(tx, { ...query, search: "RDR611" }, period, {
+                access: { ...access, exactOrderSearch: true },
+                legacy: legacy.projection(period),
+                searchLegacy: legacy.projection(period, true),
+            });
+        });
+        const statement = queries[0]?.sql ?? "";
+        const active = statement.split("classified AS")[0];
+        const candidates = statement.split("search_candidates AS")[1]?.split("visible AS")[0] ?? "";
+        expect(active).toContain("o.status_ov=1");
+        expect(active).toContain("o.status_sales_order='active'");
+        expect(candidates).toContain("crmdatabase-api");
+        expect(candidates).not.toContain("o.status_ov=1");
+        expect(candidates).not.toContain("o.status_sales_order='active'");
+        expect(candidates).toContain("o.deleted_at_sales_order IS NULL");
+        expect(candidates).toContain("n.id_old_produccion_sales_order=o.id_ov");
+        expect(statement).toContain("FROM search_candidates candidate");
+        expect(queries[0]?.parameters).toContain("rdr611");
+    } finally {
+        await db.destroy();
+    }
 });

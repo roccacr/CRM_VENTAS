@@ -41,9 +41,13 @@ export class OrderDocumentsService {
         if (!this.allowed(profile, DOCUMENT_READ) || (write && !this.allowed(profile, DOCUMENT_WRITE))) throw new ForbiddenException("No tienes permiso para esta operación documental.");
         const target = orderTimingIdentity.safeParse(input);
         if (!target.success) throw new BadRequestException("Identidad de orden inválida.");
-        const order = await this.orders.resolve(target.data, (row) => {
-            assertFormalizationOrderReadable(profile, row);
-        });
+        const order = await this.orders.resolve(
+            target.data,
+            (row) => {
+                assertFormalizationOrderReadable(profile, row, !write);
+            },
+            !write,
+        );
         if (this.config.get<boolean>("ENABLE_ORDER_DOCUMENTS") !== true) throw new ServiceUnavailableException("La integración documental no está habilitada.");
         return { profile, order, group: this.config.getOrThrow<string>("MICROSOFT_DOCUMENTS_GROUP_ID"), root: this.config.getOrThrow<string>("MICROSOFT_ORDER_DOCUMENTS_ROOT_ID") };
     }

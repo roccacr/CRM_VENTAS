@@ -39,8 +39,8 @@ export class OrderTimingService {
                     source = "legacy";
                     order = await this.legacy.find(tx, target.data.id);
                 }
-                if (!order || !order.active) throw new NotFoundException("Orden disponible no encontrada.");
-                assertFormalizationOrderReadable(profile, order);
+                if (!order || order.deleted) throw new NotFoundException("Orden disponible no encontrada.");
+                assertFormalizationOrderReadable(profile, order, true);
                 const page = { offset: (query.data.page - 1) * query.data.pageSize, limit: query.data.pageSize };
                 const data = source === "native" ? await this.repository.read(tx, order.id, page) : await this.legacy.read(tx, order.id, page);
                 return { schemaVersion: 1 as const, observedAt: new Date().toISOString(), order: { source, id: order.publicId }, page: { number: query.data.page, size: query.data.pageSize, total: data.total, totalPages: Math.ceil(data.total / query.data.pageSize) }, summary: data.summary, items: data.items };

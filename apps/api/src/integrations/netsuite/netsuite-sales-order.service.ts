@@ -33,32 +33,42 @@ export class NetsuiteSalesOrderService {
     ) {}
     /** Resuelve la orden en la base y despues lee el proveedor. El JSON externo no se persiste. */
     async read(session: string | undefined, input: unknown) {
-        const resolved = await this.authorized(session, input, (target, check) => this.repository.resolve(target, check));
+        const resolved = await this.authorized(session, input, (target, check) => this.repository.resolve(target, check, true), true);
         // La foto de la base se suelta antes de la llamada externa.
         const data = await this.client.readSalesOrder(resolved.netsuiteId);
         return { schemaVersion: 1 as const, order: resolved, data };
     }
     /** Misma autoridad que la lectura del proveedor, sin salir a NetSuite. Un query extra se rechaza. */
     async readDatabase(session: string | undefined, input: unknown, query: unknown = {}) {
-        return this.authorized(session, input, (target, check) => {
-            const parsed = z
-                .object({ historyCursor: z.string().max(2048).optional() })
-                .strict()
-                .safeParse(query);
-            if (!parsed.success) throw new BadRequestException("Filtros de historial invalidos.");
-            return this.repository.readDatabase(target, check, parsed.data.historyCursor);
-        });
+        return this.authorized(
+            session,
+            input,
+            (target, check) => {
+                const parsed = z
+                    .object({ historyCursor: z.string().max(2048).optional() })
+                    .strict()
+                    .safeParse(query);
+                if (!parsed.success) throw new BadRequestException("Filtros de historial invalidos.");
+                return this.repository.readDatabase(target, check, parsed.data.historyCursor);
+            },
+            true,
+        );
     }
     /** La bitacora usa el permiso de la orden. El adendum entra solo si ese permiso de lectura esta concedido. */
     async readHistory(session: string | undefined, input: unknown, query: unknown = {}) {
-        return this.authorized(session, input, (target, check, profile) => {
-            const parsed = z
-                .object({ cursor: z.string().min(1).max(2048).optional() })
-                .strict()
-                .safeParse(query);
-            if (!parsed.success) throw new BadRequestException("Filtros de bitácora inválidos.");
-            return this.repository.readHistory(target, check, parsed.data.cursor, formalizationPermissionScope(profile, "formalizacion.orders.addendum.read").allowed);
-        });
+        return this.authorized(
+            session,
+            input,
+            (target, check, profile) => {
+                const parsed = z
+                    .object({ cursor: z.string().min(1).max(2048).optional() })
+                    .strict()
+                    .safeParse(query);
+                if (!parsed.success) throw new BadRequestException("Filtros de bitácora inválidos.");
+                return this.repository.readHistory(target, check, parsed.data.cursor, formalizationPermissionScope(profile, "formalizacion.orders.addendum.read").allowed);
+            },
+            true,
+        );
     }
     /** Dice el entorno y si la escritura manual esta habilitada. No llama a NetSuite, aunque el proveedor este caido. */
     async synchronizationContext(session: string | undefined, input: unknown) {
@@ -202,7 +212,7 @@ export class NetsuiteSalesOrderService {
         return parsed.data;
     }
 
-    private async authorized<T>(session: string | undefined, input: unknown, read: (target: { source: "native" | "legacy"; id: string }, check: (order: TimingOrder) => void, profile: IdentityProfile) => Promise<T>): Promise<T> {
+    private async authorized<T>(session: string | undefined, input: unknown, read: (target: { source: "native" | "legacy"; id: string }, check: (order: TimingOrder) => void, profile: IdentityProfile) => Promise<T>, includeInactive = false): Promise<T> {
         const profile = await this.identity.getCurrentUser(session);
         if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("Permiso insuficiente para consultar la orden.");
         const target = orderTimingIdentity.safeParse(input);
@@ -210,7 +220,7 @@ export class NetsuiteSalesOrderService {
         return read(
             target.data,
             (order) => {
-                assertFormalizationOrderReadable(profile, order);
+                assertFormalizationOrderReadable(profile, order, includeInactive);
             },
             profile,
         );

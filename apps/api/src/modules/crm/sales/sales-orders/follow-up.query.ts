@@ -59,7 +59,8 @@ function followUpMatches(access: FollowUpAccess) {
 }
 
 /** Las dos fuentes comparten filtros y el orden global de proyecto y unidad antes del LIMIT. El ordinal sobrevive a una agregación JSON sin orden. */
-export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRead, access: FollowUpAccess) {
+// eslint-disable-next-line complexity -- La búsqueda histórica y el portafolio activo conservan autorización y filtros independientes.
+export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRead, access: FollowUpAccess, searchBase: RawBuilder<unknown> = base) {
     const matches = followUpMatches(access);
     const { selectedProjects, selectionPredicate } = selectedFollowUpFilters(query, matches);
     const recordId = query.recordId ?? "";
@@ -68,7 +69,7 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
     // La búsqueda exacta se autoriza aparte del tablero y conserva la autoridad de la fuente.
     const exactFallback =
         access.exactOrderSearch && search && !recordId
-            ? sql`UNION ALL SELECT candidate.* FROM classified candidate
+            ? sql`UNION ALL SELECT candidate.* FROM search_candidates candidate
             WHERE NOT EXISTS (SELECT 1 FROM selected)
                 AND (${!access.ownOnly} OR candidate.ownerId=${access.actorId})
                 AND (LOWER(candidate.number)=${search} OR (candidate.source='native' AND EXISTS (
@@ -82,6 +83,8 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
         WITH base AS (${base}), classified AS (
             SELECT base.*,${followUpClassification} AS stateCode
             FROM base
+        ), search_candidates AS (
+            ${searchBase === base ? sql`SELECT * FROM classified` : sql`SELECT search_base.*,${followUpClassification} AS stateCode FROM (${searchBase}) search_base`}
         ), visible AS (
             SELECT * FROM classified WHERE (${!access.ownOnly} OR ownerId=${access.actorId})
                 AND ${matches.all}

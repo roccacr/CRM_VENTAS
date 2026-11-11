@@ -19,6 +19,8 @@ export interface TimingOrder {
     id: string;
     publicId: string;
     active: boolean;
+    /** Borrado lógico distinto de inactivación: nunca se publica en la ficha. */
+    deleted?: boolean;
     pendingApproval: boolean;
     ownerId: string | null;
     rawStage?: string | null;
