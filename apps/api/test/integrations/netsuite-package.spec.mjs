@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import assert from "node:assert/strict";
+import fc from "fast-check";
 import { it } from "vitest";
 
 import { inspectSuiteScripts } from "../../scripts/package-netsuite.mjs";
@@ -21,7 +22,7 @@ function copyFixture(from, to) {
 
 it("maps the three unified scripts to their actual File Cabinet paths with hashes and version", () => {
     const result = inspectSuiteScripts();
-    assert.equal(result.version, "2026.11.11.1");
+    assert.equal(result.version, "2026.11.11.3");
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_RL_CRM_Habita.js"));
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_LIB_CRM_habita.js"));
     assert.ok(result.files.some((file) => file.path === "SuiteScripts/SS2_1_UE_CRM_Habita.js"));
@@ -64,6 +65,55 @@ it("rejects an embedded webhook credential without printing its value", () => {
         assert.throws(
             () => inspectSuiteScripts(temp),
             (error) => error instanceof Error && /Credencial de webhook incrustada/.test(error.message) && !error.message.includes(synthetic),
+        );
+    } finally {
+        rmSync(temp, { recursive: true, force: true });
+    }
+});
+
+for (const mode of ["changed", "duplicate", "other-file"]) {
+    it(`rejects a ${mode} fixed credential without exposing its value`, () => {
+        const temp = mkdtempSync(join(tmpdir(), "crm-package-test-"));
+        try {
+            copyFixture(source, temp);
+            const library = join(temp, "SS2_1_LIB_CRM_habita.js");
+            const content = readFileSync(library, "utf8");
+            const credential = /Bearer [a-f0-9]{64}/i.exec(content)?.[0];
+            assert.ok(credential);
+            if (mode === "changed") writeFileSync(library, content.replace(credential, "Bearer " + "b".repeat(64)));
+            if (mode === "duplicate") writeFileSync(library, content + `\nconst duplicate = "${credential}";`);
+            if (mode === "other-file") {
+                const wrapper = join(temp, "SS2_1_RL_CRM_Habita.js");
+                writeFileSync(wrapper, readFileSync(wrapper, "utf8") + `\nconst misplaced = "${credential}";`);
+            }
+            assert.throws(
+                () => inspectSuiteScripts(temp),
+                (error) => error instanceof Error && /Credencial de webhook incrustada/.test(error.message) && !error.message.includes(credential),
+            );
+        } finally {
+            rmSync(temp, { recursive: true, force: true });
+        }
+    });
+}
+
+it("rejects generated unauthorized fixed credentials without exposing them", () => {
+    const temp = mkdtempSync(join(tmpdir(), "crm-package-test-"));
+    try {
+        copyFixture(source, temp);
+        const library = join(temp, "SS2_1_LIB_CRM_habita.js");
+        const original = readFileSync(library, "utf8");
+        const approved = /Bearer [a-f0-9]{64}/.exec(original)?.[0];
+        assert.ok(approved);
+        fc.assert(
+            fc.property(fc.stringMatching(/^[a-f0-9]{64}$/), (token) => {
+                fc.pre("Bearer " + token !== approved);
+                writeFileSync(library, original.replace(approved, "Bearer " + token));
+                assert.throws(
+                    () => inspectSuiteScripts(temp),
+                    (error) => error instanceof Error && /Credencial de webhook incrustada/.test(error.message) && !error.message.includes(token),
+                );
+            }),
+            { seed: 20261111, numRuns: 100 },
         );
     } finally {
         rmSync(temp, { recursive: true, force: true });

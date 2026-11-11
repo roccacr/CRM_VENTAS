@@ -687,7 +687,8 @@ jobs:
   mysql-availability:
     name: MySQL / infrastructure (informational)
     needs: changes
-    if: needs.changes.outputs.api == 'true'
+    # Infraestructura opcional: omitida si no se preparó, nunca presentada como SQL verificado.
+    if: needs.changes.outputs.api == 'true' && vars.CRM_MYSQL_TESTS_READY == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 2

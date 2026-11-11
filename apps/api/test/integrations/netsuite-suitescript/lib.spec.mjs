@@ -377,11 +377,12 @@ describe("EnviarEvento.sendRecordEvent", () => {
             expect(https.post.mock.calls[0][0].url).toBe(expectedUrl);
         }
     });
-    it("uses the production secret ID only for the official receiver when the parameter is blank", () => {
+    it("uses the fixed production credential only for the official receiver when the parameter is blank", () => {
         const production = { envType: "PRODUCTION", accountId: "4552704", secretId: "" };
         const fallback = setup({ runtime: runtimeMock({ ...production, parameter: null }) });
         fallback.send(EVENT, snapshot);
-        expect(fallback.https.createSecureString).toHaveBeenCalledWith({ input: "Bearer {custsecret_crm_habita_production}" });
+        // Comparar solo el formato evita imprimir el secreto en un diff de asercion.
+        expect(/^Bearer [a-f0-9]{64}$/.test(fallback.https.createSecureString.mock.calls[0]?.[0]?.input ?? "")).toBe(true);
         expect(fallback.https.post).toHaveBeenCalledOnce();
         const other = setup({ runtime: runtimeMock({ ...production, parameter: GOOD_URL }) });
         expect(other.send(EVENT, snapshot).status).toBe("configuration_missing");

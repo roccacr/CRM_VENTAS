@@ -282,6 +282,17 @@ corre formato, lint, tipos, cobertura y build en push, PR y ejecución manual.
 API y frontend ejecutan lotes por carga y combinan sus coberturas antes de compilar. El job focalizado
 de NetSuite repite casos relevantes en MariaDB/InnoDB desechable. La
 persistencia MySQL general se informa por separado y no bloquea el empaquetado.
+Si `CRM_MYSQL_TESTS_READY` no está en `true` o el PR es externo, los jobs de
+infraestructura y persistencia MySQL general quedan omitidos: no es una prueba SQL aprobada.
+El job focalizado de NetSuite conserva su MariaDB desechable y sus validaciones.
+
+La inspección de SuiteScript admite únicamente la credencial fija autorizada por
+el propietario, identificada por SHA-256 estático, una vez y solo en
+`SS2_1_LIB_CRM_habita.js`. Cualquier otro token, duplicado o ubicación se rechaza
+sin imprimir su valor. La clave no se rota ni se reemplaza durante CI.
+El ZIP manual generado por `pnpm netsuite:package` contiene esa credencial y es
+privado; no se publica como artefacto. El paquete CI de Habita usa los builds y
+no incorpora la fuente SuiteScript.
 
 La promoción solo aplica a un push en la rama protegida configurada en
 `HABITA_RELEASE_BRANCH` aunque la promoción esté desactivada. El empaquetado espera

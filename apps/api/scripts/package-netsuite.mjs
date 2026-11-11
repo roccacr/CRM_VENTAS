@@ -10,6 +10,9 @@ import ts from "typescript";
 const SOURCE = fileURLToPath(new URL("../src/integrations/netsuite/suitescript/", import.meta.url));
 const NATIVE = new Set(["N/runtime", "N/record", "N/search", "N/log", "N/https", "N/crypto/random", "N/format", "N/workflow"]);
 const CABINET_ROOT = "/SuiteScripts/";
+// Excepción explícita del propietario: solo la clave fija aprobada en la librería oficial.
+// La huella no revela el secreto y no se recalcula desde el archivo durante la validación.
+const APPROVED_PRODUCTION_CREDENTIAL_SHA256 = "da305b1f010dc708bab49a0cdbd3fa5d168bbb49ccbee93c1fa52c508d9119dd";
 
 /** Valida sintaxis y grafo AMD real sin ejecutar acciones ni conectar con NetSuite. */
 export function inspectSuiteScripts(source = SOURCE) {
@@ -26,7 +29,9 @@ export function inspectSuiteScripts(source = SOURCE) {
         if (files.has(file)) return;
         visiting.add(file);
         const content = readFileSync(file, "utf8");
-        if (/(?:["']Bearer [a-f0-9]{64}["'])/i.test(content)) throw new Error(`Credencial de webhook incrustada: ${local}`);
+        const credentials = [...content.matchAll(/\bBearer\s+([a-f0-9]{64})\b/gi)];
+        const approved = local === "SS2_1_LIB_CRM_habita.js" && credentials.length === 1 && createHash("sha256").update(credentials[0][1]).digest("hex") === APPROVED_PRODUCTION_CREDENTIAL_SHA256;
+        if (credentials.length && !approved) throw new Error(`Credencial de webhook incrustada: ${local}`);
         // Compila sintaxis y lee el AST; no ejecuta define ni sus callbacks.
         const tree = ts.createSourceFile(local, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
         if (tree.parseDiagnostics.length) throw new Error(`Sintaxis invalida: ${local}`);
@@ -60,7 +65,7 @@ export function inspectSuiteScripts(source = SOURCE) {
     return { version, files: [...files.values()].sort((a, b) => a.path.localeCompare(b.path)) };
 }
 
-/** ZIP local para importar desde la raiz del Archivador; nunca publica ni lee credenciales. */
+/** ZIP privado local para importar desde la raiz del Archivador. Contiene la clave fija autorizada; no publicarlo como artefacto. */
 function packageSuiteScripts() {
     const manifest = inspectSuiteScripts();
     if (process.platform !== "win32") throw new Error("El empaquetado ZIP usa PowerShell en Windows");
