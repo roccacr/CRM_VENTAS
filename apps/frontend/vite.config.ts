@@ -1,6 +1,8 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
+import CiSequencer from "../../deploy/habita/ci-sequencer.mjs";
+
 /**
  * Configuracion Vite para el stub frontend.
  *
@@ -35,6 +37,7 @@ export default defineConfig({
         },
     },
     test: {
+        sequence: process.env.CI_TEST_PLAN ? { sequencer: CiSequencer } : {},
         environment: "jsdom",
         // Bound jsdom memory pressure consistently with the coverage command.
         maxWorkers: 2,

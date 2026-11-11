@@ -42,15 +42,60 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_BRANCH: ${{ vars.HABITA_RELEASE_BRANCH }}
 
+  validation:
+    name: Validaciones / ${{ matrix.app }} / ${{ matrix.check }}
+    needs: changes
+    if: needs.changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.changes.outputs.apps) }}
+        check: ["format:check", lint, typecheck]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm ${{ matrix.check }}
+
   quality:
     name: Quality / api
-    needs: changes
+    needs: [changes, validation, api-checks, api-coverage]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/api
     steps:
+      - name: Enforce the complete API quality gate
+        working-directory: .
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          API_CHANGED: ${{ needs.changes.outputs.api }}
+          VALIDATION_RESULT: ${{ needs.validation.result }}
+          PLAN_RESULT: ${{ needs.api-checks.result }}
+          COVERAGE_RESULT: ${{ needs.api-coverage.result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          if [ "$API_CHANGED" = true ]; then
+            test "$VALIDATION_RESULT" = success
+            test "$PLAN_RESULT" = success
+            test "$COVERAGE_RESULT" = success
+          fi
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
@@ -70,24 +115,11 @@ jobs:
         if: needs.changes.outputs.api == 'true'
         run: node --input-type=module -e "import { inspectSuiteScripts } from './scripts/package-netsuite.mjs'; inspectSuiteScripts();"
 
-      - run: pnpm format:check && pnpm lint && pnpm typecheck
-        if: needs.changes.outputs.api == 'true'
-      - run: pnpm test:coverage
-        if: needs.changes.outputs.api == 'true'
       - run: pnpm build
         if: needs.changes.outputs.api == 'true'
         env:
           VITE_API_ORIGIN: same-origin
           VITE_HABITA_RELEASE: ${{ github.sha }}
-      - name: Upload measured source coverage
-        if: always() && needs.changes.outputs.api == 'true' && hashFiles('apps/api/coverage/**/*') != ''
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: coverage-api
-          path: apps/api/coverage
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Reuse the unchanged app from successful ancestor CI
         if: needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && needs.changes.outputs.api != 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
@@ -117,7 +149,7 @@ jobs:
           retention-days: 7
 
   frontend-checks:
-    name: Frontend / Validaciones y lotes
+    name: Frontend / Plan y tiempos
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-24.04
@@ -141,12 +173,33 @@ jobs:
           cache: pnpm
           cache-dependency-path: apps/frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm format:check && pnpm lint && pnpm typecheck
       - name: Discover test files without executing them
         run: pnpm exec vitest list --dir test --filesOnly --json=test-results/inventory.json
+      - id: history
+        name: Locate timing metadata from successful release CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ vars.HABITA_RELEASE_BRANCH }}
+        run: python3 ../../deploy/habita/frontend-shards.py --history-run frontend
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: steps.history.outputs.run != ''
+        continue-on-error: true # El historial es solo una optimización, nunca acredita pruebas.
+        with:
+          name: ci-timings-frontend
+          path: apps/frontend/test-results/history
+          run-id: ${{ steps.history.outputs.run }}
+          github-token: ${{ github.token }}
       - id: plan
-        name: Balance automatic batches (up to 40 files each)
+        name: Balance batches by duration (target 90 seconds per runner)
         run: python3 ../../deploy/habita/frontend-shards.py test-results/inventory.json
+        env:
+          CI_TEST_APP: frontend
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: test-plan-frontend
+          path: apps/frontend/test-results/plan.json
+          if-no-files-found: error
+          retention-days: 7
 
   frontend-tests:
     name: Frontend / Pruebas ${{ matrix.shard }}/${{ needs.frontend-checks.outputs.shard_count }}
@@ -156,7 +209,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 6
       matrix: ${{ fromJSON(needs.frontend-checks.outputs.matrix) }}
     defaults:
       run:
@@ -174,8 +227,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: apps/frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: test-plan-frontend
+          path: apps/frontend/test-results
       - name: Execute this batch with coverage and a mergeable report
         env:
+          CI_TEST_PLAN: test-results/plan.json
           SHARD_INDEX: ${{ matrix.shard }}
           SHARD_COUNT: ${{ needs.frontend-checks.outputs.shard_count }}
         run: >-
@@ -215,6 +273,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
+          name: test-plan-frontend
+          path: apps/frontend/test-results
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
           pattern: frontend-blob-*
           path: apps/frontend/test-results/blobs
           merge-multiple: true
@@ -223,7 +285,7 @@ jobs:
           SHARD_COUNT: ${{ needs.frontend-checks.outputs.shard_count }}
         run: python3 ../../deploy/habita/frontend-shards.py --verify-reports test-results/blobs "$SHARD_COUNT"
       - name: Merge test results and source coverage without rerunning tests
-        run: pnpm exec vitest --merge-reports=test-results/blobs --coverage --reporter=default
+        run: pnpm exec vitest --merge-reports=test-results/blobs --coverage --reporter=default --reporter=json --outputFile.json=test-results/merged-tests.json
       - name: Upload measured frontend coverage
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
@@ -232,9 +294,175 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Verify full inventory and export measured timing metadata
+        run: python3 ../../deploy/habita/frontend-shards.py --export-timings test-results/merged-tests.json test-results/plan.json test-results/timings.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: ci-timings-frontend
+          path: apps/frontend/test-results/timings.json
+          if-no-files-found: error
+          retention-days: 14
+
+  api-checks:
+    name: API / Plan y tiempos
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      shard_count: ${{ steps.plan.outputs.shard_count }}
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/api/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Discover test files without executing them
+        run: pnpm exec vitest list --dir test --filesOnly --json=test-results/inventory.json
+      - id: history
+        name: Locate timing metadata from successful release CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ vars.HABITA_RELEASE_BRANCH }}
+        run: python3 ../../deploy/habita/frontend-shards.py --history-run api
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: steps.history.outputs.run != ''
+        continue-on-error: true # El historial es solo una optimización, nunca acredita pruebas.
+        with:
+          name: ci-timings-api
+          path: apps/api/test-results/history
+          run-id: ${{ steps.history.outputs.run }}
+          github-token: ${{ github.token }}
+      - id: plan
+        name: Balance batches by duration (target 90 seconds per runner)
+        run: python3 ../../deploy/habita/frontend-shards.py test-results/inventory.json
+        env:
+          CI_TEST_APP: api
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: test-plan-api
+          path: apps/api/test-results/plan.json
+          if-no-files-found: error
+          retention-days: 7
+
+  api-tests:
+    name: API / Pruebas ${{ matrix.shard }}/${{ needs.api-checks.outputs.shard_count }}
+    needs: [changes, api-checks]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJSON(needs.api-checks.outputs.matrix) }}
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/api/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: test-plan-api
+          path: apps/api/test-results
+      - name: Execute this batch with coverage and a mergeable report
+        env:
+          CI_TEST_PLAN: test-results/plan.json
+          SHARD_INDEX: ${{ matrix.shard }}
+          SHARD_COUNT: ${{ needs.api-checks.outputs.shard_count }}
+        run: >-
+          pnpm exec vitest run --dir test --coverage --maxWorkers=2
+          --shard="$SHARD_INDEX/$SHARD_COUNT"
+          --coverage.thresholds.statements=0 --coverage.thresholds.branches=0
+          --coverage.thresholds.functions=0 --coverage.thresholds.lines=0
+          --reporter=default --reporter=blob --reporter=./test/support/skipped-persistence-reporter.mjs
+          --outputFile.blob="test-results/blobs/shard-$SHARD_INDEX.json"
+      - name: Preserve batch result and coverage
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: api-blob-${{ matrix.shard }}
+          path: apps/api/test-results/blobs/shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  api-coverage:
+    name: API / Cobertura unificada
+    needs: [api-checks, api-tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/api/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: test-plan-api
+          path: apps/api/test-results
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: api-blob-*
+          path: apps/api/test-results/blobs
+          merge-multiple: true
+      - name: Reject missing, empty or unexpected batch reports
+        env:
+          SHARD_COUNT: ${{ needs.api-checks.outputs.shard_count }}
+        run: python3 ../../deploy/habita/frontend-shards.py --verify-reports test-results/blobs "$SHARD_COUNT"
+      - name: Merge test results and source coverage without rerunning tests
+        run: pnpm exec vitest --merge-reports=test-results/blobs --coverage --reporter=default --reporter=json --reporter=./test/support/skipped-persistence-reporter.mjs --outputFile.json=test-results/merged-tests.json
+      - name: Upload measured api coverage
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: coverage-api
+          path: apps/api/coverage
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Verify full inventory and export measured timing metadata
+        run: python3 ../../deploy/habita/frontend-shards.py --export-timings test-results/merged-tests.json test-results/plan.json test-results/timings.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: ci-timings-api
+          path: apps/api/test-results/timings.json
+          if-no-files-found: error
+          retention-days: 14
+
   frontend-quality:
     name: Quality / frontend
-    needs: [changes, frontend-checks, frontend-coverage]
+    needs: [changes, validation, frontend-checks, frontend-coverage]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -248,11 +476,13 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
           CHECKS_RESULT: ${{ needs.frontend-checks.result }}
+          VALIDATION_RESULT: ${{ needs.validation.result }}
           COVERAGE_RESULT: ${{ needs.frontend-coverage.result }}
         run: |
           test "$CHANGES_RESULT" = success
           if [ "$FRONTEND_CHANGED" = true ]; then
             test "$CHECKS_RESULT" = success
+            test "$VALIDATION_RESULT" = success
             test "$COVERAGE_RESULT" = success
           fi
         working-directory: .

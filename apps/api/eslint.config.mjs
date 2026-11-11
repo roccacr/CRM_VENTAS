@@ -17,7 +17,7 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig([
     {
-        ignores: ["dist/**", "node_modules/**", "coverage/**", ".codex/**", ".agents/**", "pnpm-lock.yaml"],
+        ignores: ["dist/**", "node_modules/**", "coverage/**", "test-results/**", ".codex/**", ".agents/**", "pnpm-lock.yaml"],
     },
     {
         files: ["**/*.ts"],

@@ -2,35 +2,47 @@
 
 ## Verificación y build por aplicación
 
-### Lotes automáticos del frontend — 11/11/2026
+### CI paralelo y reparto por duración — 11/11/2026
 
-- `Frontend / Validaciones y lotes` ejecuta Prettier, ESLint y TypeScript;
-  descubre con **Vitest** los archivos de prueba reales sin ejecutarlos.
-- `frontend-shards.py` genera `ceil(archivos / 40)` grupos. Vitest 5 reparte
-  todos los archivos con `--shard=i/total`, sin duplicados y con diferencia
-  máxima de un archivo por grupo. Al añadir pruebas crecen los grupos sin
-  editar el YAML: 138 archivos → 4 lotes (35, 35, 34, 34); 161 → 5 lotes.
-  Se equilibra la cantidad de archivos, no se garantiza igual duración ni
-  igual cantidad de casos dentro de archivos distintos.
-- `Frontend / Pruebas i/total` usa hasta 4 runners simultáneos, 2 workers por
-  runner y `fail-fast: false`: todos los lotes entregan su resultado aunque
-  otro falle. Si faltan runners de GitHub, los jobs esperan su turno.
-- Cada lote sube un **blob de Vitest con cobertura V8**. `Frontend / Cobertura
-  unificada` exige exactamente todos los reportes y ejecuta `--merge-reports`
-  para combinar resultados y cobertura, sin volver a ejecutar los tests ni
-  promediar porcentajes. El artefacto final conserva `coverage-frontend`.
-- `Quality / frontend` conserva su nombre como check estable de protección:
-  falla si falló la detección, validación, un lote o la cobertura. Solo entonces
-  compila y publica `habita-build-frontend`. El paquete exige ambos checks
-  `Quality / api` y `Quality / frontend` exitosos antes de desplegar.
-- Si solo cambia el API, se conserva la reutilización del frontend del CI
-  ancestro exitoso; no se ejecutan lotes innecesarios. No cambia la gestión de
-  `.env`, los secretos ni la promoción de producción.
+La implementación usa el secuenciador público de **Vitest 5**, sin servicio
+adicional ni dependencia nueva. **ci-sequencer.mts** solo se activa mediante
+CI_TEST_PLAN; las pruebas locales habituales conservan su secuencia original.
 
-La constante `FILES_PER_SHARD = 40` es el punto de ajuste del tamaño objetivo.
-El plan falla ante inventario vacío, inválido, duplicado o superior al límite
-de 256 jobs; nunca elimina pruebas silenciosamente. Verificación:
-`python -B -m unittest discover -s deploy/habita -p test_frontend_shards.py`.
+- **Validaciones / app / format:check|lint|typecheck** ejecuta los tres controles
+  en paralelo para las apps modificadas, sin retrasar planificación ni pruebas.
+- Cada app descubre su inventario con Vitest. **frontend-shards.py** (nombre
+  histórico, compartido por API y frontend) calcula lotes mediante LPT:
+  coloca primero archivos lentos en el lote de menor carga, con un máximo
+  de 40 archivos frontend o 80 API por lote.
+- El número aumenta según cantidad y duración acumulada: objetivo orientativo
+  de 90 s de trabajo con 2 workers por runner. No garantiza una duración exacta;
+  un archivo pesado no se divide internamente. Cada app permite hasta 6 lotes
+  simultáneos; los demás esperan runner disponible.
+- El historial procede únicamente de artefactos **ci-timings-api/frontend**
+  de los últimos cinco runs **push exitosos de la rama release, mismo repo**.
+  Contiene rutas relativas y duraciones, nunca credenciales ni datos del CRM.
+  Si no existe, expiró o no se puede leer, se estima por tamaño de archivo.
+  Las pruebas nuevas siempre se incluyen. Cada merge exitoso renueva los tiempos.
+- El plan es un artefacto del run actual. El secuenciador rechaza archivos
+  nuevos no planificados, asignaciones duplicadas y contadores incompatibles.
+  El merge exige todos los blobs y el exportador compara uno a uno los archivos
+  ejecutados contra el plan: no acepta omisiones, duplicados ni tests fallidos.
+- Los lotes suben resultados con cobertura V8. El merge combina cobertura,
+  no promedia porcentajes ni repite tests. En API, los umbrales se desactivan
+  **solo en el comando de cada lote parcial**; el merge global aplica los
+  umbrales originales: 75% statements, 65% branches, 80% functions, 78% lines.
+  Las pruebas SQL opt-in mantienen sus condiciones y su aviso de omisión;
+  el job NetSuite/MariaDB independiente no cambia.
+- **Quality / api** y **Quality / frontend** conservan sus nombres de checks
+  requeridos y fallan ante errores de detección, validación, plan o cobertura.
+  Cada app compila una sola vez después de aprobar. Se preservan la caché pnpm,
+  la reutilización del build intacto, auditorías y la promoción protegida.
+  No cambia shared/api.env, ningún secreto, la BD ni el servidor.
+
+Se priorizan cargas similares en vez de igual cantidad de archivos, respetando
+el techo por lote. Verificación:
+python -B -m unittest discover -s deploy/habita -p test_frontend_shards.py.
+Referencia: [secuenciador de Vitest](https://vitest.dev/config/sequence).
 
 El workflow `quality.yml` detecta los cambios antes de ejecutar las suites.
 Un cambio dentro de `apps/api/` ejecuta lint, tipos, cobertura, build, auditoría
@@ -267,8 +279,7 @@ Las instrucciones y archivos concretos estan en [ACTIVAR-NETSUITE.md](ACTIVAR-NE
 La revisión está en el árbol local. Ver [CRM quality](../../.github/workflows/quality.yml)
 y [Habita promotion](../../.github/workflows/habita-promote.yml). El primero
 corre formato, lint, tipos, cobertura y build en push, PR y ejecución manual.
-El API ejecuta su suite de cobertura; el frontend ejecuta los lotes automáticos
-y combina sus resultados antes de compilar. El job focalizado
+API y frontend ejecutan lotes por carga y combinan sus coberturas antes de compilar. El job focalizado
 de NetSuite repite casos relevantes en MariaDB/InnoDB desechable. La
 persistencia MySQL general se informa por separado y no bloquea el empaquetado.
 
