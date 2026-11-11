@@ -143,7 +143,7 @@ function expectedCodes(route: (typeof routes)[number]): string[] {
     const codes = explicit[`${route.method} ${route.path}`];
     if (codes) return codes;
     if (route.path.startsWith("/formalization/orders/:source/:id/")) return ["formalizacion.orders.read"];
-    if (["/formalization/home/summary", "/formalization/home/project-distribution", "/formalization/home/follow-up", "/formalization/contracts/summary"].includes(route.path)) return ["formalizacion.home.stages.read"];
+    if (["/formalization/home/summary", "/formalization/home/overdue", "/formalization/home/project-distribution", "/formalization/home/follow-up", "/formalization/contracts/summary"].includes(route.path)) return ["formalizacion.home.stages.read"];
     if (route.path.startsWith("/catalogs/")) return expectedCatalogCodes(route);
     if (route.path.startsWith("/unit-files")) return ["ventas.catalog_file.read"];
     if (route.path.startsWith("/formalization/")) return ["formalizacion.home.approvals.read"];
@@ -224,7 +224,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     it("requires a descriptor on every registered permission handler", () => {
-        expect(new Set(routes.map((route) => route.handler)).size).toBe(116);
+        expect(new Set(routes.map((route) => route.handler)).size).toBe(117);
         expect(routes.some((route) => route.path === "/formalization/orders/:source/:id/documents")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/home/summary")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/leads/report")).toBe(true);

@@ -9,7 +9,7 @@ import { getProjectDistribution } from "../../src/services/formalization/project
 import { installBrowserApiDoubles } from "../support/browser";
 vi.mock("../../src/services/formalization/project-distribution-service", () => ({ getProjectDistribution: vi.fn() }));
 vi.mock("../../src/modules/home/FormalizationFollowUpPreview", () => ({ FormalizationFollowUpPreview: () => null }));
-vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHomeSummary: () => new Promise(() => {}) }));
+vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHomeSummary: () => new Promise(() => {}), getOverdueSummary: () => new Promise(() => {}) }));
 vi.mock("../../src/services/formalization/approval-summary-service", () => ({ getApprovalCount: () => Promise.resolve(1) }));
 const data = { schemaVersion: 1 as const, observedAt: "2026-11-03T18:00:00.000Z", totalOrders: 4, series: ["approvals", "send", "addendum"] as const, projects: [{ id: "legacy-project:1", name: "Amara", total: 4, counts: { approvals: 1, send: 3, addendum: 2 } }] };
 beforeEach(() => {

@@ -64,3 +64,17 @@ export async function getHomeSummary(): Promise<HomeSummary> {
     if (import.meta.env.DEV) console.log("[Formalization API: home/summary] Incoming aggregate", summary);
     return summary;
 }
+
+/** Órdenes del CRM nuevo sin cambio de etapa hace más de `thresholdMinutes`. Es informativo: si falla, los conteos siguen valiendo. */
+export interface OverdueSummary {
+    readonly thresholdMinutes: number;
+    readonly counts: { readonly contractsToSend: number; readonly contractsPendingSignature: number; readonly banking: number; readonly bankingInProgress: number; readonly balance: number; readonly transferPending: number; readonly transferSigned: number };
+}
+
+/** Lee el atraso por etapa. Rechaza un payload mal formado y no lo sustituye por cero. */
+export async function getOverdueSummary(): Promise<OverdueSummary> {
+    const data = record(await apiRequest<unknown>("/formalization/home/overdue"));
+    const counts = record(data.counts);
+    if (data.schemaVersion !== 1) throw invalid();
+    return { thresholdMinutes: count(data.thresholdMinutes), counts: { contractsToSend: count(counts.contractsToSend), contractsPendingSignature: count(counts.contractsPendingSignature), banking: count(counts.banking), bankingInProgress: count(counts.bankingInProgress), balance: count(counts.balance), transferPending: count(counts.transferPending), transferSigned: count(counts.transferSigned) } };
+}

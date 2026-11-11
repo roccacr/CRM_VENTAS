@@ -1,4 +1,4 @@
-import { apiRequest } from "../api/api-client";
+import { ApiClientError, apiRequest } from "../api/api-client";
 import type { ClientHistoryPage } from "../formalization/database-order-service";
 
 export const LEAD_PROFILE_PERMISSION = "lead.profile.read";
@@ -75,5 +75,8 @@ export function readLeadIdentity(search: string): LeadIdentity | null {
 /** El cliente BFF conserva cookies y recuperación de sesión; ningún secreto forma parte de la URL. */
 export async function getLeadProfile(identity: LeadIdentity, cursor?: string, orderPage = 1): Promise<LeadProfileResult> {
     const params = new URLSearchParams({ ...identity, orderPage: String(orderPage), ...(cursor ? { cursor } : {}) });
-    return apiRequest<LeadProfileResult>(`/leads/profile?${params}`);
+    const result = await apiRequest<LeadProfileResult | null>(`/leads/profile?${params}`);
+    // Un proxy mal configurado puede responder HTML con 200; no dejar el perfil en carga infinita.
+    if (!result) throw new ApiClientError("La API no devolvió los datos del perfil.", 502, null);
+    return result;
 }

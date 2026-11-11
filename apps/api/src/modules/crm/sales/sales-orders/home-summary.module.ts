@@ -36,6 +36,15 @@ export class HomeSummaryController {
     summary(@Req() request: CookieRequest) {
         return this.service.summary(request.cookies[SESSION_COOKIE_NAME]);
     }
+
+    /** Órdenes atrasadas por etapa (CRM nuevo). Se consulta aparte para no tocar el presupuesto del resumen. */
+    @Get("overdue")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "formalization-read" })
+    @Header("Cache-Control", "no-store")
+    overdue(@Req() request: CookieRequest) {
+        return this.service.overdue(request.cookies[SESSION_COOKIE_NAME]);
+    }
 }
 
 /** El seguimiento vivo es de solo lectura. No habilita los comandos del detalle simulado. */

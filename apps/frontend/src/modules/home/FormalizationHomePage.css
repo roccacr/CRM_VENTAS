@@ -5167,3 +5167,372 @@
     color: #b42318;
     font-weight: 700;
 }
+
+/* Separadores de grupo del inicio: línea · TÍTULO · línea, como en el detalle de la orden. */
+.formalization-home-divider {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.formalization-home-divider::before,
+.formalization-home-divider::after {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #c3ccd9);
+    content: "";
+}
+.formalization-home-divider::after {
+    background: linear-gradient(to left, transparent, #c3ccd9);
+}
+.formalization-home__banners {
+    row-gap: 12px;
+}
+
+/* Banners del inicio: más compactos y con jerarquía clara (título, cifra, leyenda). */
+.formalization-home .formalization-banner {
+    min-height: 0;
+    padding: 12px 16px 14px;
+    border-radius: 6px;
+    border-left-width: 3px;
+    box-shadow: none;
+    transition:
+        border-color 160ms ease-out,
+        background-color 160ms ease-out;
+}
+.formalization-home .formalization-banner:hover {
+    border-color: #b4c0d0;
+    border-left-color: var(--banner-accent);
+    background: #fff;
+}
+.formalization-home .formalization-banner__content {
+    padding-right: 0;
+}
+.formalization-home .formalization-banner .formalization-title-help {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--ent-divider, #e4e9f2);
+}
+.formalization-home .formalization-banner h2,
+.formalization-home .formalization-approval-strip__title {
+    color: #3c4f68;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+.formalization-home .formalization-banner__metrics {
+    gap: 6px 24px;
+}
+.formalization-home .formalization-banner__metric {
+    gap: 3px;
+}
+.formalization-home .formalization-banner__value {
+    font-size: 26px;
+    font-weight: 600;
+}
+.formalization-home .formalization-banner__caption {
+    color: #6b7a90;
+    font-size: 11.5px;
+}
+.formalization-home .formalization-banner__pattern {
+    opacity: 0.12;
+}
+.formalization-home .formalization-banner__metric-button:hover .formalization-banner__value {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+.formalization-home .formalization-banner__metric-button:hover .formalization-banner__caption {
+    text-decoration: none;
+}
+
+/* UX: lo vacío se atenúa, el título y su ayuda se reparten la fila y cada cifra clicable muestra su acción. */
+.formalization-home .formalization-banner__value[data-empty="true"] {
+    color: #9aa6b8;
+    font-weight: 500;
+}
+.formalization-home .formalization-banner .formalization-title-help {
+    justify-content: space-between;
+}
+.formalization-home .formalization-banner .formalization-title-help h2 {
+    flex: 1 1 auto;
+}
+.formalization-home .formalization-banner__metric-button {
+    position: relative;
+    padding-right: 14px;
+    border-radius: 4px;
+}
+.formalization-home .formalization-banner__metric-button::after {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    color: var(--banner-accent);
+    font-size: 16px;
+    line-height: 1;
+    opacity: 0;
+    transform: translateX(-3px);
+    transition:
+        opacity 140ms ease-out,
+        transform 140ms ease-out;
+    content: "›";
+}
+.formalization-home .formalization-banner__metric-button:hover::after,
+.formalization-home .formalization-banner__metric-button:focus-visible::after {
+    opacity: 1;
+    transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    .formalization-home .formalization-banner,
+    .formalization-home .formalization-banner__metric-button::after {
+        transition: none;
+    }
+}
+
+/* Cifras de una misma tarjeta separadas por una línea vertical fina. */
+.formalization-home .formalization-banner__metrics {
+    flex-wrap: nowrap;
+    gap: 0;
+}
+.formalization-home .formalization-banner__metric + .formalization-banner__metric {
+    margin-left: 18px;
+    padding-left: 18px;
+    border-left: 1px solid var(--ent-divider, #dfe5ee);
+}
+
+/* ===== Auditoría UX: prioridad, saludo en franja, ceros tranquilos ===== */
+/* Separadores con más contraste. */
+.formalization-home-divider {
+    color: #3c4f68;
+}
+.formalization-home-divider::before,
+.formalization-home-divider::after {
+    background: linear-gradient(to right, transparent, #9aa8bc);
+}
+.formalization-home-divider::after {
+    background: linear-gradient(to left, transparent, #9aa8bc);
+}
+
+/* La ayuda queda pegada al título. */
+.formalization-home .formalization-banner .formalization-title-help {
+    justify-content: flex-start;
+}
+.formalization-home .formalization-banner .formalization-title-help h2 {
+    flex: 0 1 auto;
+}
+.formalization-home .formalization-banner .formalization-title-help .event-help {
+    opacity: 0.85;
+}
+
+/* Lo que requiere acción se distingue: fondo cálido, borde y cifra más firmes. */
+.formalization-home .formalization-banner[data-attention="true"] {
+    border-color: #ecd9b8;
+    border-left-color: var(--banner-accent);
+    background: #fffaf1;
+}
+.formalization-home .formalization-banner[data-attention="true"]:hover {
+    background: #fff6e6;
+}
+.formalization-home .formalization-banner[data-attention="true"] .formalization-banner__value {
+    font-weight: 700;
+}
+.formalization-home .formalization-banner[data-attention="true"] .formalization-title-help {
+    border-bottom-color: #f0e2c8;
+}
+
+/* Cero: estado calmado, sin color de alerta. */
+.formalization-home .formalization-banner[data-calm="true"] {
+    --banner-accent: #147849;
+    background: #fff;
+}
+.formalization-home .formalization-banner[data-calm="true"] .formalization-banner__value {
+    color: #147849;
+    font-size: 22px;
+    font-weight: 600;
+}
+.formalization-home .formalization-banner[data-calm="true"] .formalization-banner__caption::before {
+    margin-right: 4px;
+    color: #147849;
+    content: "✓";
+}
+
+/* Saludo: franja baja y secundaria, ya no compite con los indicadores. */
+.formalization-home .formalization-welcome {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100%;
+    min-height: 0;
+    margin-bottom: 12px;
+    padding: 10px 16px;
+}
+.formalization-home .formalization-welcome__copy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+}
+.formalization-home .formalization-welcome .formalization-welcome__title {
+    margin: 0;
+    font-size: 15px;
+}
+.formalization-home .formalization-welcome .formalization-welcome__text {
+    margin: 0;
+    padding-left: 14px;
+    border-left: 1px solid var(--ent-divider, #dfe5ee);
+}
+.formalization-home .formalization-welcome__art {
+    width: auto;
+    max-width: 90px;
+    height: 44px;
+    object-fit: contain;
+}
+
+/* Con el saludo fuera, los pendientes se reparten la fila. */
+.formalization-home .formalization-home__intro[data-pending-count="1"] {
+    grid-template-columns: minmax(0, 1fr);
+}
+.formalization-home .formalization-home__intro[data-pending-count="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.formalization-home .formalization-approval-strip {
+    width: 100%;
+}
+@media (max-width: 767px) {
+    .formalization-home .formalization-home__intro[data-pending-count="2"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ===== Ajustes de auditoría 2 ===== */
+/* 1. Pendientes con el mismo ancho de tres columnas que el resto. */
+.formalization-home .formalization-home__intro[data-pending-count="1"],
+.formalization-home .formalization-home__intro[data-pending-count="2"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 1100px) {
+    .formalization-home .formalization-home__intro[data-pending-count="2"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 767px) {
+    .formalization-home .formalization-home__intro[data-pending-count="1"],
+    .formalization-home .formalization-home__intro[data-pending-count="2"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* 2 y 6. Sin ilustración; la distribución es un enlace discreto a la derecha. */
+.formalization-home .formalization-welcome {
+    grid-template-columns: minmax(0, 1fr);
+}
+.formalization-home .formalization-welcome__copy {
+    justify-content: flex-start;
+}
+.formalization-home .formalization-welcome__copy > :last-child {
+    margin-left: auto;
+}
+.formalization-home .formalization-welcome .ant-btn {
+    height: auto;
+    padding: 2px 4px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: #496180;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.formalization-home .formalization-welcome .ant-btn:hover {
+    background: transparent;
+    color: #18222f;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* 3. Separador más cerca de su grupo. */
+.formalization-home .formalization-home__header {
+    gap: 10px;
+}
+.formalization-home .formalization-welcome {
+    margin-bottom: 4px;
+}
+.formalization-home .formalization-home__intro {
+    margin-top: -2px;
+}
+.formalization-home .formalization-home__banners {
+    row-gap: 8px;
+}
+.formalization-home .formalization-home__banners > .formalization-home-divider:not(:first-child) {
+    margin-top: 8px;
+}
+
+/* ===== Densidad útil: tarjetas más bajas, sin decoración ni texto repetido ===== */
+.formalization-home .formalization-banner__pattern {
+    display: none;
+}
+.formalization-home .formalization-banner {
+    padding: 9px 14px 10px;
+}
+.formalization-home .formalization-banner .formalization-title-help {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+}
+.formalization-home .formalization-banner__value {
+    font-size: 24px;
+}
+.formalization-home .formalization-banner__metrics {
+    align-items: flex-end;
+}
+/* La leyenda repetida ("Por revisar" bajo "Pendientes de…") queda solo para lectores de pantalla. */
+.formalization-home .formalization-banner__caption--quiet {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Urgencia: cuántas órdenes de la cifra llevan más del umbral en la misma etapa. */
+.formalization-home .formalization-banner__overdue {
+    align-self: flex-start;
+    margin-top: 4px;
+    padding: 1px 7px;
+    border: 1px solid #f0c4c4;
+    border-radius: 999px;
+    background: #fdf2f2;
+    color: #b42318;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Alineación: las tarjetas de pendientes parten del borde superior, igual que el resto. */
+.formalization-home .formalization-home__intro .formalization-approval-strip {
+    align-items: flex-start;
+    height: auto;
+    align-self: stretch;
+}
+.formalization-home .formalization-banner > .formalization-banner__content {
+    align-self: flex-start;
+}
+.formalization-home .formalization-banner__metric {
+    min-height: 0;
+}
+
+/* Para qué sirve la tarjeta: una línea visible, sin depender del icono de ayuda. */
+.formalization-home .formalization-banner__purpose {
+    display: block;
+    margin: 0 0 8px;
+    color: #6b7a90;
+    font-size: 12px;
+    line-height: 1.35;
+}
+.formalization-home .formalization-banner .formalization-title-help {
+    margin-bottom: 6px;
+}

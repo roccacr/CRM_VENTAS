@@ -8,6 +8,7 @@ import type { NoteModule } from "./notes.permissions.js";
 
 const workspaces: Record<NoteModule, string> = { ventas: "sales", mercadeo: "marketing", formalizacion: "formalization", contabilidad: "accounting", administration: "admin" };
 const views: Record<string, { module: NoteModule; permission?: string }> = {
+    "lead-profile": { module: "formalizacion", permission: "lead.profile.read" },
     "sales-home": { module: "ventas", permission: "lead.read" },
     "marketing-home": { module: "mercadeo", permission: "mercadeo.home.read" },
     "marketing-leads": { module: "mercadeo", permission: "mercadeo.leads.read" },

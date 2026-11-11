@@ -15,7 +15,7 @@ vi.mock("../../src/services/formalization/follow-up-service", async (importOrigi
     const original = await importOriginal<typeof FollowUpService>();
     return { ...original, getFollowUp: vi.fn().mockResolvedValue({ schemaVersion: 1, observedAt: "2026-10-26T12:00:00Z", filters: { search: "", projectId: "", queue: "all" }, page: { number: 1, size: 25, total: 0, totalPages: 0 }, counts: { all: 0, approvals: 0, contracts: 0, send: 0, signature: 0, bank: 0, balance: 0, transfer: 0, signed: 0, closed: 0 }, projects: [], items: [], sources: { native: { total: 0 }, legacy: { total: 0, enabled: true } } }) };
 });
-vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHomeSummary: vi.fn() }));
+vi.mock("../../src/services/formalization/home-summary-service", () => ({ getHomeSummary: vi.fn(), getOverdueSummary: () => new Promise(() => {}) }));
 const role: IdentityRole = { code: "formalizacion", name: "Formalización", status: "active" };
 const stagePermission = { code: "formalizacion.home.stages.read", effect: "allow" as const, scope: "self" as const, source: "role" as const };
 const counts = { contracts: { toSend: 6, pendingSignature: 3 }, banking: 0, balance: 0, transferPending: 0, transferSigned: 0, closedThisYear: 0 };

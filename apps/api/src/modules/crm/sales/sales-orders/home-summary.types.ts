@@ -68,3 +68,40 @@ export interface RecentOrderActivity {
     toState: string | null;
     approval: string | null;
 }
+
+/** Minutos en la misma etapa a partir de los cuales una orden se considera atrasada. Valor de negocio: 72 h. */
+export const OVERDUE_THRESHOLD_MINUTES = 4320;
+
+/** Órdenes del CRM nuevo sin cambio de etapa hace más del umbral. Es un subconjunto de los conteos de cada etapa. */
+export interface OverdueSummary {
+    schemaVersion: 1;
+    observedAt: string;
+    thresholdMinutes: number;
+    source: "native";
+    counts: { contractsToSend: number; contractsPendingSignature: number; banking: number; bankingInProgress: number; balance: number; transferPending: number; transferSigned: number };
+}
+
+/** Fila cruda del agregado de atraso tal como la devuelve mysql2. */
+export interface OverdueAggregateRow {
+    toSend: string | number | null;
+    pendingSignature: string | number | null;
+    banking: string | number | null;
+    bankingInProgress: string | number | null;
+    balance: string | number | null;
+    transferPending: string | number | null;
+    transferSigned: string | number | null;
+}
+
+/** Una fila ausente es un fallo de la fuente; un NULL explícito de SQL es una suma vacía. */
+export function overdueCountsFromRow(row: OverdueAggregateRow | undefined): OverdueSummary["counts"] {
+    if (!row) throw new Error("Missing Home overdue row");
+    return {
+        contractsToSend: aggregateNumber(row.toSend),
+        contractsPendingSignature: aggregateNumber(row.pendingSignature),
+        banking: aggregateNumber(row.banking),
+        bankingInProgress: aggregateNumber(row.bankingInProgress),
+        balance: aggregateNumber(row.balance),
+        transferPending: aggregateNumber(row.transferPending),
+        transferSigned: aggregateNumber(row.transferSigned),
+    };
+}

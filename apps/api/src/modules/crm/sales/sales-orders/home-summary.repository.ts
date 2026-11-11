@@ -4,7 +4,7 @@ import { sql, type Transaction } from "kysely";
 import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import { formalizationClosedThisYear } from "./formalization-closure.query.js";
-import { type HomeSummaryPeriod, type RecentOrderActivity, type StageAggregateRow, stageCountsFromRow } from "./home-summary.types.js";
+import { type HomeSummaryPeriod, type OverdueAggregateRow, overdueCountsFromRow, type RecentOrderActivity, type StageAggregateRow, stageCountsFromRow } from "./home-summary.types.js";
 
 /** Lee la etapa vigente y la firma confirmada del contrato. No usa contadores cacheados. */
 @Injectable()
@@ -70,5 +70,31 @@ export class HomeSummaryRepository {
             ) current_orders
         `.execute(tx);
         return stageCountsFromRow(result.rows[0]);
+    }
+
+    /** Órdenes del CRM nuevo cuya etapa vigente se registró antes de `cutoff` (UTC, `YYYY-MM-DD HH:MM:SS`). Mismos criterios que `aggregate`, en su propia consulta. */
+    async overdue(tx: Transaction<CrmDatabase>, cutoff: string) {
+        const result = await sql<OverdueAggregateRow>`
+            SELECT /*+ MAX_EXECUTION_TIME(1500) */
+                SUM(approved AND COALESCE(stage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send')) AS toSend,
+                SUM(approved AND stage='contract_pending_signature') AS pendingSignature,
+                SUM(contract_signed AND stage='bank_management') AS banking, SUM(contract_signed AND stage='bank_management_in_progress') AS bankingInProgress, SUM(contract_signed AND stage='pending_balance') AS balance,
+                SUM(contract_signed AND stage='pending_transfer' AND installments_paid=1) AS transferPending, SUM(contract_signed AND stage='transfer_signed' AND installments_paid=1 AND keys_delivered=0 AND unit_delivered=0) AS transferSigned
+            FROM (
+                SELECT e.to_state_code_sales_order_state_event AS stage, COALESCE(o.contract_signed_sales_order='yes',0) AS contract_signed,
+                    CASE o.installments_fully_paid_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS installments_paid,
+                    CASE o.keys_delivered_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS keys_delivered,
+                    CASE o.unit_delivered_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS unit_delivered,
+                    (SELECT COUNT(*) FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order
+                     AND a.type_code_sales_order_approval='formalization' AND a.status_sales_order_approval='approved')=1 AS approved
+                FROM crm_sales_order o
+                JOIN audit_sales_order_state_event e ON e.id_sales_order_state_event=(
+                    SELECT latest.id_sales_order_state_event FROM audit_sales_order_state_event latest
+                    WHERE latest.sales_order_id_sales_order_state_event=o.id_sales_order ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
+                WHERE o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL
+                    AND e.recorded_at_sales_order_state_event < ${cutoff}
+            ) current_orders
+        `.execute(tx);
+        return overdueCountsFromRow(result.rows[0]);
     }
 }

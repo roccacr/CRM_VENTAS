@@ -4,7 +4,7 @@ import { canReadFormalizationOrder, canReadFormalizationStages, formalizationRea
 import { IdentityService } from "../../identity/identity.service.js";
 import { HOME_SUMMARY_LEGACY_READER, type HomeSummaryLegacyReader } from "./home-summary.port.js";
 import { HomeSummaryRepository } from "./home-summary.repository.js";
-import { aggregateNumber, emptyStageCounts, type HomeSummary, type HomeSummaryPeriod, type StageCounts } from "./home-summary.types.js";
+import { aggregateNumber, emptyStageCounts, type HomeSummary, type HomeSummaryPeriod, OVERDUE_THRESHOLD_MINUTES, type OverdueSummary, type StageCounts } from "./home-summary.types.js";
 
 /** Solo agregados frescos de la base. Una etapa posterior ya guardada no vuelve a exigir la aprobación. */
 @Injectable()
@@ -78,6 +78,30 @@ export class HomeSummaryService {
             });
         } catch {
             throw new ServiceUnavailableException("No fue posible consultar las fuentes de Formalizacion.");
+        }
+    }
+
+    /** Órdenes atrasadas por etapa. Mismo permiso y misma máscara que los conteos; una falla aquí no afecta al resumen. */
+    async overdue(session?: string): Promise<OverdueSummary> {
+        const profile = await this.identity.getCurrentUser(session);
+        if (!canReadFormalizationStages(profile)) throw new ForbiddenException("Se requiere el rol activo Formalizacion y el permiso de lectura de sus banners.");
+        const access = formalizationReadAccess(profile);
+        const now = new Date();
+        const cutoff = new Date(now.getTime() - OVERDUE_THRESHOLD_MINUTES * 60_000).toISOString().slice(0, 19).replace("T", " ");
+        try {
+            const raw = await this.repository.readSnapshot((tx) => this.repository.overdue(tx, cutoff));
+            const counts = {
+                contractsToSend: access.contracts ? raw.contractsToSend : 0,
+                contractsPendingSignature: access.contracts ? raw.contractsPendingSignature : 0,
+                banking: access.bank ? raw.banking : 0,
+                bankingInProgress: access.bank ? raw.bankingInProgress : 0,
+                balance: access.balance ? raw.balance : 0,
+                transferPending: access.transfer ? raw.transferPending : 0,
+                transferSigned: access.signed ? raw.transferSigned : 0,
+            };
+            return { schemaVersion: 1, observedAt: now.toISOString(), thresholdMinutes: OVERDUE_THRESHOLD_MINUTES, source: "native", counts };
+        } catch {
+            throw new ServiceUnavailableException("No fue posible consultar el atraso de las etapas.");
         }
     }
 }

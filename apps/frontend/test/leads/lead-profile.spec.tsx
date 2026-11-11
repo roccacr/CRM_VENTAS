@@ -28,6 +28,14 @@ afterEach(() => {
     vi.clearAllMocks();
 });
 describe("acceso al perfil completo", () => {
+    it("shows a retry instead of an endless skeleton when the proxy returns HTML", async () => {
+        window.history.replaceState(null, "", "/home/formalization/perfil?source=legacy&id=12");
+        vi.mocked(apiRequest).mockResolvedValue(null);
+        render(<LeadProfilePage effectivePermissions={[{ code: "lead.profile.read", effect: "allow", scope: "self", source: "role" }]} />);
+        expect(await screen.findByText("No fue posible cargar el perfil completo")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
+        expect(screen.queryByRole("status", { name: "Cargando perfil completo del lead" })).not.toBeInTheDocument();
+    });
     it("genera una identidad por origen y PK, nunca por la orden", () => {
         expect(leadProfilePath({ source: "legacy", id: "12" })).toBe("/home/formalization/perfil?source=legacy&id=12");
         expect(leadProfilePath({ source: "native", id: "01ARZ3NDEKTSV4RRFFQ69G5FAV" })).toBe("/home/formalization/perfil?source=native&id=01ARZ3NDEKTSV4RRFFQ69G5FAV");

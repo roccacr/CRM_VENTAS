@@ -162,6 +162,14 @@ aislado al arrancar Ubuntu. PM2 7.1.1 está instalado solo en
 Los cambios de Apache/supervisor son operativos: se instalan por separado tras
 validar configuración; el publicador aplica código y builds, no sobrescribe vhosts.
 
+El perfil del cliente consulta `/leads/profile`. El prefijo `/leads` debe estar
+tanto en `ProxyPassMatch` como en la exclusión de la regla SPA del vhost HTTPS.
+Si falta, Apache devuelve `index.html` con 200 en lugar de JSON. Después de
+instalar la plantilla, validar con `apache2ctl configtest` antes de recargar:
+una consulta sin sesión a `/leads/profile` debe responder 401, nunca HTML.
+La vista de Notas `lead-profile` corresponde a Formalización y conserva el
+permiso efectivo `lead.profile.read`, incluidas sus denegaciones.
+
 Certbot administra el certificado SAN de ambos dominios en
 `/etc/letsencrypt/live/habita-crm/`. `renewal-hook.sh` recarga Apache después de
 renovar únicamente ese certificado. Son certificados HTTPS/TLS, no llaves SSH.
