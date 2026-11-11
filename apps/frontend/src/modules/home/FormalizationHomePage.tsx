@@ -13,7 +13,7 @@ import { FormHelp } from "../../components/forms/FormHelp";
 import type { IdentityRole, IdentityUser } from "../../services/auth/identity-contracts";
 import { getApprovalCount } from "../../services/formalization/approval-summary-service";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
-import { getOverdueSummary } from "../../services/formalization/home-summary-service";
+import { getOverdueSummary, type HomeSummary, type OverdueSummary } from "../../services/formalization/home-summary-service";
 import { getPendingAddendumCount } from "../../services/formalization/order-addendum-service";
 import { PROJECTS_THEME } from "../administration/catalogs/projects-theme";
 import type { FollowUpFilterRequest, FollowUpSelection } from "./formalization-filter-preferences";
@@ -124,45 +124,6 @@ const pendingBanners = {
     addendum: { title: "Pendientes de adéndum", subject: "adéndum", load: getPendingAddendumCount },
 };
 
-/** Los pendientes comparten presentación; cada fuente y permiso conserva su consulta independiente. */
-function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }: { readonly kind: "approvals" | "addendum"; readonly canOpen?: boolean; readonly onOpen: () => void; readonly enabled: boolean; readonly refreshVersion: number }) {
-    const { title, subject, load } = pendingBanners[kind];
-    const { value: count, failed, retry } = useBannerSummary(load, enabled, refreshVersion);
-    const caption = failed ? "No disponible" : count === null ? "Consultando…" : count === 0 ? "Todo al día" : "Por revisar";
-    const loading = [count === null, !failed].every(Boolean);
-    const action = failed ? { label: `Reintentar pendientes de ${subject}`, onClick: retry, suffix: " · Reintentar" } : { label: `Ver pendientes de ${subject} de Formalización`, onClick: onOpen, suffix: "" };
-    return (
-        <div className="formalization-banner formalization-banner--pending formalization-approval-strip" data-kind={kind} data-attention={typeof count === "number" && count > 0 ? "true" : undefined} data-calm={count === 0 ? "true" : undefined} aria-busy={loading}>
-            <button type="button" className="formalization-approval-strip__action" aria-label={action.label} aria-busy={loading} disabled={[!failed, !canOpen].every(Boolean)} onClick={action.onClick} />
-            <span className="formalization-banner__content">
-                <span className="formalization-title-help">
-                    <span className="formalization-approval-strip__title">{title}</span>
-                    <FormHelp label={`Condiciones de ${title}`} text={FORMALIZATION_QUEUE_HELP[kind]} />
-                </span>
-                <span className="formalization-banner__purpose">{BANNER_PURPOSE[kind]}</span>
-                <span className="formalization-banner__metrics">
-                    <span className="formalization-banner__metric">
-                        <span className="formalization-banner__value" aria-live="polite" aria-label={`Órdenes pendientes de ${subject}: ${count === null ? caption : String(count)}`}>
-                            {loading ? (
-                                <span className="formalization-banner__preload" role="status" aria-label={`Cargando pendientes de ${subject}`}>
-                                    <Spin size="small" />
-                                </span>
-                            ) : (
-                                (count ?? "—")
-                            )}
-                        </span>
-                        <span className={`formalization-banner__caption${caption === "Por revisar" ? " formalization-banner__caption--quiet" : ""}`}>
-                            <span>{caption}</span>
-                            {action.suffix}
-                        </span>
-                    </span>
-                </span>
-            </span>
-            <BannerCorner kind={kind} />
-        </div>
-    );
-}
-
 /** Para qué sirve cada tarjeta, en una línea visible. Texto de producto: se edita aquí. */
 const BANNER_PURPOSE: Record<string, string> = {
     approvals: "Órdenes esperando tu aprobación",
@@ -181,15 +142,77 @@ const SHOW_OVERDUE_BADGES = false;
 /** Umbral de atraso legible: minutos por debajo de una hora, horas por encima. */
 const thresholdLabel = (minutes = 4320) => (minutes < 60 ? `${String(minutes)} min` : `${String(Math.round(minutes / 60))} h`);
 
-/** Un solo dueño autorizado alimenta cada banner de etapa. Los montajes no comparten datos. */
-function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly onOpen: (filter: FollowUpSelection) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
-    const { value: summary, failed, retry } = useHomeSummary(enabled, refreshVersion);
-    const counts = summary?.counts ?? { contracts: { toSend: undefined, pendingSignature: undefined }, banking: undefined, bankingInProgress: undefined, balance: undefined, transferPending: undefined, transferSigned: undefined, closedThisYear: undefined };
-    const loading = !summary && !failed;
-    /** Atraso por filtro. Si su lectura falla, simplemente no se muestra. */
-    const { value: overdueSummary } = useBannerSummary(getOverdueSummary, enabled && SHOW_OVERDUE_BADGES, refreshVersion);
-    const overdueByFilter: Record<string, number | undefined> = { send: overdueSummary?.counts.contractsToSend, signature: overdueSummary?.counts.contractsPendingSignature, bank_not_started: overdueSummary?.counts.banking, bank_in_progress: overdueSummary?.counts.bankingInProgress, balance: overdueSummary?.counts.balance, transfer: overdueSummary?.counts.transferPending, signed: overdueSummary?.counts.transferSigned };
-    const stages = [
+/** Título-separador de grupo del inicio: línea · TÍTULO · línea. Con `show` falso no se pinta. */
+function HomeDivider({ title, show = true }: { readonly title: string; readonly show?: boolean }) {
+    if (!show) return null;
+    return (
+        <div className="formalization-home-divider" role="separator" aria-label={title}>
+            <span>{title}</span>
+        </div>
+    );
+}
+
+/** Cifra de una tarjeta: indicador de carga mientras se consulta y raya cuando todavía no se sabe. */
+function BannerValue({ loading, preloadLabel, value, ariaLabel, empty = false }: { readonly loading: boolean; readonly preloadLabel: string; readonly value: number | null | undefined; readonly ariaLabel: string | undefined; readonly empty?: boolean }) {
+    return (
+        <span className="formalization-banner__value" data-empty={empty ? "true" : undefined} aria-live="polite" aria-label={ariaLabel}>
+            {loading ? (
+                <span className="formalization-banner__preload" role="status" aria-label={preloadLabel}>
+                    <Spin size="small" />
+                </span>
+            ) : (
+                (value ?? "—")
+            )}
+        </span>
+    );
+}
+
+/** Leyenda del pendiente según el estado de su consulta. */
+function pendingCaption(count: number | null, failed: boolean): string {
+    if (failed) return "No disponible";
+    if (count === null) return "Consultando…";
+    return count === 0 ? "Todo al día" : "Por revisar";
+}
+
+/** Los pendientes comparten presentación; cada fuente y permiso conserva su consulta independiente. */
+function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }: { readonly kind: "approvals" | "addendum"; readonly canOpen?: boolean; readonly onOpen: () => void; readonly enabled: boolean; readonly refreshVersion: number }) {
+    const { title, subject, load } = pendingBanners[kind];
+    const { value: count, failed, retry } = useBannerSummary(load, enabled, refreshVersion);
+    const caption = pendingCaption(count, failed);
+    const loading = [count === null, !failed].every(Boolean);
+    const attention = [typeof count === "number", (count ?? 0) > 0].every(Boolean);
+    const quiet = caption === "Por revisar";
+    const action = failed ? { label: `Reintentar pendientes de ${subject}`, onClick: retry, suffix: " · Reintentar" } : { label: `Ver pendientes de ${subject} de Formalización`, onClick: onOpen, suffix: "" };
+    return (
+        <div className="formalization-banner formalization-banner--pending formalization-approval-strip" data-kind={kind} data-attention={attention ? "true" : undefined} data-calm={count === 0 ? "true" : undefined} aria-busy={loading}>
+            <button type="button" className="formalization-approval-strip__action" aria-label={action.label} aria-busy={loading} disabled={[!failed, !canOpen].every(Boolean)} onClick={action.onClick} />
+            <span className="formalization-banner__content">
+                <span className="formalization-title-help">
+                    <span className="formalization-approval-strip__title">{title}</span>
+                    <FormHelp label={`Condiciones de ${title}`} text={FORMALIZATION_QUEUE_HELP[kind]} />
+                </span>
+                <span className="formalization-banner__purpose">{BANNER_PURPOSE[kind]}</span>
+                <span className="formalization-banner__metrics">
+                    <span className="formalization-banner__metric">
+                        <BannerValue loading={loading} preloadLabel={`Cargando pendientes de ${subject}`} value={count} ariaLabel={`Órdenes pendientes de ${subject}: ${count === null ? caption : String(count)}`} />
+                        <span className={`formalization-banner__caption${quiet ? " formalization-banner__caption--quiet" : ""}`}>
+                            <span>{caption}</span>
+                            {action.suffix}
+                        </span>
+                    </span>
+                </span>
+            </span>
+            <BannerCorner kind={kind} />
+        </div>
+    );
+}
+
+/** Conteos vacíos mientras llega la respuesta: la raya significa "todavía no se sabe". */
+const EMPTY_STAGE_COUNTS = { contracts: { toSend: undefined, pendingSignature: undefined }, banking: undefined, bankingInProgress: undefined, balance: undefined, transferPending: undefined, transferSigned: undefined, closedThisYear: undefined } as const;
+
+/** Tarjetas de etapa con sus cifras. Cada parte abre su bandeja filtrada. */
+function buildStages(counts: Pick<HomeSummary, "counts">["counts"] | typeof EMPTY_STAGE_COUNTS) {
+    return [
         {
             code: "contracts",
             label: "Contratos pendientes",
@@ -213,78 +236,115 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
         { code: "signed", label: "Traspaso firmado", tone: "success", parts: [{ label: "Firma registrada · Llaves pendientes", value: counts.transferSigned, filter: "signed" }] },
         { code: "closed", label: "Formalizaciones cerradas este año", tone: "success", parts: [{ label: "Proceso finalizado", value: counts.closedThisYear, filter: "closed" }] },
     ] as const;
+}
+type StageBannerData = ReturnType<typeof buildStages>[number];
+
+/** Atraso por filtro. Si su lectura falla o está apagada, no hay valores y la pastilla no se muestra. */
+function overdueByFilterOf(summary: OverdueSummary | null): Record<string, number | undefined> {
+    if (!summary) return {};
+    const { counts } = summary;
+    return { send: counts.contractsToSend, signature: counts.contractsPendingSignature, bank_not_started: counts.banking, bank_in_progress: counts.bankingInProgress, balance: counts.balance, transfer: counts.transferPending, signed: counts.transferSigned };
+}
+
+/** Pastilla "N +umbral": cuántas órdenes de la cifra llevan demasiado en la misma etapa. */
+function OverdueBadge({ count, minutes }: { readonly count: number | undefined; readonly minutes: number | undefined }) {
+    if (!count) return null;
+    const label = thresholdLabel(minutes);
     return (
-        <>
-            {stages
-                .filter((banner) => allowedQueues.includes(banner.code === "bank" ? "bank" : banner.parts[0].filter))
-                .map((banner, index, visible) => (
-                    <Fragment key={banner.code}>
-                        {STAGE_GROUP_TITLES[banner.code] && visible.findIndex((other) => STAGE_GROUP_OF[other.code] === STAGE_GROUP_OF[banner.code]) === index && <HomeDivider title={STAGE_GROUP_TITLES[banner.code] ?? ""} />}
-                    <article data-attention={banner.code === "contracts" && banner.parts.some((part) => (part.value ?? 0) > 0) ? "true" : undefined} className={`formalization-banner formalization-banner--${banner.tone}`} aria-labelledby={`formalization-${banner.code}`} aria-busy={loading}>
-                        <div className="formalization-banner__content">
-                            <div className="formalization-title-help">
-                                <h2 id={`formalization-${banner.code}`}>{banner.label}</h2>
-                                <FormHelp label={`Condiciones de ${banner.label}`} text={FORMALIZATION_QUEUE_HELP[banner.code]} />
-                            </div>
-                            <p className="formalization-banner__purpose">{BANNER_PURPOSE[banner.code]}</p>
-                            {failed && (
-                                <div className="formalization-contracts-status formalization-banner__caption">
-                                    <span role="alert">Sin verificar</span>
-                                    <Tooltip title={banner.code === "contracts" ? "No se pudieron verificar los conteos de contratos. Reintentar consulta." : `No se pudo verificar ${banner.label}. Reintentar consulta.`}>
-                                        <Button type="text" size="small" icon={<ReloadOutlined />} aria-label={banner.code === "contracts" ? "Reintentar conteos de contratos" : `Reintentar ${banner.label}`} onClick={retry} />
-                                    </Tooltip>
-                                </div>
-                            )}
-                            <div className="formalization-banner__metrics">
-                                {banner.parts.map((part) => (
-                                    <button
-                                        key={part.label}
-                                        type="button"
-                                        className="formalization-banner__metric formalization-banner__metric-button"
-                                        aria-label={`Abrir ${part.label}`}
-                                        onClick={() => {
-                                            onOpen(part.filter);
-                                        }}
-                                    >
-                                        <span className="formalization-banner__value" data-empty={part.value === 0 ? "true" : undefined} aria-live="polite" aria-label={summary && part.value !== undefined ? `Valor: ${part.label}, ${String(part.value)}` : failed ? `${part.label}: sin verificar` : undefined}>
-                                            {loading ? (
-                                                <span className="formalization-banner__preload" role="status" aria-label={`Cargando ${part.label}`}>
-                                                    <Spin size="small" />
-                                                </span>
-                                            ) : (
-                                                (part.value ?? "—")
-                                            )}
-                                        </span>
-                                        <span className="formalization-banner__caption">{part.label}</span>
-                                        {(overdueByFilter[part.filter] ?? 0) > 0 && (
-                                            <span className="formalization-banner__overdue" title={`${String(overdueByFilter[part.filter])} llevan más de ${thresholdLabel(overdueSummary?.thresholdMinutes)} en esta etapa (CRM nuevo)`}>
-                                                {overdueByFilter[part.filter]} +{thresholdLabel(overdueSummary?.thresholdMinutes)}
-                                            </span>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <BannerCorner kind={banner.code} />
-                    </article>
-                    </Fragment>
-                ))}
-        </>
+        <span className="formalization-banner__overdue" title={`${String(count)} llevan más de ${label} en esta etapa (CRM nuevo)`}>
+            {count} +{label}
+        </span>
     );
 }
 
-/** Título-separador de grupo del inicio: línea · TÍTULO · línea. */
-function HomeDivider({ title }: { readonly title: string }) {
+/** Texto accesible de la cifra: el valor cuando se conoce y, si no, que está sin verificar. */
+function metricAriaLabel(part: StageBannerData["parts"][number], known: boolean, failed: boolean): string | undefined {
+    if (known && part.value !== undefined) return `Valor: ${part.label}, ${String(part.value)}`;
+    return failed ? `${part.label}: sin verificar` : undefined;
+}
+
+/** Una cifra clicable de la tarjeta, con su leyenda y, si existe, su atraso. */
+function StageMetric({ part, loading, failed, known, overdue, onOpen }: { readonly part: StageBannerData["parts"][number]; readonly loading: boolean; readonly failed: boolean; readonly known: boolean; readonly overdue: { readonly count: number | undefined; readonly minutes: number | undefined }; readonly onOpen: (filter: FollowUpSelection) => void }) {
     return (
-        <div className="formalization-home-divider" role="separator" aria-label={title}>
-            <span>{title}</span>
+        <button
+            type="button"
+            className="formalization-banner__metric formalization-banner__metric-button"
+            aria-label={`Abrir ${part.label}`}
+            onClick={() => {
+                onOpen(part.filter);
+            }}
+        >
+            <BannerValue loading={loading} preloadLabel={`Cargando ${part.label}`} value={part.value} ariaLabel={metricAriaLabel(part, known, failed)} empty={part.value === 0} />
+            <span className="formalization-banner__caption">{part.label}</span>
+            <OverdueBadge count={overdue.count} minutes={overdue.minutes} />
+        </button>
+    );
+}
+
+/** Aviso de que la etapa no se pudo verificar, con reintento. */
+function StageFailure({ banner, retry }: { readonly banner: StageBannerData; readonly retry: () => void }) {
+    const contracts = banner.code === "contracts";
+    return (
+        <div className="formalization-contracts-status formalization-banner__caption">
+            <span role="alert">Sin verificar</span>
+            <Tooltip title={contracts ? "No se pudieron verificar los conteos de contratos. Reintentar consulta." : `No se pudo verificar ${banner.label}. Reintentar consulta.`}>
+                <Button type="text" size="small" icon={<ReloadOutlined />} aria-label={contracts ? "Reintentar conteos de contratos" : `Reintentar ${banner.label}`} onClick={retry} />
+            </Tooltip>
         </div>
+    );
+}
+
+/** Tarjeta de una etapa: título, para qué sirve y sus cifras. */
+function StageBanner({ banner, loading, failed, known, retry, overdue, onOpen }: { readonly banner: StageBannerData; readonly loading: boolean; readonly failed: boolean; readonly known: boolean; readonly retry: () => void; readonly overdue: { readonly byFilter: Record<string, number | undefined>; readonly minutes: number | undefined }; readonly onOpen: (filter: FollowUpSelection) => void }) {
+    const attention = banner.code === "contracts" && banner.parts.some((part) => (part.value ?? 0) > 0);
+    return (
+        <article data-attention={attention ? "true" : undefined} className={`formalization-banner formalization-banner--${banner.tone}`} aria-labelledby={`formalization-${banner.code}`} aria-busy={loading}>
+            <div className="formalization-banner__content">
+                <div className="formalization-title-help">
+                    <h2 id={`formalization-${banner.code}`}>{banner.label}</h2>
+                    <FormHelp label={`Condiciones de ${banner.label}`} text={FORMALIZATION_QUEUE_HELP[banner.code]} />
+                </div>
+                <p className="formalization-banner__purpose">{BANNER_PURPOSE[banner.code]}</p>
+                {failed && <StageFailure banner={banner} retry={retry} />}
+                <div className="formalization-banner__metrics">
+                    {banner.parts.map((part) => (
+                        <StageMetric key={part.label} part={part} loading={loading} failed={failed} known={known} overdue={{ count: overdue.byFilter[part.filter], minutes: overdue.minutes }} onOpen={onOpen} />
+                    ))}
+                </div>
+            </div>
+            <BannerCorner kind={banner.code} />
+        </article>
     );
 }
 
 /** El primer elemento de cada grupo lleva el separador; los demás solo comparten fila. */
 const STAGE_GROUP_OF: Record<string, string> = { contracts: "pay", bank: "pay", balance: "pay", transfer: "close", signed: "close", closed: "close" };
 const STAGE_GROUP_TITLES: Record<string, string> = { contracts: "Contratos, banco y saldo", bank: "Contratos, banco y saldo", balance: "Contratos, banco y saldo", transfer: "Traspaso y cierre", signed: "Traspaso y cierre", closed: "Traspaso y cierre" };
+
+/** Título del grupo si esta tarjeta es la primera visible de su grupo. */
+function groupTitleFor(banner: StageBannerData, index: number, visible: readonly StageBannerData[]): string | undefined {
+    const first = visible.findIndex((other) => STAGE_GROUP_OF[other.code] === STAGE_GROUP_OF[banner.code]);
+    return first === index ? STAGE_GROUP_TITLES[banner.code] : undefined;
+}
+
+/** Un solo dueño autorizado alimenta cada banner de etapa. Los montajes no comparten datos. */
+function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly onOpen: (filter: FollowUpSelection) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
+    const { value: summary, failed, retry } = useHomeSummary(enabled, refreshVersion);
+    const { value: overdueSummary } = useBannerSummary(getOverdueSummary, [enabled, SHOW_OVERDUE_BADGES].every(Boolean), refreshVersion);
+    const overdue = { byFilter: overdueByFilterOf(overdueSummary), minutes: overdueSummary?.thresholdMinutes };
+    const loading = !summary && !failed;
+    const visible = buildStages(summary?.counts ?? EMPTY_STAGE_COUNTS).filter((banner) => allowedQueues.includes(banner.code === "bank" ? "bank" : banner.parts[0].filter));
+    return (
+        <>
+            {visible.map((banner, index) => (
+                <Fragment key={banner.code}>
+                    <HomeDivider title={groupTitleFor(banner, index, visible) ?? ""} show={groupTitleFor(banner, index, visible) !== undefined} />
+                    <StageBanner banner={banner} loading={loading} failed={failed} known={Boolean(summary)} retry={retry} overdue={overdue} onOpen={onOpen} />
+                </Fragment>
+            ))}
+        </>
+    );
+}
 
 /** Título de la cola, con el proyecto cuando está filtrada. */
 const getQueueTitle = (queue: PreviewQueue) => `${PREVIEW_FILTER_TITLES[queue.filter]}${queue.project ? ` · ${queue.project}` : ""}`;
@@ -465,7 +525,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [
                                 <FormalizationProjectDistribution enabled={canReadList} />
                             </div>
                         </section>
-                        {[canViewApprovals, canViewAddendumBanner].some(Boolean) && <HomeDivider title="Por revisar" />}
+                        <HomeDivider title="Por revisar" show={[canViewApprovals, canViewAddendumBanner].some(Boolean)} />
                         <div className="formalization-home__intro" data-has-approvals={canViewApprovals} data-pending-count={Number(canViewApprovals) + Number(canViewAddendumBanner)}>
                             {[
                                 { kind: "approvals" as const, visible: canViewApprovals, canOpen: true },
@@ -490,6 +550,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [
                         <FormalizationStageBanners allowedQueues={allowedQueues} refreshVersion={refreshVersion} enabled={isHomeSummaryEnabled(initialView, queue, selected)} canView={canViewStages} onOpen={selectBanner} />
                     </section>
                     <div className="formalization-workspace">
+                        <HomeDivider title="Seguimiento de órdenes" show={[isHomeSummaryEnabled(initialView, queue, selected), canReadList].every(Boolean)} />
                         <VisibleHomeFollowUp
                             filterRequest={filterRequest}
                             filterStorageKey={filterStorageKey}

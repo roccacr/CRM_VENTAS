@@ -6,6 +6,20 @@ import { HOME_SUMMARY_LEGACY_READER, type HomeSummaryLegacyReader } from "./home
 import { HomeSummaryRepository } from "./home-summary.repository.js";
 import { aggregateNumber, emptyStageCounts, type HomeSummary, type HomeSummaryPeriod, OVERDUE_THRESHOLD_MINUTES, type OverdueSummary, type StageCounts } from "./home-summary.types.js";
 
+/** Una etapa que el actor no puede leer no filtra su atraso: se enmascara igual que su conteo. */
+const allow = (allowed: boolean, value: number) => (allowed ? value : 0);
+function maskOverdue(raw: OverdueSummary["counts"], access: ReturnType<typeof formalizationReadAccess>): OverdueSummary["counts"] {
+    return {
+        contractsToSend: allow(access.contracts, raw.contractsToSend),
+        contractsPendingSignature: allow(access.contracts, raw.contractsPendingSignature),
+        banking: allow(access.bank, raw.banking),
+        bankingInProgress: allow(access.bank, raw.bankingInProgress),
+        balance: allow(access.balance, raw.balance),
+        transferPending: allow(access.transfer, raw.transferPending),
+        transferSigned: allow(access.signed, raw.transferSigned),
+    };
+}
+
 /** Solo agregados frescos de la base. Una etapa posterior ya guardada no vuelve a exigir la aprobación. */
 @Injectable()
 export class HomeSummaryService {
@@ -90,15 +104,7 @@ export class HomeSummaryService {
         const cutoff = new Date(now.getTime() - OVERDUE_THRESHOLD_MINUTES * 60_000).toISOString().slice(0, 19).replace("T", " ");
         try {
             const raw = await this.repository.readSnapshot((tx) => this.repository.overdue(tx, cutoff));
-            const counts = {
-                contractsToSend: access.contracts ? raw.contractsToSend : 0,
-                contractsPendingSignature: access.contracts ? raw.contractsPendingSignature : 0,
-                banking: access.bank ? raw.banking : 0,
-                bankingInProgress: access.bank ? raw.bankingInProgress : 0,
-                balance: access.balance ? raw.balance : 0,
-                transferPending: access.transfer ? raw.transferPending : 0,
-                transferSigned: access.signed ? raw.transferSigned : 0,
-            };
+            const counts = maskOverdue(raw, access);
             return { schemaVersion: 1, observedAt: now.toISOString(), thresholdMinutes: OVERDUE_THRESHOLD_MINUTES, source: "native", counts };
         } catch {
             throw new ServiceUnavailableException("No fue posible consultar el atraso de las etapas.");

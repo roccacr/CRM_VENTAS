@@ -4,6 +4,7 @@ import SearchOutlined from "@ant-design/icons/SearchOutlined";
 import Button from "antd/es/button";
 import Select from "antd/es/select";
 import Tag from "antd/es/tag";
+import Tooltip from "antd/es/tooltip";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { FormHelp } from "../../components/forms/FormHelp";
@@ -277,6 +278,13 @@ function LiveFollowUp({ canUpdateStage, canViewApprovals, refreshVersion, ...pro
     );
 }
 
+/** Las selecciones que no caben se agrupan en "+N"; el detalle completo está en su tooltip. */
+const omittedTags = (omitted: readonly { readonly label?: React.ReactNode }[]) => (
+    <Tooltip title={omitted.map((entry) => (typeof entry.label === "string" ? entry.label : "")).join(" · ")}>
+        <span className="formalization-tag-more">+{omitted.length} más</span>
+    </Tooltip>
+);
+
 function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<typeof useFollowUp>; readonly tableOnly: boolean }) {
     const { search, setSearch, projectIds, setProjects, selectedSelections, setSelections, setPage, value, projects, queues, invalidate } = model;
     return (
@@ -301,12 +309,14 @@ function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<type
                     mode="multiple"
                     variant="borderless"
                     virtual={false}
+                    popupMatchSelectWidth={false}
                     maxCount={50}
                     aria-label="Filtrar por proyecto"
                     value={projectIds}
                     allowClear
                     showSearch={{ optionFilterProp: "label" }}
-                    maxTagCount="responsive"
+                    maxTagCount={1}
+                    maxTagPlaceholder={omittedTags}
                     placeholder="Todos los proyectos"
                     options={[...projects].sort((a, b) => byName(a.name, b.name)).map((project) => ({ value: project.id, label: project.name }))}
                     onChange={(values) => {
@@ -322,12 +332,14 @@ function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<type
                     mode="multiple"
                     variant="borderless"
                     virtual={false}
+                    popupMatchSelectWidth={false}
                     maxCount={14}
                     aria-label="Bandeja de seguimiento"
                     value={selectedSelections}
                     allowClear
                     showSearch={{ optionFilterProp: "label" }}
-                    maxTagCount="responsive"
+                    maxTagCount={1}
+                    maxTagPlaceholder={omittedTags}
                     placeholder="Todas las bandejas permitidas"
                     options={[
                         ...sortedQueues(queues)
