@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
+import fc from "fast-check";
 import { expect, it, vi } from "vitest";
 
 function searchMock(flags: Record<string, unknown> = {}) {
@@ -443,6 +444,69 @@ it.each([
         data: { id: "2034401", fullName: "Ana Prueba", email: "synthetic@example.test", company: null, phone: null, campaign: String(campaignId), campaignName },
     });
     expect(lookupFields).toHaveBeenCalledOnce();
+});
+
+it.each([[{ value: 40905, text: "Gogetit LE Gea" }], { value: "40905", text: "Gogetit LE Gea" }, "40905", 40905])("reads the customer's custom campaign instead of a different leadsource: %j", (selection) => {
+    const lookupFields = vi.fn(() => ({
+        firstname: "Ana",
+        lastname: "Prueba",
+        companyname: "",
+        email: "synthetic@example.test",
+        phone: "88880000",
+        custentity_ix_campanademarketing: selection,
+        leadsource: [{ value: 651, text: "Otra campaña" }],
+    }));
+    const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields } });
+    expect(restlet.get?.({ module: "leads", action: "importCustomer", id: "2460483" })).toMatchObject({
+        status: 200,
+        data: { campaign: "40905", campaignName: typeof selection === "object" ? "Gogetit LE Gea" : null, fullName: "Ana Prueba", email: "synthetic@example.test", phone: "88880000", company: null },
+    });
+    expect(lookupFields).toHaveBeenCalledWith({ type: "customer", id: "2460483", columns: ["firstname", "lastname", "companyname", "email", "phone", "custentity_ix_campanademarketing", "leadsource"] });
+});
+
+it.each([{}, { value: "undefined" }, { value: 0 }, false, [{ value: 40905 }, { value: 651 }]].map((value) => [value]))("rejects an invalid or ambiguous custom campaign without falling back: %j", (selection) => {
+    const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields: () => ({ firstname: "Ana", custentity_ix_campanademarketing: selection, leadsource: [{ value: 651, text: "Otra" }] }) } });
+    expect(restlet.get?.({ module: "leads", action: "importCustomer", id: "2460483" })).toMatchObject({ status: 502, error: { code: "CUSTOMER_CAMPAIGN_INVALID" } });
+});
+
+it("uses company name when individual name fields contain only whitespace", () => {
+    const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields: () => ({ firstname: " ", lastname: "  ", companyname: " Empresa de prueba " }) } });
+    expect(restlet.get?.({ module: "leads", action: "importCustomer", id: "2460483" })).toMatchObject({ status: 200, data: { fullName: "Empresa de prueba", campaign: null } });
+});
+
+it.each([null, "", []].map((selection) => [selection]))("keeps legacy campaign fallback when the custom field is empty: %j", (selection) => {
+    const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields: () => ({ firstname: "Ana", custentity_ix_campanademarketing: selection, leadsource: [{ value: -3, text: "Llamada" }] }) } });
+    expect(restlet.get?.({ module: "leads", action: "importCustomer", id: "2460483" })).toMatchObject({ status: 200, data: { campaign: "-3", campaignName: "Llamada" } });
+});
+
+it("property: custom campaign ID and label stay together and take precedence", () => {
+    fc.assert(
+        fc.property(fc.integer({ min: 1, max: 2147483647 }), fc.boolean(), fc.boolean(), (id, negative, array) => {
+            const campaignId = (negative ? -id : id).toString();
+            const campaign = { value: campaignId, text: "Campaña sintética" };
+            const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields: () => ({ firstname: "Ana", custentity_ix_campanademarketing: array ? [campaign] : campaign, leadsource: [{ value: 651, text: "Distinta" }] }) } });
+            expect(restlet.get?.({ module: "leads", action: "importCustomer", id: "2460483" })).toMatchObject({ status: 200, data: { campaign: campaignId, campaignName: "Campaña sintética" } });
+        }),
+        { numRuns: 100, seed: 20261111 },
+    );
+});
+
+it("fuzz: malformed campaign selections stay controlled and never expose source fields", () => {
+    fc.assert(
+        fc.property(fc.anything(), (selection) => {
+            const lookupFields = vi.fn(() => ({ firstname: "Ana", custentity_ix_campanademarketing: selection, privateField: "PRIVATE_SOURCE_FIELD" }));
+            const restlet = load(undefined, undefined, undefined, { search: { Type: { CUSTOMER: "customer" }, lookupFields } });
+            const result = restlet.get?.({ module: "leads", action: "importCustomer", id: "2460483" }) as { status: number; data?: { campaign: string | null } } | undefined;
+            expect([200, 502]).toContain(result?.status);
+            expect(JSON.stringify(result)).not.toContain("PRIVATE_SOURCE_FIELD");
+            if (result?.status === 200) {
+                expect(result.data).toBeDefined();
+                if (result.data?.campaign !== null) expect(result.data?.campaign).toMatch(/^-?[1-9]\d{0,14}$/);
+            }
+            expect(lookupFields).toHaveBeenCalledOnce();
+        }),
+        { numRuns: 100, seed: 20261111 },
+    );
 });
 
 it.each([

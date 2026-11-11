@@ -1,14 +1,20 @@
 # SuiteScript unificado de Producción y Sandbox
 
-## Corte local — 2026-11-10
+## Corte local — 2026-11-11
 
-La cabecera y el emisor de la librería local identifican `2026.11.10.9`. El RESTlet añade
+La cabecera y el emisor de la librería local identifican `2026.11.11.1`. El RESTlet añade
 `GET module=salesOrders&action=findByTranId&tranid=<número>` para resolver
 el ID interno de una orden con coincidencia exacta. Se incorpora
 `custbody_fecha_unidad_entregada` a la proyección.
 
 La consulta `module=leads&action=importCustomer` devuelve `campaign` con el ID de
-NetSuite y `campaignName` con el texto de `leadsource`. Habita usa ese ID para
+NetSuite y `campaignName` con el texto de `custentity_ix_campanademarketing`.
+Ese es el campo «Campaña de Marketing» verificado en el cliente 2460483.
+`leadsource` se consulta solo como respaldo cuando el personalizado está vacío,
+para conservar las importaciones previas. Si ambos tienen valores distintos,
+prevalece el personalizado. Una selección inválida o múltiple devuelve
+`CUSTOMER_CAMPAIGN_INVALID` sin elegir arbitrariamente otro ID.
+Habita usa ese ID para
 buscar la referencia externa de la campaña. Si falta, concilia por
 `campanas.id_NetsauiteCampana` o crea la campaña con el nombre confirmado y
 guarda el vínculo en la BD nueva dentro de la transacción de importación.
@@ -17,6 +23,27 @@ el origen de respaldo `netsuite` («Importado desde NetSuite»).
 Las campañas de sistema pueden tener IDs negativos válidos, como `-3`
 (Llamada). Se conserva el signo al resolver el catálogo legado y al guardar
 la referencia externa. El ID interno del CRM conserva su identidad propia.
+
+Los demás campos consumidos por esta consulta conservan sus IDs estándar:
+
+| Campo NetSuite | Propiedad del importador |
+| --- | --- |
+| `firstname` + `lastname` | `fullName`, recortando espacios |
+| `companyname` | `company`; respaldo de `fullName` si el nombre individual está vacío |
+| `email` | `email`, opcional |
+| `phone` | `phone`, opcional |
+| `custentity_ix_campanademarketing` | `campaign` y `campaignName` del mismo origen |
+
+No se detectó otro ID de campo incorrecto confirmado en ese conjunto.
+El adjunto de la orden 10738313 contiene campos de una transacción y no
+sustituye la definición de campos de su cliente. El cambio conserva el contrato
+del API, usa una sola consulta `lookupFields` y no modifica datos del ERP.
+Para activarlo se actualiza solo `/SuiteScripts/SS2_1_LIB_CRM_habita.js`;
+el RESTlet y el UE mantienen sus rutas y no requieren edición por este cambio.
+La instalación en NetSuite y la reimportación real de RDR549 quedan pendientes.
+La regresión generada usa semilla `20261111`; antes del arreglo falló con
+ruta `0:0:0` y caso mínimo `[1,false,false]` (se elegía leadsource en lugar
+del campo personalizado). Propiedades y fuzz se ejecutan con datos sintéticos.
 
 La ficha de expediente devuelve también `projectName` mediante `getText` del
 mismo campo que entrega `projectId`. El importador resuelve primero el vínculo

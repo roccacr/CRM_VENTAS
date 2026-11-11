@@ -1,5 +1,5 @@
 /**
- * Versión: 2026.11.10.9 — Recibo durable de importación automática para órdenes ausentes.
+ * Versión: 2026.11.11.1 — Campaña personalizada del cliente y normalización de su nombre.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
  * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
  * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
@@ -484,7 +484,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         "use strict";
 
         // Version unica del conjunto de scripts. Actualizar al preparar cada entrega: la lee el empaquetador.
-        const SCRIPT_VERSION = "2026.11.10.9";
+        const SCRIPT_VERSION = "2026.11.11.1";
 
         /**
          * Un fallo del logger no debe interrumpir una consulta ni cambiar su respuesta.
@@ -730,7 +730,31 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         }
 
         /**
+         * Normaliza una selección simple sin convertir objetos vacíos a "undefined".
+         * Una selección ambigua o inválida no permite elegir otra campaña de respaldo.
+         * @param {*} value Valor devuelto por lookupFields.
+         * @returns {?object} ID y etiqueta del mismo campo, o marca de formato inválido.
+         */
+        function customerCampaign(value) {
+            const values = Array.isArray(value) ? value : [value];
+            if (values.length > 1) return { invalid: true };
+            const selected = values[0];
+            if (selected === null || selected === undefined || selected === "") return null;
+            const rawId = typeof selected === "object" ? selected.value : selected;
+            const id =
+                typeof rawId === "string"
+                    ? rawId.trim()
+                    : typeof rawId === "number" && Number.isSafeInteger(rawId)
+                      ? String(rawId)
+                      : "";
+            if (!/^-?[1-9]\d{0,14}$/.test(id)) return { invalid: true };
+            return { id, name: typeof selected.text === "string" ? selected.text.trim() || null : null };
+        }
+
+        /**
          * Lee solo los campos que Habita usa para conciliar al cliente.
+         * Campaña de Marketing es custentity_ix_campanademarketing; leadsource
+         * se conserva solo como respaldo cuando el campo personalizado está vacío.
          * @param {object} request Solicitud con el ID interno de NetSuite.
          * @returns {object} Ficha mínima del cliente o error de validación.
          */
@@ -739,18 +763,37 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             const fields = search.lookupFields({
                 type: search.Type.CUSTOMER,
                 id: request.id,
-                columns: ["firstname", "lastname", "companyname", "email", "phone", "leadsource"],
+                columns: [
+                    "firstname",
+                    "lastname",
+                    "companyname",
+                    "email",
+                    "phone",
+                    "custentity_ix_campanademarketing",
+                    "leadsource",
+                ],
             });
-            // leadsource puede venir como un objeto o como el primer elemento de un arreglo.
-            const campaign = Array.isArray(fields.leadsource) ? fields.leadsource[0] : fields.leadsource;
+            const campaign =
+                customerCampaign(fields.custentity_ix_campanademarketing) ?? customerCampaign(fields.leadsource);
+            if (campaign?.invalid)
+                return fail(
+                    502,
+                    "CUSTOMER_CAMPAIGN_INVALID",
+                    "La campaña del cliente no devolvió una selección simple con ID válido.",
+                );
+            const fullName =
+                [fields.firstname, fields.lastname]
+                    .map((value) => (typeof value === "string" ? value.trim() : ""))
+                    .filter(Boolean)
+                    .join(" ") || (typeof fields.companyname === "string" ? fields.companyname.trim() : "");
             return responses.ok({
                 id: String(request.id),
-                fullName: [fields.firstname, fields.lastname].filter(Boolean).join(" ") || fields.companyname || "",
+                fullName,
                 company: fields.companyname || null,
                 email: fields.email || null,
                 phone: fields.phone || null,
-                campaign: campaign ? String(campaign.value) : null,
-                campaignName: typeof campaign?.text === "string" ? campaign.text.trim() || null : null,
+                campaign: campaign?.id ?? null,
+                campaignName: campaign?.name ?? null,
             });
         }
 
