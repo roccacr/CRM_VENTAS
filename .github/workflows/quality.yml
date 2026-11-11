@@ -32,6 +32,8 @@ jobs:
           fetch-depth: 0
       - name: Verify change classification
         run: python3 -m unittest discover -s deploy/habita -p 'test_detect_ci_changes.py'
+      - name: Verify Habita retention safeguards
+        run: python3 -m unittest discover -s deploy/habita -p 'test_cleanup_releases.py'
       - id: detect
         run: python3 deploy/habita/detect-ci-changes.py
         env:

@@ -145,8 +145,10 @@ clona la rama, aplica el overlay verificado en un release nuevo, instala solo
 dependencias de producción con lockfile y sin scripts de instalación, valida
 entorno y binding nativo, cambia `current` y reinicia exclusivamente el API.
 Si falla la activación o la comprobación de salud, restaura el release anterior
-y solicita verificar su salud. Los releases y paquetes se conservan para revisión;
-revisar espacio disponible antes de publicar repetidamente.
+y solicita verificar su salud. Después de verificar la salud y desarmar el rollback,
+la retención conserva únicamente `current` y elimina releases/paquetes anteriores
+de Habita. El anterior sigue disponible durante la activación, pero se retira
+tras su éxito; recuperar una versión histórica requiere volver a desplegarla.
 
 El archivo de producción ya está en `shared/api.env` (0600), con `NODE_ENV=production`
 y los dominios públicos. Cada release enlaza `apps/api/.env` a ese archivo y Node
@@ -275,3 +277,34 @@ artefacto. Si la activación falla, restaura el release anterior e intenta
 verificarlo. Las migraciones se ejecutan por separado. Antes de considerar
 habilitado este flujo, falta validar la configuración de GitHub y ejecutar
 la promoción y el rollback en QA.
+
+
+## Retención de artefactos de Habita
+
+`cleanup-releases.py` limita la CLI a `/var/www/habita-crm`, comparte
+`shared/deploy.lock` y nunca elimina el release apuntado por `current`,
+datos/configuraciones compartidos ni otros proyectos. Revalida la ruta canónica
+antes de cada borrado y no sigue enlaces de releases antiguos (incluido `.env`).
+
+`activate-release.sh` lo invoca solo después de salud correcta y fuera del trap
+de rollback, heredando FD9. Si la limpieza falla, informa el pendiente y conserva
+el despliegue saludable; nunca intenta restaurar una versión ya retirada.
+Los paquetes posteriores y de otro despliegue generado en el mismo segundo
+se conservan, pues pueden estar cargándose antes de adquirir el bloqueo.
+
+`habita-cleanup.cron` es el mantenimiento diario independiente: 03:17 en la zona
+del servidor, ejecutado como `ubuntu`, con registro local `habita-cleanup`.
+`--stale-only` limpia restos fallidos con timestamp y mtime mayores de 24 horas;
+no interfiere con un deploy bloqueado ni con cargas recientes. El helper instalado
+vive en `shared/cleanup-releases.py`; su cron dedicado en
+`/etc/cron.d/habita-cleanup`. No modifica los cron de otros proyectos.
+
+Verificación Linux/CI: `python3 -m unittest discover -s deploy/habita -p 'test_cleanup_releases.py'`.
+Incluye enlaces en ancestros, cambio de current, rechazo de rutas externas,
+inventario generado con semilla `20261111` y candidatos malformados.
+En Windows se omite explícitamente por requerir semántica POSIX de enlaces.
+
+Limpieza autorizada del 11/11/2026: 43 releases y 55 paquetes retirados;
+se conservó `20261111154437-ba941a2-ci-43050757530-1`, salud ready,
+entorno/configuración/CA idénticos. Disco de 100 % a 75 %, 3,8 GB libres.
+No se publicó ni se reinició la aplicación por esta limpieza.

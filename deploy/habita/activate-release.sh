@@ -75,4 +75,10 @@ switch_current "$release"
 sudo -n systemctl reload habita-pm2
 verify_release "$release"
 trap - ERR
+
+# La versión anterior solo se retira después de verificar la nueva y desarmar el rollback.
+# FD9 conserva el bloqueo contra otros despliegues durante esta limpieza.
+if ! python3 "$release/deploy/habita/cleanup-releases.py" --apply --before "$id" --lock-fd 9; then
+    echo 'Release saludable; limpieza pendiente. Revisar espacio antes del siguiente despliegue.' >&2
+fi
 echo "Release activo: $id. API reiniciado con PM2; frontend compilado y publicado."

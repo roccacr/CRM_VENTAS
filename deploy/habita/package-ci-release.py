@@ -27,6 +27,7 @@ runtime = (
     "apps/api/pnpm-lock.yaml",
     "apps/api/certs/rds-global-bundle.pem",
     "deploy/habita/activate-release.sh",
+    "deploy/habita/cleanup-releases.py",
     "deploy/habita/verify-release.py",
 )
 output.mkdir(exist_ok=False, parents=True)

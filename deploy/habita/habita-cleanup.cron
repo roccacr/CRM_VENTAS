@@ -1,0 +1,3 @@
+# Solo Habita; no elimina current, configuraciones ni paquetes de cargas recientes.
+MAILTO=""
+17 3 * * * ubuntu /usr/bin/python3 /var/www/habita-crm/shared/cleanup-releases.py --apply --stale-only 2>&1 | /usr/bin/logger -t habita-cleanup
