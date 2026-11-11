@@ -1,4 +1,5 @@
 import { ForbiddenException } from "@nestjs/common";
+import fc from "fast-check";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler } from "kysely";
 import { expect, it, vi } from "vitest";
 
@@ -6,7 +7,7 @@ import type { CrmDatabase } from "../../src/database/database.types.js";
 import { NetsuiteOrderRepository } from "../../src/integrations/netsuite/netsuite-order.repository.js";
 import { NetsuiteSalesOrderService } from "../../src/integrations/netsuite/netsuite-sales-order.service.js";
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
-import type { TimingOrder } from "../../src/modules/crm/sales/sales-orders/order-timing.contract.js";
+import { orderTimingIdentity, type TimingOrder } from "../../src/modules/crm/sales/sales-orders/order-timing.contract.js";
 import { anyOf } from "../support/throws.js";
 
 const publicId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
@@ -42,13 +43,69 @@ function fixture(native = true, externalIds = ["123"], live?: { version: number;
         }
     };
     const client = {
+        integrationContext: () => ({ environment: "production", accountId: "4552704" }),
         readSalesOrder: vi.fn().mockImplementation(() => {
             expect(snapshotOpen).toBe(false);
             return Promise.resolve({ fields: { tranid: "RDR673" } });
         }),
     };
-    return { db, queries, profile, order, repository, legacy, client, service: new NetsuiteSalesOrderService(identity as never, new NetsuiteOrderRepository(repository as never, legacy as never, { readSnapshot } as never), client as never, {} as never) };
+    return { db, queries, profile, order, repository, legacy, client, service: new NetsuiteSalesOrderService(identity as never, new NetsuiteOrderRepository(repository as never, legacy as never, { readSnapshot } as never), client as never, { synchronizationEnabled: () => true } as never) };
 }
+
+it.each([true, false])("shows the environment for inactive orders without enabling synchronization native=%s", async (native) => {
+    const f = fixture(native);
+    f.order.active = false;
+    f.profile.permissions.push({ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas", source: "role" });
+    try {
+        await expect(f.service.synchronizationContext("session", { source: "legacy", id: "208" })).resolves.toMatchObject({ environment: "production", canSynchronize: false });
+        await expect(f.service.synchronize("session", { source: "legacy", id: "208" })).rejects.toMatchObject({ status: 404 });
+        expect(f.client.readSalesOrder).not.toHaveBeenCalled();
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it("property: environment reads preserve grants, denies and active-only synchronization", async () => {
+    await fc.assert(
+        fc.asyncProperty(fc.boolean(), fc.boolean(), fc.boolean(), fc.boolean(), async (active, deleted, granted, denied) => {
+            const f = fixture();
+            f.order.active = active;
+            f.order.deleted = deleted;
+            if (granted) f.profile.permissions.push({ code: "formalizacion.orders.stage.update", effect: "allow", scope: "all_areas", source: "role" });
+            if (denied) f.profile.permissions.push({ code: "formalizacion.orders.read", effect: "deny", scope: null, source: "override" });
+            try {
+                const request = f.service.synchronizationContext("session", { source: "native", id: publicId });
+                if (denied) await expect(request).rejects.toMatchObject({ status: 403 });
+                else if (deleted) await expect(request).rejects.toMatchObject({ status: 404 });
+                else await expect(request).resolves.toMatchObject({ environment: "production", canSynchronize: active && granted });
+                expect(f.client.readSalesOrder).not.toHaveBeenCalled();
+            } finally {
+                await f.db.destroy();
+            }
+        }),
+        { numRuns: 100, seed: 20261112 },
+    );
+});
+
+it("fuzz: invalid context identities never resolve an order", async () => {
+    await fc.assert(
+        fc.asyncProperty(
+            fc.anything().filter((value) => !orderTimingIdentity.safeParse(value).success),
+            async (input) => {
+                const f = fixture();
+                try {
+                    await expect(f.service.synchronizationContext("session", input)).rejects.toMatchObject({ status: 400 });
+                    expect(f.repository.find).not.toHaveBeenCalled();
+                    expect(f.queries).toHaveLength(0);
+                    expect(f.client.readSalesOrder).not.toHaveBeenCalled();
+                } finally {
+                    await f.db.destroy();
+                }
+            },
+        ),
+        { numRuns: 100, seed: 20261112 },
+    );
+});
 it.each([true, false])("resolves authorized source native=%s before one provider GET outside DB transaction", async (native) => {
     const f = fixture(native);
     try {

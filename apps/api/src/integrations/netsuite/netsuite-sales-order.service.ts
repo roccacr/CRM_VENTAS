@@ -70,14 +70,27 @@ export class NetsuiteSalesOrderService {
             true,
         );
     }
-    /** Dice el entorno y si la escritura manual esta habilitada. No llama a NetSuite, aunque el proveedor este caido. */
+    /** Consultar el ambiente admite inactivas; mostrarlo no habilita su sincronización ni llama a NetSuite. */
     async synchronizationContext(session: string | undefined, input: unknown) {
-        return this.authorized(session, input, async (target, check, profile) => {
-            await this.repository.resolve(target, check);
-            const context = this.client.integrationContext();
-            const allowed = formalizationPermissionScope(profile, "formalizacion.orders.stage.update").allowed;
-            return { ...context, canSynchronize: allowed && this.events.synchronizationEnabled(context.environment) };
-        });
+        return this.authorized(
+            session,
+            input,
+            async (target, check, profile) => {
+                const availability = { active: false };
+                await this.repository.resolve(
+                    target,
+                    (order) => {
+                        check(order);
+                        availability.active = order.active;
+                    },
+                    true,
+                );
+                const context = this.client.integrationContext();
+                const allowed = formalizationPermissionScope(profile, "formalizacion.orders.stage.update").allowed;
+                return { ...context, canSynchronize: availability.active && allowed && this.events.synchronizationEnabled(context.environment) };
+            },
+            true,
+        );
     }
     /** Lee la foto verificada y la aplica con el mismo escritor que el webhook. El navegador no manda campos. Si el permiso cambia durante la lectura, no se escribe. */
     async synchronize(session: string | undefined, input: unknown) {

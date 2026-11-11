@@ -331,6 +331,14 @@ Esto corrige el caso RDR611: encontrada en legacy con `status_ov=0`, notificada
 como completada por la cola, pero rechazada antes al abrir su detalle.
 No requiere migraciones ni cambios de estado en la BD.
 
+La consulta `GET /formalization/orders/:source/:id/netsuite/context` también
+admite inactivas para mostrar el ambiente configurado, sin llamar al proveedor.
+Su respuesta conserva `canSynchronize:false` para esas órdenes, aunque el
+usuario tenga permiso de actualización. La sincronización POST mantiene su
+validación de orden activa. Se evita así el aviso engañoso de ambiente no
+verificado al consultar RDR611. Propiedades y fuzz del contexto: 100 casos cada
+uno, semilla `20261112`, en `netsuite-order-resolution.spec.ts`.
+
 
 Verificación del cambio local: las consultas compiladas de ficha y búsqueda
 se ejecutaron contra producción dentro de una transacción de solo lectura:
