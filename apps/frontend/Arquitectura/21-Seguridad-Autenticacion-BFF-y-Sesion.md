@@ -4,6 +4,23 @@
 
 El login de Habita ofrece Microsoft como acción principal y credenciales locales autorizadas por TI en un panel plegable. Los estados de espera y error aparecen junto al método que se intentó. El BFF conserva sesión, renovación, CSRF y permisos. La copia local añade la opción de compilación `VITE_API_ORIGIN=same-origin` para un frontend y un BFF publicados bajo el mismo origen. El release verificado y la configuración local se distinguen en el [corte 33](33-Reconciliacion-Frontend-20261110.md).
 
+## Personas en línea — 11/11/2026
+
+`GlobalHomeShell` incorpora el icono **Personas en línea** en la barra superior
+de todos los módulos, visible únicamente con rol `owner` activo. Abre un panel
+lateral con nombres y cantidad; el icono muestra también la cantidad aun con el
+panel cerrado, actualizada cada 15 segundos. Usa la capa compartida de paneles
+(1300), por encima de la máscara global (1299). El API comprueba
+el rol nuevamente: ocultar el icono no es la protección de acceso.
+
+Todos los usuarios autenticados envían su propia señal cada 30 segundos solo
+con Habita visible y actividad en los últimos 5 minutos. No se envían IDs de
+otros usuarios ni se guarda historial de navegación. Al desmontar se cancelan
+las peticiones y temporizadores. Cerrar/ocultar la pestaña o desconectarse puede
+tardar hasta 90 segundos en retirar la presencia. Un error del servicio muestra
+un aviso al Owner y no bloquea el trabajo del CRM. Contrato y límite de proceso
+único: [Identidad API](../../api/Arquitectura/33-Contrato-API-Identidad-P0-S1.md).
+
 ## Actualización contrastada — 03/11/2026
 
 `startMicrosoftLogin(true)` solicita consentimiento de calendario por el BFF. `waitForMicrosoftPopupSession` exige sesión distinta de la anterior para no confundir una sesión existente con callback nuevo; después se relee el usuario y se recarga la aplicación si cambió. Popup bloqueado requiere confirmación de navegación con pérdida del borrador. El flujo de calendario conserva cookies/CSRF y sus capacidades CRM; consentimiento Microsoft no autoriza el recurso CRM ni entrega tokens al navegador. Detalle de disponibilidad, publicación, errores y versión remota: [Calendario global](Calendario-Global-Frontend.md).

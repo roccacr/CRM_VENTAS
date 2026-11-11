@@ -457,7 +457,7 @@ function FollowUpRow({ item, onOpen, showAddendum }: { readonly item: FollowUpIt
                 <span className="formalization-grid__meta">{item.unit ?? "Sin unidad"}</span>
             </td>
             <td data-label={columns[2]}>
-                <StageChip label={item.state.label} />
+                <StageChip label={item.state.label} code={item.state.code} />
             </td>
             <td data-label={columns[3]}>
                 <StageResponsibility item={item} />

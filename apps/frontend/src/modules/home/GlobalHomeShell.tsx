@@ -50,6 +50,7 @@ import { ADMINISTRATION_CATALOGS } from "../administration/catalogs/catalog-defi
 import { NotesRealtimeProvider } from "../notes/NotesRealtimeProvider";
 import { NotesButton, NotesNotificationsButton, PersonalNotesProvider } from "../notes/PersonalNotes";
 import { FormalizationCalendarQuickCreate } from "./FormalizationCalendarQuickCreate";
+import { OnlineUsers } from "./OnlineUsers";
 
 const HABITA_VERSION = "v2.0.1";
 
@@ -1463,7 +1464,7 @@ const getInitialWorkspaceProfile = (assignedWorkspaces: readonly WorkspaceProfil
  * sigue autorizando cada ruta. Si el filtro no deja perfiles, la cabecera usa
  * el primero del catálogo sin ítems de menú para no mostrar accesos inexistentes.
  */
-export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, effectivePermissions = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, initialWorkspaceCode, currentViewLabel, onLogout, onMenuItemSelect, onWorkspaceChange, orgUnits }: GlobalHomeShellProps) {
+export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, effectivePermissions = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, initialWorkspaceCode, currentViewLabel, onLogout, onMenuItemSelect, onWorkspaceChange, orgUnits, roles }: GlobalHomeShellProps) {
     const assignedWorkspaces = getVisibleNavigationWorkspaces(effectivePermissions, orgUnits);
     const fallbackWorkspace = assignedWorkspaces[0] ?? { ...ASSIGNED_WORKSPACES[0], menuItems: [] };
     const initialWorkspace = getInitialWorkspaceProfile(assignedWorkspaces, fallbackWorkspace, initialWorkspaceCode);
@@ -1601,6 +1602,7 @@ export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, eff
                             </div>
 
                             <div className="global-home-header__actions" role="group" aria-label="Cuenta y notificaciones">
+                                <OnlineUsers roles={roles} enabled={Boolean(currentUser)} />
                                 <FormalizationCalendarQuickCreate workspaceCode={activeWorkspace.code} permissions={effectivePermissions} />
                                 <NotesNotificationsButton />
                                 <NotesButton />

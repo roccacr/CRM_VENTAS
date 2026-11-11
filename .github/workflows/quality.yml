@@ -34,6 +34,8 @@ jobs:
         run: python3 -m unittest discover -s deploy/habita -p 'test_detect_ci_changes.py'
       - name: Verify Habita retention safeguards
         run: python3 -m unittest discover -s deploy/habita -p 'test_cleanup_releases.py'
+      - name: Verify automatic frontend batching
+        run: python3 -m unittest discover -s deploy/habita -p 'test_frontend_shards.py'
       - id: detect
         run: python3 deploy/habita/detect-ci-changes.py
         env:
@@ -41,65 +43,61 @@ jobs:
           RELEASE_BRANCH: ${{ vars.HABITA_RELEASE_BRANCH }}
 
   quality:
-    name: Quality / ${{ matrix.app }}
+    name: Quality / api
     needs: changes
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        app: [api, frontend]
     defaults:
       run:
-        working-directory: apps/${{ matrix.app }}
+        working-directory: apps/api
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
-        if: needs.changes.outputs[matrix.app] == 'true'
+        if: needs.changes.outputs.api == 'true'
         with:
           version: 10.28.2
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        if: needs.changes.outputs[matrix.app] == 'true'
+        if: needs.changes.outputs.api == 'true'
         with:
           node-version: "22"
           cache: pnpm
-          cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
+          cache-dependency-path: apps/api/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-        if: needs.changes.outputs[matrix.app] == 'true'
+        if: needs.changes.outputs.api == 'true'
       - name: Reject embedded NetSuite webhook credentials
-        if: matrix.app == 'api' && needs.changes.outputs.api == 'true'
+        if: needs.changes.outputs.api == 'true'
         run: node --input-type=module -e "import { inspectSuiteScripts } from './scripts/package-netsuite.mjs'; inspectSuiteScripts();"
 
       - run: pnpm format:check && pnpm lint && pnpm typecheck
-        if: needs.changes.outputs[matrix.app] == 'true'
+        if: needs.changes.outputs.api == 'true'
       - run: pnpm test:coverage
-        if: needs.changes.outputs[matrix.app] == 'true'
+        if: needs.changes.outputs.api == 'true'
       - run: pnpm build
-        if: needs.changes.outputs[matrix.app] == 'true'
+        if: needs.changes.outputs.api == 'true'
         env:
           VITE_API_ORIGIN: same-origin
           VITE_HABITA_RELEASE: ${{ github.sha }}
       - name: Upload measured source coverage
-        if: always() && needs.changes.outputs[matrix.app] == 'true' && hashFiles(format('apps/{0}/coverage/**/*', matrix.app)) != ''
+        if: always() && needs.changes.outputs.api == 'true' && hashFiles('apps/api/coverage/**/*') != ''
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: coverage-${{ matrix.app }}
-          path: apps/${{ matrix.app }}/coverage
+          name: coverage-api
+          path: apps/api/coverage
           if-no-files-found: error
           retention-days: 7
 
       - name: Reuse the unchanged app from successful ancestor CI
-        if: needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && needs.changes.outputs[matrix.app] != 'true'
+        if: needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && needs.changes.outputs.api != 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: habita-build-${{ matrix.app }}
-          path: apps/${{ matrix.app }}/dist
+          name: habita-build-api
+          path: apps/api/dist
           run-id: ${{ needs.changes.outputs.baseline_run }}
           github-token: ${{ github.token }}
       - name: Check build files before publishing artifacts
-        if: needs.changes.outputs[matrix.app] == 'true' || (needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH)
+        if: needs.changes.outputs.api == 'true' || (needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH)
         shell: bash
         run: |
           set -euo pipefail
@@ -113,8 +111,196 @@ jobs:
         if: needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: habita-build-${{ matrix.app }}
-          path: apps/${{ matrix.app }}/dist
+          name: habita-build-api
+          path: apps/api/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  frontend-checks:
+    name: Frontend / Validaciones y lotes
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      shard_count: ${{ steps.plan.outputs.shard_count }}
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check && pnpm lint && pnpm typecheck
+      - name: Discover test files without executing them
+        run: pnpm exec vitest list --dir test --filesOnly --json=test-results/inventory.json
+      - id: plan
+        name: Balance automatic batches (up to 40 files each)
+        run: python3 ../../deploy/habita/frontend-shards.py test-results/inventory.json
+
+  frontend-tests:
+    name: Frontend / Pruebas ${{ matrix.shard }}/${{ needs.frontend-checks.outputs.shard_count }}
+    needs: [changes, frontend-checks]
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.frontend-checks.outputs.matrix) }}
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Execute this batch with coverage and a mergeable report
+        env:
+          SHARD_INDEX: ${{ matrix.shard }}
+          SHARD_COUNT: ${{ needs.frontend-checks.outputs.shard_count }}
+        run: >-
+          pnpm exec vitest run --dir test --coverage --maxWorkers=2
+          --shard="$SHARD_INDEX/$SHARD_COUNT"
+          --reporter=default --reporter=blob
+          --outputFile.blob="test-results/blobs/shard-$SHARD_INDEX.json"
+      - name: Preserve batch result and coverage
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: frontend-blob-${{ matrix.shard }}
+          path: apps/frontend/test-results/blobs/shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  frontend-coverage:
+    name: Frontend / Cobertura unificada
+    needs: [frontend-checks, frontend-tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: frontend-blob-*
+          path: apps/frontend/test-results/blobs
+          merge-multiple: true
+      - name: Reject missing, empty or unexpected batch reports
+        env:
+          SHARD_COUNT: ${{ needs.frontend-checks.outputs.shard_count }}
+        run: python3 ../../deploy/habita/frontend-shards.py --verify-reports test-results/blobs "$SHARD_COUNT"
+      - name: Merge test results and source coverage without rerunning tests
+        run: pnpm exec vitest --merge-reports=test-results/blobs --coverage --reporter=default
+      - name: Upload measured frontend coverage
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: coverage-frontend
+          path: apps/frontend/coverage
+          if-no-files-found: error
+          retention-days: 7
+
+  frontend-quality:
+    name: Quality / frontend
+    needs: [changes, frontend-checks, frontend-coverage]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      # El check requerido debe fallar, no quedar omitido, si falla un lote o la planificación.
+      - name: Enforce the complete frontend quality gate
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+          CHECKS_RESULT: ${{ needs.frontend-checks.result }}
+          COVERAGE_RESULT: ${{ needs.frontend-coverage.result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          if [ "$FRONTEND_CHANGED" = true ]; then
+            test "$CHECKS_RESULT" = success
+            test "$COVERAGE_RESULT" = success
+          fi
+        working-directory: .
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        if: needs.changes.outputs.frontend == 'true'
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        if: needs.changes.outputs.frontend == 'true'
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        if: needs.changes.outputs.frontend == 'true'
+      - run: pnpm build
+        if: needs.changes.outputs.frontend == 'true'
+        env:
+          VITE_API_ORIGIN: same-origin
+          VITE_HABITA_RELEASE: ${{ github.sha }}
+      - name: Reuse the unchanged app from successful ancestor CI
+        if: needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH && needs.changes.outputs.frontend != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: habita-build-frontend
+          path: apps/frontend/dist
+          run-id: ${{ needs.changes.outputs.baseline_run }}
+          github-token: ${{ github.token }}
+      - name: Check build files before publishing artifacts
+        if: needs.changes.outputs.frontend == 'true' || (needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH)
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden=$(find dist \( -type l -o -iname '.env*' -o -iname '*.key' -o -iname '*.pem' -o -iname '*.pfx' -o -iname '*.p12' \) -print -quit)
+          if [[ -n "$forbidden" ]]; then
+            echo '::error::El build contiene un enlace o un archivo de configuración privado.'
+            exit 1
+          fi
+
+      - name: Preserve the build verified by CI
+        if: needs.changes.outputs.has_changes == 'true' && github.event_name == 'push' && github.ref_protected && github.ref_name == vars.HABITA_RELEASE_BRANCH
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: habita-build-frontend
+          path: apps/frontend/dist
           if-no-files-found: error
           retention-days: 7
 
@@ -123,9 +309,9 @@ jobs:
       ${{ !cancelled() && github.event_name == 'push' && github.ref_protected &&
       github.ref_name == vars.HABITA_RELEASE_BRANCH &&
       needs.changes.outputs.has_changes == 'true' &&
-      needs.quality.result == 'success' && needs.dependency-audit.result == 'success' &&
+      needs.quality.result == 'success' && needs.frontend-quality.result == 'success' && needs.dependency-audit.result == 'success' &&
       (needs.habita-netsuite.result == 'success' || needs.habita-netsuite.result == 'skipped') }}
-    needs: [changes, quality, dependency-audit, habita-netsuite]
+    needs: [changes, quality, frontend-quality, dependency-audit, habita-netsuite]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

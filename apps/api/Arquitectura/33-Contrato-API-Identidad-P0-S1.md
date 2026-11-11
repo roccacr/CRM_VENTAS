@@ -1,5 +1,30 @@
 # 33 - Contrato API de Identidad P0-S1
 
+## Presencia de usuarios — 2026-11-11
+
+- `POST /identity/presence/heartbeat`: sesión BFF y CSRF obligatorios. No acepta
+  identidades suministradas por el navegador; registra únicamente el ID público
+  de su sesión y la hora del servidor en memoria, con caducidad de 90 segundos.
+- `GET /identity/presence`: exclusivo del rol `owner` activo, comprobado en cada
+  petición. Devuelve `users: [{ publicId, displayName }]` y `observedAt`, sin
+  correos, tokens, IP, dispositivos ni rutas visitadas. Deduplica por usuario.
+- La consulta revalida en BD el estado/vencimiento/versión de permisos de cada
+  sesión, así como usuario e identidad activos y no eliminados. Logout o
+  revocación dejan de aparecer aunque la señal todavía no haya caducado.
+- No crea tablas ni historial. El registro está limitado a 5000 sesiones y es
+  efímero: se reconstruye tras reiniciar. Corresponde al despliegue actual de
+  **un único proceso PM2 fork**. Antes de escalar a varios procesos/instancias,
+  sustituir el registro por presencia compartida con TTL; no sirve como censo
+  global en una topología multinodo.
+- Frontend: pestaña visible y actividad reciente (5 minutos), señal cada 30 s;
+  lista y contador del icono cada 15 s para Owner, incluso con el panel cerrado. No es una auditoría de
+  productividad ni prueba de atención continua. Cerrar/ocultar la pestaña o
+  perder conexión puede tardar hasta 90 s en reflejarse.
+
+Código: `identity-presence.controller.ts`, `identity-presence.service.ts`,
+`IdentityProfileRepository.findPresentUsers`. Las rutas quedan bajo los guards
+globales Auth/CSRF; otros permisos administrativos no conceden esta lectura.
+
 ## Validación de correos — 2026-11-10
 
 Desde `3f2537c`, el login local, la solicitud de restablecimiento y los DTOs

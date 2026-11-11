@@ -92,6 +92,25 @@ export class IdentityProfileRepository {
         return this.buildProfileFromSession(await this.findActiveSessionByTokenHash(sessionTokenHash));
     }
 
+    /** Una señal reciente no basta: logout, revocación, cuenta desactivada o permisos obsoletos excluyen la sesión. */
+    async findPresentUsers(sessionIds: string[]): Promise<{ publicId: string; displayName: string }[]> {
+        if (!sessionIds.length) return [];
+        return this.database.db
+            .selectFrom("sec_auth_session as session")
+            .innerJoin("sec_user as user", "user.id_user", "session.user_id_auth_session")
+            .innerJoin("sec_auth_identity as identity", "identity.id_auth_identity", "session.auth_identity_id_auth_session")
+            .select(["user.public_id_user as publicId", "user.display_name_user as displayName"])
+            .where("session.public_id_auth_session", "in", sessionIds)
+            .where("session.status_auth_session", "=", ACTIVE_STATUS)
+            .where("session.expires_at_auth_session", ">", new Date())
+            .whereRef("session.permission_version_auth_session", "=", "user.permission_version_user")
+            .where("user.status_user", "=", ACTIVE_STATUS)
+            .where("user.deleted_at_user", "is", null)
+            .where("identity.status_auth_identity", "=", ACTIVE_STATUS)
+            .where("identity.deleted_at_auth_identity", "is", null)
+            .execute();
+    }
+
     /**
      * Arma perfil completo solo cuando usuario, identidad y sesion siguen activos.
      */

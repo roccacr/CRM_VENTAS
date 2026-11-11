@@ -97,7 +97,7 @@ function OrderTitle({ item, markers }: { readonly item: FollowUpItem | null; rea
                     {item.client ?? "Sin cliente"}
                 </Typography.Text>
                 <span className="user-detail-drawer__identity-meta formalization-order-meta">
-                    <StageChip label={item.state.label} />
+                    <StageChip label={item.state.label} code={item.state.code} />
                     <span className="formalization-order-meta__sep" aria-hidden="true" />
                     {markers}
                 </span>
@@ -217,7 +217,7 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                     <Section
                         title="Seguimiento"
                         items={[
-                            { key: "stage", label: "Etapa", value: <StageChip label={item.state.label} /> },
+                            { key: "stage", label: "Etapa", value: <StageChip label={item.state.label} code={item.state.code} /> },
                             { key: "time", label: "Tiempo", value: <Value>{timeInStage(item.state.days)}</Value> },
                             { key: "responsible", label: "Responsable", value: <Value>{item.responsible?.name}</Value> },
                             { key: "seller", label: "Vendedor", value: <Value>{item.seller?.name}</Value> },

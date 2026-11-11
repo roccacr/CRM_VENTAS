@@ -11,6 +11,8 @@ const followUpClassification = sql`CASE
                 WHEN approved=1 AND COALESCE(rawStage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send') THEN 'contract_pending_send'
                 WHEN rawStage IN ('contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed') THEN rawStage
                 WHEN approvalPending=1 THEN 'pending_approval' ELSE 'unclassified' END`;
+/** Orden de las etapas igual al de los banners de Inicio: aprobación, contratos, banco, saldo, traspaso, firmado y cierre. Una sin etapa va al final. */
+const followUpStageRank = sql`FIELD(stateCode,'pending_approval','contract_pending_send','contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed')`;
 const followUpRowProjection = sql`JSON_OBJECT('sortId',CAST(sortId AS CHAR),'id',id,'source',source,'number',number,'nativeCode',nativeCode,
                 'client',client,'clientEmail',clientEmail,'project',IF(projectId IS NULL,NULL,JSON_OBJECT('id',projectId,'name',projectName)),
                 'unit',unit,'seller',IF(ownerName IS NULL,NULL,JSON_OBJECT('id',ownerId,'name',ownerName)),
@@ -95,7 +97,7 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
                 AND (${search}='' OR LOCATE(${search},LOWER(CONCAT_WS(' ',number,client,projectName,unit,ownerName)))>0)
         ), selected AS (SELECT * FROM searched WHERE ${selectionPredicate}),
         filtered AS (SELECT * FROM selected ${exactFallback}),
-        ranked AS (SELECT filtered.*,ROW_NUMBER() OVER (ORDER BY projectName IS NULL,projectName,unit IS NULL,unit,source,sortId,id) AS pageOrdinal FROM filtered),
+        ranked AS (SELECT filtered.*,ROW_NUMBER() OVER (ORDER BY ${followUpStageRank}=0,${followUpStageRank},projectName IS NULL,projectName,unit IS NULL,unit,source,sortId,id) AS pageOrdinal FROM filtered),
         paged AS (SELECT * FROM ranked ORDER BY pageOrdinal LIMIT ${query.limit} OFFSET ${query.offset}),
         projects AS (SELECT projectId AS id,COALESCE(MAX(CASE WHEN source='native' THEN projectName END),MAX(projectName)) AS name FROM visible WHERE projectId IS NOT NULL AND projectName IS NOT NULL GROUP BY projectId)
         SELECT /*+ MAX_EXECUTION_TIME(5000) */

@@ -5716,3 +5716,21 @@
     font-size: 12px;
     font-weight: 700;
 }
+
+/* Etapa con el color de su tarjeta de Inicio. */
+.formalization-state[data-tone="pending"] {
+    border-color: #e6c98f;
+    background: #fdf3df;
+    color: #6b3f04;
+}
+.formalization-state[data-tone="pending"]::before {
+    background: #a86308;
+}
+.formalization-state[data-tone="success"] {
+    border-color: #9fd1b6;
+    background: #e5f4ec;
+    color: #0f4f31;
+}
+.formalization-state[data-tone="success"]::before {
+    background: #147849;
+}

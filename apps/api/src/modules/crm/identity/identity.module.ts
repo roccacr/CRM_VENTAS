@@ -15,6 +15,8 @@ import { IdentityAuditRecorder } from "./identity-audit-recorder.service.js";
 import { IdentityLocalRepository } from "./identity-local.repository.js";
 import { IdentityMicrosoftRepository } from "./identity-microsoft.repository.js";
 import { IdentityMicrosoftSessionService } from "./identity-microsoft-session.service.js";
+import { IdentityPresenceController } from "./identity-presence.controller.js";
+import { IdentityPresenceService } from "./identity-presence.service.js";
 import { IdentityProfileRepository } from "./identity-profile.repository.js";
 import { IdentitySessionRepository } from "./identity-session.repository.js";
 import { IdentityTokenService } from "./identity-token.service.js";
@@ -28,8 +30,8 @@ import { IdentityUserDirectoryRepository } from "./identity-user-directory.repos
  */
 @Module({
     imports: [AuditModule, PermissionsModule],
-    controllers: [IdentityController, IdentityAccessManagementController, AuditReadController],
-    providers: [IdentityService, IdentityRepository, IdentityProfileRepository, IdentitySessionRepository, IdentityLocalRepository, IdentityMicrosoftRepository, IdentityUserDirectoryRepository, IdentityAccessManagementService, IdentityAccessManagementRepository, IdentityTokenService, IdentityAuditRecorder, IdentityMicrosoftSessionService, AuditReadRepository, AuditReadService],
+    controllers: [IdentityController, IdentityAccessManagementController, AuditReadController, IdentityPresenceController],
+    providers: [IdentityService, IdentityRepository, IdentityProfileRepository, IdentityPresenceService, IdentitySessionRepository, IdentityLocalRepository, IdentityMicrosoftRepository, IdentityUserDirectoryRepository, IdentityAccessManagementService, IdentityAccessManagementRepository, IdentityTokenService, IdentityAuditRecorder, IdentityMicrosoftSessionService, AuditReadRepository, AuditReadService],
     exports: [IdentityService, IdentityProfileRepository],
 })
 export class IdentityModule {}

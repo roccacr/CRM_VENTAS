@@ -858,8 +858,8 @@ describe("App", () => {
         view.rerender(<AppRouteContent {...props} path="/home/formalization" />);
         expect(screen.queryByRole("heading", { name: "Acceso no autorizado" })).not.toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "Formalización" })).toBeInTheDocument();
-        // El shell puede consultar avisos propios, incluso cuando el perfil no tiene acceso al listado de órdenes.
-        const noticeUrls = [buildApiUrl("/calendar/notifications"), buildApiUrl("/formalization/orders/netsuite/import/notices")];
+        // Avisos y señal propia de presencia no requieren acceso al listado de órdenes.
+        const noticeUrls = [buildApiUrl("/calendar/notifications"), buildApiUrl("/formalization/orders/netsuite/import/notices"), buildApiUrl("/identity/presence/heartbeat"), buildApiUrl("/identity/presence")];
         expect(fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => !noticeUrls.includes(url))).toEqual([]);
         expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/identity/session"), expect.anything());
         expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/identity/me"), expect.anything());
@@ -2046,7 +2046,7 @@ describe("App", () => {
         expect(screen.queryByRole("button", { name: "Iniciar sesión con Microsoft" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Catálogos" })).not.toBeInTheDocument();
         expect(window.location.pathname).toBe("/home/formalization");
-        expect(fetchMock.mock.calls.every(([, init]) => init?.credentials === "include" && init.method === "GET")).toBe(true);
+        expect(fetchMock.mock.calls.every(([input, init]) => init?.credentials === "include" && (init.method === "GET" || (getRequestPath(input) === "/identity/presence/heartbeat" && init.method === "POST" && new Headers(init.headers).has("X-CRM-CSRF-Token"))))).toBe(true);
         expect(fetchMock.mock.calls.some(([input]) => /\/identity\/(?:refresh|logout|local\/login)/u.test(getRequestPath(input)))).toBe(false);
     });
 

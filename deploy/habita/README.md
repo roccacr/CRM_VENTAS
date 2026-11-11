@@ -2,6 +2,36 @@
 
 ## Verificación y build por aplicación
 
+### Lotes automáticos del frontend — 11/11/2026
+
+- `Frontend / Validaciones y lotes` ejecuta Prettier, ESLint y TypeScript;
+  descubre con **Vitest** los archivos de prueba reales sin ejecutarlos.
+- `frontend-shards.py` genera `ceil(archivos / 40)` grupos. Vitest 5 reparte
+  todos los archivos con `--shard=i/total`, sin duplicados y con diferencia
+  máxima de un archivo por grupo. Al añadir pruebas crecen los grupos sin
+  editar el YAML: 138 archivos → 4 lotes (35, 35, 34, 34); 161 → 5 lotes.
+  Se equilibra la cantidad de archivos, no se garantiza igual duración ni
+  igual cantidad de casos dentro de archivos distintos.
+- `Frontend / Pruebas i/total` usa hasta 4 runners simultáneos, 2 workers por
+  runner y `fail-fast: false`: todos los lotes entregan su resultado aunque
+  otro falle. Si faltan runners de GitHub, los jobs esperan su turno.
+- Cada lote sube un **blob de Vitest con cobertura V8**. `Frontend / Cobertura
+  unificada` exige exactamente todos los reportes y ejecuta `--merge-reports`
+  para combinar resultados y cobertura, sin volver a ejecutar los tests ni
+  promediar porcentajes. El artefacto final conserva `coverage-frontend`.
+- `Quality / frontend` conserva su nombre como check estable de protección:
+  falla si falló la detección, validación, un lote o la cobertura. Solo entonces
+  compila y publica `habita-build-frontend`. El paquete exige ambos checks
+  `Quality / api` y `Quality / frontend` exitosos antes de desplegar.
+- Si solo cambia el API, se conserva la reutilización del frontend del CI
+  ancestro exitoso; no se ejecutan lotes innecesarios. No cambia la gestión de
+  `.env`, los secretos ni la promoción de producción.
+
+La constante `FILES_PER_SHARD = 40` es el punto de ajuste del tamaño objetivo.
+El plan falla ante inventario vacío, inválido, duplicado o superior al límite
+de 256 jobs; nunca elimina pruebas silenciosamente. Verificación:
+`python -B -m unittest discover -s deploy/habita -p test_frontend_shards.py`.
+
 El workflow `quality.yml` detecta los cambios antes de ejecutar las suites.
 Un cambio dentro de `apps/api/` ejecuta lint, tipos, cobertura, build, auditoría
 de dependencias y pruebas NetSuite del API. Dentro de `apps/frontend/` ejecuta
@@ -237,7 +267,8 @@ Las instrucciones y archivos concretos estan en [ACTIVAR-NETSUITE.md](ACTIVAR-NE
 La revisión está en el árbol local. Ver [CRM quality](../../.github/workflows/quality.yml)
 y [Habita promotion](../../.github/workflows/habita-promote.yml). El primero
 corre formato, lint, tipos, cobertura y build en push, PR y ejecución manual.
-La matriz ejecuta la suite de cobertura una vez por app y el job focalizado
+El API ejecuta su suite de cobertura; el frontend ejecuta los lotes automáticos
+y combina sus resultados antes de compilar. El job focalizado
 de NetSuite repite casos relevantes en MariaDB/InnoDB desechable. La
 persistencia MySQL general se informa por separado y no bloquea el empaquetado.
 

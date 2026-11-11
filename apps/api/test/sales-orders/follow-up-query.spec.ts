@@ -237,7 +237,9 @@ it("orders the complete filtered portfolio by project and unit before selecting 
     const { db } = database();
     try {
         const compiled = followUpSourceQuery(sql`SELECT 1`, query, access).compile(db);
-        expect(compiled.sql).toContain("ROW_NUMBER() OVER (ORDER BY projectName IS NULL,projectName,unit IS NULL,unit,source,sortId,id)");
+        expect(compiled.sql).toContain(
+            "ROW_NUMBER() OVER (ORDER BY FIELD(stateCode,'pending_approval','contract_pending_send','contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed')=0,FIELD(stateCode,'pending_approval','contract_pending_send','contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed'),projectName IS NULL,projectName,unit IS NULL,unit,source,sortId,id)",
+        );
         expect(compiled.sql).toContain("FROM ranked ORDER BY pageOrdinal LIMIT ? OFFSET ?");
         expect(compiled.sql).toContain("COUNT(*) FROM filtered WHERE source='native'");
         expect(compiled.sql).toContain("COUNT(*) FROM filtered WHERE source='legacy'");

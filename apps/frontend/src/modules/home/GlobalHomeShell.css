@@ -450,6 +450,52 @@
     white-space: nowrap;
 }
 
+.online-users-button {
+    position: relative;
+}
+
+.online-users-button__count {
+    position: absolute;
+    top: -5px;
+    right: -7px;
+    display: grid;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border: 2px solid #fff;
+    border-radius: 12px;
+    background: #087443;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    place-items: center;
+}
+
+.online-users-list {
+    display: grid;
+    gap: 10px;
+    padding: 0;
+    list-style: none;
+}
+
+.online-users-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #d9e0ec;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.online-users-list__dot {
+    flex: 0 0 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #087443;
+}
+
 .global-home-user-avatar__image,
 .global-home-user-avatar__initials {
     display: inline-grid;
