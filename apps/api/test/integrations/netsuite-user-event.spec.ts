@@ -10,6 +10,7 @@ const root = new URL("./", entry);
 
 function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?: string; response?: { code: number; body: string }; error?: boolean; conflictOnce?: boolean } = {}) {
     const logger = { debug: vi.fn(), error: vi.fn() };
+    const createSecureString = vi.fn(() => ({ secret: "opaque" }));
     let attempts = 0;
     let sequence = 0;
     const post = vi.fn((_request: unknown) => {
@@ -27,7 +28,7 @@ function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?
         "N/workflow": { initiate: vi.fn() },
         "N/record": { load: loadRecord },
         "N/search": { lookupFields: () => ({ lastmodifieddate: "2026-11-02T20:00:00.000Z", ...EVENT_FIELDS }) },
-        "N/https": { post, createSecureString: vi.fn(() => ({ secret: "opaque" })) },
+        "N/https": { post, createSecureString },
     };
     const cache = new Map<string, unknown>();
     function load(url: URL): unknown {
@@ -50,8 +51,17 @@ function fixture(accountId = "4552704_SB1", envType = "SANDBOX", options: { url?
         cache.set(url.href, result);
         return result;
     }
-    return { logger, post, loadRecord, handlers: load(entry) as { afterSubmit: (context: unknown) => void } };
+    return { logger, post, loadRecord, createSecureString, handlers: load(entry) as { afterSubmit: (context: unknown) => void } };
 }
+
+it("uses the fixed production credential only for the official receiver without logging it", () => {
+    const f = fixture("4552704", "PRODUCTION", { url: "https://api-habita.rdghub.com/integrations/netsuite/production" });
+    f.handlers.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 123 } });
+    const calls = f.createSecureString.mock.calls as unknown as [{ input: string }][];
+    const authorization = calls[0]?.[0].input ?? "";
+    expect(/^Bearer [a-f0-9]{64}$/.test(authorization)).toBe(true);
+    expect(JSON.stringify(f.logger.debug.mock.calls)).not.toContain(authorization.slice(7));
+});
 
 it("exports only afterSubmit and performs no provider calls at load time", () => {
     const f = fixture();

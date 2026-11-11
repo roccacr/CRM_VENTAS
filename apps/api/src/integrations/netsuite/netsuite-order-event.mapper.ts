@@ -91,12 +91,11 @@ export const orderApprovalMappings = [
     { netsuite: "custbodyid_firma_rc", native: "approval_formalization", legacy: "aprobacion_forma_ov", approval: "formalization" },
 ] as const;
 export const orderNumberMapping = { netsuite: "initialtranid", native: "transaction_number_sales_order_external_reference", legacy: "id_ov_tranid" } as const;
-/** El id de NetSuite no se copia a una llave nativa. Tiene que existir ya una referencia activa y unica. */
+/** El id de NetSuite no se copia a una llave nativa. El responsable es exclusivo de Habita y nunca se concilia desde ERP. */
 export const orderRelationMappings = [
     { netsuite: "entity", native: "lead_id_sales_order", legacy: "id_ov_lead", domain: "lead" },
     { netsuite: "custbody38", native: "unit_file_id_sales_order", legacy: "idExpediente_ov", domain: "unit_file" },
     { netsuite: "subsidiary", native: "subsidiary_id_sales_order", legacy: "idsubsidiaria_ov", domain: "subsidiary" },
-    { netsuite: "crm_owner_employee", native: "owner_user_id_sales_order", legacy: "id_ov_admin", domain: "user" },
     { netsuite: "opportunity", native: null, legacy: "id_ov_opt", domain: null },
 ] as const;
 /** Nombres de tabla cerrados. La entrada HTTP no elige la tabla. */

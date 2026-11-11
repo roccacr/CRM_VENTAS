@@ -169,7 +169,7 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
             executeEventImport: vi.fn(async () => {
                 const fresh = structuredClone(payload);
                 fresh.event.eventId = randomUUID();
-                const result = await service.receive(fresh, { importTranid: "BC448", allowUnlinkedOwner: true, authorize: () => Promise.resolve(captureIntegrationAuditActor({ publicId: "integration:netsuite:4552704_SB1", name: "Automatic import" })) });
+                const result = await service.receive(fresh, { importTranid: "BC448", authorize: () => Promise.resolve(captureIntegrationAuditActor({ publicId: "integration:netsuite:4552704_SB1", name: "Automatic import" })) });
                 return { result: result.result };
             }),
         };
@@ -235,7 +235,6 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
             return service.receive(payload, {
                 importTranid: "BC448",
                 importIfMissing: true,
-                allowUnlinkedOwner: true,
                 authorize: () => Promise.resolve(captureIntegrationAuditActor({ publicId: "integration:netsuite:4552704_SB1", name: "Automatic import" })),
             });
         };
@@ -617,7 +616,9 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         if (destination === "native") await native();
         else await legacy();
         for (const domain of ["lead", "unit_file", "subsidiary"]) await sql`INSERT INTO ${sql.id("crm_" + domain + "_external_reference")} VALUES (10,1,'900','active',NULL)`.execute(db);
-        await sql`INSERT INTO int_user_external_identity VALUES (10,1,'900','active',NULL)`.execute(db);
+        const ownerColumn = destination === "native" ? "owner_user_id_sales_order" : "id_ov_admin";
+        const orderTable = destination === "native" ? "crm_sales_order" : "crmdatabase-api.ordenventa";
+        await sql`UPDATE ${sql.table(orderTable)} SET ${sql.id(ownerColumn)}=777`.execute(db);
         const payload = event();
         Object.assign(payload.snapshot.data.fields, {
             crm_currency_iso: "USD",
@@ -642,7 +643,7 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         });
         await service.receive(payload);
         const row = await flags(destination);
-        const expected = destination === "native" ? { lead_id_sales_order: 10, unit_file_id_sales_order: 10, subsidiary_id_sales_order: 10, owner_user_id_sales_order: 10 } : { id_ov_lead: 900, idExpediente_ov: 900, idsubsidiaria_ov: 900, id_ov_admin: 900, id_ov_opt: 901, id_ov_est: null };
+        const expected = destination === "native" ? { lead_id_sales_order: 10, unit_file_id_sales_order: 10, subsidiary_id_sales_order: 10, owner_user_id_sales_order: 777 } : { id_ov_lead: 900, idExpediente_ov: 900, idsubsidiaria_ov: 900, id_ov_admin: 777, id_ov_opt: 901, id_ov_est: null };
         expect(row).toMatchObject(expected);
     });
     it("retains the attempted direct diff when an unresolved native relationship rejects the event", async () => {

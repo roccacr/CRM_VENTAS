@@ -1,14 +1,24 @@
 import { BadRequestException } from "@nestjs/common";
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { mapOrderFields, orderApprovalMappings, orderFieldMappings, readOrderRelationValues } from "../../src/integrations/netsuite/netsuite-order-event.mapper.js";
+import { mapOrderFields, orderApprovalMappings, orderFieldMappings, orderRelationMappings, readOrderRelationValues } from "../../src/integrations/netsuite/netsuite-order-event.mapper.js";
 
 const fields = () => ({ crm_currency_iso: "USD", crm_sync_projection: 1, initialtranid: "RDR123", custbody_aprueba_jefe_ventas: true, custbodyid_firma_rocca: false, custbodyid_firma_rc: "T", custbody37: "1", custbody74: true, custbody73: "F", custbody13: "125000.1500", custbody17: "120000", custbody_ix_total_amount: 130000, custbody21: "3500.25", crm_transaction_date: "2026-11-02" });
 
 describe("NetSuite extended order projection", () => {
     it("uses only the confirmed legacy relation sources and preserves the estimate from CRM creation", () => {
         const result = readOrderRelationValues({ crm_sync_projection: 1, entity: "10", custbody38: "20", subsidiary: "30", opportunity: "40", crm_owner_employee: "50", salesrep: "999", createdfrom: "888" });
-        expect(result).toEqual({ entity: "10", custbody38: "20", subsidiary: "30", opportunity: "40", crm_owner_employee: "50" });
+        expect(result).toEqual({ entity: "10", custbody38: "20", subsidiary: "30", opportunity: "40" });
+    });
+    it("ignores arbitrary ERP owner values and never maps CRM responsibility in either database", () => {
+        fc.assert(
+            fc.property(fc.jsonValue(), (owner) => {
+                expect(readOrderRelationValues({ crm_sync_projection: 1, entity: "10", custbody38: null, subsidiary: null, opportunity: null, crm_owner_employee: owner })).toEqual({ entity: "10", custbody38: null, subsidiary: null, opportunity: null });
+            }),
+            { seed: 20261111, numRuns: 100 },
+        );
+        expect(orderRelationMappings.some((mapping) => ["owner_user_id_sales_order", "id_ov_admin"].includes(String(mapping.native)) || ["owner_user_id_sales_order", "id_ov_admin"].includes(mapping.legacy))).toBe(false);
     });
     it.each(["native", "legacy"] as const)("maps every declared direct field in %s without CRM internals", (destination) => {
         const changes = mapOrderFields({ ...fields(), status_ov: 0, id_sales_order: 999, pagadas_ov: 1 }, destination, {});

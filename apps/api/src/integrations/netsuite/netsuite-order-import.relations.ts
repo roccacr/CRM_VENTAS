@@ -39,12 +39,11 @@ async function legacyCustomer(tx: Tx, id: string) {
 }
 
 /** Primero se busca en Habita. Solo lo que no tiene una coincidencia unica pide datos a NetSuite. Mas de una fila es conflicto. */
-export async function missingImportRelation(tx: Tx, domain: "lead" | "subsidiary" | "user" | "unit_file", id: string): Promise<boolean> {
+export async function missingImportRelation(tx: Tx, domain: "lead" | "subsidiary" | "unit_file", id: string): Promise<boolean> {
     if (await reference(tx, domain, id)) return false;
     if (domain === "unit_file") return !(await existingImportUnit(tx, id));
     if (domain === "lead") return !(await legacyCustomer(tx, id))?.campaign;
-    if (domain === "subsidiary") return !(await legacySubsidiary(tx, id));
-    return !(await legacyOwner(tx, id));
+    return !(await legacySubsidiary(tx, id));
 }
 
 async function ensureAlias(tx: Tx, domain: Domain, identity: { id: string; system: number }, create: () => Promise<number>) {
@@ -265,42 +264,16 @@ async function createCustomer(tx: Tx, identity: { id: string; system: number }, 
     return Number(lead.insertId);
 }
 
-async function legacyOwner(tx: Tx, id: string) {
-    return one(
-        tx,
-        sql<{ email: string | null }>`SELECT LOWER(TRIM(email_admin)) AS email
-        FROM ${sql.table("crmdatabase-api.admins")} WHERE idnetsuite_admin=${id} LIMIT 2`,
-        "El responsable",
-    );
-}
-
-async function linkOwner(tx: Tx, id: string, system: number, fetched?: string | null) {
-    const existing = await reference(tx, "user", id);
-    if (existing) return existing.status === "active";
-    const admin = await legacyOwner(tx, id);
-    const email = (admin ? admin.email : fetched)?.trim().toLowerCase();
-    if (!email) return false;
-    const user = await one(
-        tx,
-        sql<{ id: number }>`SELECT id_user AS id FROM sec_user WHERE normalized_email_user=${email}
-        AND deleted_at_user IS NULL AND status_user='active' LIMIT 2`,
-        "La cuenta del responsable",
-    );
-    if (user) await ensureAlias(tx, "user", { id, system }, () => Promise.resolve(user.id));
-    return Boolean(user);
-}
-
-/** La oportunidad y `createdfrom` se guardan como captura. No se crean entidades de oportunidad ni de estimacion. Un responsable sin cuenta deja la orden y avisa; no se inventa el usuario. */
-export async function reconcileImportRelations(tx: Tx, input: { fields: Record<string, unknown>; orderId: string; netsuiteId: string; operationId: string; customer?: Customer | undefined; subsidiaryName?: string | null | undefined; ownerEmail?: string | null | undefined; unit?: ImportUnit | undefined }) {
+/** La oportunidad y `createdfrom` se guardan como captura. No se crean entidades de oportunidad ni de estimacion. El responsable y las identidades de usuario se administran solo en Habita. */
+export async function reconcileImportRelations(tx: Tx, input: { fields: Record<string, unknown>; orderId: string; netsuiteId: string; operationId: string; customer?: Customer | undefined; subsidiaryName?: string | null | undefined; unit?: ImportUnit | undefined }) {
     const { fields, orderId, netsuiteId, operationId, customer } = input;
-    const { entity, custbody38, subsidiary, crm_owner_employee, opportunity } = readOrderRelationValues(fields);
+    const { entity, custbody38, subsidiary, opportunity } = readOrderRelationValues(fields);
     if (!entity) throw new ConflictException("La orden no contiene un cliente de NetSuite.");
     // El sistema externo se bloquea para que dos ordenes no creen el mismo alias a la vez.
     const system = await tx.selectFrom("int_external_system").select("id_external_system").where("code_external_system", "=", "netsuite").where("status_external_system", "=", "active").forUpdate().executeTakeFirstOrThrow();
     const id = system.id_external_system;
     const unit = custbody38 ? await ensureAlias(tx, "unit_file", { id: custbody38, system: id }, () => importUnit(tx, custbody38, input.unit)) : null;
     const subsidiaryId = subsidiary ? await ensureAlias(tx, "subsidiary", { id: subsidiary, system: id }, () => importSubsidiary(tx, subsidiary, input.subsidiaryName)) : null;
-    const ownerLinked = crm_owner_employee ? await linkOwner(tx, crm_owner_employee, id, input.ownerEmail) : true;
     const customerIdentity = { id: entity, system: id };
     await ensureAlias(tx, "lead", customerIdentity, () => createCustomer(tx, customerIdentity, { unit, subsidiary: subsidiaryId }, customer));
     const createdFrom = sourceRecordReference(fields.createdfrom);
@@ -309,7 +282,6 @@ export async function reconcileImportRelations(tx: Tx, input: { fields: Record<s
             source_record_id_sales_order_source_snapshot,payload_sales_order_source_snapshot,operation_id_sales_order_source_snapshot)
             VALUES (${orderId},${id},${netsuiteId},${JSON.stringify({ opportunity, createdFrom })},${operationId})`.execute(tx);
     }
-    return ownerLinked;
 }
 
 function sourceRecordReference(value: unknown) {

@@ -1,5 +1,5 @@
 /**
- * Versión: 2026.11.11.1 — Campaña personalizada del cliente y normalización de su nombre.
+ * Versión: 2026.11.11.3 — Credencial fija del receptor oficial de producción y diagnóstico HTTP seguro.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
  * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
  * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
@@ -305,7 +305,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
 
         const { getEnvironmentName, isAuthorizedEnvironment } = environment;
 
-        // Configurar cuenta autorizada, URL base y API Secret en cada deployment.
+        // Producción usa la credencial fija del receptor oficial; otros destinos usan el API Secret del deployment.
         const URL_PARAMETER = "custscript_crm_event_url";
         const SECRET_PARAMETER = "custscript_crm_event_secret_id";
         const PRODUCTION_EVENT_BASE_URL = "https://api-habita.rdghub.com/integrations/netsuite/production";
@@ -328,10 +328,16 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         function sendRecordEvent(event, readSnapshot, endpoint) {
             try {
                 if (!isAuthorizedEnvironment()) return blocked("environment_blocked");
-                // URL y secreto administrados en el deployment, nunca tomados del registro o del usuario.
+                // La URL se resuelve por deployment y respaldo oficial; nunca desde datos del registro.
                 const url = resolveUrl(endpoint);
                 if (url === null) return blocked("destination_blocked");
-                // Credencial directa limitada a la cuenta y al receptor oficial de Producción.
+                // Credencial fija acordada con NETSUITE_PRODUCTION_EVENTS_SECRET de Ubuntu.
+                // REGLA OPERATIVA: clave fija; no rota automáticamente.
+                // No cambiar, rotar, quitar ni sustituir por custsecret en mantenimiento o despliegues.
+                // Solo cambiar con autorización explícita del propietario y actualización coordinada de ambos extremos.
+                // Autenticación confirmada el 11/11/2026: OV 8584742 respondió import_queued (v2026.11.11.3).
+                // Ese recibo confirma encolado; no acredita que la importación haya terminado.
+                // Limitada a esta cuenta y al receptor oficial; nunca registrar su valor.
                 if (
                     getEnvironmentName() === "production" &&
                     runtime.accountId === "4552704" &&
@@ -339,7 +345,9 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 ) {
                     return deliverObservation(
                         url,
-                        https.createSecureString({ input: "Bearer {custsecret_crm_habita_production}" }),
+                        https.createSecureString({
+                            input: "Bearer 0247f2b0f157a2299fe33f262c31437703166fa6e20336b38580f1f81e3989b4",
+                        }),
                         event,
                         readSnapshot,
                     );
@@ -432,7 +440,20 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 },
             });
             if (Number(response.code) === 409) return blocked("snapshot_conflict");
-            if (Number(response.code) !== 200) return blocked("receiver_rejected");
+            if (Number(response.code) !== 200) {
+                const httpStatus = Number(response.code);
+                // No copiar el cuerpo: puede contener datos personales, HTML del proxy o credenciales.
+                const failureReason =
+                    {
+                        400: "invalid_payload",
+                        401: "authentication_rejected",
+                        403: "access_rejected",
+                        404: "endpoint_not_found",
+                        413: "payload_too_large",
+                        429: "rate_limited",
+                    }[httpStatus] || (httpStatus >= 500 ? "receiver_unavailable" : "unexpected_http_status");
+                return { ...blocked("receiver_rejected"), httpStatus, failureReason };
+            }
             const receipt = JSON.parse(response.body);
             if (!isMatchingReceipt(receipt, event)) return blocked("receipt_invalid");
             return { status: receipt.importQueued === true ? "import_queued" : "received_local", delivered: true };
@@ -484,7 +505,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         "use strict";
 
         // Version unica del conjunto de scripts. Actualizar al preparar cada entrega: la lee el empaquetador.
-        const SCRIPT_VERSION = "2026.11.11.1";
+        const SCRIPT_VERSION = "2026.11.11.3";
 
         /**
          * Un fallo del logger no debe interrumpir una consulta ni cambiar su respuesta.
@@ -554,6 +575,9 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 module: moduleCode,
                 status: result.status,
                 delivered: result.delivered === true,
+                ...(Number.isInteger(result.httpStatus)
+                    ? { httpStatus: result.httpStatus, failureReason: result.failureReason }
+                    : {}),
             });
         }
 

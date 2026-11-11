@@ -21,7 +21,6 @@ type EventTransaction = Transaction<CrmDatabase>;
 export interface ManualOrderSynchronization {
     importTranid?: string;
     importIfMissing?: boolean;
-    allowUnlinkedOwner?: boolean;
     authorize(tx: EventTransaction, target: { destination: OrderEventDestination; id: string }): Promise<AuditActorSnapshot>;
 }
 /** Conserva el destino y diff intentado aunque la transaccion comercial termine en rollback. */
@@ -66,7 +65,7 @@ export class NetsuiteOrderEventRepository {
                     context = { result: "error", destination: target.destination, orderId: target.id, changes: [] };
                     context.changes = await this.planChanges(tx, event, target);
                     // Si una relacion rechaza el evento, conservar el diff directo conocido en la evidencia de error.
-                    context.changes.push(...(await this.planRelations(tx, event, target, manual?.allowUnlinkedOwner)));
+                    context.changes.push(...(await this.planRelations(tx, event, target)));
                 }
                 const result = await this.update(tx, target, context.changes, event);
                 await this.advanceInstallments(tx, event, target, result);
@@ -207,23 +206,15 @@ export class NetsuiteOrderEventRepository {
         }
     }
 
-    /** Solo cambia la relacion de la OV; no crea ni modifica lead, unidad, usuario o subsidiaria. */
-    private async planRelations(tx: EventTransaction, event: PersistedOrderEvent, target: Target, allowUnlinkedOwner = false): Promise<OrderEventChange[]> {
+    /** Solo cambia relaciones ERP de la OV; conserva siempre el responsable administrado en Habita. */
+    private async planRelations(tx: EventTransaction, event: PersistedOrderEvent, target: Target): Promise<OrderEventChange[]> {
         if (event.snapshot.data.fields.crm_sync_projection !== 1) return [];
         const values = readOrderRelationValues(event.snapshot.data.fields);
         const changes: OrderEventChange[] = [];
         for (const mapping of orderRelationMappings) {
-            try {
-                changes.push(...(await this.planRelation(tx, mapping, values[mapping.netsuite] ?? null, target)));
-            } catch (error) {
-                if (!this.canIgnoreMissingOwner(mapping.domain, error, allowUnlinkedOwner)) throw error;
-            }
+            changes.push(...(await this.planRelation(tx, mapping, values[mapping.netsuite] ?? null, target)));
         }
         return changes;
-    }
-
-    private canIgnoreMissingOwner(domain: string | null, error: unknown, allowed: boolean): boolean {
-        return allowed && domain === "user" && error instanceof ConflictException;
     }
 
     private async planRelation(tx: EventTransaction, mapping: (typeof orderRelationMappings)[number], external: string | null, target: Target): Promise<OrderEventChange[]> {

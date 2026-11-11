@@ -116,7 +116,6 @@ it("reads only missing customer data from NetSuite after local reconciliation ch
     expect(f.repository.importNeedsRelation.mock.calls).toEqual([
         ["lead", "2034401"],
         ["subsidiary", "13"],
-        ["user", "1623817"],
         ["unit_file", "8771"],
     ]);
     expect(f.client.readImportCustomer).toHaveBeenCalledWith("2034401");

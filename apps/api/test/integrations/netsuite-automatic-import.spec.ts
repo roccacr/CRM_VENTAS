@@ -92,7 +92,7 @@ describe("automatic import after an authenticated production edit", () => {
             integrationContext: () => event.source,
             readSalesOrderSnapshot: vi.fn().mockResolvedValue({
                 ...event.snapshot,
-                data: { ...event.snapshot.data, fields: { initialtranid: "AVI874", crm_sync_projection: 1, entity: "300", custbody38: null, subsidiary: null, crm_owner_employee: null, opportunity: null } },
+                data: { ...event.snapshot.data, fields: { initialtranid: "AVI874", crm_sync_projection: 1, entity: "300", custbody38: null, subsidiary: null, crm_owner_employee: "900", opportunity: null } },
                 sourceModifiedAt: at,
                 snapshotReadStartedAt: at,
                 snapshotReadCompletedAt: at,
@@ -103,7 +103,8 @@ describe("automatic import after an authenticated production edit", () => {
         const service = new NetsuiteSalesOrderService({} as never, repository as never, client as never, events as never);
         await expect(service.executeEventImport({ netsuiteId: "123", accountId: "4552704", environment: "production" })).resolves.toMatchObject({ result: "applied", tranid: "AVI874" });
         expect(client.readSalesOrderSnapshot).toHaveBeenCalledWith("123");
+        expect(repository.importNeedsRelation.mock.calls.some(([domain]) => domain === "user")).toBe(false);
         expect(events.receive.mock.calls[0]?.[0]).toMatchObject({ event: { netsuiteId: "123", snapshotReadCompletedAt: at } });
-        expect(events.receive.mock.calls[0]?.[1]).toMatchObject({ importTranid: "AVI874", importIfMissing: true, allowUnlinkedOwner: true });
+        expect(events.receive.mock.calls[0]?.[1]).toMatchObject({ importTranid: "AVI874", importIfMissing: true });
     });
 });

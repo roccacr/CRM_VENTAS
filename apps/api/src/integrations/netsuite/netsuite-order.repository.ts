@@ -67,7 +67,7 @@ export class NetsuiteOrderRepository {
         return actor;
     }
     /** Sin la base anterior no se declara que una relacion falta. Podria existir solo ahi. */
-    async importNeedsRelation(domain: "lead" | "subsidiary" | "user" | "unit_file", id: string) {
+    async importNeedsRelation(domain: "lead" | "subsidiary" | "unit_file", id: string) {
         if (!this.legacy.enabled()) throw new ServiceUnavailableException("La base anterior no está disponible para conciliar al cliente.");
         return this.resolveSafely((tx) => missingImportRelation(tx, domain, id));
     }

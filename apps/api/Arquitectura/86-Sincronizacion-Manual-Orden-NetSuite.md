@@ -36,3 +36,7 @@ Pruebas con dobles: Produccion/Sandbox, permisos y sesion revocados, persistenci
 ## Verificacion local de esta entrega
 
 114 pruebas API focalizadas y5 de UI/layout aprobadas. Lint de archivos tocados, typecheckAPI y buildsAPI/frontend verificados; frontend build incluye tipos. Navegador con datos simulados: breadcrumbNetSuiteProduccion, accion junto al refresco y modal con ambiente/origen y advertencia de avances. No se ejecuto escritura real contra ordenLV208, no se publico CRM y no se cargo la libreria en NetSuite durante este cambio. Actualizacion requerida: libreria2026.11.03.4 en ambos ambientes; wrappers sin cambios. Las suites globales conservan los fallos del despliegue anterior y no se declaran verdes.
+
+## Responsable exclusivo de Habita — 11/11/2026
+
+La consulta del snapshot usa únicamente module=salesOrders, action=syncSnapshot e id de NetSuite. No envía responsable ni datos internos de Habita. El campo recibido crm_owner_employee se ignora, incluso si está vacío, malformado o sin vínculo. Importación manual/automática y edición conservan owner_user_id_sales_order e id_ov_admin; no buscan empleados en NetSuite ni crean int_user_external_identity. Cliente, expediente y subsidiaria mantienen su conciliación y validación ERP. No requiere migración ni cambios de credencial o SuiteScript por esta regla.

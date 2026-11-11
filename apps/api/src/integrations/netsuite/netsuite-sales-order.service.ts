@@ -165,8 +165,8 @@ export class NetsuiteSalesOrderService {
         );
     }
 
-    /** El numero del snapshot tiene que ser el pedido. La cola si puede crear alias que faltan; la llamada directa no. Un responsable sin cuenta no tira la orden. */
-    private async executeImport(tranid: string, actor: () => Promise<Parameters<NetsuiteOrderRepository["captureSynchronizationActor"]>[1]>, queued = false) {
+    /** El numero del snapshot tiene que ser el pedido. La cola crea alias ERP faltantes, nunca usuarios ni asignaciones de responsables. */
+    private async executeImport(tranid: string, actor: () => Promise<Parameters<NetsuiteOrderRepository["captureSynchronizationActor"]>[1]>, queued = false): Promise<{ result: "applied" | "unchanged" | "not_found"; tranid: string; warning?: string }> {
         const context = this.client.integrationContext();
         if (!this.events.synchronizationEnabled(context.environment)) throw new ServiceUnavailableException("Importación NetSuite deshabilitada para este ambiente.");
         const netsuiteId = await this.client.findSalesOrderByTranId(tranid);
@@ -177,35 +177,28 @@ export class NetsuiteSalesOrderService {
         return this.applyImport(event, (tx) => this.repository.captureSynchronizationActor(tx, current), queued);
     }
 
-    private async applyImport(event: PersistedOrderEvent, authorize: ManualOrderSynchronization["authorize"], queued: boolean, importIfMissing = false) {
+    private async applyImport(event: PersistedOrderEvent, authorize: ManualOrderSynchronization["authorize"], queued: boolean, importIfMissing = false): Promise<{ result: "applied" | "unchanged" | "not_found"; tranid: string; warning?: string }> {
         const number = event.snapshot.data.fields.initialtranid;
         if (typeof number !== "string" || !number.trim() || number.trim().length > 180) throw new BadGatewayException("NetSuite no confirmó el número de orden.");
         const tranid = number.trim().toUpperCase();
         const fields = event.snapshot.data.fields;
         const dependencies = queued ? await this.readMissingImportRelations(fields) : {};
-        const outcome = { ownerLinked: true };
         const result = await this.events.receive(event, {
             importTranid: tranid,
             importIfMissing,
-            allowUnlinkedOwner: queued,
             authorize: async (tx, destination) => {
                 const authorized = await authorize(tx, destination);
-                if (queued && destination.destination === "native") outcome.ownerLinked = await reconcileImportRelations(tx, { fields, orderId: destination.id, netsuiteId: event.event.netsuiteId, operationId: event.event.eventId, ...dependencies });
+                if (queued && destination.destination === "native") await reconcileImportRelations(tx, { fields, orderId: destination.id, netsuiteId: event.event.netsuiteId, operationId: event.event.eventId, ...dependencies });
                 return authorized;
             },
         });
-        return { result: result.result, tranid, ...(outcome.ownerLinked ? {} : { warning: "Orden guardada sin responsable: falta vincular su cuenta." }) };
+        return { result: result.result, tranid };
     }
 
     private async readMissingImportRelations(fields: Record<string, unknown>) {
-        const { entity, subsidiary, crm_owner_employee, custbody38 } = readOrderRelationValues(fields);
-        const [customer, subsidiaryName, ownerEmail, unit] = await Promise.all([
-            entity && (await this.repository.importNeedsRelation("lead", entity)) ? this.client.readImportCustomer(entity) : undefined,
-            subsidiary && (await this.repository.importNeedsRelation("subsidiary", subsidiary)) ? this.client.readImportRelation("subsidiary", subsidiary) : undefined,
-            crm_owner_employee && (await this.repository.importNeedsRelation("user", crm_owner_employee)) ? this.client.readImportRelation("user", crm_owner_employee) : undefined,
-            this.readMissingImportUnit(custbody38),
-        ]);
-        return { customer, subsidiaryName, ownerEmail, unit };
+        const { entity, subsidiary, custbody38 } = readOrderRelationValues(fields);
+        const [customer, subsidiaryName, unit] = await Promise.all([entity && (await this.repository.importNeedsRelation("lead", entity)) ? this.client.readImportCustomer(entity) : undefined, subsidiary && (await this.repository.importNeedsRelation("subsidiary", subsidiary)) ? this.client.readImportRelation("subsidiary", subsidiary) : undefined, this.readMissingImportUnit(custbody38)]);
+        return { customer, subsidiaryName, unit };
     }
 
     private async readMissingImportUnit(id: string | null | undefined) {

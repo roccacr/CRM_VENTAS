@@ -80,7 +80,7 @@ Inventario de solo lectura: 33 columnas de CRM_THINK_V2.crm_sales_order y 40 de 
 | Vieja | id_ov_netsuite | int / YES | — | Interno/identidad/control CRM: no sobrescribir con payload |
 | Vieja | id_ov_est | int / YES | createdfrom | Excluido del evento de edicion: sin mapper legado equivalente confirmado; preservar |
 | Vieja | id_ov_opt | int / YES | opportunity | Mapeado local; prueba SQL aislada; no E2E ampliado |
-| Vieja | id_ov_admin | int / YES | salesteam[0].employee | Mapeado local; prueba SQL aislada; no E2E ampliado |
+| Vieja | id_ov_admin | int / YES | Interno de Habita | Excluido de importación/sincronización ERP; se conserva |
 | Vieja | id_ov_lead | int / YES | entity | Mapeado local; prueba SQL aislada; no E2E ampliado |
 | Vieja | idExpediente_ov | int / YES | custbody38 | Mapeado local; prueba SQL aislada; no E2E ampliado |
 | Vieja | idsubsidiaria_ov | int / YES | subsidiary | Mapeado local; prueba SQL aislada; no E2E ampliado |
@@ -134,7 +134,7 @@ Pendientes de cierre: aprobacion y prueba de 059; precision/orden de eventos den
 |---|---|---|---|---|---|
 | custbody38 | crm_sales_order.unit_file_id_sales_order | ordenventa.idExpediente_ov | ID ERP; resolver referencia existente para FK nativa; INT legacy | Si, local sin subir | Si, SQL aislado |
 | subsidiary | crm_sales_order.subsidiary_id_sales_order | ordenventa.idsubsidiaria_ov | ID ERP; resolver referencia existente para FK nativa; INT legacy | Si, local sin subir | Si, SQL aislado |
-| salesteam[0].employee -> crm_owner_employee | crm_sales_order.owner_user_id_sales_order | ordenventa.id_ov_admin | ID ERP; resolver referencia existente para FK nativa; INT legacy | Si, local sin subir | Si, SQL aislado |
+| salesteam[0].employee -> crm_owner_employee | crm_sales_order.owner_user_id_sales_order | ordenventa.id_ov_admin | Responsable interno de Habita: no conciliar ni sobrescribir desde ERP | Puede llegar por compatibilidad; se ignora | No: ambas columnas se conservan |
 | custbody43 | crm_sales_order.cancelled_sales_order | ordenventa.caida_ov | true/T -> yes o 1; false/F -> no o 0 | Si, local sin subir | Si, SQL aislado |
 | trandate -> crm_transaction_date | crm_sales_order.transaction_date_sales_order | ordenventa.trandate_ov | DATE YYYY-MM-DD; no texto regional | Si, local sin subir | Si, SQL aislado |
 | custbody13 | crm_sales_order.list_price_sales_order | ordenventa.pre_lista_ov | Decimal canonico 19,4; vacio explicito = NULL | Si, local sin subir | Si, SQL aislado |
@@ -169,7 +169,7 @@ Actualizacion autorizada: 059 aplicada en QA y RDS (2026-11-03T03:35:55Z), con l
 
 La matriz inicial incluyo tres incorporaciones que el propietario descarta si no existian en el mapper viejo. Se retiraron moneda, calculo de comision corredor (custbody73) y createdfrom→id_ov_est de la persistencia. Se mantienen columnas y valores existentes sin DDL ni backfill. id_ov_est procede del argumento idEstimacion en creacion; no hay fuente equivalente confirmada en una edicion de NetSuite.
 
-El asesor usa ahora salesteam[0].employee (crm_owner_employee en el evento), no salesrep. Evidencia: produccion/src/store/ordenVenta/thunkOrdenVenta.js:65–78 y CRM_VENTAS BACKEND/src/models/ordenVenta/ordenVenta.js:497–500. Numero, cliente, expediente, subsidiaria y oportunidad se manejaban en creacion; no se afirma que el viejo backend los actualizara en cada edicion. Los cuatro montos, fecha, calculo asesor y aprobaciones constan en la referencia Downloads/salesorders.js:140–180, sin afirmar despliegue vigente. Los10 checkbox y la fecha de caida conservan autorizacion explicita posterior del propietario.
+Regla vigente (11/11/2026): el responsable pertenece exclusivamente a Habita. `crm_owner_employee` se ignora al importar y sincronizar en ambas BDs; no se consultan ni crean cuentas o vínculos de usuario. La referencia histórica del asesor era salesteam[0].employee, no salesrep. Evidencia: produccion/src/store/ordenVenta/thunkOrdenVenta.js:65–78 y CRM_VENTAS BACKEND/src/models/ordenVenta/ordenVenta.js:497–500. Numero, cliente, expediente, subsidiaria y oportunidad se manejaban en creacion; no se afirma que el viejo backend los actualizara en cada edicion. Los cuatro montos, fecha, calculo asesor y aprobaciones constan en la referencia Downloads/salesorders.js:140–180, sin afirmar despliegue vigente. Los10 checkbox y la fecha de caida conservan autorizacion explicita posterior del propietario.
 
 Control temporal actual: doble lectura completa identica + ventana UTC; hash de contenido no se usa como reloj. API serializa por orden, rechaza ventanas anteriores/solapadas y SuiteScript relee ante409 con un UUID de observacion nuevo. El reintento de red mantiene UUID y cuerpo. No agrega DDL. Pruebas SQL aisladas: dos ediciones distintas mismo minuto, duplicado, atraso y fecha de caida en ambos destinos. Falta verificacion real antes de certificar publicacion.
 

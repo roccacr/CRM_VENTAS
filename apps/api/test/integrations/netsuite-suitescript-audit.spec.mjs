@@ -37,6 +37,19 @@ function dispatch({ id = "214", memo = "audit", lineCount = 0, itemText } = {}) 
 }
 
 describe("SuiteScript adversarial producer/consumer contract audit (offline)", () => {
+    it.each([
+        [400, "invalid_payload"],
+        [401, "authentication_rejected"],
+        [403, "access_rejected"],
+        [503, "receiver_unavailable"],
+    ])("logs safe HTTP diagnostics for %i without exposing the response body", (code, reason) => {
+        const log = logMock();
+        const https = { createSecureString: ({ input }) => input, post: vi.fn(() => ({ code, body: "PRIVATE_RESPONSE_TOKEN" })) };
+        const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": recordMock(), "N/search": searchMock(), "N/log": log, "N/https": https });
+        entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: "214" } });
+        expect(log.error.mock.calls[0][0].details).toMatchObject({ status: "receiver_rejected", delivered: false, httpStatus: code, failureReason: reason });
+        expect(JSON.stringify(log.error.mock.calls)).not.toContain("PRIVATE_RESPONSE_TOKEN");
+    });
     it.each(["1", "214", "999999999999999"])("every emitted ID satisfies the real receiver: %s", (id) => {
         const { https, rejected, log } = dispatch({ id });
         expect(https.post).toHaveBeenCalledOnce();
