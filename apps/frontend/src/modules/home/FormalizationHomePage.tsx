@@ -427,6 +427,15 @@ function activitySessionKey(user: FormalizationHomeProps["currentUser"]) {
     return user?.email ?? "session";
 }
 
+/** La tabla ya vive bajo el resumen: se lleva la vista hasta ella para ver el filtro aplicado. Tolera entornos sin esas APIs (pruebas, navegadores viejos). */
+function scrollToFollowUp() {
+    window.requestAnimationFrame(() => {
+        const target: Partial<Pick<Element, "scrollIntoView">> | null = document.querySelector(".formalization-home .formalization-workspace:not([hidden])");
+        const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        target?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    });
+}
+
 /** Agregados y seguimiento canónicos, detrás de su permiso. Cambiar la etapa exige su propio permiso efectivo. */
 function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [], initialView = "home", onNavigate }: FormalizationHomeProps) {
     const filterStorageKey = filterPreferenceKey(currentUser);
@@ -434,11 +443,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [
     const [filterRequest, setFilterRequest] = useState<FollowUpFilterRequest>();
     const selectBanner = (selection: FollowUpSelection) => {
         setFilterRequest((previous) => ({ selection, version: (previous?.version ?? 0) + 1 }));
-        // La tabla ya vive bajo el resumen: se lleva la vista hasta ella para ver el filtro aplicado.
-        window.requestAnimationFrame(() => {
-            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            document.querySelector(".formalization-home .formalization-workspace:not([hidden])")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-        });
+        scrollToFollowUp();
     };
     const [selectedQueue, setQueue] = useState<PreviewQueue | null>(() => (initialView === "orders" ? { filter: "all" } : null));
     const allowedQueues = formalizationReadQueues(roles, effectivePermissions);
