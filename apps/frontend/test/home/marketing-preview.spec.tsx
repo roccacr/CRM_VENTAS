@@ -216,7 +216,7 @@ describe("Marketing period selection", () => {
     it("raises alerts only from sources with enough leads", () => {
         const view = resolveMarketingView({ ...emptyMarketingFilters(TODAY), selection: { ...select("month", "2026-09-10"), comparison: "previous" } }, TODAY);
         for (const alert of alertMarketingSample(view)) expect(alert.text).not.toBe("");
-        expect(alertMarketingSample(view).length).toBeLessThanOrEqual(3);
+        expect(alertMarketingSample(view).length).toBeLessThanOrEqual(7);
         const quiet = resolveMarketingView({ ...emptyMarketingFilters(TODAY), project: "Proyecto Centro", selection: select("day", "2026-10-23") }, TODAY);
         expect(alertMarketingSample(quiet)).toEqual([]);
     });

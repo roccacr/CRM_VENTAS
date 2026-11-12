@@ -59,12 +59,13 @@ function reportCohorts(native: ReportSource, legacy: ReportSource) {
     return { cohorts: [...cohorts.values(), ...oldCohorts], duplicates };
 }
 function mergeCommercialEvidence(target: ReportLead, evidence: ReportLead): void {
+    target.hasReservation = target.hasReservation === true || evidence.hasReservation === true;
     target.hasEstimate = target.hasEstimate === true || evidence.hasEstimate === true;
     target.hasSalesOrder = target.hasSalesOrder === true || evidence.hasSalesOrder === true;
 }
 function legacyCohort(row: ReportLead, unique: boolean, ambiguousAlias: boolean, events: Map<string, ReportEvent[]>): Cohort {
     const eligible = unique && !ambiguousAlias;
-    return { row: { ...row, hasEstimate: eligible && row.hasEstimate === true, hasSalesOrder: eligible && row.hasSalesOrder === true }, native: false, events: leadEvents(row, eligible, events), ambiguous: !unique || ambiguousAlias };
+    return { row: { ...row, hasReservation: eligible && row.hasReservation === true, hasEstimate: eligible && row.hasEstimate === true, hasSalesOrder: eligible && row.hasSalesOrder === true }, native: false, events: leadEvents(row, eligible, events), ambiguous: !unique || ambiguousAlias };
 }
 /** El vínculo por la llave vieja entra aunque la referencia del proveedor sea ambigua. Esa referencia ambigua no arrastra citas de otro lead. */
 function leadEvents(row: ReportLead, unique: boolean, events: Map<string, ReportEvent[]>): ReportEvent[] {
@@ -156,10 +157,11 @@ function appendCohort(cohort: Cohort, identities: ReturnType<typeof reportIdenti
     catalogs.campaigns.set(campaign.item.id, campaign.item);
     catalogs.ads.set(ad.id, ad);
     const key = JSON.stringify([row.date, seller.id, project.id, campaign.item.id, ad.id]);
-    const aggregate = grouped.get(key) ?? { date: row.date as string, sellerId: seller.id, projectId: project.id, campaignId: campaign.item.id, adId: ad.id, leads: 0, noAppointment: 0, scheduled: 0, completed: 0, lost: 0, lossReasons: [] };
+    const aggregate = grouped.get(key) ?? { date: row.date as string, sellerId: seller.id, projectId: project.id, campaignId: campaign.item.id, adId: ad.id, leads: 0, withReservation: 0, noAppointment: 0, scheduled: 0, completed: 0, lost: 0, lossReasons: [] };
     const valid = events.filter((event) => !event.invalidDate);
     const status = cohortStatus(valid);
     aggregate.leads++;
+    aggregate.withReservation += Number(row.hasReservation === true);
     aggregate[status]++;
     aggregate.lost += Number(row.lost);
     // La misma autoridad y deduplicación del lead gobierna sus motivos; nunca se suma otra vez por existir en ambas BDs.

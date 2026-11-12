@@ -7,6 +7,7 @@ import type { LegacyMarketingOwner, NativeMarketingProject } from "../../modules
 import type { ReportEvent, ReportLead, ReportSource } from "../../modules/crm/marketing/marketing-leads-report.contract.js";
 import type { MarketingLeadsReportLegacyReader } from "../../modules/crm/marketing/marketing-leads-report.port.js";
 import { readReportPages, REPORT_READ_PAGE_SIZE } from "../../modules/crm/marketing/marketing-leads-report.repository.js";
+import { legacyLeadReservation } from "../../modules/crm/marketing/marketing-reservations.query.js";
 import { HISTORY_REASONS } from "./lead-history/legacy-lead-history.model.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 import { legacyAppointmentDate } from "./legacy-marketing-appointments.reader.js";
@@ -42,6 +43,7 @@ export class LegacyMarketingLeadsReportReader implements MarketingLeadsReportLeg
             COALESCE(CAST(l.id_empleado_lead AS CHAR),'') AS sellerId,COALESCE(CAST(l.idproyecto_lead AS CHAR),'') AS projectId,NULLIF(TRIM(l.proyecto_lead),'') AS projectName,
             COALESCE(NULLIF(TRIM(l.idcampana_lead),''),'') AS campaignId,NULLIF(TRIM(l.campana_lead),'') AS campaignName,
             l.calificado_lead AS qualified,
+            (l.idinterno_lead>0 AND ${legacyLeadReservation(sql.ref("l.idinterno_lead"))}) AS hasReservation,
             EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.estimaciones")} e WHERE e.idLead_est=l.idinterno_lead) AS hasEstimate,
             EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.ordenventa")} o WHERE o.id_ov_lead=l.idinterno_lead) AS hasSalesOrder,
             l.custentityaccion_campana AS ad,(BINARY l.segimineto_lead='07-LEAD-PERDIDO') AS lost,c.id_caida AS lossReasonId,c.nombre_caida AS lossReasonName
@@ -91,6 +93,7 @@ export class LegacyMarketingLeadsReportReader implements MarketingLeadsReportLeg
                 qualified: Number(row.qualified) === 1,
                 hasEstimate: Number(row.hasEstimate) === 1,
                 hasSalesOrder: Number(row.hasSalesOrder) === 1,
+                hasReservation: Number(row.hasReservation) === 1,
                 lost: row.lost === 1,
                 lossReason: row.lossReasonId && row.lossReasonName?.trim() ? (HISTORY_REASONS[row.lossReasonId] ?? { code: `legacy:${String(row.lossReasonId)}`, name: row.lossReasonName.trim() }) : null,
             })),

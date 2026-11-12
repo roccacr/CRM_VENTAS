@@ -1341,7 +1341,7 @@ body.capture-printing .capture-selection {
 .capture-columns-chart__top {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 16px;
 }
 
@@ -1573,7 +1573,7 @@ body.capture-printing .capture-block__breakdown {
     opacity: 1;
 }
 
-/* Compact density: KPI banners, legend and chart header take a fraction of the room, so the chart and the numbers are what you see */
+/* Compact density: KPI banners and chart header take a fraction of the room, so the chart and the numbers are what you see */
 .capture-kpis {
     gap: 10px;
     padding: 10px 16px 0;

@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import type { ReportLead, ReportSource } from "../../src/modules/crm/marketing/marketing-leads-report.contract.js";
@@ -171,4 +172,33 @@ describe("native calendar links to legacy primary keys", () => {
         expect(result.sources.legacy).toBe(0);
         expect(result.rows[0]?.completed).toBe(1);
     });
+});
+
+it("counts a promoted lead with pre-reservation and reservation once", () => {
+    const native = source([lead({ hasReservation: true })]);
+    native.leadAliases = [{ id: "1", system: "netsuite", externalId: "99" }];
+    const old = legacy([lead({ id: "old", providerId: "99", sellerId: "10", hasReservation: true })]);
+    const result = buildMarketingLeadsReport(native, old, { period: "month", now, legacyEnabled: true });
+    expect(result.rows.reduce((sum, row) => sum + row.withReservation, 0)).toBe(1);
+    expect(result.sources.native + result.sources.legacy).toBe(1);
+    expect(buildMarketingLeadsReport(native, old, { period: "month", now, legacyEnabled: true, sellerScope: new Set(["hidden"]) }).rows).toEqual([]);
+});
+
+it("does not attribute reservations through ambiguous provider references", () => {
+    const old = legacy([lead({ id: "a", providerId: "99", hasReservation: true }), lead({ id: "b", providerId: "99", hasReservation: true })]);
+    const result = buildMarketingLeadsReport(source(), old, { period: "month", now, legacyEnabled: true });
+    expect(result.rows.reduce((sum, row) => sum + row.withReservation, 0)).toBe(0);
+});
+
+it("property: reservation documents merge once under native identity and seller scope", () => {
+    fc.assert(
+        fc.property(fc.boolean(), fc.boolean(), fc.boolean(), (nativeReserved, legacyReserved, visible) => {
+            const native = source([lead({ hasReservation: nativeReserved })]);
+            native.leadAliases = [{ id: "1", system: "netsuite", externalId: "99" }];
+            const old = legacy([lead({ id: "old", providerId: "99", sellerId: "10", hasReservation: legacyReserved })]);
+            const result = buildMarketingLeadsReport(native, old, { period: "month", now, legacyEnabled: true, sellerScope: new Set(visible ? ["seller"] : []) });
+            expect(result.rows.reduce((sum, row) => sum + row.withReservation, 0)).toBe(Number(visible && (nativeReserved || legacyReserved)));
+        }),
+        { seed: 20261112, numRuns: 100 },
+    );
 });

@@ -11,6 +11,7 @@ export interface MarketingApiDailyRow {
     readonly sellerId: string;
     readonly projectId: string;
     readonly leads: number;
+    readonly withReservation?: number;
 }
 export interface MarketingAppointmentEvent {
     readonly id: string;
@@ -22,6 +23,7 @@ export interface MarketingAppointmentEvent {
 export type MarketingApiAppointments = { readonly available: false } | { readonly available: true; readonly events: readonly MarketingAppointmentEvent[]; readonly leadsWithAppointment: readonly { readonly date: string; readonly sellerId: string; readonly projectId: string; readonly withAppointment: number }[]; readonly quality: { readonly unresolvedLinks: number; readonly invalidDates: number; readonly unknownStatuses: number; readonly nativeTypeConfigured: boolean } };
 export interface MarketingApiSummary {
     readonly schemaVersion: 1;
+    readonly reservationsAvailable?: boolean;
     readonly observedAt: string;
     readonly today: string;
     readonly period: MarketingApiPeriod;
@@ -71,7 +73,7 @@ function rows(value: unknown): MarketingApiDailyRow[] {
     if (!Array.isArray(value) || value.length > 50000) throw invalid();
     return value.map((item) => {
         const data = record(item);
-        return { date: day(data.date), sellerId: text(data.sellerId), projectId: text(data.projectId), leads: count(data.leads) };
+        return { date: day(data.date), sellerId: text(data.sellerId), projectId: text(data.projectId), leads: count(data.leads), ...(data.withReservation !== undefined ? { withReservation: count(data.withReservation) } : {}) };
     });
 }
 
@@ -84,6 +86,7 @@ export function parseMarketingHomeSummary(value: unknown, period: MarketingApiPe
     if (data.schemaVersion !== 1 || data.period !== period || data.timeZone !== "America/Costa_Rica" || typeof sources.legacyEnabled !== "boolean") throw invalid();
     const summary: MarketingApiSummary = {
         schemaVersion: 1,
+        reservationsAvailable: data.reservationsAvailable === true,
         observedAt: text(data.observedAt),
         today: day(data.today),
         period,
@@ -98,6 +101,8 @@ export function parseMarketingHomeSummary(value: unknown, period: MarketingApiPe
         appointments: parseAppointments(data.appointments),
         sources: { native: count(sources.native), legacy: count(sources.legacy), legacyEnabled: sources.legacyEnabled, duplicatesExcluded: count(sources.duplicatesExcluded), ambiguousOverlaps: count(sources.ambiguousOverlaps) },
     };
+    if (data.reservationsAvailable !== undefined && typeof data.reservationsAvailable !== "boolean") throw invalid();
+    if (summary.rows.some((row) => (row.withReservation ?? 0) > row.leads || (summary.reservationsAvailable && row.withReservation === undefined))) throw invalid();
     validateEvidence(summary);
     validateAppointments(summary);
     return summary;

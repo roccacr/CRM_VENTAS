@@ -217,3 +217,37 @@ La selección múltiple de meses, semanas, trimestres y años permanece en edici
 El tipo de Período también queda en edición: Hoy/Semana/Mes/Trimestre/Año/Personalizado no consulta ni cambia el rango, agrupación o gráfico aplicados al cambiar el desplegable. Solo Aplicar filtro confirma el tipo junto con sus intervalos.
 
 La comparación temporal se presenta primero por proyecto (o dimensión elegida) y luego por período. El gráfico reúne sus barras en un bloque compacto con escala común; el desglose usa una matriz con una fila por dimensión, períodos como columnas, total por fila y totales por período. Se conserva la cohorte, los ceros y los porcentajes originales.
+
+## Reserva o pre-reserva — ampliación 2026-11-12
+
+«Qué medir → Reserva o pre-reserva» usa `rows[].withReservation` en el mismo
+reporte protegido. La medida cuenta leads captados en las fechas seleccionadas,
+no documentos ni fechas de reserva. Una reserva y una pre-reserva del mismo lead
+cuentan **una sola vez**. Indicadores, porcentajes, gráficos, tablas y exportación
+reutilizan esa medida, con los mismos proyectos, campañas, anuncios, períodos y
+filtro de calificación. El resto de medidas y la calificación efectiva conservan
+sus reglas.
+
+Ambos repositorios reutilizan `marketing-reservations.query.ts`, la misma
+validación de Inicio descrita en [46](46-Mercadeo-Resumen-Leads.md): evidencia
+vigente, prioridad de orden nativa, reservas caídas/inactivas/borradas excluidas,
+pre-reserva real de estimación y referencias comerciales inequívocas. Las
+cohortes promovidas fusionan la evidencia por OR, conservando fecha y atribución
+nativas; una referencia repetida o alias ambiguo no atribuye reservas legacy.
+No se importan filas ni se modifica ninguna de las dos BDs.
+
+El parser exige enteros no negativos y no mayores que los leads de la fila.
+Compatibilidad con API anterior: si falta la medida, conserva los demás datos y
+deshabilita esta opción; no fabrica un cero. Una actualización posterior sin
+la medida oculta sus resultados en lugar de publicar un conteo incompleto.
+
+Verificación de solo lectura en una misma foto, 12/11/2026: noviembre 1–12,
+611 leads; 14 con reserva/pre-reserva tanto en Captación como en Inicio. Es una
+observación fechada, no una afirmación de despliegue ni un valor fijo.
+
+## Presentación del gráfico — 2026-11-12
+
+Se retira la fila superior de etiquetas de colores que repetía los nombres de
+los proyectos, campañas o anuncios. Se conservan los títulos y etiquetas dentro
+de los gráficos, colores, conteos, filtros, tablas y exportaciones. El selector
+«Mostrar» permanece alineado a la derecha.

@@ -62,3 +62,8 @@ it('normalizes old all responses and rejects unknown qualification', () => {
     expect(parseCaptureReport(captureResponse(), 'month').qualification).toBe('all');
     expect(() => parseCaptureReport({ ...captureResponse(), qualification: 'other' }, 'month')).toThrow();
 });
+
+it.each([-1, 1.5, "1", null, 999999])("rejects malformed reserved lead counts: %j", (withReservation) => {
+    const report = captureResponse();
+    expect(() => parseCaptureReport({ ...report, rows: report.rows.map((row) => ({ ...row, withReservation })) }, "month")).toThrow();
+});

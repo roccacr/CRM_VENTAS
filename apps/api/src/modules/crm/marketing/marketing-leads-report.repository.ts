@@ -4,6 +4,7 @@ import { sql, type Transaction } from "kysely";
 import type { CrmDatabase } from "../../../database/database.types.js";
 import type { MarketingExternalIdentity, NativeMarketingProject, NativeMarketingUser } from "./marketing-home.contract.js";
 import type { ReportEvent, ReportLead, ReportSource } from "./marketing-leads-report.contract.js";
+import { nativeLeadReservation } from "./marketing-reservations.query.js";
 
 export const REPORT_READ_PAGE_SIZE = 10000;
 /** Cada página interna se consume en la misma foto. Una página corta termina la lectura; el reporte no se recorta en silencio. */
@@ -21,8 +22,8 @@ export async function readReportPages<T>(readPage: (offset: number) => Promise<T
  */
 @Injectable()
 export class MarketingLeadsReportRepository {
-    /** Solo lo nativo. Quien llama lee esto antes del adaptador viejo. */
-    async readNative(tx: Transaction<CrmDatabase>): Promise<ReportSource> {
+    /** Cohortes nativas primero. El puente opcional incorpora evidencia comercial legacy inequívoca, sin copiar leads. */
+    async readNative(tx: Transaction<CrmDatabase>, legacyEnabled = false): Promise<ReportSource> {
         const leads = await readReportPages(
             async (offset) =>
                 (
@@ -30,6 +31,7 @@ export class MarketingLeadsReportRepository {
             l.public_id_lead AS id,DATE_FORMAT(DATE_SUB(l.created_at_lead,INTERVAL 6 HOUR),'%Y-%m-%d') AS date,
             COALESCE(u.public_id_user,'unassigned') AS sellerId,COALESCE(p.public_id_project,'') AS projectId,
             l.is_qualified_lead AS qualified,
+            ${nativeLeadReservation(legacyEnabled)} AS hasReservation,
             EXISTS(SELECT 1 FROM crm_sales_order o WHERE o.lead_id_sales_order=l.id_lead AND o.deleted_at_sales_order IS NULL) AS hasSalesOrder,
             COALESCE(c.public_id_campaign,'') AS campaignId,l.ad_name_lead AS ad,COALESCE(s.code_lead_status='lost',0) AS lost,
             e.reason_code_lead_status_event AS lossReasonCode,COALESCE(NULLIF(TRIM(e.reason_name_snapshot_lead_status_event),''),r.name_action_reason) AS lossReasonName
@@ -60,7 +62,7 @@ export class MarketingLeadsReportRepository {
             FROM crm_lead_external_reference x JOIN crm_lead l ON l.id_lead=x.lead_id_lead_external_reference JOIN int_external_system s ON s.id_external_system=x.external_system_id_lead_external_reference
             WHERE x.status_lead_external_reference='active' AND s.status_external_system='active'`.execute(tx);
         return {
-            leads: leads.map((row) => ({ ...row, qualified: Number(row.qualified) === 1, hasSalesOrder: Number(row.hasSalesOrder) === 1, lost: row.lost === 1, lossReason: row.lossReasonCode && row.lossReasonName?.trim() ? { code: row.lossReasonCode, name: row.lossReasonName.trim() } : null })),
+            leads: leads.map((row) => ({ ...row, qualified: Number(row.qualified) === 1, hasSalesOrder: Number(row.hasSalesOrder) === 1, hasReservation: Number(row.hasReservation) === 1, lost: row.lost === 1, lossReason: row.lossReasonCode && row.lossReasonName?.trim() ? { code: row.lossReasonCode, name: row.lossReasonName.trim() } : null })),
             users: users.rows,
             projects: projects.rows,
             campaigns: campaigns.rows,

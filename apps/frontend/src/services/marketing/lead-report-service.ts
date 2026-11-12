@@ -1,4 +1,4 @@
-import type { CaptureCatalogs, CaptureLossReason, CaptureNamed, CaptureRow, CaptureSeller } from "../../modules/marketing/lead-capture-report";
+import type { CaptureCatalogs, CaptureLossReason, CaptureMeasure, CaptureNamed, CaptureRow, CaptureSeller } from "../../modules/marketing/lead-capture-report";
 import { apiRequest } from "../api/api-client";
 
 export type CaptureApiPeriod = "day" | "week" | "month" | "all";
@@ -60,8 +60,8 @@ function rows(value: unknown): CaptureRow[] {
     if (!Array.isArray(value)) throw invalid();
     return value.map((item) => {
         const data = record(item);
-        const row = { date: day(data.date), sellerId: text(data.sellerId), projectId: text(data.projectId), campaignId: text(data.campaignId), adId: text(data.adId), leads: count(data.leads), noAppointment: count(data.noAppointment), scheduled: count(data.scheduled), completed: count(data.completed), lost: count(data.lost) };
-        if (row.noAppointment + row.scheduled + row.completed !== row.leads || row.lost > row.leads) throw invalid();
+        const row = { date: day(data.date), sellerId: text(data.sellerId), projectId: text(data.projectId), campaignId: text(data.campaignId), adId: text(data.adId), leads: count(data.leads), noAppointment: count(data.noAppointment), scheduled: count(data.scheduled), completed: count(data.completed), lost: count(data.lost), ...(data.withReservation === undefined ? {} : { withReservation: count(data.withReservation) }) };
+        if (row.noAppointment + row.scheduled + row.completed !== row.leads || row.lost > row.leads || (row.withReservation ?? 0) > row.leads) throw invalid();
         return { ...row, lossReasons: lossReasons(data.lossReasons, row.lost) };
     });
 }
@@ -116,6 +116,11 @@ function validateEvidence(report: CaptureApiReport): void {
 function validateSources(report: CaptureApiReport): void {
     if (!report.sources.legacyEnabled && report.sources.legacy > 0) throw invalid();
 }
+/** Una versión anterior puede servir las otras medidas, pero no inventa reservas. */
+export function captureMeasureAvailable(report: CaptureApiReport | null, measure: CaptureMeasure = "reservations"): boolean {
+    return measure !== "reservations" || (report !== null && report.rows.every((row) => row.withReservation !== undefined));
+}
+
 /** El BFF existente es dueño de las cookies de sesión y de los permisos. Este endpoint es de solo lectura. */
 export async function getCaptureReport(period: CaptureApiPeriod, qualification: CaptureQualification = "all"): Promise<CaptureApiReport> {
     return parseCaptureReport(await apiRequest<unknown>(`/marketing/leads/report?period=${period}${qualification === "all" ? "" : `&qualification=${qualification}`}`), period, qualification);

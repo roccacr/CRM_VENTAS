@@ -10,6 +10,7 @@ export interface ReportLead {
     qualified?: boolean;
     hasEstimate?: boolean;
     hasSalesOrder?: boolean;
+    hasReservation?: boolean;
     id: string;
     date: string | null;
     sellerId: string;
@@ -49,6 +50,7 @@ export interface ReportRow {
     campaignId: string;
     adId: string;
     leads: number;
+    withReservation: number;
     noAppointment: number;
     scheduled: number;
     completed: number;

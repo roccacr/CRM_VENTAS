@@ -10,6 +10,7 @@ export interface MarketingSampleRow {
     /** Días antes de hoy. Cero es hoy. */
     readonly daysAgo: number;
     readonly leads: number;
+    readonly withReservation?: number | undefined;
     readonly withAppointment: number;
     readonly appointments: number;
     /** Citas que ya ocurrieron. */
@@ -417,7 +418,7 @@ function sellerAlerts(view: MarketingView): MarketingAlert[] {
         .map((group) => ({ key: `seller:${group.name}`, text: `${group.label}: ${String(Math.round((group.withoutAppointment / group.leads) * 100))} % de sus leads sin cita (el equipo promedia ${String(Math.round(average))} %).` }));
 }
 
-/** Como máximo tres alertas. Vacío cuando todo está dentro del rango. */
+/** Como máximo siete alertas. Vacío cuando todo está dentro del rango. */
 export function alertMarketingSample(view: MarketingView): MarketingAlert[] {
-    return [...dropAlerts(view), ...sellerAlerts(view)].slice(0, 3);
+    return [...dropAlerts(view), ...sellerAlerts(view)].slice(0, 7);
 }

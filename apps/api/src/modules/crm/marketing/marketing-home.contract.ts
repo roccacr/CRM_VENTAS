@@ -60,6 +60,7 @@ export interface MarketingDailyRow {
     sellerId: string;
     projectId: string;
     leads: number;
+    withReservation?: number;
 }
 export interface NativeMarketingUser {
     id: string;
@@ -76,6 +77,7 @@ export interface MarketingExternalIdentity {
     externalId: string;
 }
 export interface NativeMarketingData {
+    reservationsAvailable?: boolean;
     appointmentEvidence?: NativeAppointmentEvidence;
     rows: MarketingDailyRow[];
     users: NativeMarketingUser[];
@@ -84,6 +86,7 @@ export interface NativeMarketingData {
     projectAliases: MarketingExternalIdentity[];
 }
 export interface LegacyMarketingRow {
+    withReservation?: number;
     date: string;
     sellerReference: string;
     projectReference: string;
@@ -98,6 +101,7 @@ export interface LegacyMarketingOwner {
     name: string | null;
 }
 export interface LegacyMarketingData {
+    reservationsAvailable?: boolean;
     appointmentEvidence?: LegacyAppointmentEvidence;
     rows: LegacyMarketingRow[];
     owners: LegacyMarketingOwner[];
@@ -105,6 +109,7 @@ export interface LegacyMarketingData {
 }
 export interface MarketingHomeSummary {
     schemaVersion: 1;
+    reservationsAvailable: boolean;
     observedAt: string;
     today: string;
     period: MarketingPeriod;

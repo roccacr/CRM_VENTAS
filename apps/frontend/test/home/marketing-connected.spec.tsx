@@ -326,3 +326,32 @@ it.each(["mercadeo", "jefe_mercadeo"])("shows other sellers' authorized totals f
     expect(request).toHaveBeenCalledWith("month");
     expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
 });
+
+it("shows reserved leads next to Leads even when appointments are unavailable", async () => {
+    const value = { ...fixture(), reservationsAvailable: true, rows: fixture().rows.map((row) => ({ ...row, withReservation: 1 })) };
+    request.mockResolvedValue(value);
+    render(<MarketingHomePage currentUser={user} />);
+    expect(await screen.findByLabelText("Leads con reserva: 2")).toBeInTheDocument();
+    const banners = screen.getAllByRole("article");
+    expect(within(banners[0] as HTMLElement).getByText("Leads")).toBeInTheDocument();
+    expect(within(banners[1] as HTMLElement).getByText("Leads con reserva")).toBeInTheDocument();
+    expect(() => parseMarketingHomeSummary({ ...value, rows: [{ ...value.rows[0], withReservation: 99 }] }, "month")).toThrow();
+});
+
+it("filters reserved leads by project and hides them while changing period", async () => {
+    const value = { ...fixture(), reservationsAvailable: true, rows: fixture().rows.map((row) => ({ ...row, withReservation: 1 })) };
+    value.projects = [...value.projects, { id: "q", publicId: "q", name: "Proyecto Otro" }];
+    value.rows = [...value.rows, { date: "2026-10-23", sellerId: photoId, projectId: "q", leads: 1, withReservation: 1 }];
+    request.mockResolvedValueOnce(value).mockReturnValueOnce(new Promise(() => {}));
+    render(<MarketingHomePage currentUser={user} />);
+    expect(await screen.findByLabelText("Leads con reserva: 3")).toBeInTheDocument();
+    await selectMarketing("Proyecto", "Proyecto Real");
+    expect(await screen.findByLabelText("Leads con reserva: 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
+    expect(screen.getByLabelText("Leads con reserva: —")).toBeInTheDocument();
+});
+
+it.each([-1, 1.5, "2", null, {}, Number.MAX_SAFE_INTEGER + 1])("rejects malformed reservation evidence: %j", (withReservation) => {
+    const value = fixture();
+    expect(() => parseMarketingHomeSummary({ ...value, reservationsAvailable: true, rows: value.rows.map((row) => ({ ...row, withReservation })) }, "month")).toThrow();
+});

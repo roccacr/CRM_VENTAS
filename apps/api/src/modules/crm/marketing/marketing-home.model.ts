@@ -65,16 +65,16 @@ export function buildMarketingHome(native: NativeMarketingData, legacy: LegacyMa
     const sellers = new Map<string, MarketingEntity>();
     const projects = new Map<string, MarketingEntity>();
     const grouped = new Map<string, MarketingDailyRow>();
-    const append = (date: string, leads: number, seller: MarketingEntity, project: MarketingEntity) => {
+    const append = ({ date, leads, withReservation }: Pick<MarketingDailyRow, "date" | "leads" | "withReservation">, seller: MarketingEntity, project: MarketingEntity) => {
         if (leads === 0) return;
         sellers.set(seller.id, seller);
         projects.set(project.id, project);
         const key = JSON.stringify([date, seller.id, project.id]);
         const previous = grouped.get(key)?.leads ?? 0;
-        grouped.set(key, { date, sellerId: seller.id, projectId: project.id, leads: marketingCount(previous + leads) });
+        grouped.set(key, { date, sellerId: seller.id, projectId: project.id, leads: marketingCount(previous + leads), ...(withReservation !== undefined ? { withReservation: marketingCount((grouped.get(key)?.withReservation ?? 0) + withReservation) } : {}) });
     };
-    for (const row of visibleNative) append(row.date, row.leads, identities.nativeSeller(row.sellerId), identities.nativeProject(row.projectId));
-    for (const row of visibleLegacy) append(row.date, row.leads, identities.legacySeller(row.sellerReference), identities.legacyProject(row.projectReference, row.projectName));
+    for (const row of visibleNative) append(row, identities.nativeSeller(row.sellerId), identities.nativeProject(row.projectId));
+    for (const row of visibleLegacy) append(row, identities.legacySeller(row.sellerReference), identities.legacyProject(row.projectReference, row.projectName));
     const rows = [...grouped.values()].sort((a, b) => a.date.localeCompare(b.date) || a.sellerId.localeCompare(b.sellerId) || a.projectId.localeCompare(b.projectId));
     const selectedLegacy = visibleLegacy.filter((row) => inMarketingRange(row.date, window.selected));
     const appointments = buildMarketingAppointments({ native: native.appointmentEvidence, legacy: legacy.appointmentEvidence ?? (!legacyEnabled ? { cohorts: [], events: [], invalidDates: 0 } : undefined), provider: legacy.provider }, identities, { window, ...(sellerScope ? { sellerScope } : {}) });
@@ -83,6 +83,7 @@ export function buildMarketingHome(native: NativeMarketingData, legacy: LegacyMa
     const ordered = (values: Map<string, MarketingEntity>) => [...values.values()].sort((a, b) => a.name.localeCompare(b.name, "es") || a.id.localeCompare(b.id));
     return {
         schemaVersion: 1,
+        reservationsAvailable: reservationsReady(native, legacy, legacyEnabled),
         observedAt: observedAt.toISOString(),
         today: window.today,
         period: window.period,
@@ -97,4 +98,9 @@ export function buildMarketingHome(native: NativeMarketingData, legacy: LegacyMa
         appointments: appointments.data,
         sources: { native: countIn(visibleNative, window.selected), legacy: countIn(visibleLegacy, window.selected), legacyEnabled, duplicatesExcluded: marketingCount(selectedLegacy.reduce((sum, row) => sum + row.duplicates, 0)), ambiguousOverlaps: marketingCount(selectedLegacy.reduce((sum, row) => sum + row.ambiguous, 0)) },
     };
+}
+
+/** Una fuente ausente no publica ceros como si fueran evidencia. */
+function reservationsReady(native: NativeMarketingData, legacy: LegacyMarketingData, legacyEnabled: boolean): boolean {
+    return native.reservationsAvailable === true && (!legacyEnabled || legacy.reservationsAvailable === true);
 }

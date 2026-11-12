@@ -80,7 +80,8 @@ it("keeps calendar order and zero intervals while using one project color", () =
     const view = render(<CaptureColumnsChart groups={[first, empty, last]} label="Leads por mes" chronological />);
     expect([...view.container.querySelectorAll(".capture-columns-chart__stack-wrap > strong")].map((x) => x.textContent)).toEqual(["2", "0", "8"]);
     expect(view.container.querySelectorAll(".capture-columns-chart__segment")).toHaveLength(2);
-    expect(view.container.querySelectorAll(".capture-columns-chart__legend li")).toHaveLength(1);
+    expect(view.container.querySelector(".capture-columns-chart__legend")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Proyecto" })).toBeInTheDocument();
 });
 
 it("keeps all periods together under one project heading", () => {

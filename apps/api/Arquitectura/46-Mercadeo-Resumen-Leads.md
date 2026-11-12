@@ -211,3 +211,36 @@ del mismo directorio; src/integrations/legacy-crm/legacy-marketing-home.reader.t
 y legacy-marketing-appointments.reader.ts. Evidencia frontend (relativa a apps/frontend):
 src/modules/home/MarketingHomePage.tsx, marketing-appointments.model.ts y
 src/services/marketing/home-summary-service.ts.
+
+## Leads con reserva — ampliación 2026-11-11
+
+El resumen incorpora `reservationsAvailable` y `rows[].withReservation`.
+La tarjeta «Leads con reserva», junto a «Leads», suma los leads registrados en
+el período elegido con reserva o pre-reserva vigente; no cuenta documentos ni
+filtra por fecha de la reserva. Respeta proyecto, vendedor autorizado y la
+precedencia de cohortes nativas. Varios documentos para un lead cuentan una vez.
+
+- Nativo: OV vinculada por `lead_id_sales_order`, activa, `cancelled='no'` y sin
+  borrado. No existe una columna nativa de reserva/pre-reserva independiente.
+- Legacy: OV activa, sin caída, `reserva_ov=1`, o estimación con `pre_reserva=1`
+  y `COALESCE(pre_caida,0)=0`, sin OV asociada o con una OV de pre-reserva activa
+  sin caída. Reutiliza la validación del listado legado de Órdenes de venta.
+- Una OV promovida se rige por su versión nativa mediante
+  `id_old_produccion_sales_order`; cancelar, inactivar o borrar esa versión no
+  rehabilita la reserva antigua. Una OV nativa vigente vinculada al documento
+  legado también acredita la reserva para el lead legacy.
+- El puente de lead por referencia NetSuite exige referencia positiva, lead
+  legacy único y alias nativo inequívoco. Una cohorte promovida conserva su fecha,
+  vendedor y proyecto nativos, incorporando evidencia legacy válida.
+
+La lectura continúa en una transacción REPEATABLE READ / READ ONLY, sin copiar
+registros, modificar estados ni cambiar permisos. Si falta el nuevo contrato
+(API anterior), la tarjeta muestra «—», no un cero inventado. El cliente valida
+conteos enteros no negativos, no mayores a los leads de su cohorte, y exige la
+medida en todas las filas cuando `reservationsAvailable=true`.
+
+Prueba SQL sintética de solo lectura: desde `apps/api`, establecer
+`CRM_MARKETING_RESERVATIONS_LIVE=true` y ejecutar
+`pnpm exec vitest run test/marketing/marketing-reservations.readonly.mysql.spec.ts`.
+Usa CTE, sin tablas temporales ni escrituras, y propiedades generadas con semilla
+20261111 para precedencia nativa, reservas caídas y pre-reservas.

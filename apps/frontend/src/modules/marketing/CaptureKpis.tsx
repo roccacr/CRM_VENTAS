@@ -1,5 +1,5 @@
 import { countFormat, percentFormat } from "../home/marketing-home-format";
-import { type CaptureDepth, type CaptureKpiFigures, type CaptureMeasure, MEASURES } from "./lead-capture-report";
+import { type CaptureDepth, type CaptureKpiFigures, type CaptureMeasure, captureMeasureInfo } from "./lead-capture-report";
 
 interface Tile {
     readonly key: string;
@@ -17,7 +17,7 @@ const UNITS: Record<CaptureDepth, { readonly one: string; readonly many: string;
 
 function tilesFor(figures: CaptureKpiFigures, measure: CaptureMeasure, depth: CaptureDepth): Tile[] {
     const unit = measure === "lossReasons" ? { one: "motivo", many: "motivos", path: "motivo" } : UNITS[depth];
-    const info = measure === "lossReasons" ? { label: "Leads perdidos", noun: "leads perdidos" } : (MEASURES.find((item) => item.measure === measure) ?? { label: "Leads", noun: "leads" });
+    const info = measure === "lossReasons" ? { label: "Leads perdidos", noun: "leads perdidos" } : captureMeasureInfo(measure);
     const second: Tile = measure === "leads" ? { key: "projects", label: "Proyectos con leads", value: countFormat.format(figures.projects), caption: "con al menos un lead en el periodo" } : { key: "share", label: `${info.label} · % general`, value: figures.share === null ? "—" : `${percentFormat.format(figures.share)} %`, caption: "de todos los leads del periodo" };
     return [{ key: "total", label: info.label, value: countFormat.format(figures.total), caption: "en el periodo, con el filtro actual" }, second, { key: "average", label: `Promedio de ${info.noun} por ${unit.one}`, value: percentFormat.format(figures.average), caption: `${countFormat.format(figures.total)} ${info.noun} ÷ ${countFormat.format(figures.units)} ${figures.units === 1 ? unit.one : unit.many} con leads` }];
 }

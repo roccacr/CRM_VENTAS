@@ -170,13 +170,14 @@ describe("lead-capture report screen", () => {
         expect(document.body.textContent).not.toMatch(/USD|\$|Valor|Inversión|Costo/);
     });
 
-    it("shows project names in the legend without seller photos", async () => {
+    it("keeps project headings without the repeated legend or seller photos", async () => {
         installBrowserApiDoubles();
         render(<MarketingLeadCapturePage currentUser={captureUser} />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
-        const legend = document.querySelector(".capture-columns-chart__legend") as HTMLElement;
-        expect(within(legend).getByText("Proyecto Horizonte")).toBeInTheDocument();
-        expect(legend.querySelector("img")).toBeNull();
+        const chart = screen.getByRole("figure");
+        expect(within(chart).getByRole("heading", { name: "Proyecto Horizonte" })).toBeInTheDocument();
+        expect(document.querySelector(".capture-columns-chart__legend")).toBeNull();
+        expect(chart.querySelector("img")).toBeNull();
     });
 
     it("switches what is counted without touching the depth, and shows the appointment columns", async () => {
@@ -388,4 +389,15 @@ it("selects named months and compares every project using the historical report"
     fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "year" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
     expect(screen.getByRole("combobox", { name: "Años" })).toBeInTheDocument();
+});
+
+it("preserves reserved lead totals through every depth and aggregation", () => {
+    const reserved = rows.map((row) => ({ ...row, withReservation: Math.floor(row.leads / 2) }));
+    const expected = reserved.reduce((sum, row) => sum + row.withReservation, 0);
+    for (const depth of [1, 2, 3] as const) {
+        expect(summaryRows(reserved, depth, "reservations", captureCatalogs).reduce((sum, row) => sum + row.value, 0)).toBe(expected);
+        expect(generalRows(reserved, depth, "reservations", captureCatalogs).reduce((sum, row) => sum + row.value, 0)).toBe(expected);
+        expect(sellerSections(reserved, depth, "reservations", captureCatalogs).reduce((sum, row) => sum + row.value, 0)).toBe(expected);
+        expect(captureKpis(reserved, "reservations", depth).total).toBe(expected);
+    }
 });

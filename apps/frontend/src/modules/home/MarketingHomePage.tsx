@@ -195,6 +195,7 @@ function marketingRows(summary: MarketingApiSummary): readonly MarketingSampleRo
         ad: "",
         daysAgo: daysBetween(parseISODate(row.date) as Date, today),
         leads: row.leads,
+        withReservation: row.withReservation,
         withAppointment: appointments.get(JSON.stringify([row.date, row.sellerId, row.projectId])) ?? 0,
         appointments: 0,
         attended: 0,
@@ -217,6 +218,7 @@ interface MarketingHomeDashboardProps {
     readonly dataQuality?: MarketingApiSummary["appointments"] | undefined;
     readonly directory?: readonly MarketingDirectoryRow[] | undefined;
     readonly appointmentEvents?: readonly MarketingAppointmentEvent[] | undefined;
+    readonly reservationsAvailable?: boolean;
     readonly appointmentsAvailable?: boolean;
     readonly loading?: boolean;
     readonly periodControl?: { readonly period: HomePeriod; readonly setPeriod: (period: HomePeriod) => void };
@@ -225,7 +227,7 @@ interface MarketingHomeDashboardProps {
 }
 
 /** Tablero puro. Si no hay dato, un placeholder. Las filas explícitas son la única fuente. */
-export function MarketingHomeDashboard({ currentUser, rows, today, periodControl, appointmentsAvailable, appointmentEvents, directory, dataQuality, loading, notice = "La información de leads y citas estará disponible al conectar los datos.", onRetry }: MarketingHomeDashboardProps) {
+export function MarketingHomeDashboard({ currentUser, rows, today, periodControl, reservationsAvailable, appointmentsAvailable, appointmentEvents, directory, dataQuality, loading, notice = "La información de leads y citas estará disponible al conectar los datos.", onRetry }: MarketingHomeDashboardProps) {
     const [transitionPending, startTransition] = useTransition();
     const showAppointments = appointmentsAvailable !== false;
     const available = rows !== undefined;
@@ -286,6 +288,7 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
             <MarketingDataQuality value={dataQuality} />
             <div className="marketing-preview-banners">
                 {first && <MarketingBanner key={first.title} {...first} />}
+                <MarketingReservationBanner rows={view.rows} available={available} reservationsAvailable={reservationsAvailable} />
                 <MarketingWelcome currentUser={currentUser} scope={scope} source={dimensions} />
                 {others.map((banner) => (
                     <MarketingBanner key={banner.title} {...banner} />
@@ -297,6 +300,11 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
             <MarketingSellers groups={sellerGroups} appointmentsAvailable={showAppointments} comparisonLabel={describeRange(view.comparison)} />
         </div>
     );
+}
+
+/** Cantidad de leads de la cohorte con evidencia vigente; no depende de la disponibilidad de citas. */
+function MarketingReservationBanner({ rows, available, reservationsAvailable }: { readonly rows: readonly MarketingSampleRow[]; readonly available: boolean; readonly reservationsAvailable: boolean | undefined }) {
+    return <MarketingBanner title="Leads con reserva" value={available && reservationsAvailable ? countFormat.format(rows.reduce((sum, row) => sum + (row.withReservation ?? 0), 0)) : "—"} caption="Con reserva o pre-reserva" hint="Leads registrados en el periodo con una reserva o pre-reserva vigente. Cada lead se cuenta una sola vez, aunque tenga varios documentos. Excluye reservas caídas y órdenes inactivas o eliminadas." icon={<CheckCircleOutlined />} tone="success" delta={null} series={[]} />;
 }
 
 /** Señal de ocupado compartida por las lecturas de red y el cambio local de filtro. No bloquea una selección más nueva. */
@@ -397,7 +405,7 @@ function marketingDirectory(summary: MarketingApiSummary): MarketingDirectoryRow
 
 function connectedPresentation(value: MarketingApiSummary | null | undefined) {
     if (!value) return { appointmentsAvailable: false };
-    return { rows: marketingRows(value), today: parseISODate(value.today) ?? undefined, appointmentsAvailable: value.appointments.available, appointmentEvents: value.appointments.available ? value.appointments.events : undefined, directory: marketingDirectory(value), dataQuality: value.appointments };
+    return { reservationsAvailable: value.reservationsAvailable === true, rows: marketingRows(value), today: parseISODate(value.today) ?? undefined, appointmentsAvailable: value.appointments.available, appointmentEvents: value.appointments.available ? value.appointments.events : undefined, directory: marketingDirectory(value), dataQuality: value.appointments };
 }
 function summarizeOptionalAppointments(events: readonly MarketingAppointmentEvent[] | undefined, period: Parameters<typeof summarizeAppointmentEvents>[1], scope: MarketingScope) {
     return events ? summarizeAppointmentEvents(events, period, scope) : undefined;

@@ -8,7 +8,7 @@ import Modal from "antd/es/modal";
 import { type ReactNode, type RefObject, useMemo, useRef, useState } from "react";
 
 import type { IdentityUser } from "../../services/auth/identity-contracts";
-import type { CaptureApiReport, CaptureQualification } from "../../services/marketing/lead-report-service";
+import { type CaptureApiReport, captureMeasureAvailable, type CaptureQualification } from "../../services/marketing/lead-report-service";
 import { ADMINISTRATION_MODAL_Z_INDEX } from "../administration/administration-theme";
 import { countFormat, describeRange, percentFormat } from "../home/marketing-home-format";
 import { InfoHint } from "../home/MarketingInfoHint";
@@ -20,7 +20,7 @@ import { CaptureControls, type ExportFormat } from "./CaptureControls";
 import { CaptureKpis } from "./CaptureKpis";
 import { CaptureLoading } from "./CaptureLoading";
 import { BreakdownTables } from "./CaptureTables";
-import { type CaptureCatalogs, type CaptureDepth, type CaptureFilters, captureKpis, type CaptureMeasure, DEPTHS, filterCaptureRows, lossReasonRows, MEASURES, type PathRow } from "./lead-capture-report";
+import { type CaptureCatalogs, type CaptureDepth, type CaptureFilters, captureKpis, type CaptureMeasure, captureMeasureInfo, DEPTHS, filterCaptureRows, lossReasonRows, type PathRow } from "./lead-capture-report";
 import { useCaptureReport } from "./useCaptureReport";
 
 /** El modal del desglose es tan ancho como sus tablas. Una tabla no se estira a toda la pantalla. Tres la usan. */
@@ -28,6 +28,7 @@ const BREAKDOWN_WIDTH: Record<CaptureDepth, number> = { 1: 760, 2: 1200, 3: 1700
 
 const MEASURE_HINTS: Record<CaptureMeasure, string> = {
     leads: "Leads registrados en el periodo, agrupados por proyecto, campaña o anuncio según el nivel elegido.",
+    reservations: "Leads registrados en el período con una reserva o pre-reserva vigente. Un lead con ambas cuenta una sola vez; no se suman documentos. Excluye reservas caídas y órdenes inactivas o eliminadas.",
     appointments: "Con cita = Programada + Realizada. Cada lead cuenta una sola vez: realizada tiene prioridad sobre programada. Con cita + Sin cita = Total de leads captados; no se cuentan eventos.",
     lossReasons: "Motivos documentados de los leads captados en el período que actualmente están perdidos. Cada lead cuenta una vez. Sin evidencia fiable se muestra Sin motivo registrado. El porcentaje del gráfico se calcula sobre el total de perdidos.",
     lost: "Leads que hoy están en etapa Perdido, y qué porcentaje son de los leads del mismo grupo. El gráfico compara los perdidos de cada proyecto, campaña o anuncio.",
@@ -119,6 +120,7 @@ function CapturePage({ userId }: { readonly userId: string }) {
                 onPeriod={setDraftPeriod}
                 busy={exporting}
                 onDownload={(format) => void download(format)}
+                reservationsAvailable={captureMeasureAvailable(value)}
                 measure={measure}
                 onMeasure={setMeasure}
                 depth={depth}
@@ -196,12 +198,13 @@ function CaptureResults({ picked, setPicked, value, measure, depth, filters, cat
     const chart = comparison.groups;
     const reasons = useMemo(() => lossReasonRows(scoped), [scoped]);
     const groupingLabel = captureGroupingLabel(grouping);
-    const measureInfo = MEASURES.find((item) => item.measure === measure) ?? { label: "Leads", noun: "leads" };
+    const measureInfo = captureMeasureInfo(measure);
     const noun = depthNoun(depth);
     const baseTitle = measure === "lossReasons" ? "Motivos de pérdida" : `${measureInfo.label} por ${noun}`;
     const title = grouping === "total" ? baseTitle : `${baseTitle} · por ${groupingLabel}`;
     const selectedLabel = selectedRangeLabel(filters);
     const summaryLine = `${qualificationLabel(value.qualification)} · ${measureInfo.label} · por ${noun} · agrupación ${groupingLabel} · ${selectedLabel}`;
+    if (!captureMeasureAvailable(value, measure)) return <p role="status">La información de reservas y pre-reservas no está disponible en este reporte.</p>;
     return (
         <div className="capture-report" ref={reportRef}>
             <CaptureQuality quality={value.quality} />

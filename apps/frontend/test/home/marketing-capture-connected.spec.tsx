@@ -72,9 +72,8 @@ describe("connected capture report", () => {
         fireEvent.click(screen.getByRole("button", { name: "Aplicar filtro" }));
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
         expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
-        const legend = document.querySelector(".capture-columns-chart__legend") as HTMLElement;
-        expect(legend).not.toHaveTextContent("Carlos Vega");
-        expect(legend.querySelector("img")).toBeNull();
+        expect(document.querySelector(".capture-columns-chart__legend")).toBeNull();
+        expect(screen.getByRole("figure").querySelector("img")).toBeNull();
     });
     it("starts on month and keeps counters and downloads hidden while loading", () => {
         api.request.mockReturnValue(new Promise(() => {}));
@@ -142,10 +141,10 @@ describe("connected capture report", () => {
         fireEvent.click(await screen.findByRole("button", { name: "Ver desglose en tabla" }));
         const table = await screen.findByRole("table", { name: "Leads por proyecto" });
         expect(within(table).getAllByText("Real horizonte")[0]).toBeInTheDocument();
-        const legend = document.querySelector(".capture-columns-chart__legend") as HTMLElement;
-        expect(within(legend).getByText("Real horizonte")).toBeInTheDocument();
-        expect(legend.querySelector('img[src*="/vendedores/"]')).toBeNull();
-        expect(legend.querySelector("img")).toBeNull();
+        const chart = screen.getByRole("figure");
+        expect(within(chart).getByRole("heading", { name: "Real horizonte" })).toBeInTheDocument();
+        expect(document.querySelector(".capture-columns-chart__legend")).toBeNull();
+        expect(chart.querySelector("img")).toBeNull();
         expect(screen.getByRole("note")).toHaveTextContent("3");
         expect(screen.queryByText("Ana Solís")).not.toBeInTheDocument();
     });
@@ -238,4 +237,28 @@ it("keeps an empty project intersection instead of widening to other projects", 
     expect(document.querySelector(".capture-block__aside")).toHaveTextContent("0 leads");
     fireEvent.click(screen.getByRole("button", { name: "Quitar selecci\u00f3n" }));
     expect(document.querySelector(".capture-block__aside")).not.toHaveTextContent(/^0 leads$/);
+});
+
+it("adds Reserva o pre-reserva and uses its count in charts and tables", async () => {
+    const response = captureResponse();
+    const rows = response.rows.map((row) => ({ ...row, withReservation: Math.min(1, row.leads) }));
+    api.request.mockResolvedValue({ ...response, rows });
+    open();
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    fireEvent.click(screen.getByRole("button", { name: "Reserva o pre-reserva" }));
+    expect(screen.getByRole("button", { name: "Reserva o pre-reserva" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("heading", { name: /Reserva o pre-reserva por proyecto/ })).toBeInTheDocument();
+    const expected = rows.filter((row) => row.date >= response.range.start && row.date <= response.today).reduce((sum, row) => sum + row.withReservation, 0);
+    const indicators = within(screen.getByRole("list", { name: "Indicadores del periodo" })).getAllByRole("listitem");
+    expect(within(indicators[0] as HTMLElement).getByText(String(expected))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ver desglose en tabla" }));
+    expect(await screen.findByRole("columnheader", { name: "Con reserva o pre-reserva" })).toBeInTheDocument();
+    expect(api.request).toHaveBeenCalledTimes(1);
+});
+
+it("keeps reservations unavailable when an older API omits the metric", async () => {
+    api.request.mockResolvedValue(captureResponse());
+    open();
+    await screen.findByRole("button", { name: "Ver desglose en tabla" });
+    expect(screen.getByRole("button", { name: "Reserva o pre-reserva" })).toBeDisabled();
 });

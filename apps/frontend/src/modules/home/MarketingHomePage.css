@@ -139,7 +139,12 @@
 }
 
 .marketing-preview-banners .marketing-welcome {
-    grid-column: span 2;
+    grid-column: auto;
+    grid-template-columns: minmax(0, 1fr) 100px;
+}
+
+.marketing-preview-banners .marketing-welcome__art {
+    width: 100px;
 }
 
 .marketing-preview-banners {

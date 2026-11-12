@@ -59,3 +59,12 @@ it("limits organizational closure to the assigned subtree and terminates cycles"
     );
     expect([...permitted].sort()).toEqual([1, 2, 3]);
 });
+
+it("counts reserved leads across sources once and keeps seller visibility", () => {
+    const n = { ...native, reservationsAvailable: true, rows: native.rows.map((row) => ({ ...row, withReservation: 1 })) };
+    const l = { ...legacy, reservationsAvailable: true, rows: legacy.rows.map((row) => ({ ...row, withReservation: 2 })) };
+    const result = buildMarketingHome(n, l, window, { observedAt: now, legacyEnabled: true });
+    expect(result.reservationsAvailable).toBe(true);
+    expect(result.rows[0]?.withReservation).toBe(3);
+    expect(buildMarketingHome(n, l, window, { observedAt: now, legacyEnabled: true, sellerScope: new Set(["hidden"]) }).rows).toEqual([]);
+});

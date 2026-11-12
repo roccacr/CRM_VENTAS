@@ -2,7 +2,7 @@
 export type CaptureDepth = 1 | 2 | 3;
 
 /** Medida del reporte; los motivos de pérdida añaden una distribución sin cambiar la cohorte captada. */
-export type CaptureMeasure = "leads" | "appointments" | "lost" | "lossReasons";
+export type CaptureMeasure = "leads" | "appointments" | "reservations" | "lost" | "lossReasons";
 
 /**
  * Conteos de un grupo de leads.
@@ -11,6 +11,7 @@ export type CaptureMeasure = "leads" | "appointments" | "lost" | "lossReasons";
  */
 export interface CaptureValues {
     readonly leads: number;
+    readonly withReservation?: number;
     readonly noAppointment: number;
     /** Cita agendada y todavía no realizada. */
     readonly scheduled: number;
@@ -67,18 +68,31 @@ export function filterCaptureRows(rows: readonly CaptureRow[], filters: CaptureF
 }
 
 export const EMPTY_VALUES: CaptureValues = { leads: 0, noAppointment: 0, scheduled: 0, completed: 0, lost: 0 };
-export const addValues = (a: CaptureValues, b: CaptureValues): CaptureValues => ({ leads: a.leads + b.leads, noAppointment: a.noAppointment + b.noAppointment, scheduled: a.scheduled + b.scheduled, completed: a.completed + b.completed, lost: a.lost + b.lost });
+export const addValues = (a: CaptureValues, b: CaptureValues): CaptureValues => ({ leads: a.leads + b.leads, noAppointment: a.noAppointment + b.noAppointment, scheduled: a.scheduled + b.scheduled, completed: a.completed + b.completed, lost: a.lost + b.lost, ...reservationValues(a, b) });
+/** Agrega evidencia disponible; una respuesta anterior sin esta medida conserva su ausencia. */
+function reservationValues(a: CaptureValues, b: CaptureValues): Pick<CaptureValues, "withReservation"> {
+    if (a.withReservation === undefined && b.withReservation === undefined) return {};
+    return { withReservation: (a.withReservation ?? 0) + (b.withReservation ?? 0) };
+}
+
 const sumValues = (rows: readonly CaptureValues[]): CaptureValues => rows.reduce(addValues, EMPTY_VALUES);
 
 export const MEASURES: readonly { readonly measure: CaptureMeasure; readonly label: string; readonly noun: string }[] = [
     { measure: "leads", label: "Leads", noun: "leads" },
+    { measure: "reservations", label: "Reserva o pre-reserva", noun: "leads con reserva o pre-reserva" },
     { measure: "appointments", label: "Leads con cita", noun: "leads con cita" },
     { measure: "lost", label: "Leads perdidos", noun: "leads perdidos" },
     { measure: "lossReasons", label: "Motivos de pérdida", noun: "leads perdidos" },
 ];
 
-/** El número que muestra una barra, un banner o un ranking: una cifra por medida. Cada lead cuenta una vez, como agendado o como realizado. */
+/** Etiquetas compartidas por gráficos, tablas, indicadores y exportación. */
+export function captureMeasureInfo(measure: CaptureMeasure) {
+    return MEASURES.find((item) => item.measure === measure) ?? { label: "Leads", noun: "leads" };
+}
+
+/** Cifra compartida por barras, banners y rankings. Citas y reservas cuentan leads únicos, no eventos ni documentos. */
 export function primaryValue(values: CaptureValues, measure: CaptureMeasure): number {
+    if (measure === "reservations") return values.withReservation ?? 0;
     if (measure === "appointments") return values.scheduled + values.completed;
     return measure === "lost" || measure === "lossReasons" ? values.lost : values.leads;
 }
@@ -117,6 +131,11 @@ const share = (part: number, whole: number): string => (whole ? `${(Math.round((
 
 /** Las columnas que cada medida muestra en las tablas, en cada profundidad. */
 export function columnsFor(measure: CaptureMeasure): readonly ValueColumn[] {
+    if (measure === "reservations")
+        return [
+            { key: "reserved", label: "Con reserva o pre-reserva", cell: (v) => v.withReservation ?? 0 },
+            { key: "share", label: "% de los leads", cell: (v) => share(v.withReservation ?? 0, v.leads), isShare: true },
+        ];
     if (measure === "appointments")
         return [
             { key: "generated", label: "Con cita", cell: (v) => v.scheduled + v.completed },

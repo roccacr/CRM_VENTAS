@@ -36,8 +36,8 @@ export class MarketingHomeService {
         const window = createMarketingWindow(parsed.data.period, now);
         try {
             return await this.repository.readSnapshot(async (tx) => {
-                const native = await this.repository.readNative(tx, window);
                 const enabled = this.legacy.enabled();
+                const native = await this.repository.readNative(tx, window, enabled);
                 const legacy = enabled ? await this.legacy.read(tx, window) : { provider: "netsuite", rows: [], owners: [] };
                 const sellerScope =
                     hasGlobalMarketingRead(profile) || allowed.some((permission) => permission.scope === "all_areas")

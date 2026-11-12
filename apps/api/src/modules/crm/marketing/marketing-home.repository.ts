@@ -6,6 +6,7 @@ import type { CrmDatabase } from "../../../database/database.types.js";
 import type { IdentityProfile } from "../identity/identity.types.js";
 import { readNativeAppointments } from "./marketing-appointments.repository.js";
 import { marketingCount, type MarketingDailyRow, type MarketingExternalIdentity, type MarketingWindow, type NativeMarketingData, type NativeMarketingProject, type NativeMarketingUser } from "./marketing-home.contract.js";
+import { nativeLeadReservation } from "./marketing-reservations.query.js";
 
 /** Lo nativo se lee primero, en una foto de lectura repetible y de solo lectura. */
 @Injectable()
@@ -43,11 +44,11 @@ export class MarketingHomeRepository {
      * Agregado nativo del inicio. La fecha resta seis horas al alta.
      * Más de 50000 filas agrupadas es un error. No se entrega un resumen recortado.
      */
-    async readNative(tx: Transaction<CrmDatabase>, window: MarketingWindow): Promise<NativeMarketingData> {
+    async readNative(tx: Transaction<CrmDatabase>, window: MarketingWindow, legacyEnabled = false): Promise<NativeMarketingData> {
         const start = new Date(window.startEpoch * 1000).toISOString().slice(0, 23).replace("T", " ");
         const end = new Date(window.endEpoch * 1000).toISOString().slice(0, 23).replace("T", " ");
         const rows = await sql<MarketingDailyRow>`SELECT /*+ MAX_EXECUTION_TIME(3000) */ DATE_FORMAT(DATE_SUB(l.created_at_lead,INTERVAL 6 HOUR),'%Y-%m-%d') AS date,
-            COALESCE(u.public_id_user,'unassigned') AS sellerId,p.public_id_project AS projectId,COUNT(*) AS leads
+            COALESCE(u.public_id_user,'unassigned') AS sellerId,p.public_id_project AS projectId,COUNT(*) AS leads,SUM(${nativeLeadReservation(legacyEnabled)}) AS withReservation
             FROM crm_lead l LEFT JOIN sec_user u ON u.id_user=l.owner_user_id_lead JOIN crm_project p ON p.id_project=l.project_id_lead
             WHERE l.created_at_lead>=${start} AND l.created_at_lead<${end}
             GROUP BY date,sellerId,projectId ORDER BY date,sellerId,projectId LIMIT 50001`.execute(tx);
@@ -60,7 +61,7 @@ export class MarketingHomeRepository {
         const projectAliases = await sql<MarketingExternalIdentity>`SELECT p.public_id_project AS id,s.code_external_system AS ${sql.ref("system")},x.external_id_project_external_reference AS externalId
             FROM crm_project_external_reference x JOIN crm_project p ON p.id_project=x.project_id_project_external_reference JOIN int_external_system s ON s.id_external_system=x.external_system_id_project_external_reference
             WHERE x.status_project_external_reference='active' AND x.deleted_at_project_external_reference IS NULL AND s.status_external_system='active'`.execute(tx);
-        return { appointmentEvidence: await readNativeAppointments(tx, window), rows: rows.rows.map((row) => ({ ...row, leads: marketingCount(row.leads) })), users: users.rows, projects: projects.rows, userAliases: userAliases.rows, projectAliases: projectAliases.rows };
+        return { reservationsAvailable: true, appointmentEvidence: await readNativeAppointments(tx, window), rows: rows.rows.map((row) => ({ ...row, leads: marketingCount(row.leads), withReservation: marketingCount(row.withReservation) })), users: users.rows, projects: projects.rows, userAliases: userAliases.rows, projectAliases: projectAliases.rows };
     }
 }
 

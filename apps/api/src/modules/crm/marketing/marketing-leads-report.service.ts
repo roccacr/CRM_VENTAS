@@ -37,8 +37,8 @@ export class MarketingLeadsReportService {
         try {
             return await this.snapshot.readSnapshot(async (tx) => {
                 const sellerScope = hasGlobalMarketingRead(profile) || scopes.includes("all_areas") ? undefined : await this.snapshot.visibleSellers(tx, profile, scopes);
-                const native = await this.repository.readNative(tx);
                 const enabled = this.legacy.enabled();
+                const native = await this.repository.readNative(tx, enabled);
                 const legacy: ReportSource = enabled ? await this.legacy.read(tx) : { leads: [], events: [], users: [], projects: [], campaigns: [], userAliases: [], projectAliases: [], campaignAliases: [], leadAliases: [] };
                 return buildMarketingLeadsReport(native, legacy, { period: parsed.data.period, qualification: parsed.data.qualification, now, legacyEnabled: enabled, ...(sellerScope ? { sellerScope } : {}) });
             });

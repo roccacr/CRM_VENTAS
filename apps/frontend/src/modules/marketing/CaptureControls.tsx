@@ -33,6 +33,7 @@ interface Props {
     readonly period: CapturePeriod;
     readonly onPeriod: (period: CapturePeriod) => void;
     readonly onDownload: (format: ExportFormat) => void;
+    readonly reservationsAvailable?: boolean;
     readonly measure: CaptureMeasure;
     readonly onMeasure: (measure: CaptureMeasure) => void;
     readonly depth: CaptureDepth;
@@ -47,7 +48,7 @@ interface Props {
 }
 
 /** Controles del reporte global: medida, profundidad, período y exportación, sin filtrar por vendedor. */
-export function CaptureControls({ qualification, onQualification, pending, period: selectedPeriod, onPeriod, busy, onDownload, measure, onMeasure, depth, onDepth, today, range, onRange, choices, selectedPeriods, appliedPeriodCount, onSelectedPeriods }: Props) {
+export function CaptureControls({ qualification, onQualification, pending, period: selectedPeriod, onPeriod, busy, onDownload, reservationsAvailable, measure, onMeasure, depth, onDepth, today, range, onRange, choices, selectedPeriods, appliedPeriodCount, onSelectedPeriods }: Props) {
     const calendarLabel = CALENDAR_LABELS[selectedPeriod];
     const [draft, setDraft] = useState<CaptureDateRange>(range);
     const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export function CaptureControls({ qualification, onQualification, pending, perio
                                 type="button"
                                 key={item.measure}
                                 aria-pressed={measure === item.measure}
+                                disabled={item.measure === "reservations" && reservationsAvailable === false}
                                 onClick={() => {
                                     onMeasure(item.measure);
                                 }}

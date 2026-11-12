@@ -18,7 +18,7 @@ const TOTAL_LABEL_PX = 20;
 const MIN_COLUMN_PX = 14;
 const HEADROOM_PX = 24;
 const LIMITS = [10, 15, 30, 0] as const;
-const PERCENT_LABELS: Record<CaptureMeasure, string> = { leads: "% del total", appointments: "% de los leads", lost: "% de los leads", lossReasons: "% de los perdidos" };
+const PERCENT_LABELS: Record<CaptureMeasure, string> = { leads: "% del total", appointments: "% de los leads", reservations: "% de los leads", lost: "% de los leads", lossReasons: "% de los perdidos" };
 
 /** Conserva la escala visual del reporte y un cuerpo visible incluso para un total de uno. */
 const columnHeight = (total: number, maximum: number): number => TOTAL_LABEL_PX + MIN_COLUMN_PX + (AREA_PX - HEADROOM_PX - TOTAL_LABEL_PX - MIN_COLUMN_PX) * Math.sqrt(total / maximum);
@@ -90,19 +90,10 @@ export function CaptureColumnsChart({ groups: source, label, measure = "leads", 
     const [mode, setMode] = useState<ChartMode>("count");
     const [limit, setLimit] = useState(defaultLimit);
     const { groups, empty, hidden, maximum } = chartView(source, measure, mode, { limit, chronological });
-    const legend = [...new Map(groups.map((group) => [group.colorKey ?? group.key, { key: group.colorKey ?? group.key, label: chronological ? group.path.slice(1).join(" › ") : group.path.at(-1) }])).values()];
     const format = (value: number) => (mode === "percent" ? `${percentFormat.format(value)} %` : String(value));
     return (
         <figure className="capture-columns-chart" aria-label={label}>
             <div className="capture-columns-chart__top">
-                <ul className="capture-columns-chart__legend" aria-hidden="true">
-                    {legend.map((item) => (
-                        <li key={item.key} title={item.label}>
-                            <i className="capture-series" style={{ backgroundColor: groupTone(item.key).color }} />
-                            <span>{item.label}</span>
-                        </li>
-                    ))}
-                </ul>
                 <ChartControls mode={mode} measure={measure} onMode={setMode} limit={limit} onLimit={setLimit} showLimit={source.length > LIMITS[0]} chronological={chronological} />
             </div>
             <p className="capture-columns-chart__caption">

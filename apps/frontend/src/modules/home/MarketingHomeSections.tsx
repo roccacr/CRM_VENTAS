@@ -34,7 +34,7 @@ export function MarketingAlerts({ alerts, comparison }: { readonly alerts: reado
         <section className="marketing-alerts" aria-label="Resultados para revisar">
             <h2>
                 {alerts.every((alert) => alert.key.startsWith("project:")) ? "Proyectos con menos leads" : "Resultados para revisar"}
-                <InfoHint label="avisos">{`Hasta tres avisos, de mayor a menor caída.${comparison ? ` Compara ${comparison.current} con ${comparison.previous}.` : ""} Respeta los vendedores y proyectos elegidos.`}</InfoHint>
+                <InfoHint label="avisos">{`Hasta siete avisos, de mayor a menor caída.${comparison ? ` Compara ${comparison.current} con ${comparison.previous}.` : ""} Respeta los vendedores y proyectos elegidos.`}</InfoHint>
             </h2>
             <ul>
                 {alerts.map((alert) => (
