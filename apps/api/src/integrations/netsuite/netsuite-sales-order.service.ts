@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { BadGatewayException, BadRequestException, ForbiddenException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { z } from "zod";
 
@@ -11,7 +9,7 @@ import { formalizationPermissionScope } from "../../modules/crm/sales/sales-orde
 import { assertFormalizationOrderReadable } from "../../modules/crm/sales/sales-orders/formalization-read.policy.js";
 import { orderTimingIdentity, type TimingOrder } from "../../modules/crm/sales/sales-orders/order-timing.contract.js";
 import { NetsuiteOrderRepository } from "./netsuite-order.repository.js";
-import { type PersistedOrderEvent, persistedOrderEvent, productionOrderEvent } from "./netsuite-order-event.contract.js";
+import { type PersistedOrderEvent, verifiedOrderEventFromSnapshot } from "./netsuite-order-event.contract.js";
 import { readOrderRelationValues } from "./netsuite-order-event.mapper.js";
 import type { ManualOrderSynchronization } from "./netsuite-order-event.repository.js";
 import { NetsuiteOrderEventService } from "./netsuite-order-event.service.js";
@@ -209,13 +207,7 @@ export class NetsuiteSalesOrderService {
     /** La foto tiene que traer las tres marcas de tiempo y `crm_sync_projection=1`. Si no, no se sincroniza contra una libreria vieja. */
     private async verifiedEvent(netsuiteId: string, context: ReturnType<NetsuiteRestletClient["integrationContext"]>) {
         const raw = await this.client.readSalesOrderSnapshot(netsuiteId);
-        const metadata = z.looseObject({ sourceModifiedAt: z.iso.datetime(), snapshotReadStartedAt: z.iso.datetime(), snapshotReadCompletedAt: z.iso.datetime() }).safeParse(raw);
-        if (!metadata.success) throw new BadGatewayException("Actualiza la libreria NetSuite: no devolvio una lectura verificada para sincronizar.");
-        const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt, ...snapshot } = metadata.data;
-        const envelope = { schemaVersion: 2, source: { system: "netsuite", ...context }, event: { recordType: "salesorder", netsuiteId: netsuiteId, eventType: "edit", eventId: randomUUID(), observedAt: new Date().toISOString(), sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt }, snapshot };
-        const parsed = (context.environment === "production" ? productionOrderEvent : persistedOrderEvent).safeParse(envelope);
-        if (!parsed.success || parsed.data.snapshot.data.fields.crm_sync_projection !== 1) throw new BadGatewayException("NetSuite no devolvio la proyeccion completa y valida de esta orden.");
-        return parsed.data;
+        return verifiedOrderEventFromSnapshot(raw, netsuiteId, context);
     }
 
     private async authorized<T>(session: string | undefined, input: unknown, read: (target: { source: "native" | "legacy"; id: string }, check: (order: TimingOrder) => void, profile: IdentityProfile) => Promise<T>, includeInactive = false): Promise<T> {

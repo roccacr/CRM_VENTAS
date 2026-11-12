@@ -275,7 +275,7 @@ it("keeps salesperson separate when stage responsibility is unknown", async () =
     const data = payload();
     vi.mocked(apiRequest).mockResolvedValue({ ...data, items: data.items.map((item) => ({ ...item, seller: { id: "seller", name: "Ana" }, changedBy: { id: "author", name: "Luis" } })) });
     render(<FormalizationFollowUpPreview {...props} />);
-    await screen.findByText("Sin responsable registrado");
+    await screen.findByText("Sistema");
     expect(screen.getByText("Vendedor: Ana")).toBeInTheDocument();
     expect(screen.getByText("Autor del cambio: Luis")).toBeInTheDocument();
     expect(screen.getByText("Tiempo no disponible")).toBeInTheDocument();

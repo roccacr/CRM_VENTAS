@@ -483,8 +483,8 @@ describe("EnviarEvento.sendRecordEvent", () => {
     it.each([
         ["HTML body", () => ({ code: 200, body: "<html>ngrok</html>" })],
         ["network error", throwing(new Error("SECRET"))],
-    ])("fails closed on %s without throwing", (_name, post) => {
-        expect(setup({ post }).send(EVENT, snapshot)).toEqual({ status: "delivery_failed", delivered: false });
+    ])("fails closed on %s without throwing", (name, post) => {
+        expect(setup({ post }).send(EVENT, snapshot)).toEqual({ status: "delivery_failed", delivered: false, ...(name === "network error" ? { transportCode: "UNCLASSIFIED", failureReason: "transport_error" } : {}) });
     });
     it("fails closed when the snapshot reader throws, without sending a request", () => {
         const { send, https } = setup();

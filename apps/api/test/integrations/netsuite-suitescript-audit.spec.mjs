@@ -38,6 +38,29 @@ function dispatch({ id = "214", memo = "audit", lineCount = 0, itemText } = {}) 
 
 describe("SuiteScript adversarial producer/consumer contract audit (offline)", () => {
     it.each([
+        ["SSS_REQUEST_TIME_EXCEEDED", "timeout"],
+        ["SSS_CONNECTION_TIME_OUT", "timeout"],
+        ["SSS_INVALID_HOST_CERT", "tls_error"],
+        ["SSS_UNKNOWN_HOST", "dns_error"],
+        ["PRIVATE_TOKEN", "transport_error"],
+    ])("reports safe transport classification for %s", (name, reason) => {
+        const log = logMock();
+        const https = {
+            createSecureString: ({ input }) => input,
+            post: vi.fn(() => {
+                const error = new Error("PRIVATE_CUSTOMER_BODY");
+                error.name = name;
+                throw error;
+            }),
+        };
+        const entry = loadAmd("SS2_1_UE_CRM_Habita.js", { ...EVENT_PROVIDERS, "N/runtime": runtimeMock(), "N/record": recordMock(), "N/search": searchMock(), "N/log": log, "N/https": https });
+        entry.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: "214" } });
+        expect(https.post).toHaveBeenCalledTimes(2);
+        expect(log.error.mock.calls[0][0].details).toMatchObject({ status: "delivery_failed", delivered: false, failureReason: reason, transportCode: name === "PRIVATE_TOKEN" ? "UNCLASSIFIED" : name });
+        expect(JSON.stringify(log.error.mock.calls)).not.toContain("PRIVATE_CUSTOMER_BODY");
+        expect(JSON.stringify(log.error.mock.calls)).not.toContain("PRIVATE_TOKEN");
+    });
+    it.each([
         [400, "invalid_payload"],
         [401, "authentication_rejected"],
         [403, "access_rejected"],

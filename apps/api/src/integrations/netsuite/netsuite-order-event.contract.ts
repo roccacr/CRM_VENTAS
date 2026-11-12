@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+
+import { BadGatewayException } from "@nestjs/common";
 import { z } from "zod";
 
 const scalar = z.union([z.string().max(16000), z.number(), z.boolean(), z.null()]);
@@ -32,3 +35,14 @@ export const productionOrderEvent = persistedEnvelope
     .refine((value) => validWindow(value.event), { message: "Ventana de lectura invalida." })
     .refine((value) => value.snapshot.data.fields.crm_sync_projection !== 1 || value.event.snapshotReadStartedAt !== undefined, { message: "La proyeccion ampliada requiere ventana de lectura verificada." });
 export type PersistedOrderEvent = z.infer<typeof persistedOrderEvent> | z.infer<typeof productionOrderEvent>;
+
+/** La sincronización manual y la recuperación operativa comparten identidad, ventana y validación del snapshot fresco. */
+export function verifiedOrderEventFromSnapshot(raw: unknown, netsuiteId: string, context: { environment: "production" | "sandbox"; accountId: string }): PersistedOrderEvent {
+    const metadata = z.looseObject({ sourceModifiedAt: z.iso.datetime(), snapshotReadStartedAt: z.iso.datetime(), snapshotReadCompletedAt: z.iso.datetime() }).safeParse(raw);
+    if (!metadata.success) throw new BadGatewayException("Actualiza la libreria NetSuite: no devolvio una lectura verificada para sincronizar.");
+    const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt, ...snapshot } = metadata.data;
+    const envelope = { schemaVersion: 2, source: { system: "netsuite", ...context }, event: { recordType: "salesorder", netsuiteId, eventType: "edit", eventId: randomUUID(), observedAt: new Date().toISOString(), sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt }, snapshot };
+    const parsed = (context.environment === "production" ? productionOrderEvent : persistedOrderEvent).safeParse(envelope);
+    if (!parsed.success || parsed.data.snapshot.data.fields.crm_sync_projection !== 1) throw new BadGatewayException("NetSuite no devolvio la proyeccion completa y valida de esta orden.");
+    return parsed.data;
+}

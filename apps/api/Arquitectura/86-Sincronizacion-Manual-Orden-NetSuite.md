@@ -40,3 +40,15 @@ Pruebas con dobles: Produccion/Sandbox, permisos y sesion revocados, persistenci
 ## Responsable exclusivo de Habita — 11/11/2026
 
 La consulta del snapshot usa únicamente module=salesOrders, action=syncSnapshot e id de NetSuite. No envía responsable ni datos internos de Habita. El campo recibido crm_owner_employee se ignora, incluso si está vacío, malformado o sin vínculo. Importación manual/automática y edición conservan owner_user_id_sales_order e id_ov_admin; no buscan empleados en NetSuite ni crean int_user_external_identity. Cliente, expediente y subsidiaria mantienen su conciliación y validación ERP. No requiere migración ni cambios de credencial o SuiteScript por esta regla.
+
+## Recuperación de eventos fallidos — 12/11/2026
+
+`scripts/retry-netsuite-order-events.ts` lee la exportación JSON de NetSuite, selecciona únicamente órdenes con `delivered:false` y deduplica sus IDs. Por defecto muestra el plan sin conectar; `--apply --output <informe.json>` autoriza la recuperación en producción. Requiere la credencial vigente en `NETSUITE_PRODUCTION_EVENTS_SECRET` del proceso: no la imprime, rota ni escribe en archivos de configuración.
+
+Cada orden se consulta de nuevo por ID mediante el cliente RESTlet existente. Comparte `verifiedOrderEventFromSnapshot` con la sincronización manual: exige identidad, proyección y ventana verificadas. Entrega el evento al receptor oficial; este conserva la resolución nueva → vieja y encola las ausentes para importarlas en la BD nueva. Un recibo debe coincidir con ID y UUID; `import_queued` no se considera creación terminada. No hay escrituras SQL directas ni altas de usuarios desde el script.
+
+La recuperación real del JSON proporcionado seleccionó 13 IDs: 10 actualizados, 2 sin cambios y BC568 (`12766013`) encolada y posteriormente importada. Se verificaron las 13 órdenes y sus últimas bitácoras en ambas BDs, sin errores. La fuente histórica no permite reconstruir la excepción original de cada `delivery_failed`.
+
+La librería local `2026.11.12.1` deja de leer/enviar `crm_owner_employee` y registra códigos cerrados de timeout, conexión, certificado o DNS tras agotar el reintento. Nunca registra mensajes crudos ni credenciales. Requiere actualización del archivo en NetSuite; no se afirma que esté instalada por editar la copia local. La credencial fija permanece intacta.
+
+La grilla y el detalle de Formalización muestran **Sistema** si la orden no tiene responsable asignado. No se inventa una cuenta ni se reemplaza un responsable existente: la ausencia sigue siendo NULL y la autoría automática queda bajo el actor de servicio de la integración.

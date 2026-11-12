@@ -219,7 +219,7 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                         items={[
                             { key: "stage", label: "Etapa", value: <StageChip label={item.state.label} code={item.state.code} /> },
                             { key: "time", label: "Tiempo", value: <Value>{timeInStage(item.state.days)}</Value> },
-                            { key: "responsible", label: "Responsable", value: <Value>{item.responsible?.name}</Value> },
+                            { key: "responsible", label: "Responsable", value: <Value>{item.responsible?.name ?? "Sistema"}</Value> },
                             { key: "seller", label: "Vendedor", value: <Value>{item.seller?.name}</Value> },
                             { key: "next", label: "Siguiente paso", value: <Value>{item.nextStep}</Value> },
                         ]}

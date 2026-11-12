@@ -1,5 +1,5 @@
 /**
- * Versión: 2026.11.11.3 — Credencial fija del receptor oficial de producción y diagnóstico HTTP seguro.
+ * Versión: 2026.11.12.1 — Responsable exclusivo de Habita y diagnóstico seguro de fallos de transporte.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
  * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
  * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
@@ -362,6 +362,13 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 return deliverObservation(url, authorization, event, readSnapshot);
             } catch (error) {
                 // El guardado ya ocurrio; no lanzar ni fingir que se reintentara automaticamente.
+                if (error && error.crmTransportCode) {
+                    return {
+                        ...blocked("delivery_failed"),
+                        transportCode: error.crmTransportCode,
+                        failureReason: error.crmTransportReason,
+                    };
+                }
                 const safe =
                     error &&
                     ["source_version_unavailable", "source_flags_unavailable", "snapshot_changed"].includes(
@@ -466,7 +473,24 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                     const response = https.post(request);
                     if (Number(response.code) < 500 || attempt === 1) return response;
                 } catch (error) {
-                    if (attempt === 1) throw error;
+                    if (attempt === 1) {
+                        // Solo códigos cerrados del proveedor; mensajes y cuerpos pueden contener secretos o datos personales.
+                        const reasons = {
+                            SSS_REQUEST_TIME_EXCEEDED: "timeout",
+                            SSS_CONNECTION_TIME_OUT: "timeout",
+                            SSS_CONNECTION_CLOSED: "connection_closed",
+                            SSS_INVALID_HOST_CERT: "tls_error",
+                            SSS_UNKNOWN_HOST: "dns_error",
+                            SSS_INVALID_URL: "invalid_url",
+                            SSS_REQUEST_LOOP_DETECTED: "request_loop",
+                        };
+                        const code = error && (typeof reasons[error.name] === "string" ? error.name : error.code);
+                        const failure = new Error("delivery_failed");
+                        failure.crmTransportCode = typeof reasons[code] === "string" ? code : "UNCLASSIFIED";
+                        failure.crmTransportReason =
+                            typeof reasons[code] === "string" ? reasons[code] : "transport_error";
+                        throw failure;
+                    }
                 }
             }
             throw new Error("delivery_failed");
@@ -505,7 +529,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         "use strict";
 
         // Version unica del conjunto de scripts. Actualizar al preparar cada entrega: la lee el empaquetador.
-        const SCRIPT_VERSION = "2026.11.11.3";
+        const SCRIPT_VERSION = "2026.11.12.1";
 
         /**
          * Un fallo del logger no debe interrumpir una consulta ni cambiar su respuesta.
@@ -575,6 +599,9 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 module: moduleCode,
                 status: result.status,
                 delivered: result.delivered === true,
+                ...(result.transportCode
+                    ? { transportCode: result.transportCode, failureReason: result.failureReason }
+                    : {}),
                 ...(Number.isInteger(result.httpStatus)
                     ? { httpStatus: result.httpStatus, failureReason: result.failureReason }
                     : {}),
@@ -693,7 +720,6 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             },
             // Solo eventos: IDs ERP para conciliar relaciones; nunca copiar a PK/FK propias sin resolverlas.
             eventValues: fieldMap("entity custbody38 subsidiary opportunity"),
-            eventOwner: { sublist: "salesteam", field: "employee" },
 
             // Alias en la raiz de la respuesta que el CRM consume por nombre (listas -> texto visible).
             rootTexts: {
@@ -915,12 +941,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 const date = readValue("trandate");
                 if (!date || typeof date.getTime !== "function" || !Number.isFinite(date.getTime()))
                     throw new Error("transaction_date_unavailable");
-                // El legado usa el primer integrante de salesteam; salesrep no es su fuente de id_ov_admin.
-                const team = SCHEMA.eventOwner;
-                const owner =
-                    order.getSublists().includes(team.sublist) && order.getLineCount({ sublistId: team.sublist }) > 0
-                        ? order.getSublistValue({ sublistId: team.sublist, fieldId: team.field, line: 0 })
-                        : null;
+                // El responsable pertenece a Habita: no leer ni enviar empleados para sincronizar una orden.
                 // Si el campo no esta en el record, no se envia y el CRM conserva la fecha. Null o vacio la limpia. Una fecha valida usa el calendario local del record, no UTC. Otro valor se omite.
                 const deliveryField = "custbody_fecha_unidad_entregada";
                 const delivery =
@@ -942,7 +963,6 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 projection = {
                     ...mapFields(SCHEMA.eventValues, readValue),
                     ...deliveryProjection,
-                    crm_owner_employee: owner === null ? null : String(owner),
                     crm_sync_projection: 1,
                     crm_transaction_date: [
                         date.getFullYear(),

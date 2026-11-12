@@ -421,7 +421,7 @@ function StageResponsibility({ item }: { readonly item: FollowUpItem }) {
     const samePerson = isStageAuthorResponsible(owner, author);
     return (
         <>
-            <span className="formalization-grid__value">{owner?.name ?? "Sin responsable registrado"}</span>
+            <span className="formalization-grid__value">{owner?.name ?? "Sistema"}</span>
             {item.seller && <span className="formalization-grid__meta">Vendedor: {item.seller.name}</span>}
             {author && !samePerson && <span className="formalization-grid__meta">Autor del cambio: {author.name}</span>}
         </>

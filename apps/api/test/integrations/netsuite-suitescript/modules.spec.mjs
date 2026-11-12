@@ -350,7 +350,7 @@ describe("User Event entry point (integrated)", () => {
         expect(record.submitFields).not.toHaveBeenCalled();
         expect(https.post).toHaveBeenCalledOnce();
         expect(JSON.parse(https.post.mock.calls[0][0].body).snapshot.data.id).toBe("214");
-        expect(JSON.parse(https.post.mock.calls[0][0].body).snapshot.data.fields.crm_owner_employee).toBe("70");
+        expect(JSON.parse(https.post.mock.calls[0][0].body).snapshot.data.fields).not.toHaveProperty("crm_owner_employee");
         expect(https.post.mock.calls[0][0].url.endsWith("/integrations/netsuite/local/order-events")).toBe(true);
         expect(log.debug).toHaveBeenCalledOnce();
         expect(log.debug.mock.calls[0][0].details).toMatchObject({ module: "salesOrders", status: "received_local", delivered: true });

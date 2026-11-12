@@ -109,7 +109,7 @@ it("reuses full order read for xedit and sends the mapped snapshot with a secure
     expect(f.loadRecord).toHaveBeenCalledTimes(2);
     expect(f.loadRecord).toHaveBeenCalledWith({ type: "salesorder", id: "123", isDynamic: false });
     const sent = f.post.mock.calls[0]?.[0] as { body: string; headers: Record<string, unknown> };
-    expect(JSON.parse(sent.body)).toMatchObject({ schemaVersion: 2, source: { environment: "sandbox", accountId: "4552704_SB1" }, event: { netsuiteId: "123", eventType: "xedit" }, snapshot: { data: { fields: { initialtranid: "OV-123", crm_sync_projection: 1, crm_transaction_date: "2026-11-02", crm_owner_employee: null, entity: null, custbody38: null } } } });
+    expect(JSON.parse(sent.body)).toMatchObject({ schemaVersion: 2, source: { environment: "sandbox", accountId: "4552704_SB1" }, event: { netsuiteId: "123", eventType: "xedit" }, snapshot: { data: { fields: { initialtranid: "OV-123", crm_sync_projection: 1, crm_transaction_date: "2026-11-02", entity: null, custbody38: null } } } });
     expect(sent.headers.Authorization).toEqual({ secret: "opaque" });
     expect(sent.body).not.toContain("DO NOT SEND");
 });
