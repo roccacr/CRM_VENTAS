@@ -7,11 +7,12 @@ import ConfigProvider from "antd/es/config-provider";
 import esES from "antd/es/locale/es_ES";
 import Spin from "antd/es/spin";
 import Tooltip from "antd/es/tooltip";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { FormHelp } from "../../components/forms/FormHelp";
 import type { IdentityRole, IdentityUser } from "../../services/auth/identity-contracts";
 import { getApprovalCount } from "../../services/formalization/approval-summary-service";
+import { FINIQUITO_SECTIONS } from "../../services/formalization/finiquito-service";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { getOverdueSummary, type HomeSummary, type OverdueSummary } from "../../services/formalization/home-summary-service";
 import { getPendingAddendumCount } from "../../services/formalization/order-addendum-service";
@@ -24,10 +25,12 @@ import { FormalizationFollowUpPreview } from "./FormalizationFollowUpPreview";
 import { FormalizationHomeInsights } from "./FormalizationHomeInsights";
 import { FormalizationOrderPreview, FormalizationOrderRecord } from "./FormalizationOrderPreview";
 import { FormalizationPreviewBoundary } from "./FormalizationPreviewSession";
+import { FormalizationProcessButton } from "./FormalizationProcessButton";
 import { FormalizationProjectDistribution } from "./FormalizationProjectDistribution";
 import { FormalizationRecordLoading } from "./FormalizationRecordLoading";
 import type { EffectiveNavigationPermission } from "./GlobalHomeShell";
 import { canReadOrderAddendum } from "./order-addendum-permissions";
+import { useFiniquitoBanner } from "./useFiniquitoBanner";
 import { useHomeSummary } from "./useHomeSummary";
 import { useNetsuiteOrderConsole } from "./useNetsuiteOrderConsole";
 import { useRestoredFormalizationOrder } from "./useRestoredFormalizationOrder";
@@ -174,6 +177,57 @@ function pendingCaption(count: number | null, failed: boolean): string {
     return count === 0 ? "Todo al día" : "Por revisar";
 }
 
+/** Presentación compartida de pendientes, independiente de sus fuentes y acciones. */
+function PendingStripContent({ title, purpose, help, children }: { readonly title: string; readonly purpose: string | undefined; readonly help: string; readonly children: ReactNode }) {
+    return (
+        <span className="formalization-banner__content">
+            <span className="formalization-title-help">
+                <span className="formalization-approval-strip__title">{title}</span>
+                <FormHelp label={`Condiciones de ${title}`} text={help} />
+            </span>
+            <span className="formalization-banner__purpose">{purpose}</span>
+            {children}
+        </span>
+    );
+}
+
+/** Los contadores y las órdenes proceden de la misma lectura real; un error no se muestra como cero. */
+function SettlementPreviewBanner({ enabled, refreshVersion, onOpen }: { readonly enabled: boolean; readonly refreshVersion: number; readonly onOpen: (selection: FollowUpSelection) => void }) {
+    const model = useFiniquitoBanner(enabled, refreshVersion);
+    return (
+        <>
+            <div className="formalization-banner formalization-banner--pending formalization-approval-strip formalization-settlement-preview formalization-settlement-banner" data-kind="addendum" role="region" aria-label="Ventas caídas · Gestión de finiquito">
+                <PendingStripContent title="Ventas caídas · Gestión de finiquito" purpose="Gestión de reservas de ventas caídas" help="Solo ventas caídas con Reserva Aplicada confirmada. Saldo validado es un check independiente: primero se valida el saldo, después se registra el envío y finalmente la recepción firmada. Las marcas quedan en bitácora.">
+                    <span className="formalization-banner__metrics">
+                        {FINIQUITO_SECTIONS.map(({ code, label, queue }) => (
+                            <button
+                                type="button"
+                                className="formalization-banner__metric"
+                                key={code}
+                                onClick={() => {
+                                    onOpen(queue);
+                                }}
+                            >
+                                <BannerValue loading={model.busy} preloadLabel={`Consultando ${label}`} value={model.data?.counts[code] ?? null} ariaLabel={label} empty={model.data?.counts[code] === 0} />
+                                <span className="formalization-banner__caption">{label}</span>
+                            </button>
+                        ))}
+                    </span>
+                    {model.failed && (
+                        <span role="alert">
+                            No disponible ·{" "}
+                            <button type="button" onClick={model.retry}>
+                                Reintentar
+                            </button>
+                        </span>
+                    )}
+                </PendingStripContent>
+                <BannerCorner kind="addendum" />
+            </div>
+        </>
+    );
+}
+
 /** Los pendientes comparten presentación; cada fuente y permiso conserva su consulta independiente. */
 function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }: { readonly kind: "approvals" | "addendum"; readonly canOpen?: boolean; readonly onOpen: () => void; readonly enabled: boolean; readonly refreshVersion: number }) {
     const { title, subject, load } = pendingBanners[kind];
@@ -186,12 +240,7 @@ function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }:
     return (
         <div className="formalization-banner formalization-banner--pending formalization-approval-strip" data-kind={kind} data-attention={attention ? "true" : undefined} data-calm={count === 0 ? "true" : undefined} aria-busy={loading}>
             <button type="button" className="formalization-approval-strip__action" aria-label={action.label} aria-busy={loading} disabled={[!failed, !canOpen].every(Boolean)} onClick={action.onClick} />
-            <span className="formalization-banner__content">
-                <span className="formalization-title-help">
-                    <span className="formalization-approval-strip__title">{title}</span>
-                    <FormHelp label={`Condiciones de ${title}`} text={FORMALIZATION_QUEUE_HELP[kind]} />
-                </span>
-                <span className="formalization-banner__purpose">{BANNER_PURPOSE[kind]}</span>
+            <PendingStripContent title={title} purpose={BANNER_PURPOSE[kind]} help={FORMALIZATION_QUEUE_HELP[kind]}>
                 <span className="formalization-banner__metrics">
                     <span className="formalization-banner__metric">
                         <BannerValue loading={loading} preloadLabel={`Cargando pendientes de ${subject}`} value={count} ariaLabel={`Órdenes pendientes de ${subject}: ${count === null ? caption : String(count)}`} />
@@ -201,7 +250,7 @@ function PendingStrip({ kind, canOpen = true, onOpen, enabled, refreshVersion }:
                         </span>
                     </span>
                 </span>
-            </span>
+            </PendingStripContent>
             <BannerCorner kind={kind} />
         </div>
     );
@@ -410,11 +459,14 @@ function FormalizationHomeTitle({ canViewStages, canViewApprovals, onRefresh }: 
                 <h1 id="formalization-home-title">Formalización</h1>
                 <p className="formalization-home__subtitle">En qué etapa está cada orden de venta y qué necesita seguimiento.</p>
             </div>
-            {canRefresh && (
-                <Tooltip title="Recargar banners">
-                    <Button className="formalization-command formalization-home__reload" icon={<ReloadOutlined />} aria-label="Recargar banners" onClick={onRefresh} />
-                </Tooltip>
-            )}
+            <div className="global-home-page-header__actions">
+                <FormalizationProcessButton />
+                {canRefresh && (
+                    <Tooltip title="Recargar banners">
+                        <Button className="formalization-command formalization-home__reload" icon={<ReloadOutlined />} aria-label="Recargar banners" onClick={onRefresh} />
+                    </Tooltip>
+                )}
+            </div>
         </div>
     );
 }
@@ -450,7 +502,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [
     const canViewApprovals = allowedQueues.includes("approvals");
     const canViewAddendumBanner = canReadAddendumBanner(roles, effectivePermissions);
     const queue = visibleQueue(selectedQueue, allowedQueues);
-    const canViewStages = allowedQueues.some((queue) => !["all", "approvals", "addendum"].includes(queue));
+    const canViewStages = allowedQueues.some((queue) => !["all", "approvals", "addendum"].includes(queue) && !queue.startsWith("finiquito_"));
     const canReadList = allowedQueues.length > 0;
     const canReadOrders = canReadFormalizationOrder(roles, effectivePermissions);
     const canUpdateStage = canUpdateOrderStage(roles, effectivePermissions);
@@ -518,7 +570,7 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [
                     <section className="global-home-page-header formalization-home__header" aria-labelledby="formalization-home-title">
                         <FormalizationHomeTitle
                             canViewStages={canViewStages}
-                            canViewApprovals={[canViewApprovals, canViewAddendumBanner].some(Boolean)}
+                            canViewApprovals={[canViewApprovals, canViewAddendumBanner, canReadOrders].some(Boolean)}
                             onRefresh={() => {
                                 setRefreshVersion((value) => value + 1);
                             }}
@@ -527,28 +579,40 @@ function FormalizationHomeContent({ currentUser, roles, effectivePermissions = [
                             <div className="formalization-welcome__copy">
                                 <p className="formalization-welcome__title">{greetingFor(currentUser)}</p>
                                 <p className="formalization-welcome__text">Gestión contractual</p>
-                                <FormalizationProjectDistribution enabled={canReadList} />
+                                <FormalizationProjectDistribution
+                                    enabled={canReadList}
+                                    onSelect={(selection, projectId) => {
+                                        setFilterRequest((previous) => ({ selection, projectId, version: (previous?.version ?? 0) + 1 }));
+                                        scrollToFollowUp();
+                                    }}
+                                />
                             </div>
                         </section>
-                        <HomeDivider title="Por revisar" show={[canViewApprovals, canViewAddendumBanner].some(Boolean)} />
-                        <div className="formalization-home__intro" data-has-approvals={canViewApprovals} data-pending-count={Number(canViewApprovals) + Number(canViewAddendumBanner)}>
+                        <HomeDivider title="Por revisar" show={[canViewApprovals, canViewAddendumBanner, canReadOrders].some(Boolean)} />
+                        <div className="formalization-home__intro" data-has-approvals={canViewApprovals} data-pending-count={Number(canViewApprovals) + Number(canViewAddendumBanner) + Number(canReadOrders)}>
                             {[
                                 { kind: "approvals" as const, visible: canViewApprovals, canOpen: true },
                                 { kind: "addendum" as const, visible: canViewAddendumBanner, canOpen: canReadOrderAddendum(effectivePermissions) },
+                                { kind: "finiquito" as const, visible: canReadOrders, canOpen: canReadOrders },
                             ]
                                 .filter((banner) => banner.visible)
-                                .map((banner) => (
-                                    <PendingStrip
-                                        key={banner.kind}
-                                        kind={banner.kind}
-                                        canOpen={banner.canOpen}
-                                        enabled={isHomeSummaryEnabled(initialView, queue, selected)}
-                                        refreshVersion={refreshVersion}
-                                        onOpen={() => {
-                                            selectBanner(banner.kind);
-                                        }}
-                                    />
-                                ))}
+                                .map((banner) =>
+                                    banner.kind === "finiquito" ? (
+                                        <SettlementPreviewBanner key={banner.kind} enabled={isHomeSummaryEnabled(initialView, queue, selected)} refreshVersion={refreshVersion} onOpen={selectBanner} />
+                                    ) : (
+                                        <Fragment key={banner.kind}>
+                                            <PendingStrip
+                                                kind={banner.kind}
+                                                canOpen={banner.canOpen}
+                                                enabled={isHomeSummaryEnabled(initialView, queue, selected)}
+                                                refreshVersion={refreshVersion}
+                                                onOpen={() => {
+                                                    selectBanner(banner.kind);
+                                                }}
+                                            />
+                                        </Fragment>
+                                    ),
+                                )}
                         </div>
                     </section>
                     <section className="formalization-home__banners" aria-label="Resumen de formalización">

@@ -6,6 +6,7 @@ import { SALES_ORDER_SUMMARY_PAGE_SIZE } from "../../modules/crm/sales/sales-ord
 import type { ContractOrderPageRow, ContractQueue } from "../../modules/crm/sales/sales-orders/contract-orders.dto.js";
 import type { ContractOrdersLegacyReader } from "../../modules/crm/sales/sales-orders/contract-orders.port.js";
 import type { ContractSummaryLegacyReader, LegacyContractRow } from "../../modules/crm/sales/sales-orders/contract-summary.port.js";
+import { outsideFiniquito } from "../../modules/crm/sales/sales-orders/finiquito-exclusion.query.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
 /**
@@ -34,7 +35,7 @@ export class LegacyContractSummaryReader implements ContractSummaryLegacyReader,
             SELECT /*+ MAX_EXECUTION_TIME(1500) */ id_ov AS id, COALESCE((SELECT e.to_state_code_sales_order_state_event FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e
                 WHERE e.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1), 'contract_pending_send') AS stage
             FROM ${sql.table("crmdatabase-api.ordenventa")} o
-            WHERE id_ov > ${after} AND status_ov=1 AND caida_ov=0
+            WHERE id_ov > ${after} AND status_ov=1 AND caida_ov=0 AND ${outsideFiniquito("legacy", sql`o.id_ov`)}
               AND aprobacion_forma_ov=1
             ORDER BY id_ov LIMIT ${sql.lit(SALES_ORDER_SUMMARY_PAGE_SIZE)}
         `.execute(transaction);
@@ -54,7 +55,7 @@ export class LegacyContractSummaryReader implements ContractSummaryLegacyReader,
                        COALESCE((SELECT e.to_state_code_sales_order_state_event FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e WHERE e.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1),'contract_pending_send') AS stage,
                        COALESCE((SELECT e.sequence_sales_order_state_event FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e WHERE e.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY e.sequence_sales_order_state_event DESC LIMIT 1),0) AS sequence
                 FROM ${sql.table("crmdatabase-api.ordenventa")} o
-                WHERE o.id_ov>${after} AND o.status_ov=1 AND o.caida_ov=0 AND o.aprobacion_forma_ov=1
+                WHERE o.id_ov>${after} AND o.status_ov=1 AND o.caida_ov=0 AND o.aprobacion_forma_ov=1 AND ${outsideFiniquito("legacy", sql`o.id_ov`)}
                   AND NOT EXISTS (SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)
             ) eligible WHERE ${stage} ORDER BY sortKey LIMIT ${limit}
         `.execute(tx);

@@ -67,6 +67,8 @@ export class FollowUpRepository {
                 CASE o.contract_signed_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS contractSignedCheck,
                 CASE o.cancelled_sales_order WHEN 'yes' THEN 1 WHEN 'no' THEN 0 ELSE NULL END AS saleLostCheck,
                 COALESCE(o.cancelled_sales_order='yes',0) AS saleLost,
+                COALESCE(o.reservation_applied_sales_order='yes',0) AS reservationApplied,
+                o.balance_validated_sales_order AS balanceValidated,o.finiquito_sent_sales_order AS sent,o.finiquito_received_sales_order AS received,
                 COALESCE(o.contract_signed_sales_order='yes',0) AS contractSigned,
                 (SELECT COUNT(*) FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval=o.id_sales_order
                     AND a.type_code_sales_order_approval='formalization' AND a.status_sales_order_approval='approved')=1 AS approved,
@@ -84,6 +86,6 @@ export class FollowUpRepository {
                 WHERE latest.sales_order_id_sales_order_state_event=o.id_sales_order ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
             LEFT JOIN sec_user responsible ON responsible.id_user=e.responsible_user_id_sales_order_state_event
             LEFT JOIN sec_user actor ON actor.id_user=e.actor_user_id_sales_order_state_event
-            WHERE ${id === undefined ? sql`TRUE` : sql`o.public_id_sales_order=${id}`} AND ${includeInactive ? sql`TRUE` : sql`o.status_sales_order='active' AND (o.cancelled_sales_order='no' OR (o.cancelled_sales_order='yes' AND o.contract_signed_sales_order='yes'))`} AND o.deleted_at_sales_order IS NULL`;
+            WHERE ${id === undefined ? sql`TRUE` : sql`o.public_id_sales_order=${id}`} AND ${includeInactive ? sql`TRUE` : sql`((o.status_sales_order='active' AND o.cancelled_sales_order='no') OR o.cancelled_sales_order='yes' OR o.balance_validated_sales_order=1 OR o.finiquito_sent_sales_order=1 OR o.finiquito_received_sales_order=1)`} AND o.deleted_at_sales_order IS NULL`;
     }
 }

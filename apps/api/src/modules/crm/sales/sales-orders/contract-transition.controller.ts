@@ -52,6 +52,14 @@ export class ContractTransitionController {
 @ApiTags("Formalization orders")
 @Controller("formalization/orders")
 export class FormalizationStageController {
+    /** Las cifras son agregados reales; un error de esquema no se presenta como cero. */
+    @Get("finiquito/overview")
+    @Header("Cache-Control", "no-store")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "formalization-order-read" })
+    finiquitoOverview(@Req() request: CookieRequest, @Query() query: unknown) {
+        return this.service.finiquitoOverview(request.cookies[SESSION_COOKIE_NAME], query);
+    }
     /** La rama independiente deja igual la etapa comercial y sus tiempos. */
     @Get("finiquito")
     @Header("Cache-Control", "no-store")
@@ -62,13 +70,13 @@ export class FormalizationStageController {
         return this.service.finiquito(request.cookies[SESSION_COOKIE_NAME], query);
     }
 
-    /** Registra preparación, envío o firma. No manda un correo. */
+    /** Registra pasos ordinarios o una reconciliación manual de etapa con motivo; no manda correos. */
     @Post("finiquito")
     @HttpCode(200)
     @Header("Cache-Control", "no-store")
     @RouteSecurity("permission")
     @RequirePermission({ kind: "all", codes: ["formalizacion.orders.stage.update"] })
-    @ApiOperation({ summary: "Advance finiquito with confirmed lost-sale and signed-contract checks" })
+    @ApiOperation({ summary: "Record finiquito steps or manually reconcile its stage with a reason" })
     updateFiniquito(@Req() request: CookieRequest, @Body() body: unknown) {
         const userAgent = request.headers["user-agent"];
         return this.service.finiquito(request.cookies[SESSION_COOKIE_NAME], body, true, { ipAddress: request.ip, ...(typeof userAgent === "string" ? { userAgent: userAgent.slice(0, 500) } : {}) });

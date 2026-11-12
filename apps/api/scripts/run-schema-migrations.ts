@@ -76,6 +76,9 @@ import { salesOrderBankAssignmentUnlinkMigration } from "../migrations/schema-on
 import { formalizationAddendumSentMigration } from "../migrations/schema-only/202611030072_formalization_addendum_sent.js";
 import { leadQualificationMigration } from "../migrations/schema-only/202611030073_lead_qualification.js";
 import { netsuiteOrderDeliveryMigration } from "../migrations/schema-only/202611100074_netsuite_order_delivery.js";
+import { salesOrderReservationAppliedMigration } from "../migrations/schema-only/202611120075_sales_order_reservation_applied.js";
+import { finiquitoWorkflowMigration } from "../migrations/schema-only/202611120076_finiquito_workflow.js";
+import { orderWorkflowExecutionMigration } from "../migrations/schema-only/202611120077_order_workflow_execution.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -181,6 +184,9 @@ export const schemaMigrations: Migration[] = [
     formalizationAddendumSentMigration,
     leadQualificationMigration,
     netsuiteOrderDeliveryMigration,
+    salesOrderReservationAppliedMigration,
+    finiquitoWorkflowMigration,
+    orderWorkflowExecutionMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */

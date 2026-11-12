@@ -15,6 +15,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { loadRecordAuditStatements } from "../../migrations/schema-only/202610220023_record_audit.js";
 import { netsuiteOrderEventsMigration } from "../../migrations/schema-only/202611020058_netsuite_order_events.js";
 import { netsuiteOrderDeliveryMigration } from "../../migrations/schema-only/202611100074_netsuite_order_delivery.js";
+import { legacyReservationAppliedDown, legacyReservationAppliedUp, salesOrderReservationAppliedMigration } from "../../migrations/schema-only/202611120075_sales_order_reservation_applied.js";
 import { LocalServiceTokenGuard } from "../../src/common/security/local-service-token.guard.js";
 import type { DatabaseService } from "../../src/database/database.service.js";
 import type { CrmDatabase } from "../../src/database/database.types.js";
@@ -22,7 +23,7 @@ import { NetsuiteLocalEventsController } from "../../src/integrations/netsuite/n
 import type { PersistedOrderEvent } from "../../src/integrations/netsuite/netsuite-order-event.contract.js";
 import { orderFieldMappings, orderFlagMappings } from "../../src/integrations/netsuite/netsuite-order-event.mapper.js";
 import { NetsuiteOrderEventRepository } from "../../src/integrations/netsuite/netsuite-order-event.repository.js";
-import { NetsuiteOrderEventService } from "../../src/integrations/netsuite/netsuite-order-event.service.js";
+import { NetsuiteOrderEventService, orderSnapshotHash } from "../../src/integrations/netsuite/netsuite-order-event.service.js";
 import { NetsuiteOrderImportQueue } from "../../src/integrations/netsuite/netsuite-order-import.queue.js";
 import { captureIntegrationAuditActor } from "../../src/modules/crm/audit/audit-actor.js";
 import { RecordAuditService } from "../../src/modules/crm/audit/record-audit.service.js";
@@ -44,6 +45,8 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
     }
 
     async function extendFixture(): Promise<void> {
+        await sql`ALTER TABLE crm_sales_order ADD COLUMN IF NOT EXISTS reservation_applied_sales_order ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown'`.execute(db);
+        await sql`ALTER TABLE \`crmdatabase-api\`.ordenventa ADD COLUMN IF NOT EXISTS reserva_aplicada_ov TINYINT UNSIGNED NULL`.execute(db);
         await sql`ALTER TABLE crm_sales_order ADD COLUMN IF NOT EXISTS cancellation_marked_on_sales_order DATE NULL,ADD COLUMN IF NOT EXISTS status_sales_order VARCHAR(20) NOT NULL DEFAULT 'active'`.execute(db);
         await sql`ALTER TABLE ${sql.table("crmdatabase-api.ordenventa")} ADD COLUMN IF NOT EXISTS envioReservaCaida VARCHAR(100) NULL,ADD COLUMN IF NOT EXISTS status_ov INT NOT NULL DEFAULT 1,ADD COLUMN IF NOT EXISTS reserva_ov INT NOT NULL DEFAULT 0,ADD COLUMN IF NOT EXISTS pagadas_ov INT NOT NULL DEFAULT 0`.execute(db);
         // Ampliacion del fixture propio; no utiliza ni modifica el esquema del RDS.
@@ -92,6 +95,7 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await sql`CREATE DATABASE IF NOT EXISTS ${sql.id("crmdatabase-api")}`.execute(admin);
         db = new Kysely<CrmDatabase>({ dialect: new MysqlDialect({ pool: createPool({ host: "127.0.0.1", port: 3309, user: "root", database: "CRM_THINK_V2", connectionLimit: 8 }) }) });
         await netsuiteOrderEventsMigration.up(db as unknown as Kysely<unknown>);
+        await sql`ALTER TABLE int_netsuite_order_cursor ADD COLUMN IF NOT EXISTS reservation_modified_ms BIGINT NULL,ADD COLUMN IF NOT EXISTS reservation_completed_ms BIGINT NULL`.execute(db);
         await netsuiteOrderDeliveryMigration.up(db as unknown as Kysely<unknown>);
         await sql`CREATE TABLE IF NOT EXISTS crm_sales_order (id_sales_order INT PRIMARY KEY, id_old_produccion_sales_order INT NULL UNIQUE,deleted_at_sales_order DATETIME NULL,updated_at_sales_order DATETIME(3) NULL,${sql.join(orderFlagMappings.map((mapping) => sql`${sql.id(mapping.native)} ENUM('yes','no','unknown') NOT NULL DEFAULT 'unknown'`))}) ENGINE=InnoDB`.execute(db);
         await sql`CREATE TABLE IF NOT EXISTS int_external_system (id_external_system INT PRIMARY KEY,code_external_system VARCHAR(32),status_external_system VARCHAR(16)) ENGINE=InnoDB`.execute(db);
@@ -192,6 +196,90 @@ describe.skipIf(process.env.NETSUITE_EVENTS_LOCAL_SQL_TESTS !== "1")("NetSuite d
         await admin.destroy();
     });
     beforeEach(resetFixture);
+    it.each(["native", "legacy"] as const)("backfill hace rollback de reserva y watermark si falla bitácora en %s", async (destination) => {
+        if (destination === "native") await native();
+        else await legacy();
+        const table = destination === "native" ? "crm_sales_order" : "crmdatabase-api.ordenventa";
+        const before = (await sql`SELECT * FROM ${sql.table(table)}`.execute(db)).rows;
+        await sql`CREATE TRIGGER fail_reservation_audit BEFORE INSERT ON audit_record_event FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='synthetic reservation audit failure'`.execute(db);
+        try {
+            const repository = new NetsuiteOrderEventRepository({ db } as DatabaseService, config, new RecordAuditService({ db } as DatabaseService, config));
+            const payload = event(false);
+            payload.snapshot.data.fields.custbody209 = "T";
+            await expect(repository.applyReservationSnapshot(payload, { payloadHash: "test", snapshotHash: orderSnapshotHash(payload.snapshot.data.fields) })).rejects.toThrow();
+            expect((await sql`SELECT * FROM ${sql.table(table)}`.execute(db)).rows).toEqual(before);
+            expect((await sql`SELECT * FROM int_netsuite_order_cursor`.execute(db)).rows).toEqual([]);
+        } finally {
+            await sql`DROP TRIGGER fail_reservation_audit`.execute(db);
+        }
+    });
+    it.each(["native", "legacy"] as const)("una observación atrasada no pisa Reserva Aplicada en %s", async (destination) => {
+        if (destination === "native") await native();
+        else await legacy();
+        const repository = new NetsuiteOrderEventRepository({ db } as DatabaseService, config, new RecordAuditService({ db } as DatabaseService, config));
+        const old = event(false);
+        old.snapshot.data.fields.custbody209 = "T";
+        const fresh = structuredClone(old);
+        fresh.snapshot.data.fields.custbody209 = "F";
+        fresh.event.eventId = randomUUID();
+        fresh.event.snapshotReadStartedAt = "2026-11-02T20:00:01.000Z";
+        fresh.event.snapshotReadCompletedAt = "2026-11-02T20:00:01.100Z";
+        const identity = (payload: PersistedOrderEvent) => ({ payloadHash: "test", snapshotHash: orderSnapshotHash(payload.snapshot.data.fields) });
+        await repository.applyReservationSnapshot(fresh, identity(fresh));
+        await expect(repository.applyReservationSnapshot(old, identity(old))).rejects.toThrow("observación más reciente");
+        // Un UE viejo tampoco vuelve a aplicar el valor de reserva, aunque pueda confirmar otros campos.
+        await service.receive(old);
+        const table = destination === "native" ? "crm_sales_order" : "crmdatabase-api.ordenventa";
+        const column = destination === "native" ? "reservation_applied_sales_order" : "reserva_ov";
+        expect((await sql<Record<string, unknown>>`SELECT ${sql.ref(column)} AS value FROM ${sql.table(table)}`.execute(db)).rows).toEqual([{ value: destination === "native" ? "no" : 0 }]);
+    });
+    it("075 y DDL legacy conservan datos y admiten rollback en el esquema desechable", async () => {
+        await native();
+        await legacy();
+        await salesOrderReservationAppliedMigration.down(db as unknown as Kysely<unknown>);
+        await legacyReservationAppliedDown.execute(db);
+        await salesOrderReservationAppliedMigration.up(db as unknown as Kysely<unknown>);
+        await legacyReservationAppliedUp.execute(db);
+        expect((await sql`SELECT reservation_applied_sales_order AS value FROM crm_sales_order`.execute(db)).rows).toEqual([{ value: "unknown" }]);
+        expect((await sql`SELECT reserva_aplicada_ov AS value FROM \`crmdatabase-api\`.ordenventa`.execute(db)).rows).toEqual([{ value: null }]);
+        expect((await sql`SELECT COUNT(*) AS total FROM crm_sales_order`.execute(db)).rows).toEqual([{ total: 1 }]);
+    });
+    it.each(["native", "legacy"] as const)("custbody209 guarda T/F en %s; backfill no cambia otro dato ni repite auditoría", async (destination) => {
+        if (destination === "native") await native();
+        else await legacy();
+        const payload = event(false);
+        payload.snapshot.data.fields.custbody209 = "T";
+        await expect(service.receive(payload)).resolves.toMatchObject({ result: "applied", destination });
+        const table = destination === "native" ? "crm_sales_order" : "crmdatabase-api.ordenventa";
+        const column = destination === "native" ? "reservation_applied_sales_order" : "reserva_ov";
+        const before = (await sql<Record<string, unknown>>`SELECT * FROM ${sql.table(table)}`.execute(db)).rows[0];
+        if (!before) throw new Error("Falta orden fixture.");
+        expect(before[column]).toBe(destination === "native" ? "yes" : 1);
+        const repository = new NetsuiteOrderEventRepository({ db } as DatabaseService, config, new RecordAuditService({ db } as DatabaseService, config));
+        const fresh = structuredClone(payload);
+        fresh.snapshot.data.fields.custbody209 = "F";
+        fresh.snapshot.data.fields.custbody43 = true;
+        fresh.event.eventId = randomUUID();
+        fresh.event.snapshotReadStartedAt = "2026-11-02T20:00:01.000Z";
+        fresh.event.snapshotReadCompletedAt = "2026-11-02T20:00:01.100Z";
+        const identity = { payloadHash: "reservation-test", snapshotHash: orderSnapshotHash(fresh.snapshot.data.fields) };
+        await expect(repository.applyReservationSnapshot(fresh, identity)).resolves.toMatchObject({ result: "applied" });
+        const after = (await sql<Record<string, unknown>>`SELECT * FROM ${sql.table(table)}`.execute(db)).rows[0];
+        if (!after) throw new Error("Falta orden fixture después de sincronizar.");
+        expect(after).toEqual({ ...before, [column]: destination === "native" ? "no" : 0 });
+        const auditBefore = (await sql`SELECT * FROM audit_record_event`.execute(db)).rows;
+        await expect(repository.applyReservationSnapshot(fresh, identity)).resolves.toMatchObject({ result: "unchanged" });
+        expect((await sql`SELECT * FROM audit_record_event`.execute(db)).rows).toEqual(auditBefore);
+    });
+
+    it.each(["T", "F"])("una importación nueva persiste Reserva Aplicada %s", async (value) => {
+        await sql`INSERT INTO crm_lead_external_reference VALUES (8,1,'300','active',NULL)`.execute(db);
+        const payload = importSnapshot();
+        payload.snapshot.data.fields.custbody209 = value;
+        const receipt = await service.receive(payload, { importTranid: "BC448", authorize: () => Promise.resolve(captureIntegrationAuditActor({ publicId: "integration:test", name: "Test" })) });
+        expect(receipt).toMatchObject({ result: "applied", destination: "native" });
+        expect((await sql<{ value: string }>`SELECT reservation_applied_sales_order AS value FROM crm_sales_order`.execute(db)).rows).toEqual([{ value: value === "T" ? "yes" : "no" }]);
+    });
     async function resetFixture(): Promise<void> {
         config.set("NETSUITE_ORDER_CANCELLATION_EFFECTS_ENABLED", false);
         await sql`DROP TRIGGER IF EXISTS fail_order_update`.execute(db);

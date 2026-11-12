@@ -9,11 +9,12 @@ interface Library {
     salesOrders: { getSalesOrderEventById(id: string): { data: { fields: Record<string, unknown> }; FONDOS: string } };
 }
 
-function readSnapshot(value: unknown, verified = false, changed = false) {
+function readSnapshot(value: unknown, verified = false, changed = false, reservationApplied = false) {
     let loads = 0;
-    const flagFields = new Set(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas", "custbody74", "custbody_aprueba_jefe_ventas", "custbodyid_firma_rocca", "custbodyid_firma_rc"]);
+    const flagFields = new Set(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas", "custbody209", "custbody74", "custbody_aprueba_jefe_ventas", "custbodyid_firma_rocca", "custbodyid_firma_rc"]);
     const order = {
         getValue: ({ fieldId }: { fieldId: string }) => {
+            if (fieldId === "custbody209") return reservationApplied;
             if (fieldId === "custbody37") return changed && loads > 1 ? "1" : value;
             if (fieldId === "trandate") return new Date(2026, 10, 3);
             if (fieldId === "tranid") return "RDR673";
@@ -39,7 +40,7 @@ function readSnapshot(value: unknown, verified = false, changed = false) {
                         return order;
                     },
                 },
-                { lookupFields: () => Object.fromEntries([...["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((key) => [key, false] as const)]) },
+                { lookupFields: () => ({ ...Object.fromEntries([...["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((key) => [key, false] as const)]), custbody209: reservationApplied }) },
                 { parse: () => new Date("2026-11-03T18:00:00Z"), Type: { DATETIME: "datetime" } },
             );
         },
@@ -71,9 +72,16 @@ it("manual sync GET returns the complete verified event projection with a real s
     expect(result.sourceModifiedAt).toBe("2026-11-03T18:00:00.000Z");
     expect(result.data.fields.crm_sync_projection).toBe(1);
     expect(result.data.fields.custbody37).toBe("2");
+    expect(result.data.fields.custbody209).toBe(false);
     expect(Array.isArray(result.data.sublists.item)).toBe(true);
     expect(Date.parse(result.snapshotReadCompletedAt)).toBeGreaterThanOrEqual(Date.parse(result.snapshotReadStartedAt));
 });
 it("manual sync GET rejects a snapshot that changes between its two reads", () => {
     expect(readSnapshot("2", true, true)).toMatchObject({ status: 502 });
+});
+
+it.each([true, false])("el productor real conserva Reserva Aplicada=%s en la lectura verificada", (value) => {
+    const result = readSnapshot("2", true, false, value) as unknown as { status: number; data: { fields: Record<string, unknown> } };
+    expect(result.status).toBe(200);
+    expect(result.data.fields.custbody209).toBe(value);
 });

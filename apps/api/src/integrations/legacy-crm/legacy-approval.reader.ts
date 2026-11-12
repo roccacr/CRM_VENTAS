@@ -3,6 +3,7 @@ import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
 import { type ApprovalLegacyReader, SALES_ORDER_SUMMARY_PAGE_SIZE } from "../../modules/crm/sales/sales-orders/approval-summary.port.js";
+import { outsideFiniquito } from "../../modules/crm/sales/sales-orders/finiquito-exclusion.query.js";
 import { LegacyCrmDatabaseService } from "./legacy-crm-database.service.js";
 
 /**
@@ -31,6 +32,7 @@ export class LegacyApprovalReader implements ApprovalLegacyReader {
         const result = await sql<{ id_ov: number }>`
             SELECT /*+ MAX_EXECUTION_TIME(1500) */ id_ov FROM ${sql.table("crmdatabase-api.ordenventa")}
             WHERE id_ov > ${after} AND status_ov = 1 AND caida_ov = 0
+              AND ${outsideFiniquito("legacy", sql`id_ov`)}
               AND chekJefeVenta = 1 AND aprobacion__rdr_ov = 1 AND aprobacion_forma_ov = 0
             ORDER BY id_ov LIMIT ${sql.lit(SALES_ORDER_SUMMARY_PAGE_SIZE)}
         `.execute(transaction ?? this.database.db);

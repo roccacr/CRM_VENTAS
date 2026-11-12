@@ -6,6 +6,7 @@ import { sql, type Transaction } from "kysely";
 import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import { RecordAuditService } from "../../audit/record-audit.service.js";
+import { outsideFiniquito } from "./finiquito-exclusion.query.js";
 import { type AddendumChange, type AddendumIdentity, type AddendumManualMark, type AddendumOrder, type AddendumStatus, type FutureAddendum, SALES_ORDER_ADDENDUM_LEGACY, type SalesOrderAddendumLegacy } from "./sales-order-addendum.port.js";
 
 const snapshot = (order: AddendumOrder) => ({ addendumStatus: order.status, addendumVersion: order.version, addendumChangedAt: order.changedAt, addendumNote: order.note });
@@ -40,7 +41,7 @@ export class SalesOrderAddendumRepository {
             .setIsolationLevel("repeatable read")
             .setAccessMode("read only")
             .execute(async (tx) => {
-                const row = (await sql<{ total: string | number }>`SELECT COUNT(*) AS total FROM crm_sales_order WHERE status_sales_order='active' AND cancelled_sales_order='no' AND deleted_at_sales_order IS NULL AND addendum_status_sales_order='pending'`.execute(tx)).rows[0];
+                const row = (await sql<{ total: string | number }>`SELECT COUNT(*) AS total FROM crm_sales_order o WHERE status_sales_order='active' AND cancelled_sales_order='no' AND deleted_at_sales_order IS NULL AND addendum_status_sales_order='pending' AND ${outsideFiniquito("native", sql`o.id_sales_order`)}`.execute(tx)).rows[0];
                 const total = Number(row?.total) + (await this.legacy.countPending(tx));
                 if (!Number.isSafeInteger(total) || total < 0) throw new ServiceUnavailableException("No fue posible contar los adéndums pendientes.");
                 return { total };

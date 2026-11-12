@@ -7,9 +7,10 @@ import { DatabaseService } from "../../database/database.service.js";
 import type { CrmDatabase } from "../../database/database.types.js";
 import { type AuditActorSnapshot, captureIntegrationAuditActor } from "../../modules/crm/audit/audit-actor.js";
 import { RecordAuditService } from "../../modules/crm/audit/record-audit.service.js";
+import { outsideFiniquito } from "../../modules/crm/sales/sales-orders/finiquito-exclusion.query.js";
 import type { PersistedOrderEvent } from "./netsuite-order-event.contract.js";
-import { mapOrderFields, mapOrderFlags, nativeRelationReferences, NETSUITE_DELIVERY_DATE_FIELD, orderApprovalMappings, type OrderEventChange, type OrderEventDestination, orderFieldMappings, orderFlagMappings, orderNumberMapping, orderRelationMappings, readOrderRelationValues } from "./netsuite-order-event.mapper.js";
-import { isStaleOrderObservation, type PreviousOrderObservation } from "./netsuite-order-event.ordering.js";
+import { mapOrderFields, mapOrderFlags, mapReservationApplied, nativeRelationReferences, NETSUITE_DELIVERY_DATE_FIELD, orderApprovalMappings, type OrderEventChange, type OrderEventDestination, orderFieldMappings, orderFlagMappings, orderNumberMapping, orderRelationMappings, readOrderRelationValues, reservationAppliedMapping } from "./netsuite-order-event.mapper.js";
+import { isStaleOrderObservation, isStaleReservationObservation, type PreviousOrderObservation } from "./netsuite-order-event.ordering.js";
 import { advancePaidInstallments, PAID_INSTALLMENTS_STAGE_FIELD, syncOrderDeliveryDate } from "./netsuite-paid-installments.handler.js";
 import { CANCELLATION_DATE_FIELD, CANCELLATION_DATE_NATIVE, planSalesOrderCancellation } from "./netsuite-sales-order-cancellation.handler.js";
 
@@ -18,6 +19,9 @@ export type OrderEventIdentity = { payloadHash: string; snapshotHash: string; ac
 type Target = { destination: OrderEventDestination; id: string; row: Record<string, unknown> };
 type EventAudit = { destination: OrderEventDestination | null; orderId: string | null; changes: OrderEventChange[]; result: OrderEventResult["result"] | "error"; error?: string };
 type EventTransaction = Transaction<CrmDatabase>;
+function orderStorage(destination: OrderEventDestination) {
+    return destination === "native" ? { table: "crm_sales_order", key: "id_sales_order" } : { table: "crmdatabase-api.ordenventa", key: "id_ov" };
+}
 export interface ManualOrderSynchronization {
     importTranid?: string;
     importIfMissing?: boolean;
@@ -39,6 +43,45 @@ export class OrderEventPersistenceError extends Error {
 /** Una conexion y transaccion InnoDB entre esquemas mantiene orden y bitacora atomicas. */
 @Injectable()
 export class NetsuiteOrderEventRepository {
+    /** Backfill acotado: reutiliza autoridad, bloqueo y auditoría, pero no confirma una sincronización completa.
+     * No mueve etapas, no importa relaciones, no actualiza timestamps comerciales ni avanza el cursor global.
+     */
+    async applyReservationSnapshot(event: PersistedOrderEvent, identity: OrderEventIdentity): Promise<OrderEventResult> {
+        if (!this.audit.enabled) throw new ServiceUnavailableException("La resincronización requiere auditoría habilitada.");
+        return this.database.db.transaction().execute(async (tx) => {
+            const cursor = await this.lockCursor(tx, event);
+            const previous = await this.previousObservation(tx, event);
+            if (isStaleOrderObservation({ event, cursor, hash: identity.snapshotHash, previous })) throw new ConflictException("La orden cambió durante la lectura. Reintenta con una foto nueva.");
+            const target = await this.resolve(tx, event.event.netsuiteId);
+            if (!target) return { result: "not_found", destination: null, orderId: null, changes: [], duplicate: false };
+            if (!Object.hasOwn(event.snapshot.data.fields, "custbody209")) throw new ServiceUnavailableException("Actualiza la librería NetSuite: falta custbody209.");
+            const proposed = mapReservationApplied(event.snapshot.data.fields, target.destination, target.row);
+            const changes = await this.reservationObservation(tx, event, proposed);
+            if (proposed.length && !changes.length) throw new ConflictException("La reserva tiene una observación más reciente. Consulta NetSuite nuevamente.");
+            const result: OrderEventResult = { result: changes.length ? "applied" : "unchanged", destination: target.destination, orderId: target.id, changes, duplicate: false };
+            const change = changes[0];
+            if (change) {
+                const storage = orderStorage(target.destination);
+                await sql`UPDATE ${sql.table(storage.table)} SET ${sql.ref(change.column)}=${change.after} WHERE ${sql.ref(storage.key)}=${target.id}`.execute(tx);
+                await this.appendCentralAudit(tx, event, result, identity);
+            }
+            return result;
+        });
+    }
+
+    /** Watermark de este campo: una carga parcial nunca adelanta la revisión global de los demás datos. */
+    private async reservationObservation(tx: EventTransaction, event: PersistedOrderEvent, changes: OrderEventChange[]): Promise<OrderEventChange[]> {
+        if (!Object.hasOwn(event.snapshot.data.fields, "custbody209")) return changes;
+        const { rows } = await sql<{ modified: string | number | null; completed: string | number | null }>`SELECT reservation_modified_ms AS modified,reservation_completed_ms AS completed FROM int_netsuite_order_cursor WHERE account_id=${event.source.accountId} AND netsuite_id=${event.event.netsuiteId} FOR UPDATE`.execute(tx);
+        const previous = rows[0];
+        if (!previous) throw new ServiceUnavailableException("No se pudo confirmar el control de reserva.");
+        const modified = Date.parse(event.event.sourceModifiedAt);
+        const completed = Date.parse(event.event.snapshotReadCompletedAt ?? event.event.sourceModifiedAt);
+        if (isStaleReservationObservation(event, previous)) return changes.filter((change) => change.field !== "custbody209");
+        await sql`UPDATE int_netsuite_order_cursor SET reservation_modified_ms=${modified},reservation_completed_ms=${completed} WHERE account_id=${event.source.accountId} AND netsuite_id=${event.event.netsuiteId}`.execute(tx);
+        return changes;
+    }
+
     /** Reutiliza el pool nativo; nunca abre una segunda transaccion legacy. */
     constructor(
         @Inject(DatabaseService) private readonly database: DatabaseService,
@@ -63,7 +106,7 @@ export class NetsuiteOrderEventRepository {
                 const actor = await this.authorizeManual(tx, target, manual);
                 if (target) {
                     context = { result: "error", destination: target.destination, orderId: target.id, changes: [] };
-                    context.changes = await this.planChanges(tx, event, target);
+                    context.changes = await this.reservationObservation(tx, event, await this.planChanges(tx, event, target));
                     // Si una relacion rechaza el evento, conservar el diff directo conocido en la evidencia de error.
                     context.changes.push(...(await this.planRelations(tx, event, target)));
                 }
@@ -88,11 +131,16 @@ export class NetsuiteOrderEventRepository {
     private async advanceInstallments(tx: EventTransaction, event: PersistedOrderEvent, target: Target | null, result: OrderEventResult): Promise<void> {
         if (!target) return;
         const deliveryChange = await syncOrderDeliveryDate(tx, event, target);
-        const stageChange = await advancePaidInstallments(tx, this.audit, { event, target, changes: result.changes });
+        const stageChange = (await this.canAdvanceCommercial(tx, target)) ? await advancePaidInstallments(tx, this.audit, { event, target, changes: result.changes }) : null;
         const changes = [deliveryChange, stageChange].filter((change) => change !== null);
         if (changes.length === 0) return;
         result.changes.push(...changes);
         result.result = "applied";
+    }
+
+    private async canAdvanceCommercial(tx: EventTransaction, target: Target): Promise<boolean> {
+        const { rows } = await sql<{ allowed: number }>`SELECT ${outsideFiniquito(target.destination, sql`${target.id}`)} AS allowed`.execute(tx);
+        return rows[0]?.allowed === 1;
     }
 
     /** El rollback comercial no debe borrar la evidencia del error. No incluye SQL ni credenciales. */
@@ -248,7 +296,7 @@ export class NetsuiteOrderEventRepository {
         if (!target) return { result: "not_found", destination: null, orderId: null, changes: [], duplicate: false };
         if (!changes.length) return { result: "unchanged", destination: target.destination, orderId: target.id, changes, duplicate: false };
         const native = target.destination === "native";
-        const { table, key } = native ? { table: "crm_sales_order", key: "id_sales_order" } : { table: "crmdatabase-api.ordenventa", key: "id_ov" };
+        const { table, key } = orderStorage(target.destination);
         const orderChanges = native ? changes.filter((change) => !orderApprovalMappings.some((mapping) => mapping.netsuite === change.field) && change.field !== orderNumberMapping.netsuite) : changes;
         const assignments = orderChanges.map((change) => sql`${sql.ref(change.column)}=${change.after}`);
         if (native) assignments.push(sql`updated_at_sales_order=UTC_TIMESTAMP(3)`);
@@ -314,7 +362,7 @@ export class NetsuiteOrderEventRepository {
             .map((change) => {
                 if (change.field === NETSUITE_DELIVERY_DATE_FIELD) return { ...change, field: "delivered_on" };
                 if (change.field === CANCELLATION_DATE_FIELD) return { ...change, field: CANCELLATION_DATE_NATIVE };
-                const mapping = [...orderFlagMappings, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].find((candidate) => candidate.netsuite === change.field);
+                const mapping = [...orderFlagMappings, reservationAppliedMapping, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].find((candidate) => candidate.netsuite === change.field);
                 if (!mapping) throw new Error("Campo sin contrato de auditoria central.");
                 return { ...change, field: mapping.native ?? mapping.legacy };
             });
@@ -326,7 +374,7 @@ export class NetsuiteOrderEventRepository {
             module: "formalizacion",
             before: Object.fromEntries(canonicalChanges.map((change) => [change.field, change.before])),
             after: Object.fromEntries(canonicalChanges.map((change) => [change.field, change.after])),
-            allowedFields: [...[...orderFlagMappings, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].map((mapping) => mapping.native ?? mapping.legacy), CANCELLATION_DATE_NATIVE, "delivered_on"],
+            allowedFields: [...[...orderFlagMappings, reservationAppliedMapping, ...orderFieldMappings, ...orderApprovalMappings, orderNumberMapping, ...orderRelationMappings].map((mapping) => mapping.native ?? mapping.legacy), CANCELLATION_DATE_NATIVE, "delivered_on"],
             operationId: "netsuite:" + event.source.accountId + ":" + event.event.eventId,
             correlationId: event.event.eventId,
             reason: orderEventOrigin(identity) + event.event.eventType + "; " + event.source.environment + "; ID " + event.event.netsuiteId,

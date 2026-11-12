@@ -4,6 +4,10 @@ const eligible = "Orden activa y sin venta caída. ";
 
 /** Explica los filtros vigentes sin confundir requisitos de avance con una etapa ya registrada. */
 export const FORMALIZATION_QUEUE_HELP: Readonly<Record<FollowUpQueue, string>> = {
+    finiquito_validation: "Venta caída con Reserva Aplicada, sin Saldo validado.",
+    finiquito_pending: "Saldo validado, Venta caída, Reserva Aplicada y Contrato firmado; finiquito aún sin enviar.",
+    finiquito_signed: "Saldo validado y finiquito enviado; pendiente de recibir firmado.",
+    finiquito_formalized: "Saldo validado y finiquito recibido firmado.",
     all: eligible + "Incluye las bandejas que puedes consultar y los casos con indicadores incompletos para revisar. El total considera los filtros actuales, no solo esta página.",
     approvals: eligible + "Jefatura de Ventas y Desarrolladora aprobadas; Aprobación Formalización desmarcada.",
     addendum: eligible + "Marca de Adéndum pendiente, registrada desde la orden o al guardar un evento Adéndum. La marca no cambia la etapa de Formalización. Requiere permiso para consultar órdenes con Adéndum.",

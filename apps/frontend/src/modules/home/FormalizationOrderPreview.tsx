@@ -8,6 +8,7 @@ import Button from "antd/es/button";
 import Tooltip from "antd/es/tooltip";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { isFiniquitoOrder } from "../../services/formalization/finiquito-service";
 import { type FollowUpItem, getFormalizationOrderRecord } from "../../services/formalization/follow-up-service";
 import type { NetsuitePrimary } from "../../services/formalization/netsuite-primary";
 import { type FormalizationExample, isUnassigned } from "./formalization-preview.model";
@@ -454,7 +455,7 @@ export function FormalizationOrderRecord({
                             node?.focus();
                         }}
                     >
-                        Orden de venta {item.number}
+                        <span data-finiquito={isFiniquitoOrder(item)}>Orden de venta {item.number}</span>
                     </h1>
                 </div>
                 <div className="formalization-order-header-actions">
@@ -471,7 +472,7 @@ export function FormalizationOrderRecord({
                     </div>
                 </div>
             )}
-            <FormalizationFiniquito item={item} allowed={canUpdateStage} />
+            <FormalizationFiniquito item={item} allowed={canUpdateStage} onSaved={onRefresh} />
             <FormalizationRecordProgress item={item} />
             <RecordStageActions
                 key={item.source + ":" + item.id}

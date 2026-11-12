@@ -75,7 +75,7 @@ export function CaptureControls({ qualification, onQualification, pending, perio
                 </div>
                 <div className="capture-controls__field capture-controls__qualification">
                     <span>
-                        <InfoHint label="Calificación">Calificado: marca registrada, cita programada o realizada, estimación, prerreserva u orden de venta. Este filtro consulta datos; no modifica la base de datos.</InfoHint>
+                        Calificación <InfoHint label="Calificación">Calificado: marca registrada, cita programada o realizada, estimación, prerreserva u orden de venta. Este filtro consulta datos; no modifica la base de datos.</InfoHint>
                     </span>
                     <Select<CaptureQualification>
                         aria-label="Filtrar por calificación"

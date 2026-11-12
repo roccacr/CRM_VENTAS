@@ -8,7 +8,7 @@ import { FormalizationApprovalRepository } from "../../src/modules/crm/sales/sal
 import { anyOf } from "../support/throws.js";
 
 const command = { source: "native" as const, id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", actorPublicId: "actor", ownOnly: false, expectedSequence: 0, operationId: "550e8400-e29b-41d4-a716-446655440000", correlationId: "trace" };
-function setup(options: { native?: boolean; inactive?: boolean; prerequisites?: boolean; state?: string; sequence?: number; auditFailure?: boolean; erpFailure?: boolean; owner?: string; replay?: boolean; replayActor?: string; promotion?: boolean } = {}) {
+function setup(options: { native?: boolean; inactive?: boolean; prerequisites?: boolean; state?: string; sequence?: number; auditFailure?: boolean; erpFailure?: boolean; owner?: string; replay?: boolean; replayActor?: string; promotion?: boolean; finiquito?: boolean } = {}) {
     const steps: string[] = [];
     const queries: CompiledQuery[] = [];
     const driver = new DummyDriver();
@@ -25,6 +25,7 @@ function setup(options: { native?: boolean; inactive?: boolean; prerequisites?: 
         return Promise.resolve();
     };
     const responses: [string, (query: CompiledQuery) => Record<string, unknown>[]][] = [
+        ["AS allowed", () => [{ allowed: options.finiquito ? 0 : 1 }]],
         [
             "from `crm_sales_order`",
             (query) => {
@@ -84,6 +85,17 @@ function setup(options: { native?: boolean; inactive?: boolean; prerequisites?: 
     const repo = new FormalizationApprovalRepository({ db } as DatabaseService, audit as unknown as RecordAuditService, legacy, erp);
     return { db, repo, steps, queries, legacy, audit, erp };
 }
+it.each([true, false])("bloquea aprobación comercial antes de llamar ERP si ya tiene finiquito, nativo=%s", async (native) => {
+    const f = setup({ native, finiquito: true });
+    try {
+        await expect(f.repo.approve({ ...command, source: native ? "native" : "legacy" })).rejects.toMatchObject({ status: 409 });
+        expect(f.erp.approveFormalization).not.toHaveBeenCalled();
+        expect(f.audit.append).not.toHaveBeenCalled();
+        expect(f.steps).not.toContain("write");
+    } finally {
+        await f.db.destroy();
+    }
+});
 it.each([true, false])("confirms ERP before committing the authoritative approval and audit (native %s)", async (native) => {
     const f = setup({ native });
     try {

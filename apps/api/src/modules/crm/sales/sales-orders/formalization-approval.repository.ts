@@ -9,6 +9,7 @@ import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { AuditActorSnapshot } from "../../audit/audit-actor.js";
 import { RecordAuditService } from "../../audit/record-audit.service.js";
+import { outsideFiniquito } from "./finiquito-exclusion.query.js";
 import { FORMALIZATION_APPROVAL_ERP, FORMALIZATION_APPROVAL_LEGACY, type FormalizationApprovalCommand, type FormalizationApprovalErp, type FormalizationApprovalLegacy, type LegacyApprovalOrder } from "./formalization-approval.port.js";
 
 interface ResolvedApproval extends LegacyApprovalOrder {
@@ -61,6 +62,7 @@ export class FormalizationApprovalRepository {
             .digest("hex");
         const replay = await this.replay(tx, order, command, operationId);
         if (replay) return replay;
+        await this.assertOutsideFiniquito(tx, order);
         const last = await this.lastState(tx, order);
         const { sequence, recordStage, state, nextSequence, previousState } = this.stagePlan(last);
         this.assertVersionAndStage(order, command, sequence, previousState);
@@ -94,6 +96,12 @@ export class FormalizationApprovalRepository {
         const previousState = last?.state ?? null;
         const recordStage = previousState === null || ["pending_approval", "unclassified"].includes(previousState);
         return { sequence, previousState, recordStage, state: recordStage ? PENDING_SEND : previousState, nextSequence: sequence + Number(recordStage) };
+    }
+
+    /** Una caída desmarcada en el ERP no autoriza reabrir la rama comercial de un finiquito iniciado. */
+    private async assertOutsideFiniquito(tx: Transaction<CrmDatabase>, order: ResolvedApproval): Promise<void> {
+        const { rows } = await sql<{ allowed: number }>`SELECT ${outsideFiniquito(order.source, sql`${order.id}`)} AS allowed`.execute(tx);
+        if (rows[0]?.allowed !== 1) throw new ConflictException("La orden pertenece al flujo de finiquito; no permite aprobación comercial.");
     }
 
     private assertBusinessState(order: ResolvedApproval) {

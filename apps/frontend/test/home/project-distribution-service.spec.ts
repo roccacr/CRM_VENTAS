@@ -22,3 +22,13 @@ it.each([
     vi.mocked(apiRequest).mockResolvedValue(value);
     await expect(getProjectDistribution()).rejects.toThrow();
 });
+
+it("accepts a project that has only finiquitos without adding them to commercial orders", async () => {
+    const value = { ...response(), totalOrders: 0, series: ["finiquito_validation", "finiquito_pending", "finiquito_signed", "finiquito_formalized"], projects: [{ id: null, name: "Sin proyecto", total: 0, counts: { finiquito_validation: 9, finiquito_pending: 0, finiquito_signed: 0, finiquito_formalized: 2 } }] };
+    vi.mocked(apiRequest).mockResolvedValue(value);
+    expect(await getProjectDistribution()).toEqual(value);
+});
+it("rejects a partial finiquito breakdown", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({ ...response(), series: ["finiquito_validation"], projects: [], totalOrders: 0 });
+    await expect(getProjectDistribution()).rejects.toThrow();
+});

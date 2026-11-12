@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { hasRoutePermission } from "../../src/common/security/route-permission.js";
+import { formalizationReadAccess, hasRoutePermission } from "../../src/common/security/route-permission.js";
 import { assertFormalizationOrderReadable } from "../../src/modules/crm/sales/sales-orders/formalization-read.policy.js";
 const profile = (code: string, effect = "allow", status = "active") => ({ roles: [{ code: "formalizacion", status }], permissions: [{ code, effect, scope: "self" }] }) as never;
 const order = { id: "1", publicId: "1", active: true, pendingApproval: false, ownerId: "other", approved: 0, rawStage: "unclassified", contractSigned: 0, completedThisYear: 0 };
 describe("independent order detail authorization", () => {
-    it("allows detail alone for an active unclassified order without banner visibility", () => {
+    it("allows detail and finiquito queues without granting commercial banners", () => {
         const p = profile("formalizacion.orders.read");
         expect(() => {
             assertFormalizationOrderReadable(p, order);
         }).not.toThrow();
         expect(hasRoutePermission(p, { kind: "formalization-order-read" }, {} as never)).toBe(true);
-        expect(hasRoutePermission(p, { kind: "formalization-read" }, {} as never)).toBe(false);
+        expect(hasRoutePermission(p, { kind: "formalization-read" }, {} as never)).toBe(true);
+        expect(formalizationReadAccess(p)).toMatchObject({ contracts: false, bank: false, balance: false, transfer: false, signed: false, closed: false, approvals: false, addendum: false, finiquito_validation: true, finiquito_pending: true, finiquito_signed: true, finiquito_formalized: true });
     });
     it.each(["formalizacion.home.contracts.read", "formalizacion.home.approvals.read", "formalizacion.home.stages.read"])("denies banner-only %s", (code) => {
         expect(() => {

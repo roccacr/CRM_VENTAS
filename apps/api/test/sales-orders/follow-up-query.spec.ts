@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CrmDatabase } from "../../src/database/database.types.js";
 import { LegacyFollowUpReader } from "../../src/integrations/legacy-crm/legacy-follow-up.reader.js";
+import { outsideFiniquito } from "../../src/modules/crm/sales/sales-orders/finiquito-exclusion.query.js";
 import { emptyFollowUpSource } from "../../src/modules/crm/sales/sales-orders/follow-up.contract.js";
 import { followUpSourceQuery, projectDistributionQuery, projectDistributionSeries, readFollowUpSource, readProjectDistribution } from "../../src/modules/crm/sales/sales-orders/follow-up.query.js";
 import { FollowUpRepository } from "../../src/modules/crm/sales/sales-orders/follow-up.repository.js";
@@ -26,6 +27,28 @@ function database(rows: Record<string, unknown>[] = [{ ...emptyFollowUpSource().
     return { db, queries };
 }
 describe("bounded federated follow-up SQL", () => {
+    it("shares finiquito classification and combines its queues with existing selections without bypassing order access", () => {
+        const { db } = database();
+        try {
+            const input = { ...query, queues: ["send", "finiquito_validation", "finiquito_signed"] as const };
+            const read = { ...input, queues: [...input.queues] };
+            const granted = followUpSourceQuery(sql`SELECT 1`, read, { ...access, finiquito: true }).compile(db);
+            const denied = followUpSourceQuery(sql`SELECT 1`, read, { ...access, finiquito: false }).compile(db);
+            expect(granted.sql).toContain("AS finiquitoSection");
+            expect(granted.sql).toContain("$.finiquitoManualStage");
+            expect(granted.sql).toContain("ORDER BY manual_event.sequence_record_event DESC LIMIT 1");
+            expect(granted.sql).toContain("WHEN balanceValidated=0 AND saleLost=1 AND reservationApplied=1 THEN 'validation'");
+            expect(granted.sql).toContain("finiquitoSection='validation'");
+            expect(granted.sql).toContain("finiquitoSection='waiting_signature'");
+            const selected = granted.sql.split("selected AS (SELECT * FROM searched WHERE")[1]?.split("filtered AS")[0];
+            expect(selected).toContain("stateCode='contract_pending_send'");
+            expect(selected).toContain(" OR ");
+            expect(granted.parameters.filter((value) => value === true).length).toBeGreaterThan(denied.parameters.filter((value) => value === true).length);
+        } finally {
+            void db.destroy();
+        }
+    });
+
     it("adds a bound exact order lookup only for authorized searches without filtered results", async () => {
         const { db } = database();
         try {
@@ -44,6 +67,7 @@ describe("bounded federated follow-up SQL", () => {
         const { db } = database();
         try {
             const compiled = followUpSourceQuery(sql`SELECT 1`, { ...query, search: "" }, access).compile(db);
+            const exclusion = outsideFiniquito(sql`source`, sql`sortId`).compile(db).sql;
             const visible = compiled.sql.split("visible AS (")[1]?.split("), searched AS")[0];
             expect(visible).toContain("approvalPending=1");
             expect(visible).toContain("approved=1 AND stateCode IN ('contract_pending_send','contract_pending_signature')");
@@ -51,9 +75,9 @@ describe("bounded federated follow-up SQL", () => {
             expect(visible).toContain("completedThisYear=1");
             expect(compiled.sql).not.toContain("SUM(TRUE)");
             expect(visible).not.toContain("unitDelivered=");
-            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1))");
-            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND keysDelivered=0 AND unitDelivered=0))");
-            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND completedThisYear=1))");
+            expect(compiled.sql).toContain(`SUM((saleLost=0 AND ${exclusion} AND contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1))`);
+            expect(compiled.sql).toContain(`SUM((saleLost=0 AND ${exclusion} AND contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND keysDelivered=0 AND unitDelivered=0))`);
+            expect(compiled.sql).toContain(`SUM((saleLost=0 AND ${exclusion} AND contractSigned=1 AND completedThisYear=1))`);
             expect(compiled.sql).toContain("FROM visible WHERE projectId IS NOT NULL");
         } finally {
             void db.destroy();
@@ -105,10 +129,11 @@ describe("bounded federated follow-up SQL", () => {
         const { db } = database();
         try {
             const compiled = followUpSourceQuery(sql`SELECT 1`, { ...query, queue: "closed" }, access).compile(db);
-            expect(compiled.sql).toContain("WHERE (saleLost=0 AND contractSigned=1 AND completedThisYear=1");
+            const exclusion = outsideFiniquito(sql`source`, sql`sortId`).compile(db).sql;
+            expect(compiled.sql).toContain(`WHERE (saleLost=0 AND ${exclusion} AND contractSigned=1 AND completedThisYear=1`);
             expect(compiled.sql).not.toContain("WHERE stateCode='closed'");
-            expect(compiled.sql).toContain("SUM((saleLost=0 AND contractSigned=1 AND stateCode IN ('bank_management','bank_management_in_progress'))");
-            expect(compiled.sql).toContain("SUM((saleLost=0 AND approved=1 AND stateCode='contract_pending_signature'))");
+            expect(compiled.sql).toContain(`SUM((saleLost=0 AND ${exclusion} AND contractSigned=1 AND stateCode IN ('bank_management','bank_management_in_progress'))`);
+            expect(compiled.sql).toContain(`SUM((saleLost=0 AND ${exclusion} AND approved=1 AND stateCode='contract_pending_signature'))`);
         } finally {
             void db.destroy();
         }
@@ -212,7 +237,7 @@ it("filters several projects and queues with bound OR predicates in both source 
         expect(compiled.parameters).toContain("legacy-project:7");
         expect(compiled.parameters).toContain("legacy-project:8");
         expect(compiled.parameters).toContain("bank_management_in_progress");
-        expect(compiled.sql).toContain("projectId IN");
+        expect(compiled.sql).toContain("COALESCE(projectId,'unassigned') IN");
         expect(compiled.sql).not.toContain("legacy-project:7");
     } finally {
         await f.db.destroy();
@@ -224,11 +249,39 @@ it.each([true, false])("la visibilidad de finiquito usa permiso de orden explíc
     try {
         const compiled = followUpSourceQuery(sql`SELECT 1`, query, { ...access, queues: { approvals: true }, finiquito }).compile(f.db);
         const sqlText = compiled.sql;
-        expect(sqlText).toContain("AND saleLost=1 AND contractSigned=1");
+        expect(sqlText).toContain("AND saleLost=1");
+        expect(sqlText).not.toContain("AND saleLost=1 AND contractSigned=1");
         expect(sqlText).toContain("saleLost=0 AND");
-        const predicate = sqlText.split("AND saleLost=1 AND contractSigned=1")[0];
+        const predicate = sqlText.split("AND (saleLost=1 OR")[0];
         const position = (predicate?.match(/\?/g)?.length ?? 0) - 1;
         expect(compiled.parameters[position]).toBe(finiquito);
+    } finally {
+        await f.db.destroy();
+    }
+});
+it("incluye caídas sin contrato ni estado activo en ambas fuentes y conserva autoridad y filtros", async () => {
+    const f = database();
+    try {
+        await f.db.transaction().execute(async (tx) => {
+            await new FollowUpRepository().read(tx, query, period, { ...access, finiquito: true });
+            await new LegacyFollowUpReader({ isConfigured: () => true } as never).read(tx, query, period, { ...access, finiquito: true });
+        });
+        const native = f.queries[0]?.sql;
+        const legacy = f.queries[1]?.sql;
+        expect(native).toContain("((o.status_sales_order='active' AND o.cancelled_sales_order='no') OR o.cancelled_sales_order='yes' OR o.balance_validated_sales_order=1 OR o.finiquito_sent_sales_order=1 OR o.finiquito_received_sales_order=1)");
+        expect(native).toContain("o.deleted_at_sales_order IS NULL");
+        expect(native).not.toContain("o.cancelled_sales_order='yes' AND o.contract_signed_sales_order='yes'");
+        expect(legacy).toContain("((o.status_ov=1 AND o.caida_ov=0) OR o.caida_ov=1 OR o.saldo_validado_ov=1 OR o.finiquito_enviado_ov=1 OR o.finiquito_recibido_ov=1)");
+        expect(legacy).not.toContain("o.caida_ov=1 AND o.contrado_frima_ov=1");
+        expect(legacy).toContain("NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)");
+        for (const compiled of f.queries) {
+            expect(compiled.sql).toContain("WHEN saleLost=1 THEN CASE WHEN rawStage IN");
+            expect(compiled.sql).toContain("THEN rawStage ELSE 'unclassified' END");
+            expect(compiled.sql).toContain("ownerId=?");
+            expect(compiled.sql).toContain("FROM visible WHERE");
+            expect(compiled.sql).toContain("LIMIT ? OFFSET ?");
+            expect(compiled.parameters).toContain(access.actorId);
+        }
     } finally {
         await f.db.destroy();
     }
@@ -293,6 +346,41 @@ it("restores the SQL page ordinal across sources without reordering by source ID
 });
 
 describe("project distribution aggregates", () => {
+    it("adds all four finiquito stages only with independent order-read access", () => {
+        const { db } = database();
+        try {
+            expect(projectDistributionSeries({ ...access, queues: {}, finiquito: true })).toEqual(["finiquito_validation", "finiquito_pending", "finiquito_signed", "finiquito_formalized"]);
+            expect(projectDistributionSeries({ ...access, queues: {}, finiquito: false })).toEqual([]);
+            const statement = projectDistributionQuery(sql`SELECT 1`, { ...access, queues: {}, finiquito: true }).compile(db);
+            expect(statement.sql).toContain("AS `finiquito_validation`");
+            expect(statement.sql).toContain("COALESCE(SUM(FALSE),0) AS total");
+            expect(statement.sql).toContain("AS finiquitoSection");
+        } finally {
+            void db.destroy();
+        }
+    });
+    it("keeps finiquito-only projects without adding their counts to commercial totals", async () => {
+        const { db } = database([{ id: null, name: "Sin proyecto", total: 0, finiquito_validation: 9, finiquito_pending: 1, finiquito_signed: 0, finiquito_formalized: 2 }]);
+        try {
+            await db.transaction().execute(async (tx) => {
+                const result = await readProjectDistribution(tx, sql`SELECT 1`, { ...access, queues: {}, finiquito: true });
+                expect(result.totalOrders).toBe(0);
+                expect(result.projects[0]?.counts).toMatchObject({ finiquito_validation: 9, finiquito_formalized: 2 });
+            });
+        } finally {
+            await db.destroy();
+        }
+    });
+    it("binds the unassigned project filter instead of reading the whole portfolio", () => {
+        const { db } = database();
+        try {
+            const statement = followUpSourceQuery(sql`SELECT 1`, { ...query, projectIds: ["unassigned"], queue: "finiquito_validation" }, { ...access, finiquito: true }).compile(db);
+            expect(statement.sql).toContain("COALESCE(projectId,'unassigned') IN");
+            expect(statement.parameters).toContain("unassigned");
+        } finally {
+            void db.destroy();
+        }
+    });
     const distributionAccess = { ...access, ownOnly: false, approvals: true, queues: { approvals: true, contracts: true, bank: true, closed: true, addendum: true } };
     it("uses exact authorized banners globally with overlapping annual closure and pending addendum", () => {
         const { db } = database();

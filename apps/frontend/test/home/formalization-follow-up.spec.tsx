@@ -59,6 +59,22 @@ afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
 });
+it.each(["native", "legacy"] as const)("muestra la etapa guardada / Caída sin contrato y marca toda la fila: %s", async (source) => {
+    const data = payload("OV-CAIDA");
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, items: [{ ...data.items[0], source, id: source === "native" ? "01ARZ3NDEKTSV4RRFFQ69G5FAV" : "legacy:7", saleLost: true, contractSigned: false, state: { code: "contract_pending_send", label: "Por enviar", since: null, days: null } }] });
+    render(<FormalizationFollowUpPreview {...props} />);
+    const stage = await screen.findByText("Por enviar / Caída");
+    expect(stage).toHaveAttribute("data-sale-lost", "true");
+    expect(stage.closest("tr")).toHaveAttribute("data-sale-lost", "true");
+    expect(stage.closest("tr")).toHaveAttribute("data-finiquito", "true");
+});
+it("conserva la etiqueta y apariencia comercial de una orden no caída", async () => {
+    render(<FormalizationFollowUpPreview {...props} />);
+    const stage = await screen.findByText("Etiqueta del servidor");
+    expect(stage).toHaveAttribute("data-sale-lost", "false");
+    expect(stage.closest("tr")).toHaveAttribute("data-sale-lost", "false");
+    expect(screen.queryByText("Etiqueta del servidor / Caída")).toBeNull();
+});
 it("reports a source failure with retry instead of a zero or unavailable fixture", async () => {
     vi.mocked(apiRequest).mockRejectedValueOnce(new Error("offline"));
     render(<FormalizationFollowUpPreview {...props} />);
@@ -232,7 +248,7 @@ it("shows a successful empty result with zero rather than an error", async () =>
 it("gates Home reads by effective allow without deny (active role not required), and removes revoked rows", async () => {
     const { rerender } = render(<FormalizationHomePage />);
     expect(reads()).toHaveLength(0);
-    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[detail, allow, { ...allow, effect: "deny" }]} />);
+    rerender(<FormalizationHomePage roles={[role]} effectivePermissions={[detail, { ...detail, effect: "deny" }, allow, { ...allow, effect: "deny" }]} />);
     expect(reads()).toHaveLength(0);
     // Los grants efectivos autorizan la lectura; un rol inactivo ya no la bloquea.
     rerender(<FormalizationHomePage roles={[{ ...role, status: "inactive" }]} effectivePermissions={[detail, allow]} />);
@@ -256,6 +272,18 @@ it("keeps a single Home consumer and filters its list with banners", async () =>
         expect(reads()).toHaveLength(3);
     });
     expect(screen.getAllByText("OV-REAL")).toHaveLength(1);
+});
+it("order access keeps finiquito readable when commercial stages are denied and revocation removes its rows", async () => {
+    const { rerender } = render(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[detail, allow, { ...allow, effect: "deny" }]} />);
+    await screen.findByText("OV-REAL");
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Bandeja de seguimiento" }));
+    for (const label of ["Validación de saldo", "Finiquito pendiente", "Finiquito firmado", "Formalizada"]) expect(await screen.findByRole("option", { name: new RegExp(`^${label} \\(`) })).toBeInTheDocument();
+    for (const label of ["Contratos pendientes", "Gestión bancaria", "Pendientes de aprobación", "Pendientes de adéndum"]) expect(screen.queryByRole("option", { name: new RegExp(`^${label} \\(`) })).toBeNull();
+    expect(reads()).toHaveLength(1);
+    expect(vi.mocked(apiRequest).mock.calls.some(([path]) => path.includes("/home/summary"))).toBe(false);
+    rerender(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[detail, { ...detail, effect: "deny" }, allow, { ...allow, effect: "deny" }]} />);
+    expect(screen.queryByText("OV-REAL")).toBeNull();
+    expect(reads()).toHaveLength(1);
 });
 it("direct Orders entry has a single follow-up request", async () => {
     render(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[detail, allow]} />);
@@ -492,7 +520,7 @@ it("banner-only list cannot open a drawer or request order details", async () =>
     expect(vi.mocked(apiRequest).mock.calls.some(([path]) => path.startsWith("/formalization/orders/"))).toBe(false);
 });
 
-it("detail-only direct URL restores without banner, list or count reads", async () => {
+it("order access restores the direct URL despite an unavailable finiquito list without commercial summary reads", async () => {
     window.history.replaceState({}, "", "/home/formalization/orders?orderSource=legacy&orderId=208");
     vi.mocked(apiRequest).mockImplementation((path) => {
         if (path.endsWith("/record")) return Promise.resolve({ ...payload("DETAIL-ONLY").items[0], id: "legacy:208", source: "legacy" });
@@ -500,7 +528,7 @@ it("detail-only direct URL restores without banner, list or count reads", async 
     });
     render(<FormalizationHomePage initialView="orders" roles={[role]} effectivePermissions={[detail]} />);
     expect(await screen.findByRole("heading", { name: /Orden de venta DETAIL-ONLY/ })).toBeInTheDocument();
-    expect(reads()).toHaveLength(0);
+    expect(reads()).toHaveLength(1);
     expect(vi.mocked(apiRequest).mock.calls.some(([path]) => path.includes("/home/summary"))).toBe(false);
     window.history.replaceState({}, "", "/home/formalization");
 });
@@ -562,4 +590,35 @@ it("offers an explicit import after an empty exact search and refreshes the list
     fireEvent.click(button);
     await screen.findByText("La importación de BC448 quedó en cola. Te avisaremos en la campanita cuando termine.");
     expect(apiRequest).toHaveBeenCalledWith("/formalization/orders/netsuite/import", { method: "POST", body: { tranid: "BC448" }, retryOnUnauthorized: false });
+});
+
+it.each(["finiquito_validation", "finiquito_pending", "finiquito_signed", "finiquito_formalized"] as const)("agrega %s al filtro existente sin abrir otro modal ni perder selecciones", async (selection) => {
+    const { rerender } = render(<FormalizationFollowUpPreview {...props} filterRequest={{ selection: "balance", version: 1 }} />);
+    await waitFor(() => {
+        expect(reads().at(-1)?.[0]).toContain("queues=balance");
+    });
+    rerender(<FormalizationFollowUpPreview {...props} filterRequest={{ selection, version: 2 }} />);
+    await waitFor(() => {
+        const params = new URL(reads().at(-1)?.[0] ?? "", "http://localhost").searchParams;
+        expect(params.get("queues")?.split(",")).toEqual(["balance", selection]);
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+it.each([
+    ["Validación de saldo", "finiquito_validation"],
+    ["Finiquito pendiente", "finiquito_pending"],
+    ["Finiquito firmado", "finiquito_signed"],
+    ["Formalizada", "finiquito_formalized"],
+] as const)("el banner %s filtra la tabla de Home sin navegar ni abrir ventana", async (label, selection) => {
+    vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path.startsWith("/formalization/orders/finiquito/overview") ? { counts: { validation: 1, pending_send: 0, waiting_signature: 0, formalized: 0, waiting_checks: 0 }, total: 1, page: 1, pageSize: 25, canUpdate: false, items: [] } : payload()));
+    const onNavigate = vi.fn();
+    render(<FormalizationHomePage roles={[role]} effectivePermissions={[allow, detail]} onNavigate={onNavigate} />);
+    const banner = await screen.findByRole("region", { name: "Ventas caídas · Gestión de finiquito" });
+    fireEvent.click(within(banner).getByRole("button", { name: new RegExp(label) }));
+    await waitFor(() => {
+        expect(reads().at(-1)?.[0]).toContain(`queues=${selection}`);
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });

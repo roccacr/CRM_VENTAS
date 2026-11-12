@@ -5,6 +5,13 @@ export interface PreviousOrderObservation {
     completedAt: string | null;
     recordedAt: string;
 }
+/** Una observación parcial tiene watermark propio; nunca representa que los demás campos se sincronizaron. */
+export function isStaleReservationObservation(event: PersistedOrderEvent, previous: { modified: string | number | null; completed: string | number | null }): boolean {
+    if (previous.modified === null) return false;
+    const modified = Date.parse(event.event.sourceModifiedAt);
+    const started = Date.parse(event.event.snapshotReadStartedAt ?? event.event.sourceModifiedAt);
+    return modified < Number(previous.modified) || (modified === Number(previous.modified) && started <= Number(previous.completed));
+}
 /** El hash dice si el contenido es el mismo, no que hora es. Sin cursor previo, la observacion no esta vieja. */
 export function isStaleOrderObservation(input: { event: PersistedOrderEvent; cursor: { observed: string | number | null; hash: string | null }; hash: string; previous: PreviousOrderObservation | null }): boolean {
     if (input.cursor.observed === null) return false;

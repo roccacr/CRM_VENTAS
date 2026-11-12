@@ -26,6 +26,16 @@ export interface CrmSalesOrderTable {
     status_sales_order: Generated<"active" | "inactive" | "unknown">;
     cancellation_marked_on_sales_order: Generated<string | null>;
     cancelled_sales_order: Generated<"yes" | "no" | "unknown">;
+    reservation_applied_sales_order: Generated<"yes" | "no" | "unknown">;
+    balance_validated_sales_order: Generated<number>;
+    balance_validated_by_sales_order: Generated<string | null>;
+    balance_validated_at_sales_order: Generated<Date | null>;
+    finiquito_sent_sales_order: Generated<number>;
+    finiquito_sent_by_sales_order: Generated<string | null>;
+    finiquito_sent_at_sales_order: Generated<Date | null>;
+    finiquito_received_sales_order: Generated<number>;
+    finiquito_received_by_sales_order: Generated<string | null>;
+    finiquito_received_at_sales_order: Generated<Date | null>;
     currency_code_sales_order: string | null;
     transaction_date_sales_order: string | null;
     list_price_sales_order: string | null;

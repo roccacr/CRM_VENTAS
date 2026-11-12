@@ -64,6 +64,8 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
                 CASE o.contrado_frima_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS contractSignedCheck,
                 CASE o.caida_ov WHEN 1 THEN 1 WHEN 0 THEN 0 ELSE NULL END AS saleLostCheck,
                 COALESCE(o.caida_ov=1,0) AS saleLost,
+                COALESCE(o.reserva_ov=1,0) AS reservationApplied,
+                o.saldo_validado_ov AS balanceValidated,o.finiquito_enviado_ov AS sent,o.finiquito_recibido_ov AS received,
                 COALESCE(o.contrado_frima_ov=1,0) AS contractSigned,
                 COALESCE(o.aprobacion_forma_ov=1,0) AS approved,
                 COALESCE(o.chekJefeVenta=1 AND o.aprobacion__rdr_ov=1 AND o.aprobacion_forma_ov=0,0) AS approvalPending,
@@ -82,6 +84,6 @@ export class LegacyFollowUpReader implements FollowUpLegacyReader {
                 AND NOT EXISTS(SELECT 1 FROM ${sql.table("crmdatabase-api.expedientes")} sibling WHERE sibling.ID_interno_expediente=f.ID_interno_expediente AND sibling.id_expediente<>f.id_expediente)
             LEFT JOIN ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e ON e.id_sales_order_state_event=(SELECT latest.id_sales_order_state_event
                 FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} latest WHERE latest.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
-            WHERE ${id === undefined ? sql`TRUE` : sql`o.id_ov=${Number(id)}`} AND ${includeInactive ? sql`TRUE` : sql`o.status_ov=1 AND (o.caida_ov=0 OR (o.caida_ov=1 AND o.contrado_frima_ov=1))`} AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
+            WHERE ${id === undefined ? sql`TRUE` : sql`o.id_ov=${Number(id)}`} AND ${includeInactive ? sql`TRUE` : sql`((o.status_ov=1 AND o.caida_ov=0) OR o.caida_ov=1 OR o.saldo_validado_ov=1 OR o.finiquito_enviado_ov=1 OR o.finiquito_recibido_ov=1)`} AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
     }
 }

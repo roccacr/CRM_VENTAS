@@ -9,7 +9,7 @@ const ROOT = fileURLToPath(new URL("../../../src/integrations/netsuite/suitescri
 const CABINET_ROOT = "/SuiteScripts/";
 export const SANDBOX_ACCOUNT = "4552704_SB1";
 export const EVENT_TEST_ID = "11111111-1111-4111-8111-111111111111";
-export const EVENT_FIELDS = Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((field) => [field, false]));
+export const EVENT_FIELDS = Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas", "custbody209"].map((field) => [field, false]));
 export const EVENT_PROVIDERS = { "N/crypto/random": { generateUUID: () => EVENT_TEST_ID }, "N/format": { Type: { DATETIME: "datetime" }, parse: ({ value }) => new Date(value) } };
 
 /** Ejecuta el AMD real de un archivo (ruta relativa a suitescript/) resolviendo sus dependencias con proveedores falsos. */

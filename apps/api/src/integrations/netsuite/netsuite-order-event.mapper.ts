@@ -54,6 +54,17 @@ export const orderFlagMappings = [
 ] as const;
 export type OrderEventDestination = "native" | "legacy";
 export type OrderFlagChange = { field: string; column: string; before: unknown; after: "yes" | "no" | 0 | 1 };
+/** Reserva Aplicada usa la columna legacy vigente confirmada por negocio; no mantiene otra copia paralela. */
+export const reservationAppliedMapping = { netsuite: "custbody209", native: "reservation_applied_sales_order", legacy: "reserva_ov", type: "checkbox" } as const;
+/** Los productores anteriores no borran el valor; un checkbox presente debe ser inequívoco. */
+export function mapReservationApplied(fields: Record<string, unknown>, destination: OrderEventDestination, before: Record<string, unknown>): OrderFlagChange[] {
+    if (!Object.hasOwn(fields, reservationAppliedMapping.netsuite)) return [];
+    const flag = checked(fields[reservationAppliedMapping.netsuite], reservationAppliedMapping.netsuite);
+    const column = reservationAppliedMapping[destination];
+    const after = destination === "native" ? (flag ? "yes" : "no") : flag ? 1 : 0;
+    const previous = before[column] ?? null;
+    return previous === after ? [] : [{ field: reservationAppliedMapping.netsuite, column, before: previous, after }];
+}
 /** Solo `true`, `false`, `T` o `F`. `F` no se evalua con truthiness. Un valor ausente no es falso: se rechaza. */
 function checked(value: unknown, field: string): boolean {
     if (![true, false, "T", "F"].includes(value as boolean | string)) throw new BadRequestException("Checkbox requerido invalido: " + field);
@@ -61,14 +72,17 @@ function checked(value: unknown, field: string): boolean {
 }
 /** Nativo guarda `yes` o `no`. Legado guarda 1 o 0. Si el valor no cambio, no hay diff. Los nombres fisicos se conservan, incluido `contrado_frima_ov`. */
 export function mapOrderFlags(fields: Record<string, unknown>, destination: OrderEventDestination, before: Record<string, unknown>): OrderFlagChange[] {
-    return orderFlagMappings.flatMap((mapping) => {
-        const value = fields[mapping.netsuite];
-        const flag = checked(value, mapping.netsuite);
-        const column = mapping[destination];
-        const after = destination === "native" ? (flag ? "yes" : "no") : flag ? 1 : 0;
-        const previous = before[column] ?? null;
-        return previous === after ? [] : [{ field: mapping.netsuite, column, before: previous, after }];
-    });
+    return [
+        ...orderFlagMappings.flatMap((mapping): OrderFlagChange[] => {
+            const value = fields[mapping.netsuite];
+            const flag = checked(value, mapping.netsuite);
+            const column = mapping[destination];
+            const after = destination === "native" ? (flag ? "yes" : "no") : flag ? 1 : 0;
+            const previous = before[column] ?? null;
+            return previous === after ? [] : [{ field: mapping.netsuite, column, before: previous, after }];
+        }),
+        ...mapReservationApplied(fields, destination, before),
+    ];
 }
 
 /** Diff comercial compartido por flags y efectos de negocio de la orden. */

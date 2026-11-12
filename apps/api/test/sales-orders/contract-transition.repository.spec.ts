@@ -1,4 +1,4 @@
-import { HttpException } from "@nestjs/common";
+import { ConflictException, HttpException } from "@nestjs/common";
 import { SELF_DECLARED_DEPS_METADATA } from "@nestjs/common/constants.js";
 import { type CompiledQuery, DummyDriver, Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler, type QueryResult } from "kysely";
 import { describe, expect, it, vi } from "vitest";
@@ -8,6 +8,7 @@ import type { CrmDatabase } from "../../src/database/database.types.js";
 import { RecordAuditService } from "../../src/modules/crm/audit/record-audit.service.js";
 import { CONTRACT_TRANSITION_LEGACY } from "../../src/modules/crm/sales/sales-orders/contract-transition.port.js";
 import { ContractTransitionRepository } from "../../src/modules/crm/sales/sales-orders/contract-transition.repository.js";
+import { UNIT_TRANSFER_WORKFLOW } from "../../src/modules/crm/sales/sales-orders/unit-transfer-workflow.port.js";
 import { anyOf } from "../support/throws.js";
 
 const request = { source: "native" as const, id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", action: "send" as const, ownOnly: false, actorPublicId: "actor", reason: "", operationId: "550e8400-e29b-41d4-a716-446655440000", correlationId: "trace", expectedSequence: 0 };
@@ -45,6 +46,7 @@ function setup(
         owner?: string | null;
         auditSequence?: number;
         fundsReplay?: Record<string, unknown>;
+        finiquito?: boolean;
     } = {},
 ) {
     const paid = paidFixture(options.paid);
@@ -69,6 +71,7 @@ function setup(
         },
     ];
     const responses: [RegExp, (query: CompiledQuery) => Record<string, unknown>[]][] = [
+        [/AS allowed/, () => [{ allowed: options.finiquito ? 0 : 1 }]],
         [/from `audit_record_event`.*`operation_id_record_event`/, () => (options.fundsReplay ? [options.fundsReplay] : [])],
         [/from `audit_record_event`/, () => (options.auditSequence ? [{ sequence_record_event: options.auditSequence }] : [])],
         [
@@ -122,10 +125,52 @@ function setup(
         append: vi.fn().mockResolvedValue(undefined),
         updatePurchaseFunds: vi.fn().mockResolvedValue(undefined),
     };
-    return { repo: new ContractTransitionRepository({ db } as DatabaseService, audit as unknown as RecordAuditService, legacy), db, queries, steps, audit, legacy };
+    const workflow = { execute: vi.fn().mockResolvedValue("customworkflow220 / workflowstate2780; confirmado") };
+    return { repo: new ContractTransitionRepository({ db } as DatabaseService, audit as unknown as RecordAuditService, legacy, workflow), db, queries, steps, audit, legacy, workflow };
 }
 
 describe("contract transitions on one transaction with doubles only", () => {
+    it.each([true, false].flatMap((native) => [false, true, null].map((delivered) => ({ native, delivered }))))("confirms unit transfer before writing closure regardless of prior delivery: %j", async ({ native, delivered }) => {
+        const f = setup({ native, state: "transfer_signed", sequence: 1, delivered });
+        f.workflow.execute.mockImplementationOnce(() => {
+            expect(f.audit.append).not.toHaveBeenCalled();
+            expect(f.legacy.append).not.toHaveBeenCalled();
+            expect(f.queries.some((q) => /^insert/i.test(q.sql))).toBe(false);
+            return Promise.resolve("customworkflow220 / workflowstate2780; confirmado");
+        });
+        try {
+            await expect(f.repo.transition({ ...request, ...commandIdentity(native), action: "set", targetState: "closed", expectedSequence: 1 })).resolves.toMatchObject({ state: "closed", sequence: 2 });
+            expect(f.workflow.execute).toHaveBeenCalledOnce();
+            const workflowResult: unknown = expect.stringContaining("customworkflow220 / workflowstate2780");
+            const after: unknown = expect.objectContaining({ state: "closed", workflowResult });
+            expect(f.audit.append).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: request.reason, after }));
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it.each([true, false])("keeps stage and central audit unchanged when NetSuite fails (native=%s)", async (native) => {
+        const f = setup({ native, state: "transfer_signed", sequence: 1, delivered: false });
+        f.workflow.execute.mockRejectedValueOnce(new ConflictException("external failure"));
+        try {
+            await expect(f.repo.transition({ ...request, ...commandIdentity(native), action: "set", targetState: "closed", expectedSequence: 1 })).rejects.toThrow("external failure");
+            expect(f.steps).toContain("rollback");
+            expect(f.audit.append).not.toHaveBeenCalled();
+            expect(f.legacy.append).not.toHaveBeenCalled();
+            expect(f.queries.some((q) => /^insert|^update/i.test(q.sql))).toBe(false);
+        } finally {
+            await f.db.destroy();
+        }
+    });
+    it.each([true, false])("no reabre etapas comerciales de una orden con finiquito, nativo=%s", async (native) => {
+        const f = setup({ native, finiquito: true });
+        try {
+            await expect(f.repo.transition({ ...request, ...commandIdentity(native) })).rejects.toMatchObject({ status: 409 });
+            expect(f.queries.some((query) => /^insert|^update/i.test(query.sql))).toBe(false);
+            expect(f.legacy.append).not.toHaveBeenCalled();
+        } finally {
+            await f.db.destroy();
+        }
+    });
     it("rolls back a classification update when its audit cannot be appended", async () => {
         const f = setup();
         f.audit.append.mockRejectedValueOnce(new Error("audit failed"));
@@ -418,6 +463,7 @@ describe("contract transitions on one transaction with doubles only", () => {
                 { index: 0, param: DatabaseService },
                 { index: 1, param: RecordAuditService },
                 { index: 2, param: CONTRACT_TRANSITION_LEGACY },
+                { index: 3, param: UNIT_TRANSFER_WORKFLOW },
             ]),
         );
     });

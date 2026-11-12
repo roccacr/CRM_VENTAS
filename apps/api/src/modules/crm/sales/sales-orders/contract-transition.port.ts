@@ -1,4 +1,4 @@
-import type { Transaction } from "kysely";
+import type { RawBuilder, Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../../../database/database.types.js";
 import type { AuditActorSnapshot } from "../../audit/audit-actor.js";
@@ -15,6 +15,7 @@ export interface ContractOrder {
     /** Disponible excluye borrados e inactivos, con independencia de la casilla de venta perdida. */
     available?: boolean;
     saleLost?: boolean;
+    reservationApplied?: boolean;
     contractSigned: boolean;
     installmentsFullyPaid: boolean | null;
     unitTransferred: boolean | null;
@@ -43,6 +44,10 @@ export interface ContractEventWrite extends ContractEvent {
 
 /** El adaptador usa solo la transacción canónica que le pasan. No abre otro pool de escritura. */
 export interface ContractTransitionLegacy {
+    /** Proyección de la misma rama; nulo cuando el fallback está apagado. */
+    finiquitoProjection?(tx: Transaction<CrmDatabase>): RawBuilder<unknown> | null;
+    /** Consulta exclusiva del finiquito; no obliga a las demás transiciones a usar columnas del nuevo flujo. */
+    reservationApplied?(tx: Transaction<CrmDatabase>, id: string): Promise<boolean>;
     lock(tx: Transaction<CrmDatabase>, id: string, readOnly?: boolean): Promise<ContractOrder | undefined>;
     /** Resuelve un dueño nativo vivo y único dentro de la transacción de quien llama. Si hay ambigüedad, devuelve nulo. */
     owner(tx: Transaction<CrmDatabase>, id: string): Promise<string | null>;

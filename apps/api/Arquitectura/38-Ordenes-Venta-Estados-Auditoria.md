@@ -532,7 +532,7 @@ transaccion local no hace atomica una escritura en ambas bases.
 | status_ov | status_sales_order | 1 active; 0 inactive; otros o null unknown |
 | creado_ov | source_created_at_sales_order + snapshot original | Fecha del registro viejo; no se convierte sin zona horaria confirmada ni se confunde con creacion en ERP |
 | caida_ov | cancelled_sales_order | 1 yes; 0 no; null/otros unknown |
-| reserva_ov | snapshot original: reserva_ov | Pendiente confirmar semantica y todos sus valores |
+| reserva_ov | custbody209 (T/true→1, F/false→0) | Confirmado por negocio2026-11-12; ver Reserva-Aplicada-075.md |
 | pre_lista_ov | list_price_sales_order | custbody13; DECIMAL(19,4) o null si ambiguo |
 | trandate_ov | transaction_date_sales_order | Archivo transforma fecha comercial a ISO; validar calendario; 0 no es fecha |
 | prec_ventaneto_ov | net_sale_price_sales_order | custbody17; no seguir conversion booleana ajena a este dato |

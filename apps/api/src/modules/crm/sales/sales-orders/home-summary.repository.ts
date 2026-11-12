@@ -3,6 +3,7 @@ import { sql, type Transaction } from "kysely";
 
 import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
+import { outsideFiniquito } from "./finiquito-exclusion.query.js";
 import { formalizationClosedThisYear } from "./formalization-closure.query.js";
 import { type HomeSummaryPeriod, type OverdueAggregateRow, overdueCountsFromRow, type RecentOrderActivity, type StageAggregateRow, stageCountsFromRow } from "./home-summary.types.js";
 
@@ -66,7 +67,7 @@ export class HomeSummaryRepository {
                 LEFT JOIN audit_sales_order_state_event e ON e.id_sales_order_state_event=(
                     SELECT latest.id_sales_order_state_event FROM audit_sales_order_state_event latest
                     WHERE latest.sales_order_id_sales_order_state_event=o.id_sales_order ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
-                WHERE o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL
+                WHERE o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL AND ${outsideFiniquito("native", sql`o.id_sales_order`)}
             ) current_orders
         `.execute(tx);
         return stageCountsFromRow(result.rows[0]);
@@ -91,7 +92,7 @@ export class HomeSummaryRepository {
                 JOIN audit_sales_order_state_event e ON e.id_sales_order_state_event=(
                     SELECT latest.id_sales_order_state_event FROM audit_sales_order_state_event latest
                     WHERE latest.sales_order_id_sales_order_state_event=o.id_sales_order ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
-                WHERE o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL
+                WHERE o.status_sales_order='active' AND o.cancelled_sales_order='no' AND o.deleted_at_sales_order IS NULL AND ${outsideFiniquito("native", sql`o.id_sales_order`)}
                     AND e.recorded_at_sales_order_state_event < ${cutoff}
             ) current_orders
         `.execute(tx);

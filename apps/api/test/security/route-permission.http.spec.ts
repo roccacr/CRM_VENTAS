@@ -131,6 +131,7 @@ function expectedCodes(route: (typeof routes)[number]): string[] {
         "PATCH /calendar/outlook-events/:id": ["ventas.calendar.read", "ventas.calendar.update"],
         "PATCH /calendar/events/:id/status": ["ventas.calendar.read", "ventas.calendar.update"],
         "GET /formalization/orders/finiquito": ["formalizacion.orders.read"],
+        "GET /formalization/orders/finiquito/overview": ["formalizacion.orders.read"],
         "POST /formalization/orders/finiquito": ["formalizacion.orders.stage.update"],
         "GET /formalization/orders/:source/:id/purchase-funds": ["formalizacion.orders.stage.update"],
         "POST /formalization/orders/purchase-funds": ["formalizacion.orders.stage.update"],
@@ -224,7 +225,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     it("requires a descriptor on every registered permission handler", () => {
-        expect(new Set(routes.map((route) => route.handler)).size).toBe(117);
+        expect(new Set(routes.map((route) => route.handler)).size).toBe(118);
         expect(routes.some((route) => route.path === "/formalization/orders/:source/:id/documents")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/home/summary")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/leads/report")).toBe(true);

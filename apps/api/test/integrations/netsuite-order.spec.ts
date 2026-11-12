@@ -77,6 +77,20 @@ const sandbox = {
     NETSUITE_SANDBOX_RESTLET_URL: "https://4552704-sb1.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=customscript_read_order&deploy=customdeploy_read_order",
 };
 const approval = { type: "salesorder", id: "123", approval: "formalization", approved: true, alreadyApproved: false };
+it("sends one authenticated unit-transfer PUT and validates its exact confirmation", async () => {
+    const data = { type: "salesorder", id: "123", action: "transferUnit", workflowId: "customworkflow220", stateId: "workflowstate2780", executed: true, instanceId: "789" };
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 200, data })));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(new NetsuiteRestletClient(new ConfigService(sandbox)).transferUnit("123")).resolves.toMatchObject({ ...data, environment: "sandbox" });
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher).toHaveBeenCalledWith(expect.any(URL), expect.objectContaining({ method: "PUT", body: JSON.stringify({ module: "salesOrders", action: "transferUnit", id: "123" }), redirect: "error" }));
+});
+it.each([{ status: 200 }, { status: 200, data: { id: "456", executed: true } }, { status: 502, error: { message: "PRIVATE_DETAIL" } }])("does not accept incomplete unit-transfer confirmation or retry", async (body) => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(body)));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(new NetsuiteRestletClient(new ConfigService(sandbox)).transferUnit("123")).rejects.toThrow("NetSuite no confirmó");
+    expect(fetcher).toHaveBeenCalledOnce();
+});
 it.each([false, true])("approves in configured production without using sandbox credentials: alreadyApproved=%s", async (alreadyApproved) => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 200, data: { ...approval, alreadyApproved } })));
     vi.stubGlobal("fetch", fetcher);

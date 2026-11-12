@@ -95,7 +95,7 @@ Inventario de solo lectura: 33 columnas de CRM_THINK_V2.crm_sales_order y 40 de 
 | Vieja | status_ov | int / YES | — | Interno/identidad/control CRM: no sobrescribir con payload |
 | Vieja | creado_ov | timestamp / YES | — | Interno/identidad/control CRM: no sobrescribir con payload |
 | Vieja | caida_ov | int / YES | custbody43 | Mapeado local; prueba SQL aislada; no E2E ampliado |
-| Vieja | reserva_ov | int / YES | — | Interno/identidad/control CRM: no sobrescribir con payload |
+| Vieja | reserva_ov | int / YES | custbody209 | Reserva Aplicada confirmada por negocio el2026-11-12; T/true→1, F/false→0; campo ausente conserva |
 | Vieja | pre_lista_ov | varchar(250) / YES | custbody13 | Mapeado local; prueba SQL aislada; no E2E ampliado |
 | Vieja | trandate_ov | varchar(200) / YES | trandate -> crm_transaction_date | Mapeado local; prueba SQL aislada; no E2E ampliado |
 | Vieja | prec_ventaneto_ov | varchar(220) / YES | custbody17 | Mapeado local; prueba SQL aislada; no E2E ampliado |
@@ -161,7 +161,7 @@ Pendientes de cierre: aprobacion y prueba de 059; precision/orden de eventos den
 
 Criterio de cobertura: las filas internas y excluidas de la tabla fisica no representan mapeos pendientes. Los 25 campos origen vigentes incluyen cinco relaciones; oportunidad solo tiene destino legacy. El efecto de fecha es derivado, no una casilla adicional.
 
-Fuentes de campos preservados: backend legado `src/models/ordenVenta/ordenVenta.js:450` cambia `pagadas_ov` por comando CRM; `:888` registra `reserva_ov`, `envioReserva` y `fechaClienteComprobante_ov` en su flujo propio. `chek_ov` no tiene origen NetSuite confirmado y se conserva. El CSV consolidado incluye 421 columnas de tablas/relaciones consultadas, sin copiar sus maestros.
+Fuentes de campos preservados: backend legado `src/models/ordenVenta/ordenVenta.js:450` cambia `pagadas_ov` por comando CRM; `:888` registra `reserva_ov`, `envioReserva` y `fechaClienteComprobante_ov` en su flujo propio. La aclaración de negocio del2026-11-12 confirma que `reserva_ov` también es el destino de `custbody209`; solo esa casilla se sincroniza, no las fechas de envío/comprobante. `chek_ov` no tiene origen NetSuite confirmado y se conserva. El CSV consolidado incluye 421 columnas de tablas/relaciones consultadas, sin copiar sus maestros.
 
 Actualizacion autorizada: 059 aplicada en QA y RDS (2026-11-03T03:35:55Z), con ledger y DATE NULL verificados. El handler sigue deshabilitado en la configuracion real. La consistencia temporal, los escenarios SQL de caida y el E2E ampliado siguen pendientes; esta tabla no certifica esos pasos.
 
@@ -192,3 +192,6 @@ El webhook sigue sin crear órdenes ausentes.
 Para publicar la búsqueda en NetSuite, reemplazar solo
 `/SuiteScripts/SS2_1_RL_CRM_Habita.js` en el archivo del despliegue existente.
 La librería debe conservar soporte para `syncSnapshot`.
+
+
+Corrección vigente del2026-11-12: [Reserva Aplicada075](Reserva-Aplicada-075.md) documenta el campo adicional209, el destino nativo y la columna legacy canónica. La cifra histórica de25 campos anterior no incluye esta ampliación. Saldo validado es independiente.

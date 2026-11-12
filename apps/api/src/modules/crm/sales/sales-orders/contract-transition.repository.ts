@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, HttpException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import { ulid } from "ulid";
 import { z } from "zod";
@@ -12,9 +12,13 @@ import type { AuditActorSnapshot } from "../../audit/audit-actor.js";
 import { RecordAuditService } from "../../audit/record-audit.service.js";
 import { type ContractAction, contractTarget, type ContractTransitionDto, FORMALIZATION_STAGE_CODES, PURCHASE_FUNDS_ORIGINS } from "./contract-transition.dto.js";
 import { CONTRACT_TRANSITION_LEGACY, type ContractEvent, type ContractOrder, type ContractTransitionLegacy } from "./contract-transition.port.js";
-import { assertFiniquitoTransition, finiquitoEligible, finiquitoSnapshot, type FiniquitoStatus } from "./finiquito.policy.js";
+import { type FiniquitoChange, finiquitoManualEvidence, finiquitoSnapshot, finiquitoValidationEligible, normalizedFiniquitoReason, planFiniquitoUpdate } from "./finiquito.policy.js";
+import { persistFiniquitoPlan, readFiniquitoFlags } from "./finiquito.storage.js";
+import { outsideFiniquito } from "./finiquito-exclusion.query.js";
+import { finiquitoOverviewQuery, readFiniquitoOverview } from "./finiquito-overview.query.js";
 import { formalizationCompletionTarget } from "./formalization-completion.policy.js";
 import type { PurchaseFundsDto } from "./purchase-funds.dto.js";
+import { UNIT_TRANSFER_WORKFLOW, type UnitTransferWorkflow } from "./unit-transfer-workflow.port.js";
 
 /** Comando ya validado más el contexto que arma el servidor: actor, correlación y red. Nada de eso viene del cliente. */
 export interface ContractTransitionCommand extends ContractTransitionDto {
@@ -39,6 +43,7 @@ interface ResolvedOrder {
 }
 /** Lo que la bitácora central necesita para registrar un cambio de estado. */
 interface CentralChange {
+    workflowResult?: string | undefined;
     command: ContractTransitionCommand;
     resolved: ResolvedOrder;
     actor: AuditActorSnapshot;
@@ -66,6 +71,10 @@ function assertFundsReplay(replay: { actor_reference_record_event: string | null
 /** Colaborador de persistencia del servicio ya autorizado. No es otro caso de uso público. */
 @Injectable()
 export class ContractTransitionRepository {
+    /** Conteos y lista comparten foto y autoridad nativa primero, sin depender del responsable comercial. */
+    async finiquitoOverview(query: z.infer<typeof finiquitoOverviewQuery>) {
+        return this.database.db.transaction().execute((tx) => readFiniquitoOverview(tx, this.legacy.finiquitoProjection?.(tx) ?? null, query));
+    }
     /** La foto de edición incluye la versión central. Un cambio A, B y otra vez A invalida un formulario viejo. */
     async purchaseFundsSnapshot(command: ContractTransitionCommand) {
         return this.database.db.transaction().execute(async (tx) => {
@@ -78,15 +87,17 @@ export class ContractTransitionRepository {
     }
 
     /** Rama durable e independiente en el diario de solo agregado. No escribe una visita comercial. */
-    async finiquito(command: ContractTransitionCommand, change?: { status: FiniquitoStatus; expectedVersion: number }) {
+    async finiquito(command: ContractTransitionCommand, change?: FiniquitoChange) {
+        if (change?.status === "set_stage") change = { ...change, reason: normalizedFiniquitoReason(change.reason) };
         if (!this.audit.enabled) throw new ServiceUnavailableException("Finiquito requiere auditoría habilitada.");
         // Banderas, repetición, control optimista y el agregado al diario quedan en la misma transacción bloqueada.
         // eslint-disable-next-line complexity
         return this.database.db.transaction().execute(async (tx) => {
             const resolved = await this.resolve(tx, command, !change);
             const { order } = resolved;
-            if (!order.available) throw new NotFoundException("Orden no disponible.");
+            if (resolved.native?.deleted_at_sales_order != null) throw new NotFoundException("Orden no disponible.");
             await this.assertOwnerScope(tx, resolved, command);
+            order.reservationApplied ??= await this.reservationApplied(tx, resolved);
             const source = this.auditSource(resolved);
             const events = () =>
                 tx
@@ -100,40 +111,46 @@ export class ContractTransitionRepository {
             const decode = (value: unknown) => finiquitoSnapshot.parse(typeof value === "string" ? JSON.parse(value) : value);
             const latest = await events().orderBy("event.sequence_record_event", "desc").limit(1).forUpdate().executeTakeFirst();
             const before = latest ? decode(latest.after_record_event) : null;
-            const eligible = finiquitoEligible(order);
-            if (!change) return { eligible, status: before?.finiquitoStatus ?? null, version: before?.finiquitoVersion ?? 0, originStage: before?.finiquitoOriginStage ?? null };
-            if (!eligible) throw new ConflictException("El finiquito requiere Venta caída y Contrato firmado confirmados.");
+            const target = { source: resolved.source, id: order.id };
+            const flags = await readFiniquitoFlags(tx, target);
+            const eligible = finiquitoValidationEligible({ ...order, available: true });
+            const view = (saved: typeof before, values = flags) => ({ eligible, ...values, contractSigned: order.contractSigned, saleLost: order.saleLost === true, status: saved?.finiquitoStatus ?? null, version: saved?.finiquitoVersion ?? 0, originStage: saved?.finiquitoOriginStage ?? null });
+            if (!change) return view(before);
             const operationId = createHash("sha256")
                 .update(JSON.stringify(["sales_order", "finiquito", command.operationId]))
                 .digest("hex");
             const replay = await events().where("event.operation_id_record_event", "=", operationId).limit(1).forUpdate().executeTakeFirst();
             if (replay) {
                 const saved = decode(replay.after_record_event);
-                if (replay.actor_reference_record_event !== command.actorPublicId || saved.finiquitoStatus !== change.status || saved.finiquitoVersion !== change.expectedVersion + 1) throw new ConflictException("Operación reutilizada con datos diferentes.");
-                return { eligible, status: saved.finiquitoStatus, version: saved.finiquitoVersion, originStage: saved.finiquitoOriginStage };
+                if (replay.actor_reference_record_event !== command.actorPublicId || (saved.finiquitoAction ?? saved.finiquitoStatus) !== change.status || saved.finiquitoVersion !== change.expectedVersion + 1 || saved.finiquitoManualStage !== change.targetStage || saved.finiquitoReason !== change.reason) throw new ConflictException("Operación reutilizada con datos diferentes.");
+                return view(before);
             }
+            if (!eligible) throw new ConflictException("Se requiere Venta caída y Reserva Aplicada para gestionar este flujo.");
             if ((before?.finiquitoVersion ?? 0) !== change.expectedVersion) throw new ConflictException("El finiquito cambió. Actualiza antes de guardar.");
-            assertFiniquitoTransition(before?.finiquitoStatus ?? null, change.status);
+            const step = planFiniquitoUpdate(before?.finiquitoStatus ?? null, flags, change, order.contractSigned);
             const last = await this.readEvent(tx, resolved);
             const originStage = before?.finiquitoOriginStage ?? last?.state ?? (order.approved ? "contract_pending_send" : "unclassified");
-            const after = { finiquitoStatus: change.status, finiquitoVersion: change.expectedVersion + 1, finiquitoOriginStage: originStage };
+            const nextFlags = step.flags;
+            const after = { finiquitoStatus: step.status, finiquitoAction: change.status, finiquitoVersion: change.expectedVersion + 1, finiquitoOriginStage: originStage, ...finiquitoManualEvidence(change), ...nextFlags };
             const actor = await tx.selectFrom("sec_user").select("id_user").where("public_id_user", "=", command.actorPublicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).executeTakeFirstOrThrow();
             const captured = await this.audit.captureActor(tx, actor.id_user);
+            await persistFiniquitoPlan(tx, target, { ...step, actor: command.actorPublicId });
             await this.audit.append(tx, {
                 ...source,
                 actor: captured,
                 action: "state_change",
                 module: "formalizacion.finiquito",
-                before: before ?? { finiquitoStatus: null, finiquitoVersion: 0, finiquitoOriginStage: null },
+                before: { ...(before ?? { finiquitoStatus: null, finiquitoVersion: 0, finiquitoOriginStage: null }), ...flags },
                 after,
-                allowedFields: ["finiquitoStatus", "finiquitoVersion", "finiquitoOriginStage"],
+                allowedFields: ["finiquitoStatus", "finiquitoAction", "finiquitoVersion", "finiquitoOriginStage", "balanceValidated", "sent", "received", "finiquitoManualStage", "finiquitoReason"],
+                reason: change.reason ?? null,
                 operationId,
                 correlationId: command.correlationId,
                 snapshotScope: "partial",
                 ...(command.ipAddress ? { ipAddress: command.ipAddress } : {}),
                 ...(command.userAgent ? { userAgent: command.userAgent } : {}),
             });
-            return { eligible, status: after.finiquitoStatus, version: after.finiquitoVersion, originStage };
+            return view(after, nextFlags);
         });
     }
 
@@ -141,6 +158,20 @@ export class ContractTransitionRepository {
         const { source } = this.auditSource(resolved);
         const last = await tx.selectFrom("audit_record_event as event").innerJoin("audit_record as record", "record.id_record", "event.record_id_record_event").select("event.sequence_record_event").where("record.source_schema_record", "=", source.schema).where("record.source_table_record", "=", source.table).where("record.source_id_record", "=", source.id).orderBy("event.sequence_record_event", "desc").limit(1).forUpdate().executeTakeFirst();
         return last?.sequence_record_event ?? 0;
+    }
+
+    private async reservationApplied(tx: Transaction<CrmDatabase>, resolved: ResolvedOrder): Promise<boolean> {
+        if (resolved.native) {
+            const row = await tx.selectFrom("crm_sales_order").select("reservation_applied_sales_order").where("id_sales_order", "=", resolved.native.id_sales_order).forUpdate().executeTakeFirst();
+            return row?.reservation_applied_sales_order === "yes";
+        }
+        if (!this.legacy.reservationApplied) throw new ServiceUnavailableException("La fuente legacy no permite confirmar Reserva Aplicada.");
+        return this.legacy.reservationApplied(tx, resolved.order.id);
+    }
+
+    private async assertOutsideFiniquito(tx: Transaction<CrmDatabase>, resolved: ResolvedOrder): Promise<void> {
+        const exclusion = await sql<{ allowed: number }>`SELECT ${outsideFiniquito(resolved.source, sql`${resolved.order.id}`)} AS allowed`.execute(tx);
+        if (exclusion.rows[0]?.allowed !== 1) throw new ConflictException("La orden pertenece al flujo de finiquito y no puede avanzar en etapas comerciales.");
     }
 
     /** Una transacción actualiza la clasificación y la bitácora central. No cambia la visita ni el temporizador de etapa. */
@@ -194,6 +225,7 @@ export class ContractTransitionRepository {
         @Inject(DatabaseService) private readonly database: DatabaseService,
         @Inject(RecordAuditService) private readonly audit: RecordAuditService,
         @Inject(CONTRACT_TRANSITION_LEGACY) private readonly legacy: ContractTransitionLegacy,
+        @Inject(UNIT_TRANSFER_WORKFLOW) private readonly unitTransfer: UnitTransferWorkflow,
     ) {}
 
     /** El bloqueo incluye alias inactivos y borrados. Una fila nativa tapa su fuente vieja. */
@@ -252,7 +284,12 @@ export class ContractTransitionRepository {
     /** La historia especializada y la central comparten la conexión nativa y el mismo commit. */
     async transition(command: ContractTransitionCommand) {
         if (!this.audit.enabled) throw new ServiceUnavailableException("Contract transitions require enabled central record audit");
-        return this.database.db.transaction().execute((tx) => this.executeTransition(tx, command));
+        try {
+            return await this.database.db.transaction().execute((tx) => this.executeTransition(tx, command));
+        } catch (error) {
+            if (command.targetState === "closed" && !(error instanceof HttpException)) throw new ServiceUnavailableException({ code: "UNIT_TRANSFER_LOCAL_COMMIT_UNCONFIRMED", message: "No se confirmó el guardado de la etapa. Actualiza la orden y concilia la ejecución externa antes de reintentar." });
+            throw error;
+        }
     }
 
     private async readEvent(tx: Transaction<CrmDatabase>, resolved: ResolvedOrder, operationId?: string) {
@@ -262,6 +299,7 @@ export class ContractTransitionRepository {
     private async executeTransition(tx: Transaction<CrmDatabase>, command: ContractTransitionCommand) {
         const resolved = await this.resolve(tx, command);
         if (!resolved.order.active) throw new ConflictException("Order is inactive, deleted or cancelled");
+        await this.assertOutsideFiniquito(tx, resolved);
         const actor = await tx.selectFrom("sec_user").select("id_user").where("public_id_user", "=", command.actorPublicId).where("status_user", "=", "active").where("deleted_at_user", "is", null).executeTakeFirstOrThrow();
         await this.assertOwnerScope(tx, resolved, command);
         const target = contractTarget(command);
@@ -278,12 +316,18 @@ export class ContractTransitionRepository {
         // La primera visita guardada no tiene visita previa. Los dos esquemas exigen un predecesor nulo.
         // La bitácora central conserva el antes y el después lógicos conocidos. No se inventa una visita ni una fecha histórica.
         // Quien está autenticado asume la responsabilidad inicial de la visita nueva. El vendedor sigue siendo otro dato.
+        const workflowResult = await this.confirmClosure(tx, resolved, command, current);
         const event = { sequence: sequence + 1, from: sequence === 0 ? null : current, state: target, actor: snapshot.publicId, actorSnapshot: snapshot, responsibleSnapshot: snapshot, purchaseFundsOrigin: command.purchaseFundsOrigin, reason: command.reason, operationId: command.operationId, correlationId: command.correlationId };
         if (resolved.native) await this.appendNative(tx, resolved.native.id_sales_order, { id: actor.id_user, snapshot }, event);
         else await this.legacy.append(tx, resolved.order.id, event);
-        await this.appendCentral(tx, { command, resolved, actor: snapshot, before: current, after: target, sequence });
+        await this.appendCentral(tx, { command, resolved, actor: snapshot, before: current, after: target, sequence, workflowResult });
         if (command.purchaseFundsOrigin) resolved.order.purchaseFundsOrigin = command.purchaseFundsOrigin;
         return this.result(resolved, target, sequence + 1, false);
+    }
+
+    private async confirmClosure(tx: Transaction<CrmDatabase>, resolved: ResolvedOrder, command: ContractTransitionCommand, current: string): Promise<string | undefined> {
+        if (current !== "transfer_signed" || contractTarget(command) !== "closed") return undefined;
+        return this.unitTransfer.execute(tx, { source: resolved.source, id: resolved.order.id, actorPublicId: command.actorPublicId, operationId: command.operationId, correlationId: command.correlationId });
     }
 
     /** Bloquea el lead vinculado y el usuario canónico. El dueño de la orden o el responsable de la etapa no es el vendedor. */
@@ -358,6 +402,8 @@ export class ContractTransitionRepository {
     }
 
     private assertCompletionRoute(order: ContractOrder, before: number, target: string): void {
+        // Desde la firma, el cierre lo confirma el workflow externo antes de persistir la etapa.
+        if (before === FORMALIZATION_STAGE_CODES.indexOf("transfer_signed") && target === "closed") return;
         const transferIndex = FORMALIZATION_STAGE_CODES.indexOf("pending_transfer");
         // El operador puede registrar la firma antes de que NetSuite confirme el traspaso.
         const manualSignature = [before === transferIndex, target === "transfer_signed", order.installmentsFullyPaid === true, order.keysDelivered === false, order.unitDelivered === false].every(Boolean);
@@ -455,8 +501,8 @@ export class ContractTransitionRepository {
             action: FORMALIZATION_STAGE_CODES.findIndex((code) => code === after) < FORMALIZATION_STAGE_CODES.findIndex((code) => code === before) ? "revert" : "state_change",
             module: "formalizacion",
             before: { businessId: resolved.order.businessId, state: before, version: sequence, purchaseFundsOrigin: resolved.order.purchaseFundsOrigin ?? null },
-            after: { businessId: resolved.order.businessId, state: after, version: sequence + 1, purchaseFundsOrigin: command.purchaseFundsOrigin ?? resolved.order.purchaseFundsOrigin ?? null },
-            allowedFields: ["businessId", "state", "version", "purchaseFundsOrigin"],
+            after: { businessId: resolved.order.businessId, state: after, version: sequence + 1, purchaseFundsOrigin: command.purchaseFundsOrigin ?? resolved.order.purchaseFundsOrigin ?? null, ...(change.workflowResult ? { workflowResult: change.workflowResult } : {}) },
+            allowedFields: ["businessId", "state", "version", "purchaseFundsOrigin", "workflowResult"],
             operationId: this.auditOperationId(command.operationId),
             correlationId: command.correlationId,
             reason: command.reason,

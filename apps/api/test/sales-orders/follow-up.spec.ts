@@ -18,6 +18,10 @@ function setup(codes = ["formalizacion.home.stages.read", "formalizacion.home.ap
 }
 
 describe("Formalization follow-up", () => {
+    it.each([true, false])("una caída conserva la etapa y no indica acciones comerciales, contrato=%s", (contractSigned) => {
+        const row = followUpRow.parse({ id: "order", source: "legacy", number: "OV-1", nativeCode: null, client: null, project: null, unit: null, responsible: null, stateCode: "contract_pending_send", stateSince: null, completedThisYear: false, saleLost: true, contractSigned });
+        expect(presentFollowUpRow(row, new Date())).toMatchObject({ state: { code: "contract_pending_send", label: "Por enviar" }, nextStep: "Venta caída: revisar reserva y saldo" });
+    });
     it.each([true, false].flatMap((native) => [true, false, null].map((paid) => ({ native, paid }))))("retains explicit paid evidence and the authoritative transfer stage ($native $paid)", ({ native, paid }) => {
         const parsed = followUpRow.parse({ id: "order", source: native ? "native" : "legacy", number: "OV-1", nativeCode: null, client: null, project: null, unit: null, responsible: null, stateCode: "pending_transfer", stateSince: null, completedThisYear: false, unitTransferred: false, unitDelivered: false, keysDelivered: false, installmentsFullyPaid: paid });
         const presented = presentFollowUpRow(parsed, new Date());
@@ -123,7 +127,12 @@ it("passes module-wide contracts-only union access to both sources and rejects f
     const f = setup(["formalizacion.home.contracts.read"]);
     for (const grant of f.profile.permissions) grant.scope = "self";
     await f.service.list("session", {});
-    expect(f.native.readCombined).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ access: { ownOnly: false, approvalOwnOnly: false, approvals: false, actorId: "actor", finiquito: false, exactOrderSearch: false, queues: { approvals: false, contracts: true, bank: false, balance: false, transfer: false, signed: false, closed: false, addendum: false } }, legacy: "legacy-projection" }));
+    expect(f.native.readCombined).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({ access: { ownOnly: false, approvalOwnOnly: false, approvals: false, actorId: "actor", finiquito: false, exactOrderSearch: false, queues: { approvals: false, contracts: true, bank: false, balance: false, transfer: false, signed: false, closed: false, finiquito_validation: false, finiquito_pending: false, finiquito_signed: false, finiquito_formalized: false, addendum: false } }, legacy: "legacy-projection" }),
+    );
     f.native.readCombined.mockClear();
     await expect(f.service.list("session", { queue: "bank" })).rejects.toMatchObject({ status: 403 });
     expect(f.native.readCombined).not.toHaveBeenCalled();

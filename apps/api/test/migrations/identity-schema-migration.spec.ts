@@ -168,6 +168,9 @@ describe("identity schema migration parser", () => {
             "202611030072_formalization_addendum_sent",
             "202611030073_lead_qualification",
             "202611100074_netsuite_order_delivery",
+            "202611120075_sales_order_reservation_applied",
+            "202611120076_finiquito_workflow",
+            "202611120077_order_workflow_execution",
         ]);
     });
 

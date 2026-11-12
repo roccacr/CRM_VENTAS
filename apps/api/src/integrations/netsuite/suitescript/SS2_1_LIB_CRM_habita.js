@@ -1,5 +1,5 @@
 /**
- * Versión: 2026.11.12.1 — Responsable exclusivo de Habita y diagnóstico seguro de fallos de transporte.
+ * Versión: 2026.11.12.4 — Cierre desde Traspaso firmado sin exigir entrega previa; conserva Reserva Aplicada.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
  * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
  * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
@@ -529,7 +529,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         "use strict";
 
         // Version unica del conjunto de scripts. Actualizar al preparar cada entrega: la lee el empaquetador.
-        const SCRIPT_VERSION = "2026.11.12.1";
+        const SCRIPT_VERSION = "2026.11.12.2";
 
         /**
          * Un fallo del logger no debe interrumpir una consulta ni cambiar su respuesta.
@@ -702,7 +702,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 custbody_ix_salesorder_hito4 custbody_ix_salesorder_hito5 custbody_ix_salesorder_hito6
                 custbody_i_amount_hitos custbody211 custbody_total_hitos_amount subtotal taxtotal
                 giftcertapplied total custbody90 custbody51 custbody91 custbody105 custbody43 custbody103
-                custbody_ix_comision_pagada custbody_entrega_de_llaves custbody274 custbody_cuotas_pagadas custbody_mezzanine_verifica
+                custbody_ix_comision_pagada custbody_entrega_de_llaves custbody274 custbody_cuotas_pagadas custbody209 custbody_mezzanine_verifica
                 custbody_aprueba_jefe_ventas custbodyid_firma_rc custbodyid_firma_rocca custbody74 custbody73 custbody37
                 custbody141 custbody157
             `),
@@ -1035,11 +1035,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 // El workflow corporativo es el único escritor del cheque y de sus acciones asociadas.
                 // Sus acciones son de Entrada: iniciar el flujo, no simular un botón de una instancia existente.
                 // Nunca reintentar automáticamente: el flujo también envía correos y genera cuotas.
-                ns7.initiate({
-                    recordType: RECORD_TYPES.SALES_ORDER,
-                    recordId: id,
-                    workflowId: "customworkflow219",
-                });
+                executeWorkflow(id, { workflowId: "customworkflow219" });
                 phase = "verify";
                 const confirmed = lookupFlags(RECORD_TYPES.SALES_ORDER, id, FIELDS_TO_CHECK);
                 if (confirmed[approvalField] !== true)
@@ -1068,6 +1064,59 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             }
         }
 
+        /** Un estado explícito usa trigger; initiate conserva exactamente la llamada histórica de aprobación. */
+        function executeWorkflow(id, definition) {
+            const options = { recordType: RECORD_TYPES.SALES_ORDER, recordId: id, ...definition };
+            return definition.stateId ? ns7.trigger(options) : ns7.initiate(options);
+        }
+
+        /** La API Habita reserva durablemente la ejecución antes del PUT; aquí nunca se reintenta ni hay fallback. */
+        function transferUnit(id) {
+            const definition = { workflowId: "customworkflow220", stateId: "workflowstate2780" };
+            const required = [cancelledField, approvalField];
+            let flags;
+            try {
+                flags = lookupFlags(RECORD_TYPES.SALES_ORDER, id, required);
+            } catch (error) {
+                return providerError(error, ERRORS);
+            }
+            if (flags[cancelledField] !== false || flags[approvalField] !== true)
+                return fail(
+                    409,
+                    "UNIT_TRANSFER_PREREQUISITES_REQUIRED",
+                    "La orden debe estar activa y aprobada por Formalizacion.",
+                );
+            try {
+                const instanceId = executeWorkflow(id, definition);
+                if (!/^[1-9][0-9]*$/.test(String(instanceId))) throw new Error("unconfirmed_instance");
+                const confirmed = lookupFlags(RECORD_TYPES.SALES_ORDER, id, required);
+                if (confirmed[cancelledField] !== false || confirmed[approvalField] !== true)
+                    return fail(
+                        502,
+                        "UNIT_TRANSFER_OUTCOME_UNKNOWN",
+                        "El flujo no pudo confirmarse; requiere conciliacion.",
+                    );
+                return ok({
+                    type: RECORD_TYPES.SALES_ORDER,
+                    id,
+                    action: "transferUnit",
+                    ...definition,
+                    executed: true,
+                    instanceId: String(instanceId),
+                });
+            } catch {
+                logging.executionLog("error", "CRM: flujo Unidad traspasada no confirmado", {
+                    netsuiteId: id,
+                    ...definition,
+                });
+                return fail(
+                    502,
+                    "UNIT_TRANSFER_OUTCOME_UNKNOWN",
+                    "El flujo no pudo confirmarse; requiere conciliacion.",
+                );
+            }
+        }
+
         /** Confirmacion que consume NestJS (el CRM exige exactamente esta forma). */
         function approvedResponse(id, alreadyApproved) {
             return ok({
@@ -1092,7 +1141,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                     ERRORS,
                 );
             },
-            put: (request) => runAction(request, { approveFormalization }),
+            put: (request) => runAction(request, { approveFormalization, transferUnit }),
             // Lo consume NotificarCambio para construir el snapshot del evento.
             getSalesOrderById,
             getSalesOrderEventById: (id) => getSalesOrderById(id, true),
@@ -1116,6 +1165,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             "custbody_entrega_de_llaves",
             "custbody274",
             "custbody_cuotas_pagadas",
+            "custbody209",
         ];
 
         /** La fecha es columna de busqueda Transaction, no campo documentado de record.load(SalesOrder). */

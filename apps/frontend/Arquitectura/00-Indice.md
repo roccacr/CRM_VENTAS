@@ -1,5 +1,11 @@
 # 00 - Indice de Arquitectura Frontend
 
+## Visor BPMN de Formalización — 2026-11-12
+
+[34 — Visor BPMN](34-Visor-BPMN-Formalizacion.md): mapas de consulta del proceso
+principal, adéndum y finiquito, posición conocida de la orden, descarga BPMN 2.0 y
+componente compartido para futuros módulos. Implementación local; no acredita despliegue.
+
 ## Corte documental del 10 de noviembre de 2026
 
 [33 - Reconciliación del frontend de Habita](33-Reconciliacion-Frontend-20261110.md) distingue el release publicado, los commits posteriores y la copia de trabajo. Incluye marca, login, Formalización, Calendario, paginación de 500 y rendimiento de los catálogos.
@@ -316,3 +322,5 @@ Calendario vigente 28/10/2026: [calendario global por módulo](Calendario-Global
 - [Adéndum: motivo obligatorio y registro de envío (88 API)](../../api/Arquitectura/88-Adendum-Motivo-y-Envio.md): contratos y permisos de las acciones en la orden y calendario.
 
 - [Distribución por proyecto (89 API)](../../api/Arquitectura/89-Formalizacion-Distribucion-Por-Proyecto.md): botón de bienvenida, modal gráfico y tabla de cantidades.
+
+- [Finiquito076](../../api/Arquitectura/Finiquito-076.md): banner con cifras reales, saldo propio, envío/recepción y confirmaciones; migraciones y despliegue pendientes.

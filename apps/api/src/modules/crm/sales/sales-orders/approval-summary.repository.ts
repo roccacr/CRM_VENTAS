@@ -3,6 +3,7 @@ import { sql, type Transaction } from "kysely";
 
 import { DatabaseService } from "../../../../database/database.service.js";
 import type { CrmDatabase } from "../../../../database/database.types.js";
+import { outsideFiniquito } from "./finiquito-exclusion.query.js";
 
 /** Consulta la base canónica. No cambia el ciclo de vida ni los registros de bitácora. */
 @Injectable()
@@ -22,6 +23,7 @@ export class ApprovalSummaryRepository {
             WHERE o.status_sales_order = 'active'
               AND o.cancelled_sales_order = 'no'
               AND o.deleted_at_sales_order IS NULL
+              AND ${outsideFiniquito("native", sql`o.id_sales_order`)}
               AND EXISTS (SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval = o.id_sales_order AND a.type_code_sales_order_approval = 'sales_management' AND a.status_sales_order_approval = 'approved')
               AND EXISTS (SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval = o.id_sales_order AND a.type_code_sales_order_approval = 'developer' AND a.status_sales_order_approval = 'approved')
               AND EXISTS (SELECT 1 FROM crm_sales_order_approval a WHERE a.sales_order_id_sales_order_approval = o.id_sales_order AND a.type_code_sales_order_approval = 'formalization' AND a.status_sales_order_approval = 'not_approved')

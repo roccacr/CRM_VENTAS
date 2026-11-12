@@ -74,7 +74,7 @@ describe.skipIf(process.env.FORMALIZATION_LOCAL_SQL_TESTS !== "1")("Formalizatio
         const actor = ulid();
         const order = ulid();
         const database = { db } as DatabaseService;
-        const repo = new ContractTransitionRepository(database, new RecordAuditService(database, config), new LegacyContractTransitionWriter(config));
+        const repo = new ContractTransitionRepository(database, new RecordAuditService(database, config), new LegacyContractTransitionWriter(config), { execute: () => Promise.resolve("synthetic workflow confirmation") });
         try {
             await seed(source, id, actor, order);
             const command = { source, id: source === "native" ? order : String(id), action: "send" as const, expectedSequence: 0, operationId: randomUUID(), actorPublicId: actor, reason: "", ownOnly: false, correlationId: randomUUID() };
@@ -106,7 +106,7 @@ describe.skipIf(process.env.FORMALIZATION_LOCAL_SQL_TESTS !== "1")("Formalizatio
         const actor = ulid();
         const order = ulid();
         const database = { db } as DatabaseService;
-        const repo = new ContractTransitionRepository(database, new RecordAuditService(database, config), new LegacyContractTransitionWriter(config));
+        const repo = new ContractTransitionRepository(database, new RecordAuditService(database, config), new LegacyContractTransitionWriter(config), { execute: () => Promise.resolve("synthetic workflow confirmation") });
         try {
             await seed(source, id, actor, order);
             const command = { source, id: source === "native" ? order : String(id), action: "send" as const, expectedSequence: 0, operationId: randomUUID(), actorPublicId: actor, reason: "", ownOnly: false, correlationId: randomUUID() };
@@ -119,7 +119,7 @@ describe.skipIf(process.env.FORMALIZATION_LOCAL_SQL_TESTS !== "1")("Formalizatio
                 await append(tx, input);
                 throw new Error("forced audit failure");
             };
-            const failingRepo = new ContractTransitionRepository(database, failingAudit, new LegacyContractTransitionWriter(config));
+            const failingRepo = new ContractTransitionRepository(database, failingAudit, new LegacyContractTransitionWriter(config), { execute: () => Promise.resolve("synthetic workflow confirmation") });
             await expect(failingRepo.transition(selection)).rejects.toThrow("forced audit failure");
             const afterRollback = (await sql<{ count: number }>`SELECT COUNT(*) AS count FROM audit_record_event WHERE source_id_record_event=${String(id)}`.execute(db)).rows[0];
             expect(Number(afterRollback?.count)).toBe(1);
@@ -146,7 +146,7 @@ describe.skipIf(process.env.FORMALIZATION_LOCAL_SQL_TESTS !== "1")("Formalizatio
         const actor = ulid();
         const order = ulid();
         const database = { db } as DatabaseService;
-        const repo = new ContractTransitionRepository(database, new RecordAuditService(database, config), new LegacyContractTransitionWriter(config));
+        const repo = new ContractTransitionRepository(database, new RecordAuditService(database, config), new LegacyContractTransitionWriter(config), { execute: () => Promise.resolve("synthetic workflow confirmation") });
         try {
             await seed(source, id, actor, order);
             const command = { source, id: source === "native" ? order : String(id), action: "send" as const, expectedSequence: 0, operationId: randomUUID(), actorPublicId: actor, reason: "", ownOnly: false, correlationId: randomUUID() };

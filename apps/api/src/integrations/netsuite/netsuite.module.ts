@@ -11,6 +11,7 @@ import { IdentityModule } from "../../modules/crm/identity/identity.module.js";
 import { FORMALIZATION_APPROVAL_ERP } from "../../modules/crm/sales/sales-orders/formalization-approval.port.js";
 import { HomeSummaryRepository } from "../../modules/crm/sales/sales-orders/home-summary.repository.js";
 import { OrderTimingRepository } from "../../modules/crm/sales/sales-orders/order-timing.repository.js";
+import { UNIT_TRANSFER_WORKFLOW } from "../../modules/crm/sales/sales-orders/unit-transfer-workflow.port.js";
 import { NetsuiteLocalEventsController } from "./netsuite-local-events.controller.js";
 import { NetsuiteOrderRepository } from "./netsuite-order.repository.js";
 import { NetsuiteOrderEventRepository } from "./netsuite-order-event.repository.js";
@@ -19,6 +20,7 @@ import { NetsuiteOrderImportQueue } from "./netsuite-order-import.queue.js";
 import { NetsuiteProductionEventsController } from "./netsuite-production-events.controller.js";
 import { NetsuiteRestletClient } from "./netsuite-restlet.client.js";
 import { NetsuiteSalesOrderService } from "./netsuite-sales-order.service.js";
+import { NetsuiteUnitTransferWorkflow } from "./netsuite-unit-transfer.workflow.js";
 
 /**
  * Ficha de formalizacion. La sesion sale de la cookie. Sincronizar no acepta cuerpo:
@@ -101,9 +103,9 @@ export class NetsuiteSalesOrderController {
 /** El puerto de aprobacion es el mismo cliente RESTlet. El repositorio sale de aqui para que otros modulos resuelvan la orden sin abrir otro pool. */
 @Global()
 @Module({
-    exports: [FORMALIZATION_APPROVAL_ERP, NetsuiteOrderRepository],
+    exports: [FORMALIZATION_APPROVAL_ERP, UNIT_TRANSFER_WORKFLOW, NetsuiteOrderRepository],
     imports: [IdentityModule, AuditModule],
     controllers: [NetsuiteSalesOrderController, NetsuiteLocalEventsController, NetsuiteProductionEventsController],
-    providers: [NetsuiteOrderImportQueue, NetsuiteOrderEventService, NetsuiteOrderEventRepository, LocalServiceTokenGuard, NetsuiteOrderRepository, NetsuiteRestletClient, { provide: FORMALIZATION_APPROVAL_ERP, useExisting: NetsuiteRestletClient }, NetsuiteSalesOrderService, OrderTimingRepository, HomeSummaryRepository],
+    providers: [NetsuiteOrderImportQueue, NetsuiteOrderEventService, NetsuiteOrderEventRepository, LocalServiceTokenGuard, NetsuiteOrderRepository, NetsuiteRestletClient, { provide: FORMALIZATION_APPROVAL_ERP, useExisting: NetsuiteRestletClient }, { provide: UNIT_TRANSFER_WORKFLOW, useClass: NetsuiteUnitTransferWorkflow }, NetsuiteSalesOrderService, OrderTimingRepository, HomeSummaryRepository],
 })
 export class NetsuiteModule {}

@@ -1,5 +1,5 @@
 /** Membresías ordenadas del banner. El cierre y el adéndum pueden coincidir con otras series. */
-export const distributionKeys = ["approvals", "send", "signature", "bank_not_started", "bank_in_progress", "balance", "transfer", "signed", "closed", "addendum"] as const;
+export const distributionKeys = ["approvals", "send", "signature", "bank_not_started", "bank_in_progress", "balance", "transfer", "signed", "closed", "addendum", "finiquito_validation", "finiquito_pending", "finiquito_signed", "finiquito_formalized"] as const;
 export type DistributionKey = (typeof distributionKeys)[number];
 export interface ProjectDistributionResponse {
     schemaVersion: 1;

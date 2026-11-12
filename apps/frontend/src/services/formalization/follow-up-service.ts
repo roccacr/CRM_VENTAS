@@ -1,6 +1,8 @@
 import { apiRequest } from "../api/api-client";
 
-export const FOLLOW_UP_QUEUES = ["all", "approvals", "addendum", "contracts", "send", "signature", "bank", "balance", "transfer", "signed", "closed"] as const;
+export const FINIQUITO_QUEUES = ["finiquito_validation", "finiquito_pending", "finiquito_signed", "finiquito_formalized"] as const;
+export type FiniquitoQueue = (typeof FINIQUITO_QUEUES)[number];
+export const FOLLOW_UP_QUEUES = ["all", "approvals", "addendum", "contracts", "send", "signature", "bank", "balance", "transfer", "signed", "closed", ...FINIQUITO_QUEUES] as const;
 export type FollowUpQueue = (typeof FOLLOW_UP_QUEUES)[number];
 export interface FollowUpFilters {
     readonly recordId?: string;
@@ -36,6 +38,7 @@ export interface FollowUpItem {
     readonly saleLostCheck?: boolean | null;
     readonly approvalsComplete?: boolean;
     readonly saleLost?: boolean;
+    readonly finiquitoInFlow?: boolean;
     readonly contractSigned?: boolean | undefined;
     readonly installmentsFullyPaid?: boolean | null | undefined;
     readonly unitTransferred?: boolean | null | undefined;
@@ -51,7 +54,7 @@ export interface FollowUp {
     readonly observedAt: string;
     readonly filters: Pick<FollowUpFilters, "search" | "projectId" | "queue" | "projectIds" | "queues" | "bankStages">;
     readonly page: { number: number; size: number; total: number; totalPages: number };
-    readonly counts: Record<Exclude<FollowUpQueue, "addendum">, number> & { readonly addendum?: number; readonly bankInProgress?: number };
+    readonly counts: Record<Exclude<FollowUpQueue, "addendum" | FiniquitoQueue>, number> & Partial<Record<FiniquitoQueue, number>> & { readonly addendum?: number; readonly bankInProgress?: number };
     readonly projects: { id: string; name: string }[];
     readonly items: FollowUpItem[];
     readonly sources: { native: { total: number }; legacy: { total: number; enabled: boolean } };
@@ -124,7 +127,8 @@ function item(value: unknown): FollowUpItem {
         ...optionalFunds(data.purchaseFundsOrigin),
         state: { code: text(state.code), label: text(state.label), since: nullable(state.since, date), days: nullable(state.days, count) },
         ...optionalSaleLost(data.saleLost),
-        ...(data.contractSigned === undefined ? {} : { contractSigned: bool(data.contractSigned) }),
+        ...optionalBooleanField("finiquitoInFlow", data.finiquitoInFlow),
+        ...optionalBooleanField("contractSigned", data.contractSigned),
         ...optionalCompletionFlag("salesManagementApproved", data.salesManagementApproved),
         ...optionalCompletionFlag("developerApproved", data.developerApproved),
         ...optionalCompletionFlag("formalizationApproved", data.formalizationApproved),
@@ -144,6 +148,9 @@ function item(value: unknown): FollowUpItem {
 function optionalCompletionFlag(field: "installmentsFullyPaid" | "unitTransferred" | "keysDelivered" | "unitDelivered" | "salesManagementApproved" | "developerApproved" | "formalizationApproved" | "commercialClosureSigned" | "contractSignedCheck" | "saleLostCheck", value: unknown) {
     return value === undefined ? {} : { [field]: nullable(value, bool) };
 }
+function optionalBooleanField(field: "finiquitoInFlow" | "contractSigned", value: unknown) {
+    return value === undefined ? {} : { [field]: bool(value) };
+}
 function optionalFunds(value: unknown) {
     return value === undefined ? {} : { purchaseFundsOrigin: fundsOrigin(value) };
 }
@@ -153,9 +160,9 @@ function optionalAddendum(value: unknown): Pick<FollowUpItem, "addendumStatus"> 
     return { addendumStatus: value as Exclude<FollowUpItem["addendumStatus"], undefined> };
 }
 function readCounts(counts: Record<string, unknown>, appliedQueue: unknown): FollowUp["counts"] {
-    const parsed = {} as Record<Exclude<FollowUpQueue, "addendum">, number> & { addendum?: number };
+    const parsed = {} as Record<Exclude<FollowUpQueue, "addendum" | FiniquitoQueue>, number> & Partial<Record<FiniquitoQueue, number>> & { addendum?: number };
     for (const key of FOLLOW_UP_QUEUES) {
-        if (key === "addendum" && counts[key] === undefined && appliedQueue !== "addendum") continue;
+        if ((key === "addendum" || FINIQUITO_QUEUES.includes(key as FiniquitoQueue)) && counts[key] === undefined && appliedQueue !== key) continue;
         parsed[key] = count(counts[key]);
     }
     return { ...parsed, ...(counts.bankInProgress === undefined ? {} : { bankInProgress: count(counts.bankInProgress) }) };

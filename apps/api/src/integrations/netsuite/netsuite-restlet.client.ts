@@ -42,19 +42,38 @@ function netsuiteAuthorization(method: "GET" | "PUT", url: URL, credentials: Cre
 export class NetsuiteRestletClient {
     /** No abre conexion al arrancar. El entorno se resuelve en cada llamada. */
     constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
+    /** Contrato estricto: un 200 genérico, otra orden o una instancia ausente nunca confirman el flujo. */
+    async transferUnit(id: string) {
+        try {
+            const { body, environment } = await this.putSalesOrderAction(id, "transferUnit");
+            const confirmation = z.object({ status: z.literal(200), data: z.object({ type: z.literal("salesorder"), id: z.literal(id), action: z.literal("transferUnit"), workflowId: z.literal("customworkflow220"), stateId: z.literal("workflowstate2780"), executed: z.literal(true), instanceId: z.string().regex(/^[1-9][0-9]*$/) }) }).safeParse(decodeLookup(body));
+            if (!confirmation.success) throw new Error("unconfirmed_workflow");
+            return { ...confirmation.data.data, environment };
+        } catch {
+            throw new BadGatewayException("NetSuite no confirmó el flujo de Unidad traspasada. La etapa no fue guardada; concilie la ejecución antes de reintentar.");
+        }
+    }
+
+    /** PUT autenticado compartido; nunca repite una operación con efectos externos. */
+    private async putSalesOrderAction(id: string, action: "approveFormalization" | "transferUnit", connection = this.connection()) {
+        if (!/^[1-9][0-9]*$/.test(id) || !Number.isSafeInteger(Number(id))) throw new BadRequestException("Identificador NetSuite invalido.");
+        const { credentials, url, environment } = connection;
+        const authorization = netsuiteAuthorization("PUT", url, credentials, { nonce: randomBytes(16).toString("hex"), timestamp: String(Math.floor(Date.now() / 1000)) });
+        const response = await fetch(url, { method: "PUT", redirect: "error", headers: { Authorization: authorization, Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ module: "salesOrders", action, id }), signal: AbortSignal.timeout(15000) });
+        if (!response.ok) {
+            await response.body?.cancel();
+            throw new Error("upstream");
+        }
+        return { body: await this.readBody(response), environment };
+    }
     /** Solo confirma la orden pedida y la aprobacion de formalizacion. Timeout, red o un 200 generico quedan como resultado desconocido. */
     async approveFormalization(id: string): Promise<{ id: string; approved: true; alreadyApproved: boolean; environment: "sandbox" | "production" }> {
         if (!/^[1-9][0-9]*$/.test(id) || !Number.isSafeInteger(Number(id))) throw new BadRequestException("Identificador NetSuite invalido.");
         // La misma operación usa credenciales y destino del entorno validado, sin fallback entre cuentas.
         const { credentials, url, environment } = this.connection();
-        const authorization = netsuiteAuthorization("PUT", url, credentials, { nonce: randomBytes(16).toString("hex"), timestamp: String(Math.floor(Date.now() / 1000)) });
         try {
-            const response = await fetch(url, { method: "PUT", redirect: "error", headers: { Authorization: authorization, Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ module: "salesOrders", action: "approveFormalization", id }), signal: AbortSignal.timeout(15000) });
-            if (!response.ok) {
-                await response.body?.cancel();
-                throw new Error("upstream");
-            }
-            const data = confirmApprovalBody(await this.readBody(response), id);
+            const response = await this.putSalesOrderAction(id, "approveFormalization", { credentials, url, environment });
+            const data = confirmApprovalBody(response.body, id);
             return { id, approved: true, alreadyApproved: data.alreadyApproved, environment };
         } catch (error) {
             if ([ConflictException, NotFoundException].some((type) => error instanceof type)) throw error;

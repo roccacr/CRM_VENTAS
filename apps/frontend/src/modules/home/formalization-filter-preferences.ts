@@ -6,6 +6,7 @@ import { canReadOrderAddendum } from "./order-addendum-permissions";
 export type FollowUpSelection = Exclude<FollowUpQueue, "all"> | "bank_not_started" | "bank_in_progress";
 export interface FollowUpFilterRequest {
     readonly selection: FollowUpSelection;
+    readonly projectId?: string;
     readonly version: number;
 }
 export interface FollowUpPreferences {
@@ -21,10 +22,10 @@ export function isFollowUpSelection(value: unknown): value is FollowUpSelection 
 }
 /** Las preferencias locales guardan solo ids de filtro. No conceden acceso a una orden. */
 function validProjects(value: unknown): value is string[] {
-    return Array.isArray(value) && value.length <= 50 && value.every((id: unknown) => typeof id === "string" && /^(?:[0-9A-HJKMNP-TV-Z]{26}|legacy-project:[1-9][0-9]{0,19})$/.test(id));
+    return Array.isArray(value) && value.length <= 50 && value.every((id: unknown) => typeof id === "string" && /^(?:unassigned|[0-9A-HJKMNP-TV-Z]{26}|legacy-project:[1-9][0-9]{0,19})$/.test(id));
 }
 function validSelections(value: unknown): value is FollowUpSelection[] {
-    return Array.isArray(value) && value.length <= 14 && value.every(isFollowUpSelection);
+    return Array.isArray(value) && value.length <= 18 && value.every(isFollowUpSelection);
 }
 function parsePreferences(value: unknown): FollowUpPreferences | null {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -91,11 +92,20 @@ export function useFollowUpFilters({ scope, tableOnly, canViewApprovals, filterS
     const [appliedRequest, setAppliedRequest] = useState<FollowUpFilterRequest>();
     if (filterRequest !== appliedRequest) {
         setAppliedRequest(filterRequest);
-        if (filterRequest && queues.includes(filterRequest.selection.startsWith("bank_") ? "bank" : (filterRequest.selection as FollowUpQueue))) setSelections((current) => (current.includes(filterRequest.selection) ? current : [...current, filterRequest.selection]));
+        applyRequestedFilters(filterRequest, queues, storedSelections, { setSelections, setProjects });
     }
     const filters = useMemo(() => selectedQueueFilters(selectedSelections), [selectedSelections]);
     useEffect(() => {
         saveFollowUpPreferences(storageKey, { projectIds, selections: selectedSelections });
     }, [storageKey, projectIds, selectedSelections]);
     return { projectIds, setProjects, selectedSelections, setSelections, queues, selectedQueues: filters.queues, bankStages: filters.bankStages };
+}
+
+/** Un clic del gráfico reemplaza proyecto/bandeja; los banners conservan su selección acumulativa. */
+function applyRequestedFilters(request: FollowUpFilterRequest | undefined, queues: readonly FollowUpQueue[], current: FollowUpSelection[], update: { setSelections: (values: FollowUpSelection[]) => void; setProjects: (values: string[]) => void }): void {
+    if (!request) return;
+    const queue = request.selection.startsWith("bank_") ? "bank" : (request.selection as FollowUpQueue);
+    if (!queues.includes(queue)) return;
+    update.setSelections(request.projectId !== undefined ? [request.selection] : [...new Set([...current, request.selection])]);
+    if (request.projectId !== undefined) update.setProjects([request.projectId]);
 }

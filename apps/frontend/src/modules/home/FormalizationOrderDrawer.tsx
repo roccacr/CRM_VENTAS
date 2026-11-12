@@ -16,6 +16,7 @@ import Tooltip from "antd/es/tooltip";
 import Typography from "antd/es/typography";
 import { useState } from "react";
 
+import { isFiniquitoOrder } from "../../services/formalization/finiquito-service";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
 import { FormalizationClientContent } from "./FormalizationClientDrawer";
@@ -92,7 +93,9 @@ function OrderTitle({ item, markers }: { readonly item: FollowUpItem | null; rea
                 <FileTextOutlined />
             </span>
             <div className="user-detail-drawer__identity-copy">
-                <Typography.Title level={4}>{item.number}</Typography.Title>
+                <Typography.Title level={4} data-finiquito={isFiniquitoOrder(item)}>
+                    {item.number}
+                </Typography.Title>
                 <Typography.Text type="secondary" ellipsis={{ tooltip: item.client ?? "Sin cliente" }}>
                     {item.client ?? "Sin cliente"}
                 </Typography.Text>
@@ -187,7 +190,13 @@ export function FormalizationOrderDrawer({ item, position, total, onClose, onSel
                             }}
                         />
                     </div>
-                    <FormalizationFiniquito item={item} allowed={canUpdateStage} />
+                    <FormalizationFiniquito
+                        item={item}
+                        allowed={canUpdateStage}
+                        onSaved={() => {
+                            void onStageSaved?.();
+                        }}
+                    />
                     <FormalizationRecordProgress item={item} compact />
                     <FormalizationStageEditor
                         key={`${item.source}:${item.id}:${String(item.stateVersion)}:${item.state.code}:${String(item.purchaseFundsOrigin)}`}

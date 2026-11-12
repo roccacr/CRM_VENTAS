@@ -29,6 +29,22 @@ function uniqueOwnerEvidence<T>(rows: readonly T[]): T | undefined {
  */
 @Injectable()
 export class LegacyContractTransitionWriter implements ContractTransitionLegacy, FormalizationApprovalLegacy {
+    /** Solo la rama de finiquito consulta sus campos nuevos; las transiciones comerciales conservan su proyección. */
+    finiquitoProjection(tx: Transaction<CrmDatabase>) {
+        if (this.config.get<unknown>("ENABLE_LEGACY_FALLBACK") !== true) return null;
+        this.assertEnabled(tx, true);
+        return sql`SELECT CAST(o.id_ov AS CHAR) COLLATE utf8mb4_unicode_ci AS id,CAST(o.id_ov AS CHAR) AS internalId,'legacy' AS source,
+            CONVERT(COALESCE(NULLIF(TRIM(o.id_ov_tranid),''),CONCAT('OV-',o.id_ov)) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS number,
+            COALESCE(o.caida_ov=1,0) AS saleLost,COALESCE(o.contrado_frima_ov=1,0) AS contractSigned,COALESCE(o.reserva_ov=1,0) AS reservationApplied,
+            o.saldo_validado_ov AS balanceValidated,o.finiquito_enviado_ov AS sent,o.finiquito_recibido_ov AS received
+            FROM \`crmdatabase-api\`.ordenventa o WHERE NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov)`;
+    }
+    /** La lectura y la sincronización usan la misma columna de reserva vigente del CRM viejo. */
+    async reservationApplied(tx: Transaction<CrmDatabase>, id: string): Promise<boolean> {
+        this.assertEnabled(tx, true);
+        const { rows } = await sql<{ applied: number | null }>`SELECT reserva_ov AS applied FROM \`crmdatabase-api\`.ordenventa WHERE id_ov=${Number(id)} FOR UPDATE`.execute(tx);
+        return rows[0]?.applied === 1;
+    }
     /** Solo cambia el origen de fondos, y solo a `own_funds` o `bank_financing`. El llamador ya bloqueo la orden. */
     async updatePurchaseFunds(tx: Transaction<CrmDatabase>, id: string, origin: "own_funds" | "bank_financing"): Promise<void> {
         this.assertEnabled(tx);

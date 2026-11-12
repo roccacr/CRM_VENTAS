@@ -73,7 +73,7 @@ export class HomeSummaryService {
                 legacy.counts = mask(legacy.counts);
                 if (
                     !Object.entries(access)
-                        .filter(([key]) => key !== "approvals" && key !== "addendum")
+                        .filter(([key]) => key !== "approvals" && key !== "addendum" && !key.startsWith("finiquito_"))
                         .every(([, value]) => value)
                 )
                     legacy.duplicatesExcluded = 0;

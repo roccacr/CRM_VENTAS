@@ -8,19 +8,37 @@ import Tooltip from "antd/es/tooltip";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { FormHelp } from "../../components/forms/FormHelp";
+import { isFiniquitoOrder } from "../../services/formalization/finiquito-service";
 import { type FollowUp, type FollowUpItem, type FollowUpQueue, getFollowUp, getFormalizationOrderRecord } from "../../services/formalization/follow-up-service";
 import { importNetsuiteOrder } from "../../services/formalization/netsuite-order-service";
 import { CatalogBanners } from "../administration/catalogs/CatalogSummary";
 import { type FollowUpFilterRequest, type FollowUpSelection, isFollowUpSelection, useFollowUpFilters } from "./formalization-filter-preferences";
 import { buildOrderCards } from "./formalization-order-cards";
 import { type FormalizationExample, type PreviewQueue } from "./formalization-preview.model";
+import { followUpProjectOptions } from "./formalization-project-options";
 import { FORMALIZATION_FOLLOW_UP_HELP } from "./formalization-queue-help";
 import { FormalizationOrderDrawer } from "./FormalizationOrderDrawer";
 import { FormalizationOrderRecord } from "./FormalizationOrderPreview";
 import { StageChip } from "./FormalizationStageChip";
 import { canReadOrderAddendum } from "./order-addendum-permissions";
 
-const labels: Record<FollowUpQueue, string> = { all: "Todas", approvals: "Pendientes de aprobación", addendum: "Pendientes de adéndum", contracts: "Contratos pendientes", send: "Por enviar", signature: "Pendientes de firma", bank: "Gestión bancaria", balance: "Pendientes de saldo", transfer: "Traspasos pendientes", signed: "Traspaso firmado", closed: "Formalizaciones cerradas este año" };
+const labels: Record<FollowUpQueue, string> = {
+    all: "Todas",
+    approvals: "Pendientes de aprobación",
+    addendum: "Pendientes de adéndum",
+    contracts: "Contratos pendientes",
+    send: "Por enviar",
+    signature: "Pendientes de firma",
+    bank: "Gestión bancaria",
+    balance: "Pendientes de saldo",
+    transfer: "Traspasos pendientes",
+    signed: "Traspaso firmado",
+    closed: "Formalizaciones cerradas este año",
+    finiquito_validation: "Validación de saldo",
+    finiquito_pending: "Finiquito pendiente",
+    finiquito_signed: "Finiquito firmado",
+    finiquito_formalized: "Formalizada",
+};
 /** Ordenación en español, para que los acentos y nombres parecidos se ordenen como se leen. */
 const byName = (a: string, b: string) => a.localeCompare(b, "es", { numeric: true, sensitivity: "base" });
 /** "Todas" always opens the list; the rest follow alphabetically so a long list can be scanned. */
@@ -66,6 +84,10 @@ function useFollowUp({ scope, canViewApprovals, refreshVersion, allowedQueues, s
     if (filterRequest !== appliedRequest) {
         setAppliedRequest(filterRequest);
         setPage(1);
+        if (filterRequest?.projectId !== undefined) {
+            setSearch("");
+            setDebouncedSearch("");
+        }
     }
     const [retry, setRetry] = useState(0);
     const [response, setResponse] = useState<{ key: string; value: FollowUp } | null>(null);
@@ -287,6 +309,7 @@ const omittedTags = (omitted: readonly { readonly label?: React.ReactNode }[]) =
 
 function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<typeof useFollowUp>; readonly tableOnly: boolean }) {
     const { search, setSearch, projectIds, setProjects, selectedSelections, setSelections, setPage, value, projects, queues, invalidate } = model;
+    const projectOptions = followUpProjectOptions(projects, projectIds);
     return (
         <div className="formalization-toolbar" data-home={!tableOnly}>
             <label className="formalization-search">
@@ -312,16 +335,16 @@ function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<type
                     popupMatchSelectWidth={false}
                     maxCount={50}
                     aria-label="Filtrar por proyecto"
-                    value={projectIds}
+                    value={projectOptions.selected}
                     allowClear
                     showSearch={{ optionFilterProp: "label" }}
                     maxTagCount={1}
                     maxTagPlaceholder={omittedTags}
                     placeholder="Todos los proyectos"
-                    options={[...projects].sort((a, b) => byName(a.name, b.name)).map((project) => ({ value: project.id, label: project.name }))}
+                    options={projectOptions.options.map((option) => ({ ...option, disabled: !projectOptions.selected.includes(option.value) && new Set([...projectIds, ...option.ids]).size > 50 }))}
                     onChange={(values) => {
                         invalidate();
-                        setProjects(values);
+                        setProjects(projectOptions.expand(values));
                         setPage(1);
                     }}
                 />
@@ -333,7 +356,7 @@ function FollowUpToolbar({ model, tableOnly }: { readonly model: ReturnType<type
                     variant="borderless"
                     virtual={false}
                     popupMatchSelectWidth={false}
-                    maxCount={14}
+                    maxCount={18}
                     aria-label="Bandeja de seguimiento"
                     value={selectedSelections}
                     allowClear
@@ -435,6 +458,8 @@ function FollowUpRow({ item, onOpen, showAddendum }: { readonly item: FollowUpIt
     return (
         <tr
             className={rowAccess.className}
+            data-finiquito={isFiniquitoOrder(item)}
+            data-sale-lost={item.saleLost === true}
             tabIndex={rowAccess.tabIndex}
             aria-label={rowAccess.label}
             onClick={() => {
@@ -457,7 +482,7 @@ function FollowUpRow({ item, onOpen, showAddendum }: { readonly item: FollowUpIt
                 <span className="formalization-grid__meta">{item.unit ?? "Sin unidad"}</span>
             </td>
             <td data-label={columns[2]}>
-                <StageChip label={item.state.label} code={item.state.code} />
+                <StageChip label={item.state.label} code={item.state.code} saleLost={item.saleLost === true} />
             </td>
             <td data-label={columns[3]}>
                 <StageResponsibility item={item} />

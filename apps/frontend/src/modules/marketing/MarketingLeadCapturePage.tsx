@@ -61,15 +61,15 @@ function Block({ title, hint, aside, actions, children }: { readonly title: stri
  * Reporte de captación. La persona elige la profundidad: proyecto, campaña o anuncio. El gráfico y las tablas responden en ese mismo orden.
  * Un cambio de sesión remonta el reporte, así que los filtros y resultados locales no cruzan identidades.
  */
-export function MarketingLeadCapturePage({ currentUser }: { readonly currentUser: Pick<IdentityUser, "publicId" | "permissionVersion"> }) {
-    return <CapturePage key={`${currentUser.publicId}:${String(currentUser.permissionVersion)}`} userId={currentUser.publicId} />;
+export function MarketingLeadCapturePage({ currentUser, initialPeriod = "day" }: { readonly currentUser: Pick<IdentityUser, "publicId" | "permissionVersion">; readonly initialPeriod?: CapturePeriod }) {
+    return <CapturePage key={`${currentUser.publicId}:${String(currentUser.permissionVersion)}`} userId={currentUser.publicId} initialPeriod={initialPeriod} />;
 }
 
-function CapturePage({ userId }: { readonly userId: string }) {
+function CapturePage({ userId, initialPeriod }: { readonly userId: string; readonly initialPeriod: CapturePeriod }) {
     const [qualification, setQualification] = useState<CaptureQualification>("all");
     const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
-    const [period, setPeriod] = useState<CapturePeriod>("month");
-    const [draftPeriod, setDraftPeriod] = useState<CapturePeriod>("month");
+    const [period, setPeriod] = useState<CapturePeriod>(initialPeriod);
+    const [draftPeriod, setDraftPeriod] = useState<CapturePeriod>(initialPeriod);
     const [customRange, setCustomRange] = useState<CaptureDateRange | null>(null);
     const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
     const { value, failed, retry } = useCaptureReport(apiPeriodOf(period, selectedPeriods.length > 0), userId, qualification);

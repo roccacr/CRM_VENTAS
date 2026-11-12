@@ -26,6 +26,16 @@ const item: FollowUpItem = { id: "legacy:208", source: "legacy", number: "OV208"
 beforeEach(() => {
     installBrowserApiDoubles();
     vi.resetAllMocks();
+    vi.mocked(getFollowUp).mockResolvedValue({
+        schemaVersion: 1,
+        observedAt: "2026-11-12T12:00:00Z",
+        filters: { search: "", projectId: "", queue: "all" },
+        page: { number: 1, size: 25, total: 0, totalPages: 0 },
+        counts: { all: 0, approvals: 0, contracts: 0, send: 0, signature: 0, bank: 0, balance: 0, transfer: 0, signed: 0, closed: 0, finiquito_validation: 0, finiquito_pending: 0, finiquito_signed: 0, finiquito_formalized: 0 },
+        projects: [],
+        items: [],
+        sources: { native: { total: 0 }, legacy: { total: 0, enabled: true } },
+    });
     window.history.replaceState(null, "", "/home/formalization");
 });
 afterEach(cleanup);
@@ -70,7 +80,7 @@ it("offers retry and back when initial URL loading fails without banner grants",
         expect(screen.queryByRole("button", { name: "Reintentar carga de orden" })).toBeNull();
     });
     expect(window.location.search).toBe("");
-    expect(getFollowUp).not.toHaveBeenCalled();
+    expect(getFollowUp).toHaveBeenCalledTimes(1);
 });
 
 it("permits an active chief alone to use independently granted stage commands", async () => {
@@ -87,5 +97,5 @@ it("permits an active chief alone to use independently granted stage commands", 
     );
     const command = await screen.findByRole("button", { name: "Committed command" });
     expect(command.hasAttribute("disabled")).toBe(false);
-    expect(getFollowUp).not.toHaveBeenCalled();
+    expect(getFollowUp).toHaveBeenCalledTimes(1);
 });

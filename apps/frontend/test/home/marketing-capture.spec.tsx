@@ -107,7 +107,7 @@ describe("lead-capture report model", () => {
 describe("lead-capture report screen", () => {
     it("opens by project with every seller, and shows the chart and the breakdown table behind a button", async () => {
         installBrowserApiDoubles();
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
         expect(screen.getByRole("heading", { level: 1, name: "Captación de leads" })).toBeInTheDocument();
         expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
@@ -120,7 +120,7 @@ describe("lead-capture report screen", () => {
 
     it("narrows the chart to the projects clicked in the table, and clears them", async () => {
         installBrowserApiDoubles();
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         fireEvent.click(await screen.findByRole("button", { name: "Ver desglose en tabla" }));
         const summary = await screen.findByRole("table", { name: "Leads por proyecto" });
         const chart = screen.getByRole("figure", { name: /Leads por proyecto/ });
@@ -139,7 +139,7 @@ describe("lead-capture report screen", () => {
 
     it("goes one level deeper: a table of campaigns and then one of ads, next to the projects", async () => {
         installBrowserApiDoubles();
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         fireEvent.click(await screen.findByRole("button", { name: "Ver desglose en tabla" }));
         expect(screen.queryByRole("table", { name: "Leads por campaña" })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Proyecto › Campaña" }));
@@ -154,7 +154,7 @@ describe("lead-capture report screen", () => {
 
     it("retains all sellers when changing to a shorter period", async () => {
         installBrowserApiDoubles();
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
         expect(screen.queryByRole("combobox", { name: "Vendedor" })).not.toBeInTheDocument();
         expect(document.querySelector('img[src*="/vendedores/"]')).toBeNull();
@@ -165,14 +165,14 @@ describe("lead-capture report screen", () => {
 
     it("shows no money anywhere", async () => {
         installBrowserApiDoubles();
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
         expect(document.body.textContent).not.toMatch(/USD|\$|Valor|Inversión|Costo/);
     });
 
     it("keeps project headings without the repeated legend or seller photos", async () => {
         installBrowserApiDoubles();
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
         const chart = screen.getByRole("figure");
         expect(within(chart).getByRole("heading", { name: "Proyecto Horizonte" })).toBeInTheDocument();
@@ -182,7 +182,7 @@ describe("lead-capture report screen", () => {
 
     it("switches what is counted without touching the depth, and shows the appointment columns", async () => {
         installBrowserApiDoubles();
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         fireEvent.click(await screen.findByRole("button", { name: "Ver desglose en tabla" }));
         fireEvent.click(screen.getByRole("button", { name: "Proyecto › Campaña › Anuncio" }));
         fireEvent.click(screen.getByRole("button", { name: "Leads con cita" }));
@@ -195,7 +195,7 @@ describe("lead-capture report screen", () => {
 
     it("keeps one flat table per level that adds up to the same total, and narrows campaigns and ads to the projects picked", async () => {
         installBrowserApiDoubles();
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         fireEvent.click(await screen.findByRole("button", { name: "Ver desglose en tabla" }));
         fireEvent.click(screen.getByRole("button", { name: "Proyecto › Campaña › Anuncio" }));
         const tables = ["proyecto", "campaña", "anuncio"].map((noun) => screen.getByRole("table", { name: `Leads por ${noun}` }));
@@ -214,7 +214,7 @@ describe("lead-capture report screen", () => {
         installBrowserApiDoubles();
         const blob = new Blob(["png"]);
         exportDoubles.renderNodeToPng.mockResolvedValue(blob);
-        render(<MarketingLeadCapturePage currentUser={captureUser} />);
+        render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
         await screen.findByRole("button", { name: "Ver desglose en tabla" });
         fireEvent.click(screen.getByRole("button", { name: /Descargar/ }));
         fireEvent.click(await screen.findByText("Imagen (PNG)"));
@@ -265,7 +265,7 @@ describe("quarter and year periods", () => {
 
 it("groups the report by the selected dimension without exposing seller names or photos", async () => {
     installBrowserApiDoubles();
-    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
     await screen.findByRole("button", { name: "Ver desglose en tabla" });
     for (const name of ["Ana Solís", "Carlos Vega", "Diana Mora"]) expect(screen.queryByText(name)).not.toBeInTheDocument();
     expect(document.querySelector('img[src*="/vendedores/"]')).toBeNull();
@@ -281,7 +281,7 @@ it("offers loss reasons under Qué medir with chart, table and project-scoped to
     const report = captureResponse();
     const rows = report.rows.map((row) => ({ ...row, lossReasons: row.lost > 0 ? [{ code: "budget", name: "Presupuesto", count: row.lost }] : [] }));
     api.request.mockResolvedValue({ ...report, rows });
-    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
     await screen.findByRole("button", { name: "Ver desglose en tabla" });
     fireEvent.click(within(screen.getByRole("group", { name: "Qué medir" })).getByRole("button", { name: "Motivos de pérdida" }));
     const chart = screen.getByRole("figure", { name: "Motivos de pérdida · por mes" });
@@ -301,7 +301,7 @@ it("applies custom dates only on submit and compares the same projects by month"
     installBrowserApiDoubles();
     const fixture = captureResponse();
     api.request.mockImplementation((url: string) => Promise.resolve(url.includes("period=all") ? { ...fixture, period: "all", range: { start: "2026-09-01", end: fixture.today }, rows: CAPTURE_DEMO_ROWS, sources: { ...fixture.sources, legacy: CAPTURE_DEMO_ROWS.reduce((sum, row) => sum + row.leads, 0) } } : fixture));
-    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
     await screen.findByRole("button", { name: "Ver desglose en tabla" });
     const initial = document.querySelector(".capture-kpis__value")?.textContent;
     fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "custom" } });
@@ -322,7 +322,7 @@ it("applies custom dates only on submit and compares the same projects by month"
 
 it("rejects reversed custom dates without changing the applied results", async () => {
     installBrowserApiDoubles();
-    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
     await screen.findByRole("button", { name: "Ver desglose en tabla" });
     fireEvent.change(screen.getByRole("combobox", { name: "Periodo" }), { target: { value: "custom" } });
     fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "2026-10-20" } });
@@ -335,7 +335,7 @@ it("rejects reversed custom dates without changing the applied results", async (
 
 it("uses one compact period selector without an independent chart grouping", async () => {
     installBrowserApiDoubles();
-    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
     await screen.findByRole("button", { name: "Ver desglose en tabla" });
     expect(screen.getByRole("combobox", { name: "Periodo" })).toHaveValue("month");
     expect(screen.getByRole("combobox", { name: "Meses" })).toBeInTheDocument();
@@ -351,7 +351,7 @@ it("selects named months and compares every project using the historical report"
     installBrowserApiDoubles();
     const fixture = captureResponse();
     api.request.mockImplementation((url: string) => Promise.resolve(url.includes("period=all") ? { ...fixture, period: "all", range: fixture.coverage, rows: CAPTURE_DEMO_ROWS, sources: { ...fixture.sources, legacy: sum(CAPTURE_DEMO_ROWS) } } : { ...fixture, period: url.split("period=")[1] }));
-    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    render(<MarketingLeadCapturePage currentUser={captureUser} initialPeriod="month" />);
     await screen.findByRole("button", { name: "Ver desglose en tabla" });
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Meses" }));
     const initialTotal = document.querySelector(".capture-kpis__value")?.textContent;
@@ -400,4 +400,12 @@ it("preserves reserved lead totals through every depth and aggregation", () => {
         expect(sellerSections(reserved, depth, "reservations", captureCatalogs).reduce((sum, row) => sum + row.value, 0)).toBe(expected);
         expect(captureKpis(reserved, "reservations", depth).total).toBe(expected);
     }
+});
+
+it("opens on Hoy by default", async () => {
+    installBrowserApiDoubles();
+    render(<MarketingLeadCapturePage currentUser={captureUser} />);
+    await screen.findByRole("combobox", { name: "Periodo" });
+    expect(screen.getByRole("combobox", { name: "Periodo" })).toHaveValue("day");
+    expect(api.request).toHaveBeenCalledWith("/marketing/leads/report?period=day");
 });

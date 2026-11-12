@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
+import { outsideFiniquito } from "../../modules/crm/sales/sales-orders/finiquito-exclusion.query.js";
 import type { AddendumOrder, AddendumStatus, SalesOrderAddendumLegacy } from "../../modules/crm/sales/sales-orders/sales-order-addendum.port.js";
 
 /**
@@ -31,7 +32,7 @@ export class LegacySalesOrderAddendumWriter implements SalesOrderAddendumLegacy 
         const row = (
             await sql<{
                 total: string | number;
-            }>`SELECT COUNT(*) AS total FROM \`crmdatabase-api\`.ordenventa o WHERE o.status_ov=1 AND o.caida_ov=0 AND o.estado_adendum_ov='pending' AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov OR EXISTS(SELECT 1 FROM crm_sales_order_external_reference x JOIN int_external_system s ON s.id_external_system=x.external_system_id_sales_order_external_reference WHERE x.sales_order_id_sales_order_external_reference=n.id_sales_order AND x.external_id_sales_order_external_reference=CAST(o.id_ov AS CHAR) AND s.code_external_system='legacy_crm' AND s.status_external_system='active' AND x.status_sales_order_external_reference='active'))`.execute(
+            }>`SELECT COUNT(*) AS total FROM \`crmdatabase-api\`.ordenventa o WHERE o.status_ov=1 AND o.caida_ov=0 AND o.estado_adendum_ov='pending' AND ${outsideFiniquito("legacy", sql`o.id_ov`)} AND NOT EXISTS(SELECT 1 FROM crm_sales_order n WHERE n.id_old_produccion_sales_order=o.id_ov OR EXISTS(SELECT 1 FROM crm_sales_order_external_reference x JOIN int_external_system s ON s.id_external_system=x.external_system_id_sales_order_external_reference WHERE x.sales_order_id_sales_order_external_reference=n.id_sales_order AND x.external_id_sales_order_external_reference=CAST(o.id_ov AS CHAR) AND s.code_external_system='legacy_crm' AND s.status_external_system='active' AND x.status_sales_order_external_reference='active'))`.execute(
                 tx,
             )
         ).rows[0];

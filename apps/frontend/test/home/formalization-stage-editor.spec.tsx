@@ -19,6 +19,33 @@ beforeEach(() => {
     refresh.mockReset();
 });
 afterEach(cleanup);
+it.each([false, null, undefined])("allows the next step from signed transfer without prior physical delivery (%s)", async (unitDelivered) => {
+    vi.mocked(apiRequest).mockResolvedValue({ source: "legacy", id: "1", state: "closed", sequence: 4, replayed: false });
+    const value = { ...item, state: { ...item.state, code: "transfer_signed", label: "Traspaso firmado" } };
+    if (unitDelivered === undefined) delete value.unitDelivered;
+    else value.unitDelivered = unitDelivered;
+    render(<FormalizationStageEditor item={value} allowed permissions={[{ code: "formalizacion.orders.stage.closed", effect: "allow" }]} onSaved={saved} onRefresh={refresh} />);
+    const button = screen.getByRole("button", { name: "Cerrar formalización" });
+    expect(button).toBeEnabled();
+    expect(apiRequest).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar cambio" }));
+    await waitFor(() => {
+        expect(saved).toHaveBeenCalledOnce();
+    });
+    expect(apiRequest).toHaveBeenCalledOnce();
+    expect(requestBody(0)).toMatchObject({ targetState: "closed", expectedSequence: 3 });
+});
+it.each([502, 409])("shows the reconciliation error and blocks another save after unit-transfer failure (%s)", async (status) => {
+    vi.mocked(apiRequest).mockRejectedValue(new ApiClientError("workflow", status, { code: "UNIT_TRANSFER_RECONCILIATION_REQUIRED" }));
+    show({ ...item, state: { ...item.state, code: "transfer_signed", label: "Traspaso firmado" }, unitDelivered: true });
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "closed" } });
+    await confirm();
+    expect(await screen.findByText("La etapa no fue guardada. El flujo de Unidad traspasada en NetSuite requiere conciliación antes de reintentar.")).toBeTruthy();
+    expect(saved).not.toHaveBeenCalled();
+    expect(apiRequest).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Guardar" }).hasAttribute("disabled")).toBe(true);
+});
 function show(value = item, allowed = true) {
     const view = render(<FormalizationStageEditor item={value} allowed={allowed} permissions={[...ORDER_STAGES.map((stage) => ({ code: `formalizacion.orders.stage.${stage.code}`, effect: "allow" })), { code: "formalizacion.orders.stage.skip", effect: "allow" }]} onSaved={saved} onRefresh={refresh} />);
     const move = screen.queryByRole("button", { name: "Mover a otro estado" });

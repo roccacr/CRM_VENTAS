@@ -2,18 +2,21 @@ import { type RawBuilder, sql, type Transaction } from "kysely";
 import { z } from "zod";
 
 import type { CrmDatabase } from "../../../../database/database.types.js";
-import { type FollowUpAccess, type FollowUpCounts, type FollowUpQueue, followUpQueues, type FollowUpRead, followUpRow, type FollowUpSourcePage } from "./follow-up.contract.js";
+import { outsideFiniquito } from "./finiquito-exclusion.query.js";
+import { finiquitoCandidateFor, finiquitoClassificationFor } from "./finiquito-overview.query.js";
+import { type FiniquitoFollowUpQueue, type FollowUpAccess, type FollowUpCounts, type FollowUpQueue, followUpQueues, type FollowUpRead, followUpRow, type FollowUpSourcePage } from "./follow-up.contract.js";
 import { aggregateNumber } from "./home-summary.types.js";
 import { type DistributionKey, distributionKeys } from "./project-distribution.contract.js";
 
 /** La proyección compartida de campos y estado deja el registro exacto igual que el ítem de la lista. */
 const followUpClassification = sql`CASE
+                WHEN saleLost=1 THEN CASE WHEN rawStage IN ('unclassified','pending_approval','contract_pending_send','contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed') THEN rawStage ELSE 'unclassified' END
                 WHEN approved=1 AND COALESCE(rawStage,'contract_pending_send') IN ('unclassified','pending_approval','contract_pending_send') THEN 'contract_pending_send'
                 WHEN rawStage IN ('contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed') THEN rawStage
                 WHEN approvalPending=1 THEN 'pending_approval' ELSE 'unclassified' END`;
 /** Orden de las etapas igual al de los banners de Inicio: aprobación, contratos, banco, saldo, traspaso, firmado y cierre. Una sin etapa va al final. */
 const followUpStageRank = sql`FIELD(stateCode,'pending_approval','contract_pending_send','contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed')`;
-const followUpRowProjection = sql`JSON_OBJECT('sortId',CAST(sortId AS CHAR),'id',id,'source',source,'number',number,'nativeCode',nativeCode,
+const followUpRowProjection = sql`JSON_OBJECT('finiquitoInFlow',NOT(${outsideFiniquito(sql`source`, sql`sortId`)}),'sortId',CAST(sortId AS CHAR),'id',id,'source',source,'number',number,'nativeCode',nativeCode,
                 'client',client,'clientEmail',clientEmail,'project',IF(projectId IS NULL,NULL,JSON_OBJECT('id',projectId,'name',projectName)),
                 'unit',unit,'seller',IF(ownerName IS NULL,NULL,JSON_OBJECT('id',ownerId,'name',ownerName)),
                 'responsible',IF(stageResponsibleName IS NULL,NULL,JSON_OBJECT('id',stageResponsibleId,'name',stageResponsibleName)),
@@ -27,7 +30,7 @@ const followUpRowProjection = sql`JSON_OBJECT('sortId',CAST(sortId AS CHAR),'id'
 /** Los predicados exactos del banner conservan por separado la membresía del cierre anual y la del adéndum. */
 function followUpMatches(access: FollowUpAccess) {
     const queuePermissions = { ...access.queues };
-    const stages: Record<Exclude<FollowUpQueue, "all">, RawBuilder<unknown>> = {
+    const stages: Record<Exclude<FollowUpQueue, "all" | FiniquitoFollowUpQueue>, RawBuilder<unknown>> = {
         approvals: sql`(${access.approvals} AND approvalPending=1)`,
         contracts: sql`approved=1 AND stateCode IN ('contract_pending_send','contract_pending_signature')`,
         send: sql`approved=1 AND stateCode='contract_pending_send'`,
@@ -43,20 +46,27 @@ function followUpMatches(access: FollowUpAccess) {
     stages.transfer = sql`contractSigned=1 AND stateCode='pending_transfer' AND installmentsFullyPaid=1`;
     // La firma registrada manualmente aparece mientras NetSuite confirma el traspaso.
     stages.signed = sql`contractSigned=1 AND stateCode='transfer_signed' AND installmentsFullyPaid=1 AND keysDelivered=0 AND unitDelivered=0`;
-    for (const queue of Object.keys(stages) as Exclude<FollowUpQueue, "all">[]) {
+    for (const queue of Object.keys(stages) as Exclude<FollowUpQueue, "all" | FiniquitoFollowUpQueue>[]) {
         const key = queue === "send" || queue === "signature" ? "contracts" : queue;
         if (access.queues) {
             stages[queue] = sql`(${access.queues[key] === true} AND (${stages[queue]}))`;
             visibility[queue] = sql`(${access.queues[key] === true} AND (${visibility[queue]}))`;
         }
-        stages[queue] = sql`(saleLost=0 AND ${stages[queue]})`;
-        visibility[queue] = sql`(saleLost=0 AND ${visibility[queue]})`;
+        stages[queue] = sql`(saleLost=0 AND ${outsideFiniquito(sql`source`, sql`sortId`)} AND ${stages[queue]})`;
+        visibility[queue] = sql`(saleLost=0 AND ${outsideFiniquito(sql`source`, sql`sortId`)} AND ${visibility[queue]})`;
     }
-    // Una venta perdida sigue en Todas por su finiquito propio. No entra en las colas de venta activa.
+    // Todas incluye las caídas con permiso de lectura de orden, aun sin contrato o reserva.
+    // La reserva condiciona solo el circuito de finiquito; las colas comerciales siguen excluyendo caídas.
     const canReadLost = access.finiquito === true;
+    const finiquitoStages: Record<FiniquitoFollowUpQueue, RawBuilder<unknown>> = {
+        finiquito_validation: sql`(${canReadLost} AND ${finiquitoCandidateFor(sql`source`, sql`sortId`)} AND finiquitoSection='validation')`,
+        finiquito_pending: sql`(${canReadLost} AND ${finiquitoCandidateFor(sql`source`, sql`sortId`)} AND finiquitoSection='pending_send')`,
+        finiquito_signed: sql`(${canReadLost} AND ${finiquitoCandidateFor(sql`source`, sql`sortId`)} AND finiquitoSection='waiting_signature')`,
+        finiquito_formalized: sql`(${canReadLost} AND ${finiquitoCandidateFor(sql`source`, sql`sortId`)} AND finiquitoSection='formalized')`,
+    };
     // La etapa guardada deja visibles en Todas las combinaciones de banderas que no están soportadas, para revisarlas.
     // El OR cuenta una orden reabierta una sola vez, aunque su cierre anual también califique.
-    const matches: Record<FollowUpQueue, RawBuilder<unknown>> = { ...stages, all: sql`((${sql.join(Object.values(visibility), sql` OR `)}) OR (${canReadLost} AND saleLost=1 AND contractSigned=1))` };
+    const matches: Record<FollowUpQueue, RawBuilder<unknown>> = { ...stages, ...finiquitoStages, all: sql`((${sql.join(Object.values(visibility), sql` OR `)}) OR (${canReadLost} AND (saleLost=1 OR ${finiquitoCandidateFor(sql`source`, sql`sortId`)})))` };
     return matches;
 }
 
@@ -83,10 +93,10 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
             : sql``;
     return sql<Record<string, unknown>>`
         WITH base AS (${base}), classified AS (
-            SELECT base.*,${followUpClassification} AS stateCode
+            SELECT base.*,${followUpClassification} AS stateCode,${finiquitoClassificationFor(sql`base.source`, sql`base.sortId`)} AS finiquitoSection
             FROM base
         ), search_candidates AS (
-            ${searchBase === base ? sql`SELECT * FROM classified` : sql`SELECT search_base.*,${followUpClassification} AS stateCode FROM (${searchBase}) search_base`}
+            ${searchBase === base ? sql`SELECT * FROM classified` : sql`SELECT search_base.*,${followUpClassification} AS stateCode,${finiquitoClassificationFor(sql`search_base.source`, sql`search_base.sortId`)} AS finiquitoSection FROM (${searchBase}) search_base`}
         ), visible AS (
             SELECT * FROM classified WHERE (${!access.ownOnly} OR ownerId=${access.actorId})
                 AND ${matches.all}
@@ -101,7 +111,7 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
         paged AS (SELECT * FROM ranked ORDER BY pageOrdinal LIMIT ${query.limit} OFFSET ${query.offset}),
         projects AS (SELECT projectId AS id,COALESCE(MAX(CASE WHEN source='native' THEN projectName END),MAX(projectName)) AS name FROM visible WHERE projectId IS NOT NULL AND projectName IS NOT NULL GROUP BY projectId)
         SELECT /*+ MAX_EXECUTION_TIME(5000) */
-            COALESCE(SUM(${access.queues?.bank !== false} AND saleLost=0 AND contractSigned=1 AND stateCode='bank_management_in_progress'),0) AS bankInProgress,
+            COALESCE(SUM(${access.queues?.bank !== false} AND saleLost=0 AND ${outsideFiniquito(sql`source`, sql`sortId`)} AND contractSigned=1 AND stateCode='bank_management_in_progress'),0) AS bankInProgress,
             (SELECT COUNT(*) FROM filtered) AS total,
             (SELECT COUNT(*) FROM filtered WHERE source='native') AS nativeTotal,
             (SELECT COUNT(*) FROM filtered WHERE source='legacy') AS legacyTotal,
@@ -117,7 +127,7 @@ function selectedFollowUpFilters(query: FollowUpRead, matches: Record<FollowUpQu
     const selectedQueues = query.queues?.length ? [...new Set(query.queues)] : [query.queue];
     const selected = selectedQueues.map((queue) => (queue === "bank" && query.bankStages?.length ? sql`(${matches.bank} AND stateCode IN (${sql.join(query.bankStages)}))` : matches[queue]));
     const selectionPredicate = selected.length === 1 ? selected[0] : sql`(${sql.join(selected, sql` OR `)})`;
-    const selectedProjects = projectIds.length ? sql`projectId IN (${sql.join(projectIds)})` : sql`TRUE`;
+    const selectedProjects = projectIds.length ? sql`(COALESCE(projectId,'unassigned') IN (${sql.join(projectIds)}))` : sql`TRUE`;
     return { selectedProjects, selectionPredicate };
 }
 
@@ -148,7 +158,7 @@ export async function readFollowUpSource(tx: Transaction<CrmDatabase>, statement
 export async function readFollowUpRecord(tx: Transaction<CrmDatabase>, base: RawBuilder<unknown>) {
     const result = await sql<{ item: unknown }>`
         WITH base AS (${base}), classified AS (
-            SELECT base.*,${followUpClassification} AS stateCode
+            SELECT base.*,${followUpClassification} AS stateCode,${finiquitoClassificationFor(sql`base.source`, sql`base.sortId`)} AS finiquitoSection
             FROM base
         ) SELECT /*+ MAX_EXECUTION_TIME(5000) */ ${followUpRowProjection} AS item FROM classified LIMIT 1`.execute(tx);
     const row = result.rows[0];
@@ -158,8 +168,9 @@ export async function readFollowUpRecord(tx: Transaction<CrmDatabase>, base: Raw
 /** Las series ordenadas traen solo banners autorizados. Banco usa sus dos etapas guardadas. */
 export function projectDistributionSeries(access: FollowUpAccess): DistributionKey[] {
     return distributionKeys.filter((key) => {
+        if (key.startsWith("finiquito_")) return access.finiquito === true;
         if (key === "bank_not_started" || key === "bank_in_progress") return access.queues?.bank === true;
-        if (key === "send" || key === "signature") return access.queues?.contracts === true;
+        if (["send", "signature"].includes(key)) return access.queues?.contracts === true;
         return access.queues?.[key] === true;
     });
 }
@@ -173,12 +184,14 @@ export function projectDistributionQuery(base: RawBuilder<unknown>, access: Foll
         if (key === "bank_in_progress") return sql`(${matches.bank} AND stateCode='bank_management_in_progress')`;
         return matches[key];
     });
+    const commercial = predicates.filter((_predicate, index) => !series[index]?.startsWith("finiquito_"));
+    const commercialMatch = commercial.length ? sql.join(commercial, sql` OR `) : sql`FALSE`;
     return sql<Record<string, unknown>>`
-        WITH base AS (${base}), classified AS (SELECT base.*,${followUpClassification} AS stateCode FROM base),
+        WITH base AS (${base}), classified AS (SELECT base.*,${followUpClassification} AS stateCode,${access.finiquito ? finiquitoClassificationFor(sql`base.source`, sql`base.sortId`) : sql`NULL`} AS finiquitoSection FROM base),
         visible AS (SELECT * FROM classified WHERE (${!access.ownOnly} OR ownerId=${access.actorId}) AND (${predicates.length ? sql.join(predicates, sql` OR `) : sql`FALSE`}))
         SELECT /*+ MAX_EXECUTION_TIME(5000) */ projectId AS id,
             COALESCE(MAX(CASE WHEN source='native' THEN projectName END),MAX(projectName),'Sin proyecto') AS name,
-            COUNT(*) AS total${series.length ? sql`,${sql.join(series.map((key, index) => sql`COALESCE(SUM(${predicates[index]}),0) AS ${sql.ref(key)}`))}` : sql``}
+            COALESCE(SUM(${commercialMatch}),0) AS total${series.length ? sql`,${sql.join(series.map((key, index) => sql`COALESCE(SUM(${predicates[index]}),0) AS ${sql.ref(key)}`))}` : sql``}
         FROM visible GROUP BY projectId ORDER BY total DESC,name,projectId`;
 }
 

@@ -6,6 +6,7 @@ import Modal from "antd/es/modal";
 import { useRef, useState } from "react";
 
 import { ApiClientError } from "../../services/api/api-client";
+import { isFiniquitoOrder } from "../../services/formalization/finiquito-service";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { ORDER_STAGES, type OrderStage, updateOrderStage } from "../../services/formalization/order-stage-service";
 import { ADMINISTRATION_MODAL_Z_INDEX } from "../administration/administration-theme";
@@ -216,7 +217,7 @@ function PreviousAction({ item, model, onChoose }: { readonly item: FollowUpItem
 /** La confirmación es explícita. Una mutación fallida conserva el editor y su clave de operación. */
 export function FormalizationStageEditor(props: Props) {
     const model = useStageEdit(props);
-    return props.item.saleLost === true ? null : <StageEditorView {...props} model={model} />;
+    return isFiniquitoOrder(props.item) ? null : <StageEditorView {...props} model={model} />;
 }
 
 function StageEditorView({ item, permissions = [], onRefresh, onSaved, onApproved, model }: Props & { readonly model: ReturnType<typeof useStageEdit> }) {
@@ -431,12 +432,12 @@ function stageTargetRestriction(item: FollowUpItem, target: string, skip = false
     if (item.contractSigned !== true) return SIGNATURE_REQUIRED;
     return !skip && ORDER_STAGES.findIndex((stage) => stage.code === item.state.code) < 1 ? SEND_REQUIRED : null;
 }
-/** Las banderas del destino valen también en excepciones y reversas. Un valor desconocido no cumple un No explícito. */
+/** El cierre desde Traspaso firmado ejecuta el flujo externo; otros cierres requieren entrega ya observada. */
 function installmentsTargetRestriction(item: FollowUpItem, target: string): string | null {
     const transferIndex = ORDER_STAGES.findIndex((stage) => stage.code === "pending_transfer");
     const currentIndex = ORDER_STAGES.findIndex((stage) => stage.code === item.state.code);
     if ([target === "pending_balance", currentIndex >= transferIndex].every(Boolean)) return BALANCE_RETURN_FORBIDDEN;
-    if (target === "closed") return item.unitDelivered === true ? null : CLOSED_REQUIRED;
+    if (target === "closed") return [item.state.code === "transfer_signed", item.unitDelivered === true].some(Boolean) ? null : CLOSED_REQUIRED;
     if (target === "pending_transfer") return [item.installmentsFullyPaid === true, item.unitTransferred === false, item.unitDelivered === false].every(Boolean) ? null : PENDING_TRANSFER_REQUIRED;
     if (target === "transfer_signed") return [item.installmentsFullyPaid === true, [item.unitTransferred === true, item.state.code === "pending_transfer"].some(Boolean), item.keysDelivered === false, item.unitDelivered === false].every(Boolean) ? null : TRANSFER_SIGNED_REQUIRED;
     return null;
@@ -447,8 +448,24 @@ function SignatureRequirement({ item }: { readonly item: FollowUpItem }) {
 function stageOutcomeUncertain(failure: unknown): boolean {
     return !(failure instanceof ApiClientError) || failure.status >= 500;
 }
+/** Los resultados inciertos de un workflow externo nunca invitan a repetir la escritura. */
+function unitTransferFailure(failure: unknown): { stale: boolean; message: string } | null {
+    if (!(failure instanceof ApiClientError)) return null;
+    const body = failure.responseBody;
+    if (!body || typeof body !== "object") return null;
+    const code: unknown = Reflect.get(body, "code");
+    const message = new Map<unknown, string>([
+        ["UNIT_TRANSFER_RECONCILIATION_REQUIRED", "La etapa no fue guardada. El flujo de Unidad traspasada en NetSuite requiere conciliación antes de reintentar."],
+        ["UNIT_TRANSFER_LOCAL_COMMIT_UNCONFIRMED", "No se confirmó el guardado de la etapa. Actualiza la orden y concilia la ejecución externa antes de reintentar."],
+        ["UNIT_TRANSFER_UNAVAILABLE", "La etapa no fue guardada. No se pudo reservar el flujo NetSuite; solicita revisar su configuración."],
+        ["UNIT_TRANSFER_REFERENCE_REQUIRED", "La etapa no fue guardada. Falta una referencia NetSuite válida y única para esta orden."],
+    ]).get(code);
+    return message ? { stale: true, message } : null;
+}
 function stageFailure(failure: unknown): { stale: boolean; message: string } {
     if (stageAuthorizationRejected(failure)) return { stale: true, message: "Tu acceso cambió. Actualiza la orden para verificar tus permisos antes de guardar." };
+    const workflowFailure = unitTransferFailure(failure);
+    if (workflowFailure) return workflowFailure;
     if (!(failure instanceof ApiClientError) || failure.status !== 409) return { stale: false, message: "No se pudo guardar la etapa. Puedes reintentar el mismo cambio." };
     const body = failure.responseBody;
     const code = body && typeof body === "object" ? (Reflect.get(body, "code") as unknown) : null;

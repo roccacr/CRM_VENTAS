@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
+import fc from "fast-check";
 import { expect, it, vi } from "vitest";
 
 function restlet(accountId: string, envType: string, overrides: Record<string, unknown> = {}, persist = true) {
     const flags: Record<string, unknown> = { custbody43: false, custbody_aprueba_jefe_ventas: true, custbodyid_firma_rocca: true, custbodyid_firma_rc: false, ...overrides };
     const workflow = {
+        trigger: vi.fn(() => 789),
         initiate: vi.fn(() => {
             if (persist) flags.custbodyid_firma_rc = true;
             return 456;
@@ -36,6 +38,48 @@ function restlet(accountId: string, envType: string, overrides: Record<string, u
 }
 
 const request = { module: "salesOrders", action: "approveFormalization", id: "123" };
+it("rejects generated malformed unit-transfer identifiers before reading or triggering", () => {
+    fc.assert(
+        fc.property(
+            fc.string().filter((id) => !/^[1-9][0-9]*$/.test(id)),
+            (id) => {
+                const f = restlet("4552704_SB1", "SANDBOX", { custbodyid_firma_rc: true, custbody91: true });
+                expect(f.handlers.put({ ...request, action: "transferUnit", id })).toMatchObject({ status: 400 });
+                expect(f.search.lookupFields).not.toHaveBeenCalled();
+                expect(f.workflow.trigger).not.toHaveBeenCalled();
+            },
+        ),
+        { numRuns: 50, seed: 2202780 },
+    );
+});
+it("runs only the requested unit-transfer workflow and returns its instance", () => {
+    const f = restlet("4552704_SB1", "SANDBOX", { custbodyid_firma_rc: true, custbody91: true });
+    expect(f.handlers.put({ ...request, action: "transferUnit" })).toMatchObject({ status: 200, data: { id: "123", action: "transferUnit", workflowId: "customworkflow220", stateId: "workflowstate2780", executed: true, instanceId: "789" } });
+    expect(f.workflow.trigger).toHaveBeenCalledExactlyOnceWith({ recordType: "salesorder", recordId: "123", workflowId: "customworkflow220", stateId: "workflowstate2780" });
+    expect(f.workflow.initiate).not.toHaveBeenCalled();
+    expect(f.record.submitFields).not.toHaveBeenCalled();
+});
+it.each([false, true, null, undefined])("runs the requested unit-transfer action without requiring prior physical delivery (%s)", (delivery) => {
+    const f = restlet("4552704_SB1", "SANDBOX", { custbodyid_firma_rc: true, custbody91: delivery });
+    expect(f.handlers.put({ ...request, action: "transferUnit" })).toMatchObject({ status: 200 });
+    expect(f.workflow.trigger).toHaveBeenCalledOnce();
+});
+it.each([{ custbody43: true }, { custbody43: null }, { custbodyid_firma_rc: false }, { custbodyid_firma_rc: null }])("rejects invalid transfer prerequisites before workflow execution: %j", (flags) => {
+    const f = restlet("4552704_SB1", "SANDBOX", { custbodyid_firma_rc: true, ...flags });
+    expect(f.handlers.put({ ...request, action: "transferUnit" })).toMatchObject({ status: 409 });
+    expect(f.workflow.trigger).not.toHaveBeenCalled();
+});
+it("does not confirm or retry a failed unit-transfer workflow", () => {
+    const f = restlet("4552704_SB1", "SANDBOX", { custbodyid_firma_rc: true, custbody91: true });
+    f.workflow.trigger.mockImplementation(() => {
+        throw new Error("PRIVATE_DETAIL");
+    });
+    const result = f.handlers.put({ ...request, action: "transferUnit" });
+    expect(result).toMatchObject({ status: 502, error: { code: "UNIT_TRANSFER_OUTCOME_UNKNOWN" } });
+    expect(f.workflow.trigger).toHaveBeenCalledOnce();
+    expect(f.workflow.initiate).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_DETAIL");
+});
 it.each(["initiate", "verify"])("records a safe diagnostic for %s failures without leaking the exception", (phase) => {
     const { handlers, workflow, search, logger, record } = restlet("4552704", "PRODUCTION");
     const error = Object.assign(new Error("PRIVATE_PROVIDER_DETAIL"), { name: "SSS_INVALID_WORKFLOW_ID" });

@@ -336,7 +336,7 @@ describe("User Event entry point (integrated)", () => {
 
     it("does not emit a mixed snapshot if NetSuite changes during record.load", () => {
         let n = 0;
-        const search = { lookupFields: () => ({ ...Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((field) => [field, false])), lastmodifieddate: n++ === 0 ? "2026-11-02T20:00:00.000Z" : "2026-11-02T20:00:01.000Z" }) };
+        const search = { lookupFields: () => ({ ...Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas", "custbody209"].map((field) => [field, false])), lastmodifieddate: n++ === 0 ? "2026-11-02T20:00:00.000Z" : "2026-11-02T20:00:01.000Z" }) };
         const f = userEvent({ search });
         f.entry.afterSubmit(save());
         expect(f.https.post).not.toHaveBeenCalled();

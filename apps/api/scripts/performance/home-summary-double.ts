@@ -14,7 +14,7 @@ import type { evaluateSynthetic, StageCounts } from "./home-summary-synthetic.js
 
 /** Real service/repositories, fake identity and SQL results. Driver never opens a socket. */
 export function createSummaryDouble(expected: ReturnType<typeof evaluateSynthetic>, delayMs = 0) {
-    // Counts queries per schema (legacy SQL names the legacy database) to assert the 1+1 query budget.
+    // Clasifica la tabla principal; las subconsultas de auditoría también nombran el esquema legacy.
     const metrics = { native: 0, legacy: 0, transactions: 0 };
     // Simulated connection pool: tracks peak concurrency and queueing without opening sockets.
     const pool = { limit: 10, activeConnections: 0, maxActiveConnections: 0, peakQueue: 0 };
@@ -46,7 +46,7 @@ export function createSummaryDouble(expected: ReturnType<typeof evaluateSyntheti
         pool.maxActiveConnections = Math.max(pool.maxActiveConnections, pool.activeConnections);
         const connection = await DummyDriver.prototype.acquireConnection.call(driver);
         connection.executeQuery = async <R>(query: CompiledQuery): Promise<QueryResult<R>> => {
-            const legacy = query.sql.includes("crmdatabase-api");
+            const legacy = /FROM\s+`crmdatabase-api`\.`ordenventa`\s+o/i.test(query.sql);
             metrics[legacy ? "legacy" : "native"]++;
             if (queries.length < 2) queries.push(query);
             if (delayMs) await delay(delayMs);

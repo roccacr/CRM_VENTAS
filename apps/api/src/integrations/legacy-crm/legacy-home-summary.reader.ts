@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 
 import type { CrmDatabase } from "../../database/database.types.js";
+import { outsideFiniquito } from "../../modules/crm/sales/sales-orders/finiquito-exclusion.query.js";
 import { formalizationClosedThisYear } from "../../modules/crm/sales/sales-orders/formalization-closure.query.js";
 import type { HomeSummaryLegacyReader } from "../../modules/crm/sales/sales-orders/home-summary.port.js";
 import { aggregateNumber, type HomeSummaryPeriod, type StageAggregateRow, stageCountsFromRow } from "../../modules/crm/sales/sales-orders/home-summary.types.js";
@@ -58,7 +59,7 @@ export class LegacyHomeSummaryReader implements HomeSummaryLegacyReader {
                 LEFT JOIN ${sql.table("crmdatabase-api.audit_sales_order_state_event")} e ON e.id_sales_order_state_event=(
                     SELECT latest.id_sales_order_state_event FROM ${sql.table("crmdatabase-api.audit_sales_order_state_event")} latest
                     WHERE latest.legacy_order_id_sales_order_state_event=o.id_ov ORDER BY latest.sequence_sales_order_state_event DESC LIMIT 1)
-                WHERE o.status_ov=1 AND o.caida_ov=0
+                WHERE o.status_ov=1 AND o.caida_ov=0 AND ${outsideFiniquito("legacy", sql`o.id_ov`)}
             ) current_orders
         `.execute(tx);
         const row = result.rows[0];

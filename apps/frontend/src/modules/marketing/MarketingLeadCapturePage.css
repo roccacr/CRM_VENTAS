@@ -1897,3 +1897,168 @@ body.capture-printing .capture-columns-chart__empty button {
 .capture-controls__qualification .ant-select {
     width: 100%;
 }
+
+/* ===== Barra de filtros: misma línea que Formalización (compacta, etiquetas pequeñas, chip oscuro activo) ===== */
+.capture-preview .capture-controls {
+    align-items: flex-end;
+    gap: 10px 16px;
+    padding: 12px 16px;
+    border: 1px solid #d2dae5;
+    border-radius: 6px;
+    box-shadow: none;
+}
+/* Todo en una sola barra: el contenedor de "Qué medir" deja de ser una columna aparte. */
+.capture-preview .capture-controls__measure {
+    display: contents;
+}
+.capture-preview .capture-controls__measure > .capture-controls__field:first-child {
+    order: 1;
+}
+.capture-preview .capture-controls > div.capture-controls__field {
+    order: 2;
+}
+.capture-preview .capture-controls__qualification {
+    order: 3;
+    width: 170px;
+}
+.capture-preview .capture-controls__period {
+    order: 4;
+    min-width: 130px;
+}
+.capture-preview .capture-controls__dates {
+    order: 5;
+}
+.capture-preview .capture-controls__download {
+    order: 6;
+    margin-left: auto;
+}
+.capture-preview .capture-controls__range {
+    order: 7;
+}
+
+/* Etiquetas: pequeñas, en mayúsculas, como los encabezados de las tablas. */
+.capture-preview .capture-controls__field > span {
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.capture-preview .capture-controls__field {
+    gap: 4px;
+}
+
+/* Selectores segmentados: contenedor tint y chip oscuro para la opción activa. */
+.capture-preview .capture-controls .marketing-preview-grouping {
+    gap: 2px;
+    padding: 3px;
+    border-color: #d2dae5;
+    border-radius: 6px;
+    background: #f5f7fa;
+}
+.capture-preview .capture-controls .marketing-preview-grouping button {
+    min-height: 26px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    color: #496180;
+    font-size: 12.5px;
+    font-weight: 500;
+}
+.capture-preview .capture-controls .marketing-preview-grouping button[aria-pressed="false"]:not(:disabled):hover {
+    background: #fff;
+    color: #18222f;
+}
+.capture-preview .capture-controls .marketing-preview-grouping button[aria-pressed="true"]:hover {
+    border-color: #18222f;
+    background: #18222f;
+    color: #fff;
+}
+.capture-preview .capture-controls .marketing-preview-grouping button[aria-pressed="true"] {
+    border-color: #18222f;
+    background: #18222f;
+    box-shadow: none;
+    color: #fff;
+    font-weight: 600;
+}
+.capture-preview .capture-controls .marketing-preview-grouping button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Selects y campos: una sola altura (32 px) y borde fino; el select nativo lleva flecha propia. */
+.capture-preview .capture-controls__dates input,
+.capture-preview .capture-controls__field select {
+    min-height: 32px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid #c3ccd9;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+.capture-preview .capture-controls__field select {
+    padding-right: 28px;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7a90' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+}
+.capture-preview .capture-controls .ant-select {
+    min-height: 32px;
+    font-size: 12.5px;
+}
+.capture-preview .capture-controls .ant-select .ant-select-selector {
+    min-height: 32px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+}
+.capture-preview .capture-controls__calendar {
+    width: 240px;
+}
+.capture-preview .capture-controls__field select:focus-visible,
+.capture-preview .capture-controls__dates input:focus-visible {
+    outline: 2px solid #18222f;
+    outline-offset: 1px;
+}
+
+/* Botones: aplicar es la acción principal (oscuro); descargar es secundario. */
+.capture-preview .capture-controls .ant-btn {
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.capture-preview .capture-controls__dates .ant-btn[type="submit"]:not(:disabled) {
+    border-color: #18222f;
+    background: #18222f;
+    color: #fff;
+}
+.capture-preview .capture-controls__dates .ant-btn[type="submit"]:not(:disabled):hover {
+    border-color: #3c4f68;
+    background: #3c4f68;
+    color: #fff;
+}
+.capture-preview .capture-controls__download {
+    border-color: #c3ccd9;
+    color: #3c4f68;
+}
+
+/* Rango aplicado: línea discreta bajo un divisor fino, a lo ancho de la barra. */
+.capture-preview .capture-controls__range {
+    flex-basis: 100%;
+    margin: 2px 0 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--ent-divider, #e4e9f2);
+    color: #6b7a90;
+    font-size: 12px;
+}
+.capture-preview .capture-controls__range strong {
+    color: #18222f;
+    font-variant-numeric: tabular-nums;
+}
+@media (max-width: 767px) {
+    .capture-preview .capture-controls__qualification,
+    .capture-preview .capture-controls__calendar {
+        width: 100%;
+    }
+}

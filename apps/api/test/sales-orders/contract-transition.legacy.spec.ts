@@ -100,6 +100,18 @@ describe("contract-only legacy gate and reviewed DDL", () => {
     it.each([
         [1, true],
         [0, false],
+        [null, false],
+        [undefined, false],
+        ["1", false],
+    ])("confirma Reserva Aplicada %s desde reserva_ov", async (applied, expected) => {
+        const f = setup({}, [{ applied }]);
+        await expect(f.writer.reservationApplied(f.tx, "901")).resolves.toBe(expected);
+        expect(f.queries[0]?.sql).toContain("SELECT reserva_ov AS applied");
+        expect(f.queries[0]?.sql).not.toContain("reserva_aplicada_ov");
+    });
+    it.each([
+        [1, true],
+        [0, false],
         [null, null],
         [undefined, null],
     ])("maps legacy paid installments %s as %s without guessing", async (marker, expected) => {

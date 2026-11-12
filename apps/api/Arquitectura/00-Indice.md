@@ -1,5 +1,7 @@
 # 00 - Indice de Arquitectura API
 
+- [Reserva Aplicada — custbody209 y migración075](Reserva-Aplicada-075.md): mapeo canónico custbody209 → reserva_ov / reservation_applied_sales_order;075/076 y DDL legacy aplicados con autorización, backfill nativo y publicación del arreglo pendientes.
+
 ## Reconciliación vigente — 2026-11-10
 
 [90 — Reconciliación del API](90-Reconciliacion-API-20261110.md) actualiza
@@ -392,3 +394,5 @@ Actualización vigente 2026-10-28: [62 - Notas en tiempo real](62-Notas-Tiempo-R
 - [88 — Adéndum: motivo obligatorio y registro de envío](88-Adendum-Motivo-y-Envio.md): marca independiente de etapa, permisos por acción, migración072 y límites de aplicación.
 
 - [89 — Distribución de Formalización por proyecto](89-Formalizacion-Distribucion-Por-Proyecto.md): gráfico agregado completo, permisos por serie y total único.
+
+- [Finiquito076](Finiquito-076.md): saldo validado independiente, envío/recepción, ambas BDs, bitácora y límites de aplicación local.

@@ -7,6 +7,7 @@ import SendOutlined from "@ant-design/icons/SendOutlined";
 import SwapOutlined from "@ant-design/icons/SwapOutlined";
 import WalletOutlined from "@ant-design/icons/WalletOutlined";
 
+import { isFiniquitoOrder } from "../../services/formalization/finiquito-service";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { ORDER_STAGES } from "../../services/formalization/order-stage-service";
 
@@ -120,6 +121,7 @@ function OrderChecks({ item }: { readonly item: FollowUpItem }) {
 
 /** Posición en el flujo. No prueba visitas históricas: la persona puede saltar etapas. */
 export function FormalizationRecordProgress({ item, compact = false }: { readonly item: FollowUpItem; readonly compact?: boolean }) {
+    if (isFiniquitoOrder(item)) return <OrderChecks item={item} />;
     const state = item.state.code;
     const closed = state === "closed";
     const current = closed ? RECORD_PROGRESS_STAGES.length - 1 : RECORD_PROGRESS_STAGES.findIndex((stage) => stage.code === state);

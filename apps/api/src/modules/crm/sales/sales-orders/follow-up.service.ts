@@ -72,7 +72,7 @@ export class FollowUpService {
         if (!canReadFormalizationStages(profile)) throw new ForbiddenException("Se requiere Formalizacion y permiso de lectura de etapas.");
         if (!z.object({}).strict().safeParse(input).success) throw new BadRequestException("La distribucion no admite filtros.");
         const queues = formalizationReadAccess(profile);
-        const access: FollowUpAccess = { queues, approvals: queues.approvals, actorId: profile.user.publicId, ownOnly: false, approvalOwnOnly: false };
+        const access: FollowUpAccess = { finiquito: canReadFormalizationOrder(profile), queues, approvals: queues.approvals, actorId: profile.user.publicId, ownOnly: false, approvalOwnOnly: false };
         const now = new Date();
         const year = Number(new Intl.DateTimeFormat("en", { timeZone: "America/Costa_Rica", year: "numeric" }).format(now));
         const period = { start: `${String(year)}-01-01 06:00:00.000`, endExclusive: `${String(year + 1)}-01-01 06:00:00.000` };

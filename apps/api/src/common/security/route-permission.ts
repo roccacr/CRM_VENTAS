@@ -120,7 +120,8 @@ export function formalizationReadAccess(profile: Pick<IdentityProfile, "roles" |
     const allowed = (code: string) => can(profile, code) || (code !== FORMALIZATION_READ_PERMISSIONS.approvals && fallback);
     const stages = Object.fromEntries(Object.entries(FORMALIZATION_READ_PERMISSIONS).map(([queue, code]) => [queue, allowed(code)])) as Record<keyof typeof FORMALIZATION_READ_PERMISSIONS, boolean>;
     // La bandeja de adendos tiene permiso propio: el fallback historico de etapas no la concede.
-    return { ...stages, addendum: canReadFormalizationOrder(profile) && can(profile, "formalizacion.orders.addendum.read") };
+    const finiquito = canReadFormalizationOrder(profile);
+    return { ...stages, finiquito_validation: finiquito, finiquito_pending: finiquito, finiquito_signed: finiquito, finiquito_formalized: finiquito, addendum: canReadFormalizationOrder(profile) && can(profile, "formalizacion.orders.addendum.read") };
 }
 
 /**

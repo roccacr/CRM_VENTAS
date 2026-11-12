@@ -21,13 +21,14 @@ import { ContractTransitionService } from "../../src/modules/crm/sales/sales-ord
 
 const secret = "completion-http-test-only-cookie-secret";
 const session = "completion-http-test-session";
-const body = { source: "native", id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", status: "pending_send", expectedVersion: 0, operationId: "550e8400-e29b-41d4-a716-446655440000" };
+const body = { source: "native", id: "01ARZ3NDEKTSV4RRFFQ69G5FAV", status: "balance_validated", expectedVersion: 0, operationId: "550e8400-e29b-41d4-a716-446655440000" };
 const grant = (code: string, effect = "allow") => ({ code, effect, scope: "all_areas" });
 
 describe("finiquito HTTP con sesión, CSRF y permisos reales", () => {
     let app: NestFastifyApplication;
     let permissions = [grant("formalizacion.orders.stage.update"), grant("formalizacion.orders.read")];
     const finiquito = vi.fn().mockResolvedValue({ eligible: true, status: "pending_send", version: 1, originStage: "bank_management" });
+    const finiquitoOverview = vi.fn().mockResolvedValue({ counts: { validation: 2, pending_send: 0, waiting_signature: 0, formalized: 0, waiting_checks: 0 }, total: 2, page: 1, pageSize: 25, items: [] });
     const getCurrentUser = vi.fn((token: string | undefined) => {
         if (token !== session) return Promise.reject(new UnauthorizedException());
         return Promise.resolve({ user: { publicId: "authenticated-actor" }, roles: [{ code: "formalizacion", status: "active" }], permissions });
@@ -35,7 +36,7 @@ describe("finiquito HTTP con sesión, CSRF y permisos reales", () => {
     beforeAll(async () => {
         const module = await Test.createTestingModule({
             controllers: [FormalizationStageController],
-            providers: [ContractTransitionService, { provide: ContractTransitionRepository, useValue: { finiquito } }, { provide: IdentityService, useValue: { getCurrentUser } }, { provide: ConfigService, useValue: new ConfigService({ COOKIE_SECRET: secret }) }, { provide: AuthenticatedReadRateLimit, useValue: { enforceAuthenticatedReadLimit: () => Promise.resolve(true) } }, { provide: APP_GUARD, useClass: CsrfGuard }, { provide: APP_GUARD, useClass: AuthGuard }],
+            providers: [ContractTransitionService, { provide: ContractTransitionRepository, useValue: { finiquito, finiquitoOverview } }, { provide: IdentityService, useValue: { getCurrentUser } }, { provide: ConfigService, useValue: new ConfigService({ COOKIE_SECRET: secret }) }, { provide: AuthenticatedReadRateLimit, useValue: { enforceAuthenticatedReadLimit: () => Promise.resolve(true) } }, { provide: APP_GUARD, useClass: CsrfGuard }, { provide: APP_GUARD, useClass: AuthGuard }],
         }).compile();
         app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), { logger: false });
         await app.register(cookie);
@@ -80,7 +81,7 @@ describe("finiquito HTTP con sesión, CSRF y permisos reales", () => {
         const response = await app.inject({ method: "POST", url: "/formalization/orders/finiquito", payload: body, headers: headers() });
         expect(response.statusCode).toBe(200);
         expect(response.json()).toMatchObject({ status: "pending_send", version: 1 });
-        expect(finiquito).toHaveBeenCalledWith(expect.objectContaining({ actorPublicId: "authenticated-actor" }), expect.objectContaining({ status: "pending_send", expectedVersion: 0 }));
+        expect(finiquito).toHaveBeenCalledWith(expect.objectContaining({ actorPublicId: "authenticated-actor" }), expect.objectContaining({ status: "balance_validated", expectedVersion: 0 }));
     });
     it("la consulta solo requiere lectura y no concede escritura", async () => {
         permissions = [grant("formalizacion.orders.read")];
@@ -88,6 +89,24 @@ describe("finiquito HTTP con sesión, CSRF y permisos reales", () => {
         expect(response.statusCode).toBe(200);
         expect(response.json()).toMatchObject({ canUpdate: false });
         expect(finiquito).toHaveBeenCalledWith(expect.any(Object), undefined);
+    });
+    it("el resumen requiere lectura efectiva y respeta deny aunque el rol esté asignado", async () => {
+        permissions = [grant("formalizacion.orders.read", "deny")];
+        const response = await app.inject({ method: "GET", url: "/formalization/orders/finiquito/overview", headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } });
+        expect(response.statusCode).toBe(403);
+        expect(finiquitoOverview).not.toHaveBeenCalled();
+    });
+    it("el resumen entrega cifras reales sin conceder escritura a lectura", async () => {
+        permissions = [grant("formalizacion.orders.read")];
+        const response = await app.inject({ method: "GET", url: "/formalization/orders/finiquito/overview?section=validation&page=1", headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } });
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toMatchObject({ counts: { validation: 2 }, canUpdate: false });
+        expect(finiquitoOverview).toHaveBeenCalledWith({ section: "validation", page: 1 });
+    });
+    it.each(["page=0", "page=-1", "page=Infinity", "section=unknown", "source=legacy", "page=1%20OR%201=1"])("rechaza filtro del resumen %s antes de consultar", async (query) => {
+        const response = await app.inject({ method: "GET", url: `/formalization/orders/finiquito/overview?${query}`, headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } });
+        expect(response.statusCode).toBe(400);
+        expect(finiquitoOverview).not.toHaveBeenCalled();
     });
 
     it("rechaza versiones de escritura malformadas antes de invocar el repositorio", async () => {

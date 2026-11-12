@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
 import { expect, it, vi } from "vitest";
-const EVENT_FIELDS: Record<string, boolean> = Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas"].map((field) => [field, false]));
+const EVENT_FIELDS: Record<string, boolean> = Object.fromEntries(["custbody90", "custbody51", "custbody91", "custbody105", "custbody43", "custbody103", "custbody_ix_comision_pagada", "custbody_entrega_de_llaves", "custbody274", "custbody_cuotas_pagadas", "custbody209"].map((field) => [field, false]));
 const EVENT_PROVIDERS = { "N/crypto/random": { generateUUID: () => "11111111-1111-4111-8111-111111111111" }, "N/format": { Type: { DATETIME: "datetime" }, parse: ({ value }: { value: string }) => new Date(value) } };
 
 const entry = new URL("../../src/integrations/netsuite/suitescript/SS2_1_UE_CRM_Habita.js", import.meta.url);

@@ -26,7 +26,7 @@ const digest = (value: unknown): string => createHash("sha256").update(canonical
 const MAX_EVENT_CLOCK_SKEW_MS = 60_000;
 
 /** Una fecha futura de mas de 60 segundos se rechaza. Si no, un reloj adelantado dejaria viejas las lecturas siguientes. */
-function assertCursorTimestamps(event: PersistedOrderEvent["event"]): void {
+export function assertCursorTimestamps(event: PersistedOrderEvent["event"]): void {
     const latest = Date.now() + MAX_EVENT_CLOCK_SKEW_MS;
     const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt } = event;
     const timestamps = [sourceModifiedAt, ...(snapshotReadStartedAt === undefined ? [] : [snapshotReadStartedAt]), ...(snapshotReadCompletedAt === undefined ? [] : [snapshotReadCompletedAt])];
@@ -88,7 +88,8 @@ export class NetsuiteOrderEventService {
     }
 }
 
-function orderSnapshotHash(fields: PersistedOrderEvent["snapshot"]["data"]["fields"]): string {
+/** Huella canónica compartida por sincronización completa y lectura parcial de Reserva Aplicada. */
+export function orderSnapshotHash(fields: PersistedOrderEvent["snapshot"]["data"]["fields"]): string {
     const relations = readOrderRelationValues(fields);
     const direct = [...mapOrderFlags(fields, "native", {}), ...mapOrderFields(fields, "native", {})].map(({ field, after }) => ({ field, after }));
     // Ausente conserva el valor. Nulo explicito lo limpia. No pueden compartir hash.

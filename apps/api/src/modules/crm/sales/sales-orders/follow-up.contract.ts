@@ -3,10 +3,11 @@ import { z } from "zod";
 import { COMPLETION_STAGES, formalizationCompletionTarget } from "./formalization-completion.policy.js";
 
 /** Los nombres de cola no nombran al proveedor y los comparten los dos adaptadores de lectura. */
-export const followUpQueues = ["all", "approvals", "contracts", "send", "signature", "bank", "balance", "transfer", "signed", "closed", "addendum"] as const;
+export const followUpQueues = ["all", "approvals", "contracts", "send", "signature", "bank", "balance", "transfer", "signed", "closed", "addendum", "finiquito_validation", "finiquito_pending", "finiquito_signed", "finiquito_formalized"] as const;
+export type FiniquitoFollowUpQueue = Extract<(typeof followUpQueues)[number], `finiquito_${string}`>;
 export type FollowUpQueue = (typeof followUpQueues)[number];
 const boundedInteger = (max: number, fallback: number) => z.preprocess((value) => (value === undefined ? fallback : typeof value === "string" && /^[1-9][0-9]*$/.test(value) ? Number(value) : value), z.number().int().min(1).max(max));
-const projectIdentity = z.string().regex(/^(?:[0-9A-HJKMNP-TV-Z]{26}|legacy-project:[1-9][0-9]{0,19})$/);
+const projectIdentity = z.string().regex(/^(?:unassigned|[0-9A-HJKMNP-TV-Z]{26}|legacy-project:[1-9][0-9]{0,19})$/);
 const selections = <T extends z.ZodType>(item: T, max: number) => z.preprocess((value) => (typeof value === "string" ? value.split(",") : value), z.array(item).max(max)).optional();
 /** Los límites estrictos evitan una lectura sin tope y rechazan un filtro mal escrito. */
 export const followUpQuery = z
@@ -18,11 +19,11 @@ export const followUpQuery = z
         search: z.string().trim().max(120).default(""),
         projectId: z
             .string()
-            .regex(/^(?:[0-9A-HJKMNP-TV-Z]{26}|legacy-project:[1-9][0-9]{0,19})?$/)
+            .regex(/^(?:unassigned|[0-9A-HJKMNP-TV-Z]{26}|legacy-project:[1-9][0-9]{0,19})?$/)
             .default(""),
         queue: z.enum(followUpQueues).default("all"),
         projectIds: selections(projectIdentity, 50),
-        queues: selections(z.enum(followUpQueues), 12),
+        queues: selections(z.enum(followUpQueues), followUpQueues.length),
         bankStages: selections(z.enum(["bank_management", "bank_management_in_progress"]), 2),
         page: boundedInteger(100000, 1),
         pageSize: boundedInteger(100, 25),
@@ -30,7 +31,7 @@ export const followUpQuery = z
     .strict();
 export type FollowUpQuery = z.infer<typeof followUpQuery>;
 export type FollowUpRead = FollowUpQuery & { offset: number; limit: number };
-export type FollowUpCounts = Record<Exclude<FollowUpQueue, "addendum">, number> & { addendum?: number; bankInProgress?: number };
+export type FollowUpCounts = Record<Exclude<FollowUpQueue, "addendum" | FiniquitoFollowUpQueue>, number> & Partial<Record<FiniquitoFollowUpQueue, number>> & { addendum?: number; bankInProgress?: number };
 export interface FollowUpAccess {
     /** Permiso propio de leer la orden. No se deduce del permiso de una cola. */
     finiquito?: boolean;
@@ -55,6 +56,10 @@ const optionalOrderCheck = z
     .transform((value) => (value == null ? null : Boolean(value)));
 
 export const followUpRow = z.object({
+    finiquitoInFlow: z
+        .union([z.boolean(), z.literal(0), z.literal(1)])
+        .transform(Boolean)
+        .optional(),
     salesManagementApproved: optionalOrderCheck,
     developerApproved: optionalOrderCheck,
     formalizationApproved: optionalOrderCheck,
@@ -162,7 +167,7 @@ function followUpNextStep(row: FollowUpDatabaseRow, description: string): string
 export function presentFollowUpRow(row: FollowUpDatabaseRow, observedAt: Date) {
     const { stateCode, stateSince, ...identity } = row;
     const [label, description] = descriptions[stateCode];
-    return { ...identity, state: { code: stateCode, label, since: stateSince, days: stateSince ? Math.max(0, Math.floor((observedAt.getTime() - Date.parse(stateSince)) / 86400000)) : null }, nextStep: row.saleLost === true && row.contractSigned === true ? "Gestionar finiquito de venta caída" : followUpNextStep(row, description) };
+    return { ...identity, state: { code: stateCode, label, since: stateSince, days: stateSince ? Math.max(0, Math.floor((observedAt.getTime() - Date.parse(stateSince)) / 86400000)) : null }, nextStep: row.saleLost === true ? "Venta caída: revisar reserva y saldo" : followUpNextStep(row, description) };
 }
 export type FollowUpItem = ReturnType<typeof presentFollowUpRow>;
 export interface FollowUpResponse {

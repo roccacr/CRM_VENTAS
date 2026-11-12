@@ -5409,18 +5409,18 @@
 
 /* ===== Ajustes de auditoría 2 ===== */
 /* 1. Pendientes con el mismo ancho de tres columnas que el resto. */
-.formalization-home .formalization-home__intro[data-pending-count="1"],
-.formalization-home .formalization-home__intro[data-pending-count="2"] {
+.formalization-home .formalization-home__intro[data-pending-count="3"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 @media (max-width: 1100px) {
-    .formalization-home .formalization-home__intro[data-pending-count="2"] {
+    .formalization-home .formalization-home__intro[data-pending-count="3"] {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 @media (max-width: 767px) {
     .formalization-home .formalization-home__intro[data-pending-count="1"],
-    .formalization-home .formalization-home__intro[data-pending-count="2"] {
+    .formalization-home .formalization-home__intro[data-pending-count="2"],
+    .formalization-home .formalization-home__intro[data-pending-count="3"] {
         grid-template-columns: minmax(0, 1fr);
     }
 }
@@ -5733,4 +5733,81 @@
 }
 .formalization-state[data-tone="success"]::before {
     background: #147849;
+}
+
+/* Finiquito: misma tarjeta de pendientes, cuatro secciones de la consulta real. */
+.formalization-home .formalization-settlement-preview {
+    cursor: default;
+}
+.formalization-home .formalization-settlement-preview .formalization-banner__metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+}
+.formalization-home .formalization-settlement-preview .formalization-banner__metric {
+    min-width: 0;
+}
+.formalization-home .formalization-settlement-preview .formalization-banner__metric + .formalization-banner__metric {
+    margin-left: 0;
+    padding-left: 8px;
+}
+
+/* El finiquito es una rama de venta caída, independiente de la etapa comercial. */
+.formalization-home .formalization-settlement-banner {
+    --banner-accent: #cf1322;
+    border-inline-start-color: #cf1322;
+}
+/* Este banner usa acciones individuales, no el botón superpuesto de aprobación.
+   Restaura el mouse en sus botones aunque el contenido compartido no lo capture. */
+.formalization-settlement-banner button {
+    pointer-events: auto;
+}
+.formalization-settlement-banner button.formalization-banner__metric {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    padding: 0;
+    cursor: pointer;
+}
+.formalization-settlement-banner button.formalization-banner__metric:focus-visible {
+    outline: 2px solid #cf1322;
+    outline-offset: 3px;
+}
+.formalization-finiquito-table {
+    overflow: auto;
+}
+.formalization-finiquito-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.formalization-finiquito-table th,
+.formalization-finiquito-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ffd6d6;
+}
+.formalization-finiquito-table tbody tr,
+.formalization-grid__row[data-finiquito="true"] > td {
+    background: #fff1f0;
+    color: #820014;
+}
+h4[data-finiquito="true"],
+h1 [data-finiquito="true"] {
+    color: #cf1322;
+}
+
+/* La caída conserva la etapa guardada, pero su etiqueta prevalece sobre el color comercial. */
+.formalization-state[data-sale-lost="true"] {
+    border-color: #ffa39e;
+    background: #fff1f0;
+    color: #820014;
+}
+.formalization-state[data-sale-lost="true"]::before {
+    background: #cf1322;
+}
+.formalization-grid__row[data-sale-lost="true"] > td,
+.formalization-grid__row[data-sale-lost="true"] > td * {
+    color: #820014;
 }

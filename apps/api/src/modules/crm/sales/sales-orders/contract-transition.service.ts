@@ -7,12 +7,20 @@ import type { IdentityProfile } from "../../identity/identity.types.js";
 import { type ContractAction, type ContractTransitionDto, validateContractTransition } from "./contract-transition.dto.js";
 import { ContractTransitionRepository } from "./contract-transition.repository.js";
 import { validateFiniquitoInput } from "./finiquito.policy.js";
+import { parseFiniquitoOverviewInput } from "./finiquito-overview.query.js";
 import { formalizationPermissionScope } from "./follow-up.service.js";
 import { validatePurchaseFunds } from "./purchase-funds.dto.js";
 
 /** HTTP y los llamadores internos presentan una sesión viva. El actor no viene de quien llama. */
 @Injectable()
 export class ContractTransitionService {
+    /** Misma lectura efectiva que una orden; la capacidad de escritura se valida de nuevo al guardar. */
+    async finiquitoOverview(session: string | undefined, input: unknown) {
+        const profile = await this.identity.getCurrentUser(session);
+        if (!canReadFormalizationOrder(profile)) throw new ForbiddenException("No tiene permiso para consultar órdenes.");
+        const data = await this.repository.finiquitoOverview(parseFiniquitoOverviewInput(input));
+        return { ...data, canUpdate: formalizationPermissionScope(profile, "formalizacion.orders.stage.update").allowed };
+    }
     /** Lectura y mutación usan el permiso vivo de la orden. La rama la autorizan solo las banderas confirmadas del ERP. */
     async finiquito(session: string | undefined, input: unknown, write = false, context: { ipAddress?: string; userAgent?: string } = {}) {
         const profile = await this.identity.getCurrentUser(session);
