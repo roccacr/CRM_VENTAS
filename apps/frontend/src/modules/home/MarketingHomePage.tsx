@@ -18,6 +18,7 @@ import { LeadsAreaChart, SparkArea } from "./MarketingHomeCharts";
 import { MarketingProjects, MarketingSellers } from "./MarketingHomePanels";
 import { DeltaText, MarketingAlerts } from "./MarketingHomeSections";
 import { InfoHint } from "./MarketingInfoHint";
+import { MarketingReservationDistribution } from "./MarketingReservationDistribution";
 import { MarketingWelcomeArt } from "./MarketingWelcomeArt";
 import { useMarketingHomeSummary } from "./useMarketingHomeSummary";
 
@@ -289,7 +290,7 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
             <div className="marketing-preview-banners">
                 {first && <MarketingBanner key={first.title} {...first} />}
                 <MarketingReservationBanner rows={view.rows} available={available} reservationsAvailable={reservationsAvailable} />
-                <MarketingWelcome currentUser={currentUser} scope={scope} source={dimensions} />
+                <MarketingWelcome currentUser={currentUser} scope={scope} source={dimensions} action={<MarketingReservationDistribution rows={view.rows} periodLabel={describeRange(view.period)} available={available} reservationsAvailable={reservationsAvailable} />} />
                 {others.map((banner) => (
                     <MarketingBanner key={banner.title} {...banner} />
                 ))}
@@ -344,7 +345,7 @@ function visibleBuckets(available: boolean, view: ReturnType<typeof resolveMarke
 }
 
 /** La bienvenida conserva la identidad de la sesión al filtrar por proyecto. */
-function MarketingWelcome({ currentUser, scope, source }: { readonly currentUser: IdentityUser; readonly scope: MarketingScope; readonly source: readonly MarketingDirectoryRow[] }) {
+function MarketingWelcome({ currentUser, scope, source, action }: { readonly currentUser: IdentityUser; readonly scope: MarketingScope; readonly source: readonly MarketingDirectoryRow[]; readonly action: ReactNode }) {
     const name = currentUser.displayName.trim() || currentUser.email.trim();
     const firstName = name.split(/\s+/)[0] ?? "";
     return (
@@ -352,9 +353,7 @@ function MarketingWelcome({ currentUser, scope, source }: { readonly currentUser
             <div className="marketing-welcome__copy">
                 <p className="marketing-welcome__title">{firstName ? `Hola, ${firstName}` : "Hola"}</p>
                 <p className="marketing-welcome__text">{describeScope(scope, source)}</p>
-                <a className="marketing-welcome__link" href="#marketing-preview-movement">
-                    Ver cómo se mueven los leads
-                </a>
+                {action}
             </div>
             <div className="marketing-welcome__people">
                 <MarketingWelcomeArt publicId={null} name="" />

@@ -488,3 +488,17 @@ La navegación requiere membresía activa en `mercadeo` y el permiso efectivo de
 `mercadeo.reports.read_all` amplía la población autorizada de los reportes de Inicio y Captación a todos los vendedores; no abre secciones por sí solo ni concede edición. Debe estar asignado a los roles de Mercadeo para cumplir la regla de lectura completa. Un `deny` explícito sigue prevaleciendo. El frontend no agrega el identificador del usuario ni un vendedor a las consultas de esos reportes: conserva los filtros de período, proyecto, medida y calificación sobre los datos autorizados que devuelve la API.
 
 La revisión del incidente no encontró un filtro de identidad adicional en estas vistas ni un bloqueo exclusivo a Owner. Las pruebas de navegación utilizan ambos roles sin Owner, los permisos base, notas y lectura global; comprueban las rutas de Mercadeo y el rechazo de módulos ajenos. Las pruebas conectadas comprueban que identidades diferentes del vendedor conservan todos los totales recibidos. Esto no sustituye la verificación real de permisos efectivos en BD y de la sesión Microsoft, documentada por separado.
+
+## Inicio de Mercadeo: reservas por proyecto — 2026-11-12
+
+El botón de bienvenida «Ver reservas por proyecto» sustituye el enlace al
+gráfico de movimiento. Abre un modal con cantidades y porcentajes por proyecto,
+ordenados de mayor a menor, y un total que coincide con «Leads con reserva».
+Utiliza exactamente las cohortes ya autorizadas y filtradas del inicio: mismo
+período y proyecto, sin otra consulta ni cambios en las BDs. Reserva y pre-reserva
+siguen siendo evidencia alternativa de un mismo lead, no dos documentos sumados.
+
+Los proyectos se agrupan por ID, conservando separados los homónimos, y solo se
+muestran los que aportan reservas. Una cohorte vacía real muestra su estado
+vacío. Si los datos no están disponibles, el botón se deshabilita y un modal
+abierto se desmonta para no conservar datos de otro período o sesión.

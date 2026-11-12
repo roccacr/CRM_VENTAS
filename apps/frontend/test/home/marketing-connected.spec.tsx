@@ -1,6 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import ConfigProvider from "antd/es/config-provider";
+import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { emptyMarketingFilters, parseISODate, resolveMarketingView, toISODate } from "../../src/modules/home/marketing-home-preview.model";
@@ -8,11 +10,18 @@ import { MarketingHomePage } from "../../src/modules/home/MarketingHomePage";
 import { MarketingWelcomeArt } from "../../src/modules/home/MarketingWelcomeArt";
 import type { IdentityUser } from "../../src/services/auth/identity-contracts";
 import { getMarketingHomeSummary, type MarketingApiSummary, parseMarketingHomeSummary } from "../../src/services/marketing/home-summary-service";
+import { installBrowserApiDoubles } from "../support/browser";
 import { selectedMarketingValues, selectMarketing } from "./marketing-select.helpers";
 vi.mock("../../src/services/marketing/home-summary-service", async (original) => ({ ...(await original<object>()), getMarketingHomeSummary: vi.fn() }));
 const request = vi.mocked(getMarketingHomeSummary);
 const user = { publicId: "me", displayName: "Usuario", email: "session@example.test" } as IdentityUser;
 const photoId = "01M5NC1CME889R260NYS7ASM7C";
+/** El modal real se prueba sin animaciones CSS que jsdom no ejecuta. */
+function renderReservationHome() {
+    installBrowserApiDoubles();
+    return render(<MarketingHomePage currentUser={user} />, { wrapper: ({ children }: PropsWithChildren) => <ConfigProvider theme={{ token: { motion: false } }}>{children}</ConfigProvider> });
+}
+
 function fixture(): MarketingApiSummary {
     return {
         schemaVersion: 1,
@@ -354,4 +363,76 @@ it("filters reserved leads by project and hides them while changing period", asy
 it.each([-1, 1.5, "2", null, {}, Number.MAX_SAFE_INTEGER + 1])("rejects malformed reservation evidence: %j", (withReservation) => {
     const value = fixture();
     expect(() => parseMarketingHomeSummary({ ...value, reservationsAvailable: true, rows: value.rows.map((row) => ({ ...row, withReservation })) }, "month")).toThrow();
+});
+
+it("opens the same reservation total distributed by project without navigation or another request", async () => {
+    const value = {
+        ...fixture(),
+        reservationsAvailable: true,
+        projects: [...fixture().projects, { id: "q", publicId: "q", name: "Proyecto Otro" }],
+        rows: [
+            { date: "2026-10-23", sellerId: photoId, projectId: "p", leads: 10, withReservation: 9 },
+            { date: "2026-10-22", sellerId: "other", projectId: "p", leads: 2, withReservation: 2 },
+            { date: "2026-10-23", sellerId: "other", projectId: "q", leads: 5, withReservation: 3 },
+            { date: "2026-09-23", sellerId: photoId, projectId: "q", leads: 30, withReservation: 20 },
+        ],
+        counts: { leads: 17, previousLeads: 30 },
+        sources: { ...fixture().sources, native: 17, legacy: 0 },
+    };
+    request.mockResolvedValue(value);
+    const url = window.location.href;
+    renderReservationHome();
+    await screen.findByLabelText("Leads con reserva: 14");
+    fireEvent.click(screen.getByRole("button", { name: "Ver reservas por proyecto" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Leads con reserva por proyecto")).toBeInTheDocument();
+    expect(within(dialog).getByText("14 leads con reserva en 2 proyectos")).toBeInTheDocument();
+    const table = within(dialog).getByRole("table", { name: "Distribución de leads con reserva por proyecto" });
+    expect(within(table).getByRole("row", { name: /Proyecto Real.*11/ })).toBeInTheDocument();
+    expect(within(table).getByRole("row", { name: /Proyecto Otro.*3/ })).toBeInTheDocument();
+    expect(window.location.href).toBe(url);
+    expect(request).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+});
+
+it("shows only reserved projects from the selected project filter", async () => {
+    const value = { ...fixture(), reservationsAvailable: true, rows: fixture().rows.map((row) => ({ ...row, withReservation: 1 })) };
+    value.projects = [...value.projects, { id: "q", publicId: "q", name: "Proyecto Otro" }];
+    value.rows = [...value.rows, { date: "2026-10-23", sellerId: photoId, projectId: "q", leads: 1, withReservation: 1 }];
+    request.mockResolvedValue(value);
+    renderReservationHome();
+    await screen.findByLabelText("Leads con reserva: 3");
+    await selectMarketing("Proyecto", "Proyecto Real");
+    await screen.findByLabelText("Leads con reserva: 2");
+    fireEvent.click(screen.getByRole("button", { name: "Ver reservas por proyecto" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Leads con reserva por proyecto")).toBeInTheDocument();
+    expect(within(dialog).getByText("2 leads con reserva en 1 proyecto")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Proyecto Otro")).not.toBeInTheDocument();
+});
+
+it("unmounts the open reservation distribution while another period loads", async () => {
+    const value = { ...fixture(), reservationsAvailable: true, rows: fixture().rows.map((row) => ({ ...row, withReservation: 1 })) };
+    request.mockResolvedValueOnce(value).mockReturnValueOnce(new Promise(() => {}));
+    renderReservationHome();
+    await screen.findByLabelText("Leads con reserva: 2");
+    fireEvent.click(screen.getByRole("button", { name: "Ver reservas por proyecto" }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Ver reservas por proyecto" })).toBeDisabled();
+});
+
+it("shows an actual empty reservation cohort and disables missing reservation evidence", async () => {
+    const value = { ...fixture(), reservationsAvailable: true, rows: fixture().rows.map((row) => ({ ...row, withReservation: 0 })) };
+    request.mockResolvedValueOnce(value).mockResolvedValueOnce(fixture());
+    const view = renderReservationHome();
+    await screen.findByLabelText("Leads con reserva: 0");
+    fireEvent.click(screen.getByRole("button", { name: "Ver reservas por proyecto" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("No hay leads con reserva o pre-reserva");
+    view.rerender(<MarketingHomePage currentUser={{ ...user, publicId: "next" }} />);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Ver reservas por proyecto" })).toBeDisabled();
 });
