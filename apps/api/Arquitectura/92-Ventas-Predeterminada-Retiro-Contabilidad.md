@@ -96,7 +96,7 @@ preparó una propiedad de autorización sobre la entrada real `resolveRouteState
 150 casos con seed `20261113`, variando roles, grants y parámetros de URL; exige
 rechazo y ausencia de mutación del perfil para secciones retiradas.
 
-Concurrencia local: `pnpm test` usa `--maxWorkers=2` en API y frontend, igual que
+Concurrencia local: Vitest usa `test.maxWorkers=2` como valor predeterminado en API y frontend, igual que
 el comando de cobertura existente. El primer intento sin límite terminó con dos
 timeouts de arranque de workers y 7375 pruebas aprobadas; no se consideró verde.
 La limitación no cambia archivos seleccionados, aislamiento, aserciones ni
@@ -116,3 +116,19 @@ Regresiones funcionales de frontend reparadas en esta conciliación:
 - Frontend: formato, ESLint y TypeScript globales aprobados. Suite completa: 2226 aprobados y una expectativa antigua en `formalization-banners.spec.tsx`, ejecutada antes de su corrección. El archivo corregido se repitió íntegro: 34/34 aprobados, sin cambio adicional de código productivo; los demás 145 archivos quedaron aprobados.
 - Regresiones focalizadas adicionales: 152 API en nueve archivos y 187 NetSuite en tres archivos; 218 frontend en doce archivos, todos aprobados.
 - Log completo del chequeo: `%TEMP%/habita-check-all-ci-repair-final.log`; reevaluación del último archivo: `%TEMP%/habita-banner-followup-final.log`. El chequeo global que capturó la expectativa vieja no se presenta como salida 0. La siguiente ejecución de Actions deberá comprobar el árbol final completo, con cobertura y builds.
+
+
+Compatibilidad con el job de propiedades: el límite predeterminado se define en
+`vitest.config.mjs` y `vite.config.ts`, no como argumento del script `test`.
+Así `pnpm test --maxWorkers=1`, usado por el job aislado, sobrescribe el default
+y evita el error de CLI por recibir dos valores para la misma opción. No se
+modifica el job de propiedades ni se omiten casos.
+
+
+Actions sobre `cc40994` (run 43497036271): los cuatro lotes API y cuatro frontend
+aprobaron. El bloqueo restante del job de propiedades ocurrió antes de ejecutar
+sus casos: CLI recibió `maxWorkers` como `[2,1]`. Se corrigió el default en la
+configuración, manteniendo el override del workflow. Comandos locales exactos de
+override: 143 tests API y 12 frontend aprobados con `pnpm test --maxWorkers=1`;
+Prettier y ESLint de configuración aprobados. La publicación queda condicionada
+al próximo run completo; este fallo de configuración no se presenta como verde.

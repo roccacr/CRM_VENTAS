@@ -20,7 +20,7 @@
         "netsuite:package": "node ./scripts/package-netsuite.mjs",
         "recover:owner": "node ./scripts/ensure-pnpm.mjs && tsx ./scripts/restore-owner-from-backup.ts",
         "migrate:identity:schema": "node ./scripts/ensure-pnpm.mjs && tsx ./scripts/run-schema-migrations.ts",
-        "test": "node ./scripts/ensure-pnpm.mjs && vitest run --dir test --maxWorkers=2",
+        "test": "node ./scripts/ensure-pnpm.mjs && vitest run --dir test",
         "test:coverage": "node ./scripts/ensure-pnpm.mjs && vitest run --dir test --coverage --maxWorkers=2",
         "test:mysql:ci": "node ./scripts/ensure-pnpm.mjs && tsx ./scripts/run-mysql-ci.ts",
         "typecheck": "node ./scripts/ensure-pnpm.mjs && tsc --noEmit"

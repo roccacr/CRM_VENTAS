@@ -6,6 +6,8 @@ const realMysqlTests = [process.env.IDENTITY_ACCESS_MYSQL_TESTS, process.env.ADM
 
 export default defineConfig({
     test: {
+        // Límite local predeterminado; CI puede sobrescribirlo sin repetir argumentos CLI.
+        maxWorkers: 2,
         sequence: process.env.CI_TEST_PLAN ? { sequencer: CiSequencer } : {},
         reporters: ["default", "./test/support/skipped-persistence-reporter.mjs"],
         fileParallelism: !realMysqlTests,
