@@ -37,8 +37,6 @@ export default defineConfig({
         },
     },
     test: {
-        // Límite local predeterminado; CI puede sobrescribirlo sin repetir argumentos CLI.
-        maxWorkers: 2,
         sequence: process.env.CI_TEST_PLAN ? { sequencer: CiSequencer } : {},
         environment: "jsdom",
         // Bound jsdom memory pressure consistently with the coverage command.
