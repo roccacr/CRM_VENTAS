@@ -69,9 +69,9 @@ export class NetsuiteOrderImportQueue implements OnModuleInit, OnModuleDestroy {
         return { queued: true, tranid };
     }
 
-    /** Solo se invoca tras autenticar y procesar un webhook que no encontró orden en ninguna BD. */
+    /** Alta o edición autenticada: si falta en ambas BDs, usa la misma cola durable y clave por orden. */
     async enqueueMissingEvent(event: PersistedOrderEvent, result: { result?: string; [key: string]: unknown }) {
-        if (result.result !== "not_found" || !["edit", "xedit"].includes(event.event.eventType)) return result;
+        if (result.result !== "not_found" || !["create", "edit", "xedit"].includes(event.event.eventType)) return result;
         const { accountId, environment } = event.source;
         const netsuiteId = event.event.netsuiteId;
         const number = event.snapshot.data.fields.initialtranid;

@@ -52,3 +52,23 @@ La recuperación real del JSON proporcionado seleccionó 13 IDs: 10 actualizados
 La librería local `2026.11.12.1` deja de leer/enviar `crm_owner_employee` y registra códigos cerrados de timeout, conexión, certificado o DNS tras agotar el reintento. Nunca registra mensajes crudos ni credenciales. Requiere actualización del archivo en NetSuite; no se afirma que esté instalada por editar la copia local. La credencial fija permanece intacta.
 
 La grilla y el detalle de Formalización muestran **Sistema** si la orden no tiene responsable asignado. No se inventa una cuenta ni se reemplaza un responsable existente: la ausencia sigue siendo NULL y la autoría automática queda bajo el actor de servicio de la integración.
+
+
+## Importación automática también al crear — 2026-11-13
+
+Los webhooks autenticados `create`, `edit` y `xedit` con resultado `not_found`
+encolan la importación mediante `NetsuiteOrderImportQueue.enqueueMissingEvent`.
+Antes se excluía `create`, lo que producía `receipt_invalid` en NetSuite al
+recibir `persisted=false` sin `importQueued=true`. Caso observado: BC590,
+ID NetSuite 13474495; sus ediciones posteriores actualizaron legacy correctamente.
+
+Se conserva la búsqueda nueva → vieja antes de encolar. Si ya existe, se actualiza
+y no se importa. Si falta, la creación va a la BD nueva y usa el flujo existente
+de dependencias. La clave cuenta/ambiente/ID de orden se comparte entre alta y
+edición, sin cambiar credenciales, SuiteScript, esquema ni eventos approve/cancel/reject.
+La respuesta `import_queued` confirma la cola durable, no que la orden ya se creó;
+el resultado final lo resuelve el trabajador existente.
+
+Regresiones preparadas: aceptación create/edit/xedit, clave compartida entre tipos,
+rechazo de otros eventos y de fallo al guardar la cola. No se ejecutaron pruebas
+por restricción del usuario. Publicación y validación real pendientes.

@@ -29,12 +29,12 @@ function fixture() {
     return { queue, orders, internals, persist };
 }
 
-describe("automatic import after an authenticated production edit", () => {
-    it("acknowledges a durable queue request while leaving persisted false", async () => {
+describe("automatic import after an authenticated production create or edit", () => {
+    it.each(["create", "edit", "xedit"] as const)("acknowledges a durable queue request for %s while leaving persisted false", async (eventType) => {
         const { queue, persist } = fixture();
         const service = { receive: vi.fn().mockResolvedValue(absent) };
         const controller = new NetsuiteProductionEventsController(service as never, queue);
-        await expect(controller.receive(event)).resolves.toMatchObject({ ...absent, importQueued: true });
+        await expect(controller.receive({ ...event, event: { ...event.event, eventType } })).resolves.toMatchObject({ ...absent, importQueued: true });
         expect(persist).toHaveBeenCalledWith(expect.any(String), { tranid: "AVI874", netsuite: { netsuiteId: "123", accountId: "4552704", environment: "production" } });
     });
 
@@ -45,9 +45,11 @@ describe("automatic import after an authenticated production edit", () => {
         await queue.enqueueMissingEvent({ ...event, event: { ...event.event, netsuiteId: "456" } }, absent);
         expect(persist.mock.calls[0]?.[0]).toBe(persist.mock.calls[1]?.[0]);
         expect(persist.mock.calls[0]?.[0]).not.toBe(persist.mock.calls[2]?.[0]);
+        await queue.enqueueMissingEvent({ ...event, event: { ...event.event, eventType: "create" } }, absent);
+        expect(persist.mock.calls[3]?.[0]).toBe(persist.mock.calls[0]?.[0]);
     });
 
-    it.each(["create", "approve", "cancel", "reject"] as const)("retains the existing no-create rule for %s", async (eventType) => {
+    it.each(["approve", "cancel", "reject"] as const)("retains the existing no-create rule for %s", async (eventType) => {
         const { queue, persist } = fixture();
         await expect(queue.enqueueMissingEvent({ ...event, event: { ...event.event, eventType } }, absent)).resolves.toEqual(absent);
         expect(persist).not.toHaveBeenCalled();
