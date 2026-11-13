@@ -3,13 +3,16 @@ import { hasGlobalMarketingRead } from "../marketing/marketing-read.policy.js";
 import { CALENDAR_MODULES, type CalendarModuleCode } from "./calendar.contract.js";
 
 export type CalendarAction = "read" | "create" | "update" | "assign_lead";
+/** Ventas conserva sus datos históricos, pero ya no expone una sección de calendario. */
+const hasCalendarMembership = (profile: IdentityProfile, moduleCode: CalendarModuleCode): boolean => moduleCode !== "ventas" && profile.orgUnits.some((unit) => unit.code === moduleCode && unit.status === "active");
+
 /**
  * Hace falta la unidad del módulo, un allow con alcance conocido y ningún deny.
  * Escribir también exige poder leer. Un alcance de persona deja el calendario en lo propio.
  * La lectura global de Mercadeo o el rol de Formalización amplían la población solo al leer; no autorizan otro módulo ni eventos ajenos para escribir.
  */
 export function calendarAccess(profile: IdentityProfile, moduleCode: CalendarModuleCode, action: CalendarAction): { allowed: boolean; ownOnly: boolean } {
-    const membership = profile.orgUnits.some((unit) => unit.code === moduleCode && unit.status === "active");
+    const membership = hasCalendarMembership(profile, moduleCode);
     const code = `${moduleCode}.calendar.${action}`;
     const grants = profile.permissions.filter((permission) => permission.code === code && permission.effect === "allow");
     const denied = profile.permissions.some((permission) => permission.code === code && permission.effect === "deny");

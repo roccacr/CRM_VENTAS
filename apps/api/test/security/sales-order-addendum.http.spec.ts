@@ -6,6 +6,7 @@ import { ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
+import fc from "fast-check";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { SanitizedErrorFilter } from "../../src/common/filters/sanitized-error.filter.js";
@@ -147,6 +148,66 @@ it("marks pending manually only with its explicit grant and rejects an oversized
     expect(calendar.save).not.toHaveBeenCalled();
     expect((await app.inject({ method: "POST", url: "/formalization/orders/addendum/pending", payload: { ...body, note: "x".repeat(2001) }, headers: headers() })).statusCode).toBe(400);
     expect(marker.markManually).toHaveBeenCalledOnce();
+});
+
+it("bulk renewal retains strict inputs, CSRF and explicit grant/deny checks at its HTTP entry point", async () => {
+    const body = { source: "native", id, expectedVersion: 1, operationId: eventBody.operationId, note: "Motivo común" };
+    const url = "/formalization/orders/addendum/pending/bulk-item";
+    expect((await app.inject({ method: "POST", url, payload: body, headers: headers() })).statusCode).toBe(403);
+    permissions.push(grant("formalizacion.orders.addendum.mark_pending"));
+    expect((await app.inject({ method: "POST", url, payload: body, headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } })).statusCode).toBe(403);
+    expect((await app.inject({ method: "POST", url, payload: { ...body, actorPublicId: "forged" }, headers: headers() })).statusCode).toBe(400);
+    expect(marker.markManually).not.toHaveBeenCalled();
+    expect((await app.inject({ method: "POST", url, payload: body, headers: headers() })).statusCode).toBe(200);
+    expect(marker.markManually).toHaveBeenCalledExactlyOnceWith({ ...body, actorPublicId: "actor" }, true);
+    permissions.push(grant("formalizacion.orders.addendum.mark_pending", "deny"));
+    expect((await app.inject({ method: "POST", url, payload: body, headers: headers() })).statusCode).toBe(403);
+    expect(marker.markManually).toHaveBeenCalledOnce();
+});
+
+it("rejects generated malformed bulk inputs without invoking persistence", async () => {
+    permissions.push(grant("formalizacion.orders.addendum.mark_pending"));
+    const body = { source: "native", id, expectedVersion: 1, operationId: eventBody.operationId, note: "Motivo común" };
+    await fc.assert(
+        fc.asyncProperty(
+            fc.oneof(
+                fc.string({ maxLength: 2 }).map((note) => ({ ...body, note })),
+                fc.integer({ max: -1 }).map((expectedVersion) => ({ ...body, expectedVersion })),
+                fc.jsonValue().map((actorPublicId) => ({ ...body, actorPublicId })),
+            ),
+            async (payload) => {
+                const result = await app.inject({ method: "POST", url: "/formalization/orders/addendum/pending/bulk-item", payload, headers: headers() });
+                expect(result.statusCode).toBe(400);
+                expect(marker.markManually).not.toHaveBeenCalled();
+            },
+        ),
+        { seed: 20261113, numRuns: 30 },
+    );
+});
+
+it("previews a bounded selection without writes and retains entry-point guards", async () => {
+    const url = "/formalization/orders/addendum/pending/preview";
+    const body = {
+        orders: [
+            { source: "native", id },
+            { source: "legacy", id: "78" },
+        ],
+    };
+    expect((await app.inject({ method: "POST", url, payload: body, headers: headers() })).statusCode).toBe(403);
+    permissions.push(grant("formalizacion.orders.addendum.mark_pending"));
+    expect((await app.inject({ method: "POST", url, payload: body, headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } })).statusCode).toBe(403);
+    expect((await app.inject({ method: "POST", url, payload: { orders: Array.from({ length: 101 }, () => body.orders[0]) }, headers: headers() })).statusCode).toBe(400);
+    marker.read.mockResolvedValueOnce({ source: "native", id, active: true, status: "pending", version: 1, changedAt: null }).mockRejectedValueOnce(new Error("unavailable"));
+    const result = await app.inject({ method: "POST", url, payload: body, headers: headers() });
+    expect(result.statusCode).toBe(200);
+    expect(result.json()).toMatchObject({
+        items: [
+            { source: "native", id, order: { status: "pending", availableForPending: true } },
+            { source: "legacy", id: "78", order: null },
+        ],
+    });
+    expect(marker.markManually).not.toHaveBeenCalled();
+    expect(marker.change).not.toHaveBeenCalled();
 });
 it("allows only the independent count when the user has a banner grant and no order grants", async () => {
     permissions = [grant("formalizacion.home.addendum.read")];

@@ -49,7 +49,7 @@ const hasWorkspaceRouteAccess = (profile: IdentityProfile, path: string): boolea
         return true;
     }
 
-    const workspace = getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits).find((item) => item.code === workspaceCode);
+    const workspace = getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits, ASSIGNED_WORKSPACES, profile.roles).find((item) => item.code === workspaceCode);
     if (!workspace) return false;
 
     // El menú de gestión está oculto por UX; la ruta de la orden conserva su autorización propia.
@@ -62,7 +62,7 @@ const hasWorkspaceRouteAccess = (profile: IdentityProfile, path: string): boolea
     if (path === homePath && !hasHomeMenuItem) return true;
 
     const menuItems = workspace.menuItems.flatMap((item) => [item, ...(item.children ?? [])]);
-    // Ventas y Contabilidad anteriores comparten la URL de inicio aunque sus códigos de ítem sean distintos.
+    // Las rutas registradas exigen el permiso de su sección.
     return menuItems.some((item) => item.code === route.menuItemCode || item.routePath === path);
 };
 
@@ -73,7 +73,7 @@ const hasWorkspaceRouteAccess = (profile: IdentityProfile, path: string): boolea
  * hay ningún perfil visible: el usuario está autenticado pero sin acceso.
  */
 export const getDefaultAuthenticatedPath = (profile: IdentityProfile, workspaceCode?: string): string | null => {
-    const visibleWorkspaces = getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits);
+    const visibleWorkspaces = getVisibleNavigationWorkspaces(profile.permissions, profile.orgUnits, ASSIGNED_WORKSPACES, profile.roles);
     const workspace = visibleWorkspaces.find((item) => (workspaceCode ? item.code === workspaceCode : item.code !== "all"));
     if (!workspace) return null;
     const homePath = getWorkspaceHomePath(workspace.code);

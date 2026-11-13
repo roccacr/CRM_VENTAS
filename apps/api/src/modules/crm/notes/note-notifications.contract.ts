@@ -3,7 +3,7 @@ import { z } from "zod";
 import { noteIdSchema } from "./notes.contract.js";
 export const notificationRecipientSchema = z.object({ publicId: noteIdSchema, kind: z.enum(["shared", "reply", "mention", "assigned", "reminder", "due"]) }).strict();
 export type NoteNotificationRecipient = z.infer<typeof notificationRecipientSchema>;
-export const notificationEventSchema = z.object({ noteId: noteIdSchema, moduleCode: z.enum(["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"]), actorPublicId: noteIdSchema, version: z.number().int().positive(), recipients: z.array(notificationRecipientSchema).max(500) }).strict();
+export const notificationEventSchema = z.object({ noteId: noteIdSchema, moduleCode: z.enum(["ventas", "mercadeo", "formalizacion", "administration"]), actorPublicId: noteIdSchema, version: z.number().int().positive(), recipients: z.array(notificationRecipientSchema).max(500) }).strict();
 export type NoteNotificationEvent = z.infer<typeof notificationEventSchema>;
 const integer = (max: number, fallback: number) => z.preprocess((v) => (v === undefined ? fallback : typeof v === "string" && /^[1-9][0-9]*$/.test(v) ? Number(v) : v), z.number().int().min(1).max(max));
 export const notificationsListSchema = z.object({ filter: z.enum(["all", "unread", "mentions"]).default("all"), page: integer(1000, 1), pageSize: integer(50, 25) }).strict();

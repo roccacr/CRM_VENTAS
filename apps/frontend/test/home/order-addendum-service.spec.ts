@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { apiRequest } from "../../src/services/api/api-client";
-import { getOrderAddendum, getPendingAddendumCount, markOrderAddendumPending, markOrderAddendumSent, updateOrderAddendum } from "../../src/services/formalization/order-addendum-service";
+import { getOrderAddendum, getPendingAddendumCount, markOrderAddendumPending, markOrderAddendumSent, markSelectedOrderAddendumPending, previewSelectedOrderAddendums, updateOrderAddendum } from "../../src/services/formalization/order-addendum-service";
 
 vi.mock("../../src/services/api/api-client", () => ({ apiRequest: vi.fn() }));
 const state = { schemaVersion: 1, source: "legacy", id: "78", status: "pending", version: 1, changedAt: "2026-11-03T12:00:00.000000Z", canUpdate: true };
@@ -45,6 +45,44 @@ it.each(["  Nota de la orden  "])("marks pending without creating a calendar eve
 it("rejects an oversized note before making a request", async () => {
     await expect(markOrderAddendumPending({ source: "legacy", id: "78", expectedVersion: 0, operationId: "id", note: "a".repeat(2001) })).rejects.toThrow("2000");
     expect(apiRequest).not.toHaveBeenCalled();
+});
+
+it("previews normalized selected identities and retains unavailable entries without substituting orders", async () => {
+    const orders = [
+        { source: "legacy" as const, id: "legacy:78" },
+        { source: "legacy" as const, id: "79" },
+    ];
+    vi.mocked(apiRequest).mockResolvedValue({
+        items: [
+            { source: "legacy", id: "78", order: { ...state, availableForPending: true } },
+            { source: "legacy", id: "79", order: null },
+        ],
+    });
+    expect(await previewSelectedOrderAddendums(orders)).toEqual([{ ...state, availableForPending: true }, null]);
+    expect(apiRequest).toHaveBeenCalledExactlyOnceWith("/formalization/orders/addendum/pending/preview", {
+        method: "POST",
+        body: {
+            orders: [
+                { source: "legacy", id: "78" },
+                { source: "legacy", id: "79" },
+            ],
+        },
+        retryOnUnauthorized: false,
+    });
+    vi.mocked(apiRequest).mockResolvedValue({
+        items: [
+            { source: "legacy", id: "79", order: state },
+            { source: "legacy", id: "78", order: null },
+        ],
+    });
+    await expect(previewSelectedOrderAddendums(orders)).rejects.toThrow("Consulta de selección inválida.");
+});
+
+it("uses the distinct bulk renewal route with the same required reason and retry command", async () => {
+    const command = { source: "legacy" as const, id: "legacy:78", expectedVersion: 1, operationId: "73da206b-67e7-46e6-8434-98b626448539", note: "  Motivo común  " };
+    vi.mocked(apiRequest).mockResolvedValue({ ...state, note: "Motivo común", replayed: true });
+    expect(await markSelectedOrderAddendumPending(command)).toMatchObject({ note: "Motivo común", replayed: true });
+    expect(apiRequest).toHaveBeenCalledExactlyOnceWith("/formalization/orders/addendum/pending/bulk-item", { method: "POST", body: { ...command, id: "78", note: "Motivo común" }, retryOnUnauthorized: false });
 });
 it.each([
     { ...state, note: { secret: true } },

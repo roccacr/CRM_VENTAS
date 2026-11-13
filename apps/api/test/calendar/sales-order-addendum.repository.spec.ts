@@ -188,6 +188,35 @@ it("rejects a new manual mark when already pending without any version or audit 
         await f.db.destroy();
     }
 });
+
+it.each([false, true])("renews a pending selection with audit and idempotent retry, legacy=%s", async (legacy) => {
+    const f = setup({ legacy });
+    const command = { ...f.pending.order, expectedVersion: 3, operationId, actorPublicId: "actor", note: "Motivo común para la selección" };
+    try {
+        expect(await f.repo.markManually(command, true)).toMatchObject({ status: "pending", version: 4, note: command.note, replayed: false });
+        expect(await f.repo.markManually(command, true)).toMatchObject({ version: 4, replayed: true });
+        expect(f.audit.append).toHaveBeenCalledOnce();
+        expect(f.audit.append.mock.calls[0]?.[1]).toMatchObject({ before: { addendumStatus: "pending", addendumVersion: 3 }, after: { addendumStatus: "pending", addendumVersion: 4, addendumNote: command.note } });
+        await expect(f.repo.markManually({ ...command, note: "Motivo distinto" }, true)).rejects.toMatchObject({ status: 409 });
+        await expect(f.repo.markManually({ ...command, operationId: "550e8400-e29b-41d4-a716-446655440001" }, true)).rejects.toMatchObject({ status: 409 });
+        expect(f.audit.append).toHaveBeenCalledOnce();
+    } finally {
+        await f.db.destroy();
+    }
+});
+
+it("bulk renewal cannot mutate an inactive order or leave a change after audit failure", async () => {
+    for (const options of [{ inactive: true }, { failAudit: true }]) {
+        const f = setup(options);
+        try {
+            await expect(f.repo.markManually({ ...f.pending.order, expectedVersion: 3, operationId, actorPublicId: "actor", note: "Motivo común" }, true)).rejects.toThrow();
+            expect(f.current()).toMatchObject({ status: "pending", version: 3, note: null });
+            expect(f.steps).toContain("rollback");
+        } finally {
+            await f.db.destroy();
+        }
+    }
+});
 it("preserves a manual note on completion and replaces it only when a new calendar Adéndum marks pending", async () => {
     const f = setup({ status: null });
     try {

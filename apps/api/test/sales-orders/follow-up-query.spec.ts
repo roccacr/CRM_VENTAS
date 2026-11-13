@@ -92,7 +92,7 @@ describe("bounded federated follow-up SQL", () => {
             });
             expect(queries).toHaveLength(2);
             for (const compiled of queries) {
-                expect(compiled.sql).toContain("LIMIT ? OFFSET ?");
+                expect(compiled.sql).toContain("WHERE pageOrdinal > ? AND pageOrdinal <= ?");
                 expect(compiled.sql).toContain("MAX_EXECUTION_TIME(5000)");
                 expect(compiled.sql).not.toContain(query.search);
                 expect(compiled.parameters).toContain(query.search.toLocaleLowerCase("es"));
@@ -279,7 +279,7 @@ it("incluye caídas sin contrato ni estado activo en ambas fuentes y conserva au
             expect(compiled.sql).toContain("THEN rawStage ELSE 'unclassified' END");
             expect(compiled.sql).toContain("ownerId=?");
             expect(compiled.sql).toContain("FROM visible WHERE");
-            expect(compiled.sql).toContain("LIMIT ? OFFSET ?");
+            expect(compiled.sql).toContain("WHERE pageOrdinal > ? AND pageOrdinal <= ?");
             expect(compiled.parameters).toContain(access.actorId);
         }
     } finally {
@@ -293,9 +293,27 @@ it("orders the complete filtered portfolio by project and unit before selecting 
         expect(compiled.sql).toContain(
             "ROW_NUMBER() OVER (ORDER BY FIELD(stateCode,'pending_approval','contract_pending_send','contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed')=0,FIELD(stateCode,'pending_approval','contract_pending_send','contract_pending_signature','bank_management','bank_management_in_progress','pending_balance','pending_transfer','transfer_signed','closed'),projectName IS NULL,projectName,unit IS NULL,unit,source,sortId,id)",
         );
-        expect(compiled.sql).toContain("FROM ranked ORDER BY pageOrdinal LIMIT ? OFFSET ?");
+        expect(compiled.sql).toContain("FROM ranked WHERE pageOrdinal > ? AND pageOrdinal <= ?");
         expect(compiled.sql).toContain("COUNT(*) FROM filtered WHERE source='native'");
         expect(compiled.sql).toContain("COUNT(*) FROM filtered WHERE source='legacy'");
+    } finally {
+        void db.destroy();
+    }
+});
+
+it.each([
+    { offset: 0, expected: [0, 100] },
+    { offset: 100, expected: [100, 200] },
+    { offset: 400, expected: [400, 500] },
+])("bounds a 100-order selection page by its existing ordinal: offset=$offset", ({ offset, expected }) => {
+    const { db } = database();
+    try {
+        const compiled = followUpSourceQuery(sql`SELECT 1`, { ...query, offset, limit: 100, pageSize: 100 }, access).compile(db);
+        const prefix = compiled.sql.split("WHERE pageOrdinal >")[0] ?? "";
+        const parameterIndex = (prefix.match(/\?/g) ?? []).length;
+        expect(compiled.parameters.slice(parameterIndex, parameterIndex + 2)).toEqual(expected);
+        expect(compiled.sql).not.toContain("ORDER BY pageOrdinal LIMIT ? OFFSET ?");
+        expect(compiled.sql).toContain("MAX_EXECUTION_TIME(5000)");
     } finally {
         void db.destroy();
     }

@@ -136,17 +136,17 @@ describe.skipIf(!enabled)("notes repository MySQL in isolated disposable schema"
         const context = { kind: "sales_order" as const, source: "legacy" as const, id: "208" };
         const command = createNoteSchema.parse({ ...createInput(), moduleCode: "formalizacion", context });
         const { noteId } = await repository.create(author, command, context);
-        const query = listNotesSchema.parse({ moduleCode: "contabilidad", contextType: "sales_order", recordSource: "legacy", recordId: "208", status: "all" });
-        const reader = { ...other, moduleCode: "contabilidad" as const };
-        expect((await repository.list(reader, query, context, ["contabilidad", "formalizacion"])).total).toBe(0);
+        const query = listNotesSchema.parse({ moduleCode: "mercadeo", contextType: "sales_order", recordSource: "legacy", recordId: "208", status: "all" });
+        const reader = { ...other, moduleCode: "mercadeo" as const };
+        expect((await repository.list(reader, query, context, ["mercadeo", "formalizacion"])).total).toBe(0);
         await share(noteId);
-        const result = await repository.list(reader, query, context, ["contabilidad", "formalizacion"]);
+        const result = await repository.list(reader, query, context, ["mercadeo", "formalizacion"]);
         expect(result.total).toBe(1);
         expect(result.items[0]?.moduleCode).toBe("formalizacion");
-        expect((await repository.list(reader, query, { ...context, id: "209" }, ["contabilidad", "formalizacion"])).total).toBe(0);
-        expect((await repository.list(reader, query, context, ["contabilidad"])).total).toBe(0);
+        expect((await repository.list(reader, query, { ...context, id: "209" }, ["mercadeo", "formalizacion"])).total).toBe(0);
+        expect((await repository.list(reader, query, context, ["mercadeo"])).total).toBe(0);
         await sql`UPDATE crm_note_participant SET status_note_participant='revoked',revoked_at_note_participant=UTC_TIMESTAMP(3),revoked_by_user_id_note_participant=1`.execute(database());
-        expect((await repository.list(reader, query, context, ["contabilidad", "formalizacion"])).total).toBe(0);
+        expect((await repository.list(reader, query, context, ["mercadeo", "formalizacion"])).total).toBe(0);
     });
 
     it("edits with explicit UTC updatedAt and rejects a stale version without writes", async () => {

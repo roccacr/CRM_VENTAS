@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 56" width="480" height="56">
+  <!-- Mosaico continuo: el contrato, el banco, la casa y la llave, unidos por el recorrido de una orden. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 18 L100 18 L100 10 L200 10 L200 18 L300 18 L300 10 L380 10 L380 18 L480 18" stroke="#d3dce8"/>
+    <path d="M0 40 L60 40 L60 46 L130 46 L130 40 L230 40 L230 46 L310 46 L310 40 L410 40 L410 46 L440 46 L440 40 L480 40" stroke="#d3dce8"/>
+    <circle cx="100" cy="18" r="2" fill="#c3cedd"/><circle cx="100" cy="10" r="2" fill="#c3cedd"/><circle cx="200" cy="10" r="2" fill="#c3cedd"/><circle cx="200" cy="18" r="2" fill="#c3cedd"/><circle cx="300" cy="18" r="2" fill="#c3cedd"/><circle cx="300" cy="10" r="2" fill="#c3cedd"/><circle cx="380" cy="10" r="2" fill="#c3cedd"/><circle cx="380" cy="18" r="2" fill="#c3cedd"/><circle cx="60" cy="40" r="2" fill="#c3cedd"/><circle cx="60" cy="46" r="2" fill="#c3cedd"/><circle cx="130" cy="46" r="2" fill="#c3cedd"/><circle cx="130" cy="40" r="2" fill="#c3cedd"/><circle cx="230" cy="40" r="2" fill="#c3cedd"/><circle cx="230" cy="46" r="2" fill="#c3cedd"/><circle cx="310" cy="46" r="2" fill="#c3cedd"/><circle cx="310" cy="40" r="2" fill="#c3cedd"/><circle cx="410" cy="40" r="2" fill="#c3cedd"/><circle cx="410" cy="46" r="2" fill="#c3cedd"/><circle cx="440" cy="46" r="2" fill="#c3cedd"/><circle cx="440" cy="40" r="2" fill="#c3cedd"/>
+    <rect x="40" y="13" width="30" height="30" rx="3" fill="#fff"/>
+    <path d="M47 18h11l5 5v15h-16z" fill="#fff" stroke="#b3c1d5"/>
+    <path d="M58 18v5h5" stroke="#b3c1d5"/>
+    <path d="M50 27h10M50 31h10M50 35h6" stroke="#cbd5e2"/>
+    <rect x="160" y="13" width="30" height="30" rx="3" fill="#fff"/>
+    <path d="M165 24L175 17l10 7z" fill="#fff" stroke="#b3c1d5"/>
+    <path d="M169 29v9M173 29v9M177 29v9M181 29v9" stroke="#cbd5e2"/>
+    <path d="M165 38H185M167 29H183" stroke="#b3c1d5"/>
+    <rect x="280" y="13" width="30" height="30" rx="3" fill="#fff"/>
+    <path d="M284 20H305" stroke="#b3c1d5"/>
+    <rect x="286" y="20" width="16" height="8" fill="#fff" stroke="#b3c1d5"/>
+    <path d="M296 23v4M299 23v4" stroke="#cbd5e2"/>
+    <rect x="288" y="28" width="12" height="10" fill="#fff" stroke="#b3c1d5"/>
+    <rect x="291" y="32" width="4" height="6" fill="#fff" stroke="#cbd5e2"/>
+    <rect x="400" y="13" width="30" height="30" rx="3" fill="#fff"/>
+    <circle cx="407" cy="28" r="4" fill="#fff" stroke="#b3c1d5"/>
+    <path d="M411 28H425M420 28v5M425 28v4" stroke="#b3c1d5" fill="none"/>
+  </g>
+</svg>

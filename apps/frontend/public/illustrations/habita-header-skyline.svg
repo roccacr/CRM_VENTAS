@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 56" preserveAspectRatio="none">
+  <defs>
+    <!-- La silueta ocupa la zona libre entre el buscador y los iconos, y se disuelve en ambos lados. -->
+    <linearGradient id="fade" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".42" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".54" stop-color="#fff" stop-opacity="1"/>
+      <stop offset=".78" stop-color="#fff" stop-opacity="1"/>
+      <stop offset=".92" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="reveal"><rect width="1600" height="56" fill="url(#fade)"/></mask>
+    <pattern id="dots" width="16" height="14" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r=".7" fill="#c6d0de"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="56" fill="url(#dots)" mask="url(#reveal)"/>
+  <g mask="url(#reveal)" fill="none" stroke-linejoin="round" vector-effect="non-scaling-stroke">
+    <path d="M0 55.5H1600" stroke="#aab8cb" stroke-width="1" vector-effect="non-scaling-stroke"/>
+    <path d="M700 56V26h36V56 M744 56V14h44V56 M796 56V30h36V56 M840 56V10h52V56 M900 56V22h40V56 M948 56V16h64V56 M1020 56V28h36V56 M1064 56V12h48V56 M1120 56V24h40V56 M1168 56V18h60V56 M1236 56V10h36V56 M1280 56V26h52V56 M1340 56V16h40V56 M1388 56V30h56V56 M1452 56V22h36V56" stroke="#9fb0c6" stroke-width="1" vector-effect="non-scaling-stroke"/>
+    <path d="M706 34h24 M706 42h24 M706 50h24 M750 22h32 M750 30h32 M750 38h32 M750 46h32 M802 38h24 M802 46h24 M846 18h40 M846 26h40 M846 34h40 M846 42h40 M846 50h40 M906 30h28 M906 38h28 M906 46h28 M954 24h52 M954 32h52 M954 40h52 M954 48h52 M1026 36h24 M1026 44h24 M1070 20h36 M1070 28h36 M1070 36h36 M1070 44h36 M1126 32h28 M1126 40h28 M1126 48h28 M1174 26h48 M1174 34h48 M1174 42h48 M1174 50h48 M1242 18h24 M1242 26h24 M1242 34h24 M1242 42h24 M1242 50h24 M1286 34h40 M1286 42h40 M1286 50h40 M1346 24h28 M1346 32h28 M1346 40h28 M1346 48h28 M1394 38h44 M1394 46h44 M1458 30h24 M1458 38h24 M1458 46h24" stroke="#bac7d8" stroke-width="1" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>
+  </g>
+</svg>

@@ -1,7 +1,7 @@
 import { apiRequest } from "../api/api-client";
 import { type NoteRecordReference, type NoteRelatedRecord, parseRelatedRecords } from "./note-related-records-service";
 
-export type NoteModule = "ventas" | "mercadeo" | "formalizacion" | "contabilidad" | "administration";
+export type NoteModule = "ventas" | "mercadeo" | "formalizacion" | "administration";
 export type NoteContext = { kind: "personal" } | { kind: "view"; code?: string } | { kind: "sales_order"; source: "native" | "legacy"; id: string };
 export interface NotePlacement {
     viewportClass: "desktop" | "tablet" | "mobile";
@@ -88,7 +88,7 @@ export function parsePersonalNote(value: unknown): PersonalNote {
         author: { publicId: identifier(author.publicId), displayName: string(author.displayName) },
         capabilities: { canEdit: boolean(c.canEdit), canComplete: boolean(c.canComplete), canReopen: boolean(c.canReopen), canArchive: boolean(c.canArchive), canMove: boolean(c.canMove), ...parseCollaborationCapabilities(c) },
         myPlacements: (n.myPlacements as unknown[]).map(parsePlacement),
-        ...(n.moduleCode === undefined ? {} : { moduleCode: choice(n.moduleCode, ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"]) }),
+        ...(n.moduleCode === undefined ? {} : { moduleCode: choice(n.moduleCode, ["ventas", "mercadeo", "formalizacion", "administration"]) }),
         ...(n.context === undefined ? {} : { context: parseVisibleContext(n.context) }),
     };
 }

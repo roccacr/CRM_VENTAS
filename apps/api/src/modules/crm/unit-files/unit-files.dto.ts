@@ -15,7 +15,7 @@ function selection({ value }: { value: unknown }): unknown {
  * Una selección que no es JSON se deja como llegó para que el validador la rechace.
  */
 export class UnitFilesQueryDto {
-    @IsIn(["administration", "ventas", "mercadeo", "formalizacion", "contabilidad"])
+    @IsIn(["administration", "ventas", "mercadeo", "formalizacion"])
     moduleCode!: string;
 
     @Transform(({ value }: { value: unknown }) => (typeof value === "string" ? value.split(",") : value))
@@ -121,6 +121,6 @@ export class UnitFilesOptionsDto extends UnitFilesQueryDto {
 
 /** El contexto solo trae el módulo. No dispara una consulta de inventario. */
 export class UnitFilesContextDto {
-    @IsIn(["administration", "ventas", "mercadeo", "formalizacion", "contabilidad"])
+    @IsIn(["administration", "ventas", "mercadeo", "formalizacion"])
     moduleCode!: string;
 }

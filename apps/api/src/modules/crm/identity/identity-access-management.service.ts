@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundExce
 
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
 import { getCatalogPermissionCodesForContext } from "../catalogs/catalogs.constants.js";
+import { withDefaultSalesModule } from "../sales/sales-access.js";
 import type { ReplaceIdentityRolePermissionsDto, ReplaceIdentityUserAccessDto, UpdateIdentityRoleDto } from "./dto/access-management.dto.js";
 import { IdentityService } from "./identity.service.js";
 import type { IdentityProfile } from "./identity.types.js";
@@ -135,7 +136,10 @@ export class IdentityAccessManagementService {
         this.assertOwnerSelfProtection(profile, context.userPublicId, context.payload);
         this.assertUserAdministrationScope(context.payload);
         const roleCodes = context.payload.roleCodes.map((code) => code.trim().toLowerCase());
-        const orgUnitCodes = context.payload.orgUnitCodes.map((code) => code.trim().toLowerCase());
+        const orgUnitCodes = withDefaultSalesModule(
+            roleCodes,
+            context.payload.orgUnitCodes.map((code) => code.trim().toLowerCase()),
+        );
         const permissionOverrides = context.payload.permissionOverrides.map((override) => ({ code: override.code.trim().toLowerCase(), effect: override.effect }));
         await this.repository.assertDelegableAccess(profile, roleCodes, orgUnitCodes, permissionOverrides);
 

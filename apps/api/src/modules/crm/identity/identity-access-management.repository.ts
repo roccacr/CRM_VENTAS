@@ -7,6 +7,7 @@ import { buildAuditChangeSet } from "../audit/audit-change-set.js";
 import { SecurityAuditService } from "../audit/security-audit.service.js";
 import { CATALOG_CONTEXT_MODULES, CATALOG_PERMISSION_ACTIONS, type CatalogPermissionAction, findCatalogDefinitionByModuleCode, getCatalogPermissionName } from "../catalogs/catalogs.constants.js";
 import { LEAD_PROFILE_PERMISSION } from "../leads/lead-profile.contract.js";
+import { isCurrentSalesPermission, SALES_HOME_PERMISSION } from "../sales/sales-access.js";
 import type { IdentityProfile } from "./identity.types.js";
 import { normalizePermissionModule, OPERATIONAL_MODULE_CODES, permissionModuleCodes } from "./identity-module-policy.js";
 import { ACTIVE_STATUS, ADDENDUM_MARK_PENDING_PERMISSION, type IdentityTransaction } from "./identity-repository.shared.js";
@@ -594,7 +595,7 @@ export class IdentityAccessManagementRepository {
     async readSecurityCatalog(): Promise<IdentitySecurityCatalog> {
         const roles = await this.database.db.selectFrom("sec_role").select(["code_role as code", "description_role as description", "id_role as id", "name_role as name", "status_role as status", "permission_inheritance_mode_role as permissionInheritance"]).where("status_role", "=", ACTIVE_STATUS).where("deleted_at_role", "is", null).orderBy("id_role", "asc").execute();
         const policies = new Map(await Promise.all(roles.map(async (role) => [role.id, await this.rolePolicy(this.database.db, role)] as const)));
-        const permissions = (await this.database.db
+        const permissionRows = (await this.database.db
             .selectFrom("sec_permission")
             .select(["action_code_permission as actionCode", "code_permission as code", "description_permission as description", "module_code_permission as moduleCode"])
             .where("status_permission", "=", ACTIVE_STATUS)
@@ -602,6 +603,7 @@ export class IdentityAccessManagementRepository {
             .orderBy("module_code_permission", "asc")
             .orderBy("code_permission", "asc")
             .execute()) as PermissionCatalogRow[];
+        const permissions = permissionRows.filter((permission) => isCurrentSalesPermission(permission.code, permission.moduleCode));
         const rolePermissionEntries = await Promise.all(
             roles.map(async (role) => {
                 if (role.code === "owner") return [role.code, permissions.map((permission) => permission.code).sort()] as const;
@@ -612,7 +614,7 @@ export class IdentityAccessManagementRepository {
                 return [
                     role.code,
                     activePermissions
-                        .filter((permission) => this.isVisibleSecurityModule(permission.moduleCode))
+                        .filter((permission) => this.isVisibleSecurityModule(permission.moduleCode) && isCurrentSalesPermission(permission.code, permission.moduleCode))
                         .map((permission) => permission.code)
                         .sort(),
                 ] as const;
@@ -1184,7 +1186,6 @@ export class IdentityAccessManagementRepository {
         const names: Record<string, string> = {
             lead: "Lead",
             administration: "Administracion",
-            contabilidad: "Contabilidad",
             formalizacion: "Formalizacion",
             mercadeo: "Mercadeo",
             org: "Organizacion",
@@ -1199,6 +1200,7 @@ export class IdentityAccessManagementRepository {
     /** Decides which view a permission belongs to, keeping existing permission codes unchanged. */
     private resolvePermissionViewCode(permissionCode: string, moduleCode: string): string {
         if (permissionCode === LEAD_PROFILE_PERMISSION) return "profile";
+        if (permissionCode === SALES_HOME_PERMISSION) return "home";
         if (permissionCode === "formalizacion.calendar.assign_lead") return "calendar";
         const parts = permissionCode.split(".");
         if (/^(?:[^.]+\.notes\.|formalizacion\.home\.|mercadeo\.(?:home|leads|calendar)\.read$)/u.test(permissionCode)) return parts[1] as string;
@@ -1285,15 +1287,12 @@ export class IdentityAccessManagementRepository {
             contract: "formalizacion",
             estimate: "ventas",
             file: "formalizacion",
-            invoice: "contabilidad",
             lead: "ventas",
             opportunity: "ventas",
-            payment: "contabilidad",
             role: "role",
             signature: "formalizacion",
             source: "mercadeo",
             user: "user",
-            wallet: "contabilidad",
         };
 
         return moduleByPrefix[prefix] ?? prefix;
@@ -1345,6 +1344,7 @@ export class IdentityAccessManagementRepository {
 
         const names: Record<string, string> = {
             "campaign.create": "Crear campana",
+            "ventas.home.read": "Ver Inicio",
             "mercadeo.home.read": "Ver Inicio",
             "mercadeo.reports.read_all": "Consultar todos los vendedores de Mercadeo",
             "mercadeo.leads.read": "Ver Captación de leads",

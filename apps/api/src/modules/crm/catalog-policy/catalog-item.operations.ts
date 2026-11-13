@@ -243,6 +243,7 @@ export class CatalogItemOperations {
      * El owner tiene que estar activo para saltar la unidad. Los demás necesitan esa unidad activa, con el código del módulo de contexto.
      */
     private assertCan(profile: IdentityProfile, moduleCode: CatalogContextModuleCode, permissionCode: string): void {
+        if (moduleCode === "ventas") throw new ForbiddenException("Ventas conserva únicamente Inicio.");
         if (profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "deny") || !profile.permissions.some((permission) => permission.code === permissionCode && permission.effect === "allow")) {
             throw new ForbiddenException("Permiso insuficiente.");
         }

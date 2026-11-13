@@ -2,7 +2,7 @@ import FileAddOutlined from "@ant-design/icons/FileAddOutlined";
 import Button from "antd/es/button";
 import Input from "antd/es/input";
 import Modal from "antd/es/modal";
-import { useEffect, useRef, useState } from "react";
+import { type ComponentProps, useEffect, useRef, useState } from "react";
 
 import { ApiClientError } from "../../services/api/api-client";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
@@ -118,10 +118,9 @@ function MarkAddendumDialog(props: DialogProps) {
     const reloadNeeded = [model.stale, [!model.snapshot, Boolean(model.error)].every(Boolean)].some(Boolean);
     const canReload = [reloadNeeded, !model.uncertain].every(Boolean);
     return (
-        <Modal
+        <AddendumReasonModal
             open
             // La capa global de oscurecimiento también cubre modales con el nivel predeterminado de AntD.
-            zIndex={ADMINISTRATION_MODAL_Z_INDEX}
             title={`Marcar adéndum pendiente · ${props.item.number}`}
             onCancel={() => {
                 if (!model.busy) props.onClose();
@@ -150,27 +149,39 @@ function MarkAddendumDialog(props: DialogProps) {
         >
             <p>Marca el adéndum de esta orden como pendiente sin crear un evento en el calendario.</p>
             <ManualReadNotice model={model} />
-            <label>
-                Motivo
-                <Input.TextArea
-                    required
-                    minLength={3}
-                    maxLength={2000}
-                    rows={4}
-                    value={model.note}
-                    disabled={locked || !model.ready}
-                    onChange={(event) => {
-                        model.setNote(event.target.value);
-                    }}
-                />
-            </label>
+            <AddendumReasonInput value={model.note} disabled={locked || !model.ready} onChange={model.setNote} />
             {model.error && <p role="alert">{model.error}</p>}
             {canReload && (
                 <Button disabled={model.busy} onClick={props.onReload}>
                     Actualizar información del adéndum
                 </Button>
             )}
-        </Modal>
+        </AddendumReasonModal>
+    );
+}
+
+/** El flujo individual y la selección masiva comparten la misma capa de modal y campo de motivo. */
+export function AddendumReasonModal(props: ComponentProps<typeof Modal>) {
+    return <Modal zIndex={ADMINISTRATION_MODAL_Z_INDEX} {...props} />;
+}
+
+/** Mantiene los límites del motivo existentes para ambas formas de marcación. */
+export function AddendumReasonInput({ value, disabled, onChange }: { readonly value: string; readonly disabled: boolean; readonly onChange: (value: string) => void }) {
+    return (
+        <label>
+            Motivo
+            <Input.TextArea
+                required
+                minLength={3}
+                maxLength={2000}
+                rows={4}
+                value={value}
+                disabled={disabled}
+                onChange={(event) => {
+                    onChange(event.target.value);
+                }}
+            />
+        </label>
     );
 }
 function ManualReadNotice({ model }: { readonly model: ReturnType<typeof useManualAddendum> }) {

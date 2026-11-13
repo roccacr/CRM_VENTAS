@@ -19,6 +19,89 @@ const payload = (number = "OV-REAL") => ({
     items: [{ id: number, source: "native", number, nativeCode: null, client: "Cliente real", project: null, unit: null, responsible: null, state: { code: "whatever", label: "Etiqueta del servidor", since: null, days: null }, nextStep: "Acción del servidor", completedThisYear: false }],
     sources: { native: { total: 26 }, legacy: { total: 0, enabled: true } },
 });
+
+it("selects individual orders without opening the drawer and selects every filtered page", async () => {
+    const data = payload();
+    const rows = Array.from({ length: 101 }, (_, index) => ({ ...data.items[0], source: "legacy", id: `legacy:${String(index + 1)}`, number: `OV${String(index + 1)}` }));
+    vi.mocked(apiRequest).mockImplementation((path) => {
+        const query = new URL(path, "https://example.test").searchParams;
+        const size = Number(query.get("pageSize") ?? 25);
+        const page = Number(query.get("page") ?? 1);
+        return Promise.resolve({ ...data, items: rows.slice((page - 1) * size, page * size), page: { number: page, size, total: 101, totalPages: Math.ceil(101 / size) } });
+    });
+    const grants = ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.mark_pending"].map((code) => ({ code, effect: "allow" }));
+    render(<FormalizationFollowUpPreview {...props} stagePermissions={grants} />);
+    const action = screen.getByRole("button", { name: "Marcar como adéndum pendiente" });
+    expect(action).toBeDisabled();
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Seleccionar orden OV1" }));
+    expect(action).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Ver orden completa" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Seleccionar todas las órdenes del filtro" }));
+    await screen.findByText("101 órdenes seleccionadas");
+    const requestedSignal = vi.mocked(apiRequest).mock.calls.find(([path]) => path.includes("page=2&pageSize=100"))?.[1]?.signal;
+    expect(requestedSignal).toBeInstanceOf(AbortSignal);
+    expect(apiRequest).toHaveBeenCalledWith(expect.stringMatching(/page=2&pageSize=100/), { signal: requestedSignal });
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar selección" }));
+    expect(action).toBeDisabled();
+});
+
+function blockSelectionRequests(ignoreAbort = false) {
+    vi.mocked(apiRequest).mockImplementation((path, options) => {
+        if (!path.includes("pageSize=100")) return Promise.resolve(payload());
+        return new Promise((_resolve, reject) => {
+            const signal = options?.signal;
+            if (!signal) throw new Error("La selección debe poder cancelarse.");
+            if (ignoreAbort) return;
+            signal.addEventListener(
+                "abort",
+                () => {
+                    const reason: unknown = signal.reason;
+                    reject(reason instanceof DOMException ? reason : new DOMException("Consulta cancelada.", "AbortError"));
+                },
+                { once: true },
+            );
+        });
+    });
+}
+
+it("cancels a stuck select-all request and restores the controls", async () => {
+    blockSelectionRequests();
+    const grants = ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.mark_pending"].map((code) => ({ code, effect: "allow" }));
+    render(<FormalizationFollowUpPreview {...props} stagePermissions={grants} />);
+    await screen.findByText("OV-REAL");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Seleccionar todas las órdenes del filtro" }));
+    expect(screen.getByText("Seleccionando 0 de 26 órdenes…")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar selección" }));
+    await screen.findByText("Selección cancelada. Puedes volver a intentarlo.");
+    expect(screen.getByRole("checkbox", { name: "Seleccionar todas las órdenes del filtro" })).toBeEnabled();
+    expect(screen.getByText("0 órdenes seleccionadas")).toBeInTheDocument();
+});
+
+it("reports a disconnected server instead of asking to reduce valid filters", async () => {
+    vi.mocked(apiRequest).mockImplementation((path) => (path.includes("pageSize=100") ? Promise.reject(new TypeError("Failed to fetch")) : Promise.resolve(payload())));
+    const grants = ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.mark_pending"].map((code) => ({ code, effect: "allow" }));
+    render(<FormalizationFollowUpPreview {...props} stagePermissions={grants} />);
+    await screen.findByText("OV-REAL");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Seleccionar todas las órdenes del filtro" }));
+    await screen.findByText("Se perdió la conexión con el servidor. Espera a que esté disponible y vuelve a seleccionar las órdenes.");
+    expect(screen.getByText("0 órdenes seleccionadas")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Seleccionar todas las órdenes del filtro" })).toBeEnabled();
+});
+
+it("stops a stalled select-all after its deadline instead of spinning indefinitely", async () => {
+    blockSelectionRequests(true);
+    const grants = ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.mark_pending"].map((code) => ({ code, effect: "allow" }));
+    render(<FormalizationFollowUpPreview {...props} stagePermissions={grants} />);
+    await screen.findByText("OV-REAL");
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Seleccionar todas las órdenes del filtro" }));
+    await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000);
+    });
+    vi.useRealTimers();
+    expect(screen.getByText("La consulta tardó demasiado. Intenta de nuevo o reduce el filtro.")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Seleccionar todas las órdenes del filtro" })).toBeEnabled();
+});
 it("keeps the order drawer open with its revalidated stage after approval removes the row from the queue", async () => {
     let committed = false;
     const data = payload("BC552");

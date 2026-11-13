@@ -129,6 +129,18 @@ const chooseOption = async (combobox: string, option: string, selector: string) 
 };
 
 describe("RolesSecurityPage", () => {
+    it("shows only Ventas / Inicio / Ver Inicio from the clean API catalog", async () => {
+        const homePermission = { code: "ventas.home.read", name: "Ver Inicio", description: "Permite ver Inicio de Ventas.", sensitive: false };
+        const catalog: IdentitySecurityCatalog = { ...mockSecurityCatalog, modules: [{ code: "ventas", name: "Ventas", views: [{ code: "home", name: "Inicio", permissions: [homePermission] }] }], rolePermissions: { owner: [homePermission.code], ventas: [homePermission.code] } };
+        mockGetIdentitySecurityCatalog.mockResolvedValue(catalog);
+        render(<RolesSecurityPage />);
+        expect(await screen.findByRole("switch", { name: "Ver Inicio" })).toBeChecked();
+        expect(within(screen.getByRole("table", { name: "Permisos de Inicio" })).getAllByRole("switch")).toHaveLength(1);
+        expect(screen.queryByRole("switch", { name: "Ver leads" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("switch", { name: "Ver notas" })).not.toBeInTheDocument();
+        expect(buildDisplayModules(catalog.modules).map((module) => ({ name: module.name, sections: module.sections.map((section) => ({ name: section.name, permissions: section.views.flatMap((view) => view.permissions.map((permission) => permission.code)) })) }))).toEqual([{ name: "Ventas", sections: [{ name: "Inicio", permissions: ["ventas.home.read"] }] }]);
+    });
+
     it("preserves another role's unsaved draft and persisted employee preview when saving General", async () => {
         vi.mocked(getIdentityProfile).mockResolvedValue({ ...allowedProfile, roles: [{ code: "owner", name: "Owner", status: "active" }] });
         const general = { code: "jefe_general", name: "Jefe General", description: null, status: "active", locked: false, users: 1, moduleCodes: ["ventas"], moduleScoped: true, permissionInheritance: "selected_modules" as const };

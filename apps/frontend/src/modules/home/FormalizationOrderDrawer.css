@@ -281,3 +281,120 @@
 .formalization-order-drawer .formalization-compact-card--rows .ant-descriptions-row:first-child > * {
     padding-top: 0;
 }
+
+/* ===== Mismo concepto de marca que la barra superior y el login: degradado de derecha a izquierda y línea de etapa ===== */
+.formalization-order-drawer .ant-drawer-header {
+    position: relative;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 14%) 0%, rgb(73 97 128 / 5%) 45%, rgb(255 255 255 / 0%) 85%);
+}
+.formalization-order-drawer .ant-drawer-body {
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 6%) 0%, rgb(73 97 128 / 0%) 60%);
+}
+
+/* Línea inferior de la cabecera: la secuencia de etapas (ámbar, azul grisáceo, verde); si la orden tiene etapa conocida, toma el color de esa etapa. */
+.formalization-order-drawer .ant-drawer-header::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    content: "";
+    pointer-events: none;
+}
+.formalization-order-drawer .ant-drawer-header:has([data-tone="pending"])::after {
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 85%) 100%);
+}
+.formalization-order-drawer .ant-drawer-header:has([data-tone="neutral"])::after {
+    background: linear-gradient(90deg, rgb(73 97 128 / 0%) 0%, rgb(73 97 128 / 90%) 100%);
+}
+.formalization-order-drawer .ant-drawer-header:has([data-tone="success"])::after {
+    background: linear-gradient(90deg, rgb(20 120 73 / 0%) 0%, rgb(20 120 73 / 90%) 100%);
+}
+
+/* ===== Todo el detalle con el mismo lenguaje: acento de etapa, tarjetas con cabecera tint y botones de una sola altura ===== */
+/* Color de la etapa de la orden: el mismo de las tarjetas de Inicio, de la pastilla y de la fila de la tabla. */
+.formalization-order-drawer {
+    --order-accent: #a7b5ca;
+}
+.formalization-order-drawer:has([data-tone="pending"]) {
+    --order-accent: #d99a3d;
+}
+.formalization-order-drawer:has([data-tone="neutral"]) {
+    --order-accent: #7f93ad;
+}
+.formalization-order-drawer:has([data-tone="success"]) {
+    --order-accent: #3f9a6f;
+}
+
+/* Cada bloque del detalle: borde fino, 6 px y una barra izquierda con el color de la etapa. */
+.formalization-order-drawer .ant-drawer-body .ant-card,
+.formalization-order-drawer .formalization-record-progress,
+.formalization-order-drawer .formalization-stage-editor {
+    border: 1px solid #d2dae5;
+    border-left: 3px solid var(--order-accent);
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: none;
+}
+.formalization-order-drawer .formalization-finiquito.ant-card {
+    border-left-color: #a93e38;
+}
+
+/* Acciones de la etapa: cabecera tint como el resto de las tarjetas. */
+.formalization-order-drawer .formalization-stage-editor {
+    overflow: hidden;
+    padding: 0;
+}
+.formalization-order-drawer .formalization-stage-editor__head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ent-divider, #e4e9f2);
+    background: var(--ent-tint, #f5f7fa);
+}
+.formalization-order-drawer .formalization-stage-editor__head h3 {
+    color: #3c4f68;
+    font-size: 13px;
+    font-weight: 700;
+}
+.formalization-order-drawer .formalization-stage-editor__actions {
+    padding: 10px 14px 12px;
+}
+
+/* Botones del cuerpo: una altura, borde fino; la acción de avanzar en oscuro. */
+.formalization-order-drawer .ant-drawer-body .ant-btn {
+    height: 32px;
+    padding: 0 12px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    color: #3c4f68;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.formalization-order-drawer .ant-drawer-body .ant-btn:not(:disabled):hover {
+    border-color: #18222f;
+    color: #18222f;
+}
+.formalization-order-drawer .ant-drawer-body .formalization-advance-btn:not(:disabled) {
+    border-color: #18222f;
+    background: #18222f;
+    color: #fff;
+}
+.formalization-order-drawer .ant-drawer-body .formalization-advance-btn:not(:disabled):hover {
+    border-color: #3c4f68;
+    background: #3c4f68;
+    color: #fff;
+}
+.formalization-order-drawer .formalization-drawer-actions {
+    gap: 8px;
+}
+
+/* Pie: degradado de la marca y línea con el color de la etapa; los botones de orden anterior/siguiente al mismo tamaño. */
+.formalization-order-drawer .ant-drawer-footer {
+    border-top: 2px solid var(--order-accent);
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 9%) 0%, rgb(73 97 128 / 3%) 45%, rgb(255 255 255 / 0%) 80%);
+}
+.formalization-order-drawer .user-detail-drawer__footer .ant-btn {
+    height: 30px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+}

@@ -79,6 +79,8 @@ import { netsuiteOrderDeliveryMigration } from "../migrations/schema-only/202611
 import { salesOrderReservationAppliedMigration } from "../migrations/schema-only/202611120075_sales_order_reservation_applied.js";
 import { finiquitoWorkflowMigration } from "../migrations/schema-only/202611120076_finiquito_workflow.js";
 import { orderWorkflowExecutionMigration } from "../migrations/schema-only/202611120077_order_workflow_execution.js";
+import { salesHomeOnlyMigration } from "../migrations/schema-only/202611130078_sales_home_only.js";
+import { salesDefaultsRetireAccountingMigration } from "../migrations/schema-only/202611130079_sales_defaults_retire_accounting.js";
 import { addDatabaseTlsIssues, booleanEnvSchema, tcpPortSchema } from "../src/config/database-env.schema.js";
 import { APPROVED_DATABASE_NAME } from "../src/config/product.constants.js";
 import { buildMysqlPoolOptions } from "../src/database/mysql-pool-options.js";
@@ -187,6 +189,8 @@ export const schemaMigrations: Migration[] = [
     salesOrderReservationAppliedMigration,
     finiquitoWorkflowMigration,
     orderWorkflowExecutionMigration,
+    salesHomeOnlyMigration,
+    salesDefaultsRetireAccountingMigration,
 ];
 
 /** Targeted cutovers avoid replaying unrelated security repairs after a deliberate ledger reset. */

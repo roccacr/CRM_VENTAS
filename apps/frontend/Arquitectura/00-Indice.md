@@ -1,5 +1,12 @@
 # 00 - Indice de Arquitectura Frontend
 
+## Inicio de Formalización — 2026-11-13
+
+Por solicitud del usuario se retira la sección «Movimientos recientes» del Inicio,
+junto con su consulta automática. Se conserva la bitácora individual de las órdenes.
+Los banners usan el refresco de la cabecera: se retiran los avisos y reintentos
+individuales cuando falla una consulta. Las cifras no confirmadas conservan «—».
+
 ## Visor BPMN de Formalización — 2026-11-12
 
 [34 — Visor BPMN](34-Visor-BPMN-Formalizacion.md): mapas de consulta del proceso

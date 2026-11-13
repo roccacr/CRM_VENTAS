@@ -36,7 +36,7 @@ export const collaborationInboxSchema = z
         createdFrom: z.iso.datetime().optional(),
         createdTo: z.iso.datetime().optional(),
         recordSource: z.enum(["native", "legacy"]).optional(),
-        moduleCode: z.enum(["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"]).optional(),
+        moduleCode: z.enum(["ventas", "mercadeo", "formalizacion", "administration"]).optional(),
         page: page(1000, 1),
         pageSize: page(50, 25),
     })
@@ -49,7 +49,7 @@ export const participantsSchema = z
     .object({ operationId, expectedCollaborationVersion: version, participants: z.array(z.object({ userId: noteIdSchema, access: z.enum(["read", "reply"]) }).strict()).max(100) })
     .strict()
     .refine((v) => new Set(v.participants.map((p) => p.userId)).size === v.participants.length);
-export const noteLocationSchema = z.object({ moduleCode: z.enum(["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"]), code: z.string().regex(/^[a-z][a-z0-9-]{0,99}$/) }).strict();
+export const noteLocationSchema = z.object({ moduleCode: z.enum(["ventas", "mercadeo", "formalizacion", "administration"]), code: z.string().regex(/^[a-z][a-z0-9-]{0,99}$/) }).strict();
 export const locationsSchema = z
     .object({ operationId, expectedCollaborationVersion: version, locations: z.array(noteLocationSchema).max(5) })
     .strict()

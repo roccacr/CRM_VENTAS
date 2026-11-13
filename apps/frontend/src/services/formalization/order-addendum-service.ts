@@ -3,6 +3,7 @@ import type { NetsuiteOrderIdentity } from "./netsuite-order-service";
 
 export type OrderAddendumStatus = "pending" | "completed" | "cancelled" | "sent";
 export interface OrderAddendum {
+    readonly availableForPending?: boolean;
     readonly note?: string | null;
     readonly canMarkPending?: boolean;
     readonly canMarkSent?: boolean;
@@ -49,7 +50,8 @@ function read(value: unknown): OrderAddendum {
     const valid = [data.schemaVersion === 1, ["native", "legacy"].includes(String(data.source)), typeof data.id === "string", [null, "pending", "completed", "cancelled", "sent"].includes(data.status as string | null), typeof data.version === "number", Number.isSafeInteger(data.version), Number(data.version) >= 0, validDate(data.changedAt), typeof data.canUpdate === "boolean"].every(Boolean);
     if (!valid) throw new Error("Respuesta de adéndum inválida.");
     const order = identity({ source: data.source as OrderAddendum["source"], id: data.id as string });
-    return { schemaVersion: 1, ...order, status: data.status as OrderAddendum["status"], version: data.version as number, changedAt: data.changedAt as string | null, canUpdate: data.canUpdate as boolean, ...readManualMetadata(data) };
+    if (data.availableForPending !== undefined && typeof data.availableForPending !== "boolean") throw new Error("Respuesta de adéndum inválida.");
+    return { schemaVersion: 1, ...order, ...(data.availableForPending === undefined ? {} : { availableForPending: data.availableForPending }), status: data.status as OrderAddendum["status"], version: data.version as number, changedAt: data.changedAt as string | null, canUpdate: data.canUpdate as boolean, ...readManualMetadata(data) };
 }
 function readManualMetadata(data: Record<string, unknown>): Pick<OrderAddendum, "note" | "canMarkPending" | "canMarkSent"> {
     const noteValid = [data.note === undefined, data.note === null, typeof data.note === "string"].some(Boolean);
@@ -63,6 +65,19 @@ export async function getOrderAddendum(order: NetsuiteOrderIdentity): Promise<Or
     const query = new URLSearchParams({ source: key.source, id: key.id });
     return read(await apiRequest<unknown>(`/formalization/orders/addendum?${query.toString()}`));
 }
+/** El preflight agrupa lecturas autorizadas para no agotar el límite HTTP al seleccionar todas. */
+export async function previewSelectedOrderAddendums(orders: readonly NetsuiteOrderIdentity[]): Promise<readonly (OrderAddendum | null)[]> {
+    if (!orders.length || orders.length > 100) throw new Error("Selecciona entre 1 y 100 órdenes por consulta.");
+    const targets = orders.map(identity);
+    const result = object(await apiRequest<unknown>("/formalization/orders/addendum/pending/preview", { method: "POST", body: { orders: targets }, retryOnUnauthorized: false }));
+    if (!Array.isArray(result.items) || result.items.length !== targets.length) throw new Error("Consulta de selección inválida.");
+    return result.items.map((value, index) => {
+        const entry = object(value);
+        const target = targets[index];
+        if (!target || entry.source !== target.source || entry.id !== target.id) throw new Error("Consulta de selección inválida.");
+        return entry.order === null ? null : read(entry.order);
+    });
+}
 /** Conserva la misma operación en reintentos inciertos; el BFF aporta cookies y CSRF. */
 export async function updateOrderAddendum(command: OrderAddendumCommand): Promise<OrderAddendum & { readonly replayed: boolean }> {
     const body = { ...command, ...identity(command) };
@@ -75,10 +90,17 @@ async function postAddendum(path: string, body: unknown): Promise<OrderAddendum 
 }
 /** La marcación manual no crea eventos y conserva el motivo obligatorio dentro de la misma operación auditable. */
 export async function markOrderAddendumPending(command: PendingAddendumCommand): Promise<OrderAddendum & { readonly replayed: boolean }> {
+    return postPendingAddendum(command, "/formalization/orders/addendum/pending");
+}
+/** La acción masiva permite renovar pendientes; cada orden conserva versión y operación propias. */
+export async function markSelectedOrderAddendumPending(command: PendingAddendumCommand): Promise<OrderAddendum & { readonly replayed: boolean }> {
+    return postPendingAddendum(command, "/formalization/orders/addendum/pending/bulk-item");
+}
+async function postPendingAddendum(command: PendingAddendumCommand, path: string): Promise<OrderAddendum & { readonly replayed: boolean }> {
     const note = command.note.trim();
     if (note.length < 3 || note.length > 2000) throw new Error("El motivo debe tener entre 3 y 2000 caracteres.");
     const { note: _note, ...rest } = command;
-    return postAddendum("/formalization/orders/addendum/pending", { ...rest, ...identity(command), note });
+    return postAddendum(path, { ...rest, ...identity(command), note });
 }
 /** Un resultado no confirmado nunca se presenta como cero pendientes. */
 export async function getPendingAddendumCount(): Promise<number> {

@@ -1,5 +1,9 @@
 # Habita (CRM TINK)
 
+[Ventas predeterminada y retiro de Contabilidad](apps/api/Arquitectura/92-Ventas-Predeterminada-Retiro-Contabilidad.md): 079 aplicada exclusivamente en `CRM_THINK_V2` el 13/11/2026. Ventas conserva solo Inicio; Contabilidad retirada de la configuración activa y del código actual. Sin tests ejecutados ni despliegue de código.
+
+Ventas: [primera etapa, solo Inicio](apps/api/Arquitectura/91-Ventas-Inicio-y-Acceso.md). Cambio local del 13/11/2026; migración 078 aplicada el 13/11/2026 con autorización expresa únicamente en `CRM_THINK_V2`; sin cambios en la otra BD ni despliegue de código. Requiere rol autorizado, módulo activo y permiso efectivo, con denegaciones prevalecientes. Tests pendientes de ejecución por el usuario.
+
 ## Estado documental vigente — 2026-11-10
 
 Este corte revisa los nueve commits de `06a489c..4ad7a59` de la rama

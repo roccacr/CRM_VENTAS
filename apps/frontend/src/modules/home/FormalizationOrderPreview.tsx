@@ -15,6 +15,7 @@ import { type FormalizationExample, isUnassigned } from "./formalization-preview
 import { FORMALIZATION_EXAMPLES } from "./formalization-preview.model";
 import { useFormalizationPreview } from "./formalization-preview-session";
 import { applyScenarioAction, createScenario, type FormalizationScenario, getScenarioFlow, SCENARIO_ACTION_LABELS, type ScenarioAction, type ScenarioValues } from "./formalization-scenario.model";
+import { stageToneOf } from "./formalization-stage-tone";
 import { FormalizationFiniquito } from "./FormalizationFiniquito";
 import { NetsuiteSynchronizationActions } from "./FormalizationNetsuiteSync";
 import { FormalizationOrderActions } from "./FormalizationOrderActions";
@@ -428,7 +429,7 @@ export function FormalizationOrderRecord({
         </>
     );
     return (
-        <section className="formalization-order" aria-labelledby="formalization-record-title">
+        <section className="formalization-order" aria-labelledby="formalization-record-title" data-tone={stageToneOf(item.state.code)}>
             <header className="global-home-page-header formalization-page-header">
                 <div>
                     <nav className="formalization-breadcrumb" aria-label="Ruta de la orden">

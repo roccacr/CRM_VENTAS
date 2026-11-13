@@ -100,7 +100,7 @@ export class NoteCollaborationRepository {
     }
     /** Primero lee ids de metadatos. El servicio filtra el permiso del recurso antes de paginar o mostrar contenido. */
     async inboxIds(actor: string, query: CollaborationInbox) {
-        return (await this.inboxPage(actor, query, ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"])).items;
+        return (await this.inboxPage(actor, query, ["ventas", "mercadeo", "formalizacion", "administration"])).items;
     }
     /** Las opciones de autor salen de las notas que esta sesión puede ver, no de la página actual. */
     async inboxAuthors(actor: string, modules: readonly NoteModule[]) {
@@ -237,7 +237,7 @@ export class NoteCollaborationRepository {
     private async replaceLocations(context: WriteContext, input: Extract<CollaborationCommand, { kind: "locations" }>) {
         if (!(await this.locationsReady(context.tx))) throw new ServiceUnavailableException("Ubicaciones de notas no disponibles.");
         // Se conservan los destinos que el autor ya no puede administrar. Una edición visible no los quita en silencio.
-        const editable = input.editableModules ?? ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"];
+        const editable = input.editableModules ?? ["ventas", "mercadeo", "formalizacion", "administration"];
         if (editable.length) await sql`DELETE FROM crm_note_location WHERE note_id_note_location=${context.state.note.internalId} AND module_code_note_location IN (${sql.join(editable)})`.execute(context.tx);
         for (const location of input.locations) await sql`INSERT INTO crm_note_location (note_id_note_location,module_code_note_location,view_code_note_location,created_by_user_id_note_location) VALUES (${context.state.note.internalId},${location.moduleCode},${location.code},${context.actor})`.execute(context.tx);
         return;

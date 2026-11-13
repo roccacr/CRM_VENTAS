@@ -72,3 +72,19 @@ el resultado final lo resuelve el trabajador existente.
 Regresiones preparadas: aceptación create/edit/xedit, clave compartida entre tipos,
 rechazo de otros eventos y de fallo al guardar la cola. No se ejecutaron pruebas
 por restricción del usuario. Publicación y validación real pendientes.
+
+
+## Diagnóstico del log NetSuite — versión 2026.11.13.1
+
+La librería unificada agrega a fallos `failureStage`, `failureReason`, `errorCode`,
+`failureDescription`, `recommendedAction` y `outcome=unconfirmed`. Distingue lectura
+del snapshot, payload, transporte HTTP y validación del recibo. Un código no
+reconocido se registra como UNCLASSIFIED: no se inventa causa ni se registra el
+mensaje original, cuerpo HTTP, credencial o datos del cliente. `receipt_invalid`
+identifica versión, recepción, persistencia/cola e IDs que no coinciden.
+El código de versión visible coincide con la cabecera del archivo. La configuración
+de autenticación permanece sin cambios. Solo se actualiza el archivo
+`SS2_1_LIB_CRM_habita.js` en NetSuite para habilitar estos diagnósticos; no requiere
+migración ni cambio del UE/RESTlet. Sintaxis, formato y lint revisados; pruebas
+preparadas sin ejecutar. Un error histórico sin detalle no puede reconstruirse
+retroactivamente. Un fallo de envío no demuestra ausencia de COMMIT en la API.

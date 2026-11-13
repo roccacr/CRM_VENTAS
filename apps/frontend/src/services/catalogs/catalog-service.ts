@@ -18,7 +18,7 @@ export type CatalogItemStatus = "active" | "inactive";
  * Administración y cada perfil operativo envían el suyo. El cliente no deduce
  * el módulo a partir de la ruta.
  */
-export type CatalogContextModuleCode = "administration" | "contabilidad" | "formalizacion" | "mercadeo" | "ventas";
+export type CatalogContextModuleCode = "administration" | "formalizacion" | "mercadeo" | "ventas";
 
 /** Vínculo ya resuelto entre un valor CRM y un id de un sistema externo. */
 export interface CatalogExternalReference {

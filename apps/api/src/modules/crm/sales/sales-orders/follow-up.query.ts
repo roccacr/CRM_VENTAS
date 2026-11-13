@@ -70,7 +70,7 @@ function followUpMatches(access: FollowUpAccess) {
     return matches;
 }
 
-/** Las dos fuentes comparten filtros y el orden global de proyecto y unidad antes del LIMIT. El ordinal sobrevive a una agregación JSON sin orden. */
+/** Las fuentes comparten filtros y orden global antes de acotar la página por ordinal, sin volver a ordenar con OFFSET. El ordinal sobrevive a una agregación JSON sin orden. */
 // eslint-disable-next-line complexity -- La búsqueda histórica y el portafolio activo conservan autorización y filtros independientes.
 export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRead, access: FollowUpAccess, searchBase: RawBuilder<unknown> = base) {
     const matches = followUpMatches(access);
@@ -108,7 +108,7 @@ export function followUpSourceQuery(base: RawBuilder<unknown>, query: FollowUpRe
         ), selected AS (SELECT * FROM searched WHERE ${selectionPredicate}),
         filtered AS (SELECT * FROM selected ${exactFallback}),
         ranked AS (SELECT filtered.*,ROW_NUMBER() OVER (ORDER BY ${followUpStageRank}=0,${followUpStageRank},projectName IS NULL,projectName,unit IS NULL,unit,source,sortId,id) AS pageOrdinal FROM filtered),
-        paged AS (SELECT * FROM ranked ORDER BY pageOrdinal LIMIT ${query.limit} OFFSET ${query.offset}),
+        paged AS (SELECT * FROM ranked WHERE pageOrdinal > ${query.offset} AND pageOrdinal <= ${query.offset + query.limit}),
         projects AS (SELECT projectId AS id,COALESCE(MAX(CASE WHEN source='native' THEN projectName END),MAX(projectName)) AS name FROM visible WHERE projectId IS NOT NULL AND projectName IS NOT NULL GROUP BY projectId)
         SELECT /*+ MAX_EXECUTION_TIME(5000) */
             COALESCE(SUM(${access.queues?.bank !== false} AND saleLost=0 AND ${outsideFiniquito(sql`source`, sql`sortId`)} AND contractSigned=1 AND stateCode='bank_management_in_progress'),0) AS bankInProgress,

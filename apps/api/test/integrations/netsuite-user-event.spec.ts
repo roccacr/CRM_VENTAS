@@ -135,7 +135,7 @@ it("reports network failures without throwing after the record was saved", () =>
     expect(() => {
         f.handlers.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 123 } });
     }).not.toThrow();
-    expect(f.logger.error.mock.calls[0]?.[0]).toMatchObject({ details: { delivered: false, status: "delivery_failed" } });
+    expect(f.logger.error.mock.calls[0]?.[0]).toMatchObject({ details: { delivered: false, status: "delivery_failed", failureStage: "http_request", errorCode: "UNCLASSIFIED", failureDescription: expect.any(String) as unknown, recommendedAction: expect.any(String) as unknown, outcome: "unconfirmed", scriptVersion: "2026.11.13.1" } });
 });
 
 it("rereads the full order with a new observation ID after a 409; network retries keep their original body", () => {
@@ -147,4 +147,16 @@ it("rereads the full order with a new observation ID after a 409; network retrie
     expect(bodies[0]?.event.eventId).not.toBe(bodies[1]?.event.eventId);
     expect(bodies.every((body) => Boolean(body.event.snapshotReadStartedAt) && Boolean(body.event.snapshotReadCompletedAt))).toBe(true);
     expect(f.logger.debug.mock.calls[0]?.[0]).toMatchObject({ details: { delivered: true } });
+});
+
+it("identifica respuestas HTML sin exponer el cuerpo recibido", () => {
+    const f = fixture(undefined, undefined, { response: { code: 200, body: "<html>PRIVATE RESPONSE</html>" } });
+    f.handlers.afterSubmit({ type: "edit", newRecord: { type: "salesorder", id: 123 } });
+    expect(f.logger.error.mock.calls[0]?.[0]).toMatchObject({ details: { delivered: false, failureStage: "receipt_validation", errorCode: "INVALID_JSON_RESPONSE", failureDescription: expect.any(String) as unknown, recommendedAction: expect.any(String) as unknown } });
+    expect(JSON.stringify(f.logger.error.mock.calls)).not.toContain("PRIVATE RESPONSE");
+});
+it("identifica la falta de confirmación durable sin confundirla con un fallo de conexión", () => {
+    const f = fixture(undefined, undefined, { response: { code: 200, body: JSON.stringify({ schemaVersion: 2, received: true, persisted: false, result: "not_found", netsuiteId: "123", eventId: "11111111-1111-4111-8111-111111111111" }) } });
+    f.handlers.afterSubmit({ type: "create", newRecord: { type: "salesorder", id: 123 } });
+    expect(f.logger.error.mock.calls[0]?.[0]).toMatchObject({ details: { status: "receipt_invalid", httpStatus: 200, failureStage: "receipt_validation", failureReason: "receipt_persistence_unconfirmed", recommendedAction: expect.any(String) as unknown } });
 });

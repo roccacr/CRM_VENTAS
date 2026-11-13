@@ -9,7 +9,7 @@ export interface RoleModuleScope {
 /** Security catalog aliases share one Administration ceiling. */
 export const normalizeAccessModuleCode = (code: string): string => (["user", "role", "org"].includes(code) ? "administration" : code);
 /** Administración y empresa no se conceden eligiendo módulos. */
-export const isOperationalAccessModule = (code: string): boolean => ["ventas", "mercadeo", "formalizacion", "contabilidad"].includes(normalizeAccessModuleCode(code));
+export const isOperationalAccessModule = (code: string): boolean => ["ventas", "mercadeo", "formalizacion"].includes(normalizeAccessModuleCode(code));
 
 /** Owner conserva el acceso completo. Cualquier otro rol asignado con `selected_modules` hace que los permisos sigan los módulos elegidos. */
 export const hasSelectedModuleInheritance = (roleCodes: readonly string[], roles: readonly RoleModuleScope[]): boolean => !roleCodes.includes("owner") && roles.some((role) => roleCodes.includes(role.code) && role.permissionInheritance === "selected_modules");

@@ -6,7 +6,8 @@
     overflow-y: auto;
     place-items: center;
     padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
-    background: #eaedf7;
+    /* Mismo degradado de marca que la barra superior: el azul grisáceo de Habita, intenso a la derecha y diluido hacia la izquierda. */
+    background: linear-gradient(270deg, rgb(73 97 128 / 26%) 0%, rgb(73 97 128 / 12%) 34%, rgb(73 97 128 / 3%) 66%, rgb(255 255 255 / 0%) 84%), #eaedf7;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -18,16 +19,32 @@
     justify-content: space-between;
     border: 1px solid rgba(255, 255, 255, 0.6);
     border-radius: var(--radius-container-lg);
-    background:
-        linear-gradient(180deg, transparent 95px, var(--login-card-surface) 190px),
-        url("/illustrations/habita-login-plan.svg") top center / 560px 420px no-repeat,
-        var(--login-card-surface);
+    position: relative;
+    background: linear-gradient(270deg, rgb(73 97 128 / 9%) 0%, rgb(73 97 128 / 3%) 45%, rgb(255 255 255 / 0%) 80%), var(--login-card-surface);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     backdrop-filter: blur(24px) saturate(180%);
     box-shadow:
         0 20px 40px rgba(15, 23, 42, 0.08),
         0 2px 8px rgba(17, 24, 39, 0.04),
         inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Línea inferior con los tonos de las etapas de una orden: ámbar (requiere acción), azul grisáceo (en trámite) y verde (completado).
+   Es un trazo del contorno de la tarjeta, recortado a su parte baja, así que sigue la curva de las esquinas. */
+.login-card::after {
+    position: absolute;
+    inset: -1px;
+    padding: 3px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    clip-path: inset(calc(100% - 28px) 0 0 0);
+    content: "";
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    -webkit-mask-composite: xor;
 }
 
 .login-card__body {

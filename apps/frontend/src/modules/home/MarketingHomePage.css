@@ -1427,3 +1427,192 @@
     min-width: 32px;
     text-align: right;
 }
+
+/* ===== Mercadeo: mismo lenguaje que Formalización (degradado, línea de etapas, separadores, acento y controles de una altura) ===== */
+/* Fondo del contenido: degradado azul grisáceo, intenso a la derecha y diluido hacia la izquierda. */
+.global-home-stage:has(.marketing-home) {
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 18%) 0%, rgb(73 97 128 / 8%) 34%, rgb(73 97 128 / 2%) 66%, rgb(255 255 255 / 0%) 84%);
+    background-attachment: local;
+}
+
+/* Cabecera: la línea de etapas (ámbar, azul grisáceo, verde) bajo el título. */
+.marketing-home > .global-home-page-header {
+    position: relative;
+    padding-bottom: 12px;
+}
+.marketing-home > .global-home-page-header::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    content: "";
+    pointer-events: none;
+}
+
+/* Separadores de sección: línea · TÍTULO · línea. */
+.marketing-home-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 4px 0 12px;
+    color: #3c4f68;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.marketing-home-divider::before,
+.marketing-home-divider::after {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #9aa8bc);
+    content: "";
+}
+.marketing-home-divider::after {
+    background: linear-gradient(to left, transparent, #9aa8bc);
+}
+
+/* Bloques: 6 px, borde fino y barra izquierda de acento (los indicadores toman su tono: ámbar, azul grisáceo o verde). */
+.marketing-home .marketing-card,
+.marketing-home .marketing-bar,
+.marketing-home .marketing-welcome,
+.marketing-home .marketing-banner {
+    border-radius: 6px;
+    box-shadow: none;
+}
+.marketing-home .marketing-card,
+.marketing-home .marketing-bar,
+.marketing-home .marketing-welcome {
+    border-left: 3px solid #7f93ad;
+}
+.marketing-home .marketing-banner {
+    min-height: 0;
+    padding: 12px 16px 14px;
+    border-left-width: 3px;
+}
+
+/* Indicadores: sin marca de agua, título pequeño y cifra con el color del tono. */
+.marketing-home .marketing-banner__pattern {
+    display: none;
+}
+.marketing-home .marketing-banner h2 {
+    color: #3c4f68;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+.marketing-home .marketing-banner strong {
+    font-weight: 700;
+}
+.marketing-home .marketing-banner__caption {
+    color: #6b7a90;
+    font-size: 11.5px;
+}
+
+/* Saludo: tarjeta más baja, con degradado tenue y la línea de etapas siguiendo su contorno; sin ilustración. */
+.marketing-home .marketing-welcome {
+    position: relative;
+    min-height: 0;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 9%) 0%, rgb(73 97 128 / 3%) 45%, rgb(255 255 255 / 0%) 80%);
+}
+.marketing-home .marketing-preview-banners .marketing-welcome {
+    grid-template-columns: minmax(0, 1fr);
+}
+.marketing-home .marketing-welcome__people {
+    display: none;
+}
+.marketing-home .marketing-welcome::after {
+    position: absolute;
+    inset: -1px;
+    padding: 3px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    clip-path: inset(calc(100% - 10px) 0 0 0);
+    content: "";
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    -webkit-mask-composite: xor;
+}
+
+/* Cabeceras de tarjeta: banda gris clara y título al estilo del resto de la aplicación. */
+.marketing-home .marketing-card__heading {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ent-divider, #e4e9f2);
+    background: var(--ent-tint, #f5f7fa);
+}
+.marketing-home .marketing-card__heading h2 {
+    margin: 0;
+    color: #3c4f68;
+    font-size: 13px;
+    font-weight: 700;
+}
+.marketing-home .marketing-card__heading p {
+    margin-top: 2px;
+    color: #6b7a90;
+}
+
+/* Barra de período y filtros. */
+.marketing-home .marketing-bar {
+    padding: 12px 16px;
+}
+.marketing-home .marketing-bar__seller select,
+.marketing-home .marketing-bar select {
+    min-height: 32px;
+    padding: 0 10px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+
+/* Selectores segmentados (período, agrupación): tira tint y chip oscuro para la opción activa. */
+.marketing-home .marketing-preview-grouping {
+    gap: 2px;
+    padding: 3px;
+    border-color: #d2dae5;
+    border-radius: 6px;
+    background: var(--ent-tint, #f5f7fa);
+}
+.marketing-home .marketing-preview-grouping button,
+.marketing-home .marketing-bar .marketing-preview-grouping button {
+    min-height: 26px;
+    padding: 3px 12px;
+    border-radius: 4px;
+    color: #496180;
+    font-size: 12.5px;
+    font-weight: 500;
+}
+.marketing-home .marketing-preview-grouping button[aria-pressed="false"]:not(:disabled):hover {
+    background: #fff;
+    color: #18222f;
+}
+.marketing-home .marketing-preview-grouping button[aria-pressed="true"],
+.marketing-home .marketing-preview-grouping button[aria-pressed="true"]:hover {
+    border-color: #18222f;
+    background: #18222f;
+    box-shadow: none;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Botones: una sola altura y borde fino. */
+.marketing-home .ant-btn,
+.marketing-home .marketing-preview-button {
+    height: 32px;
+    padding: 0 12px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.marketing-home .marketing-preview-button:not(:disabled):hover,
+.marketing-home .ant-btn:not(:disabled):hover {
+    border-color: #18222f;
+    color: #18222f;
+}

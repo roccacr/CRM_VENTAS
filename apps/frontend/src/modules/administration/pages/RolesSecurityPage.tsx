@@ -73,7 +73,7 @@ const AUDIT_REASON_MIN_WORDS = 2;
 const OWNER_ROLE_CODE = "owner";
 const GENERAL_ROLE_CODE = "jefe_general";
 const ADMINISTRATION_MODULE_CODES = ["administration", "role", "user"] as const;
-const MODULE_DISPLAY_ORDER = ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration", "user", "role"] as const;
+const MODULE_DISPLAY_ORDER = ["ventas", "mercadeo", "formalizacion", "administration", "user", "role"] as const;
 
 /** Módulos de estructura. Fuera del contexto Owner no se muestran como áreas asignables. */
 const isAdministrationModuleCode = (moduleCode: string): boolean => ADMINISTRATION_MODULE_CODES.includes(moduleCode as (typeof ADMINISTRATION_MODULE_CODES)[number]);

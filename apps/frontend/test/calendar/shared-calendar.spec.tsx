@@ -83,7 +83,7 @@ it("renders real calendar views and defaults to the current authorized module on
     expect(await screen.findByText("No hay eventos para mostrar")).toBeInTheDocument();
 });
 it("has no Owner bypass and makes no requests without the current module read grant", () => {
-    render(<SharedCalendarPage moduleCode="contabilidad" effectivePermissions={permissions} />);
+    render(<SharedCalendarPage moduleCode="mercadeo" effectivePermissions={permissions} />);
     expect(screen.getByRole("alert")).toHaveTextContent("No tienes permiso");
     expect(apiRequest).not.toHaveBeenCalled();
 });

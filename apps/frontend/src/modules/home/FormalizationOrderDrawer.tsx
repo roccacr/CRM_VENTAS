@@ -19,6 +19,7 @@ import { useState } from "react";
 import { isFiniquitoOrder } from "../../services/formalization/finiquito-service";
 import type { FollowUpItem } from "../../services/formalization/follow-up-service";
 import { ADMINISTRATION_DRAWER_CLOSE_PLACEMENT, ADMINISTRATION_DRAWER_PROPS } from "../administration/administration-theme";
+import { stageToneOf } from "./formalization-stage-tone";
 import { FormalizationClientContent } from "./FormalizationClientDrawer";
 import { OutlookCompose } from "./FormalizationContractSend";
 import { FormalizationFiniquito } from "./FormalizationFiniquito";
@@ -88,7 +89,7 @@ function OrderFooter({ position, total, onSelectPrevious, onSelectNext }: Omit<P
 function OrderTitle({ item, markers }: { readonly item: FollowUpItem | null; readonly markers: React.ReactNode }) {
     if (!item) return <>Detalle de la orden</>;
     return (
-        <div className="user-detail-drawer__identity">
+        <div className="user-detail-drawer__identity" data-tone={stageToneOf(item.state.code)}>
             <span className="catalog-item-detail-drawer__avatar" aria-hidden="true">
                 <FileTextOutlined />
             </span>

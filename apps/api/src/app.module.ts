@@ -29,6 +29,7 @@ import { MarketingHomeModule } from "./modules/crm/marketing/marketing-home.modu
 import { NotesModule } from "./modules/crm/notes/notes.module.js";
 import { PermissionsModule } from "./modules/crm/permissions/permissions.module.js";
 import { ProjectsModule } from "./modules/crm/projects/projects.module.js";
+import { SalesHomeModule } from "./modules/crm/sales/sales-home.module.js";
 import { ApprovalSummaryModule } from "./modules/crm/sales/sales-orders/approval-summary.module.js";
 import { ContractSummaryModule } from "./modules/crm/sales/sales-orders/contract-summary.module.js";
 import { ContractTransitionModule } from "./modules/crm/sales/sales-orders/contract-transition.module.js";
@@ -87,6 +88,7 @@ import { UnitFilesModule } from "./modules/crm/unit-files/unit-files.module.js";
         ContractSummaryModule,
         HomeSummaryModule,
         ContractTransitionModule,
+        SalesHomeModule,
         MarketingHomeModule,
         LeadProfileModule,
     ],

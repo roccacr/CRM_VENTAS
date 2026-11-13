@@ -171,13 +171,15 @@ describe("identity schema migration parser", () => {
             "202611120075_sales_order_reservation_applied",
             "202611120076_finiquito_workflow",
             "202611120077_order_workflow_execution",
+            "202611130078_sales_home_only",
+            "202611130079_sales_defaults_retire_accounting",
         ]);
     });
 
     it("mantiene permisos atomicos globales para cada catalogo CRM", () => {
         const catalogPermissionCodes = getCatalogPermissionCodes();
 
-        expect(catalogPermissionCodes).toHaveLength(CATALOG_DEFINITIONS.length * CATALOG_PERMISSION_ACTIONS.length * 5);
+        expect(catalogPermissionCodes).toHaveLength(CATALOG_DEFINITIONS.length * CATALOG_PERMISSION_ACTIONS.length * 4);
         expect(catalogPermissionCodes).not.toContain("catalog_project.read");
         expect(catalogPermissionCodes).toContain("administration.catalog_project.read");
         expect(catalogPermissionCodes).toContain("mercadeo.catalog_project.read");

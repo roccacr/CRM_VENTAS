@@ -3,6 +3,7 @@ import { argon2id, hash as hashArgon2Password, verify as verifyArgon2Hash } from
 
 import { normalizeCaseInsensitiveIdentifier } from "../../../common/security/identifier-normalization.js";
 import { calendarRouteAccess } from "../calendar/calendar-access.js";
+import { withDefaultSalesModule } from "../sales/sales-access.js";
 import { type CompleteLocalResetDto, type LocalLoginDto, MAX_LOCAL_PASSWORD_LENGTH, MIN_LOCAL_PASSWORD_LENGTH, type RequestLocalResetDto } from "./dto/local-auth.dto.js";
 import type { CreateSystemUserAccessMethod, CreateSystemUserDto, ListSystemUsersQueryDto, UpdateSystemUserDto, UpdateSystemUserStatusDto } from "./dto/system-users.dto.js";
 import { type FailedLocalLoginRecord, IdentityRepository } from "./identity.repository.js";
@@ -60,13 +61,13 @@ type SystemUserAccessMutationPayload = Pick<CreateSystemUserDto | UpdateSystemUs
 
 /** El cuerpo viejo trae un solo rol o unidad. Aquí se vuelve lista, sin vacíos ni duplicados. */
 const normalizeSystemUserAccessMutation = (payload: SystemUserAccessMutationPayload): { accessMethods: readonly CreateSystemUserAccessMethod[]; orgUnitCodes: readonly string[]; roleCodes: readonly string[] } => {
-    const orgUnitCodes = [...new Set((payload.orgUnitCodes ?? (payload.orgUnitCode ? [payload.orgUnitCode] : [])).map((orgUnitCode) => orgUnitCode.trim()).filter((orgUnitCode) => orgUnitCode.length > 0))];
-    const roleCodes = [...new Set((payload.roleCodes ?? [payload.roleCode]).map((roleCode) => roleCode.trim()).filter((roleCode) => roleCode.length > 0))];
+    const orgUnitCodes = [...new Set((payload.orgUnitCodes ?? (payload.orgUnitCode ? [payload.orgUnitCode] : [])).map((orgUnitCode) => orgUnitCode.trim().toLowerCase()).filter((orgUnitCode) => orgUnitCode.length > 0))];
+    const roleCodes = [...new Set((payload.roleCodes ?? [payload.roleCode]).map((roleCode) => roleCode.trim().toLowerCase()).filter((roleCode) => roleCode.length > 0))];
     const accessMethods = [...new Set(payload.accessMethods && payload.accessMethods.length > 0 ? payload.accessMethods : DEFAULT_SYSTEM_USER_ACCESS_METHODS)];
 
     return {
         accessMethods,
-        orgUnitCodes,
+        orgUnitCodes: withDefaultSalesModule(roleCodes, orgUnitCodes),
         roleCodes,
     };
 };

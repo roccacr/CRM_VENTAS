@@ -225,3 +225,42 @@
     outline: 2px solid #18222f;
     outline-offset: 1px;
 }
+
+/* ===== Mismo concepto de marca que el resto: degradado de derecha a izquierda y línea de etapas ===== */
+.note-notifications-drawer .ant-drawer-header {
+    position: relative;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 14%) 0%, rgb(73 97 128 / 5%) 45%, rgb(255 255 255 / 0%) 85%);
+}
+.note-notifications-drawer .ant-drawer-header::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    content: "";
+    pointer-events: none;
+}
+.note-notifications-drawer .ant-drawer-body {
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 8%) 0%, rgb(73 97 128 / 2%) 55%, rgb(255 255 255 / 0%) 85%);
+}
+
+/* Filtro: etiqueta pequeña en mayúsculas y una barra de acento que lo separa de los avisos. */
+.note-notifications-drawer .note-notifications__tools {
+    padding: 8px 12px;
+    border: 1px solid #d2dae5;
+    border-left: 3px solid #7f93ad;
+    border-radius: 6px;
+    background: #fff;
+}
+.note-notifications-drawer .note-notifications__tools label {
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.note-notifications-drawer .note-notifications__tools select {
+    letter-spacing: 0;
+    text-transform: none;
+}

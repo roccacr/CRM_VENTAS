@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 56" width="560" height="56">
+  <defs>
+    <!-- El camino aparece desde la izquierda y se cierra con la llave: de la aprobación a la entrega. -->
+    <linearGradient id="fade" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".14" stop-color="#fff" stop-opacity="1"/>
+      <stop offset=".9" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="reveal"><rect width="560" height="56" fill="url(#fade)"/></mask>
+  </defs>
+  <g mask="url(#reveal)" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M0 50H520" stroke="#a7b5ca"/>
+    <circle cx="26" cy="50" r="3" fill="#8fa2bd" stroke="#8fa2bd"/>
+    <circle cx="66" cy="50" r="3" fill="#8fa2bd" stroke="#8fa2bd"/>
+    <circle cx="106" cy="50" r="3" fill="#8fa2bd" stroke="#8fa2bd"/>
+    <circle cx="146" cy="50" r="3" fill="#fff" stroke="#a7b5ca"/>
+    <circle cx="186" cy="50" r="3" fill="#fff" stroke="#a7b5ca"/>
+    <circle cx="226" cy="50" r="3" fill="#fff" stroke="#a7b5ca"/>
+    <path d="M266 16H336" stroke="#a7b5ca"/>
+    <rect x="272" y="16" width="58" height="16" fill="#f3f6fa" stroke="#a7b5ca"/>
+    <rect x="278" y="20" width="28" height="10" fill="#fff" stroke="#c9d3e0"/>
+    <path d="M310 19V30M314 19V30M318 19V30M322 19V30M326 19V30" stroke="#c9d3e0"/>
+    <rect x="276" y="32" width="54" height="18" fill="#f3f6fa" stroke="#a7b5ca"/>
+    <rect x="282" y="38" width="9" height="12" fill="#fff" stroke="#c9d3e0"/>
+    <rect x="300" y="32" width="6" height="18" fill="#e3e9f1" stroke="#c9d3e0"/>
+    <path d="M342 24H404" stroke="#a7b5ca"/>
+    <rect x="348" y="24" width="52" height="12" fill="#f3f6fa" stroke="#a7b5ca"/>
+    <rect x="352" y="27" width="22" height="7" fill="#fff" stroke="#c9d3e0"/>
+    <path d="M380 27V34M384 27V34M388 27V34M392 27V34M396 27V34" stroke="#c9d3e0"/>
+    <rect x="350" y="36" width="50" height="14" fill="#f3f6fa" stroke="#a7b5ca"/>
+    <rect x="356" y="40" width="8" height="10" fill="#fff" stroke="#c9d3e0"/>
+    <circle cx="436" cy="40" r="4.5" fill="#fff" stroke="#a7b5ca"/>
+    <path d="M440.5 40H476M466 40v5M471 40v4M476 40v6" stroke="#a7b5ca" fill="none"/>
+  </g>
+</svg>

@@ -89,8 +89,8 @@ const session = "route-permission-session";
 function profileWith(codes: string[] = [], calendarMembership = false): IdentityProfile {
     return {
         auth: { availableProviders: ["local"], currentProvider: "local", localStatus: "active", microsoft: null, primaryProvider: "microsoft" },
-        orgUnits: calendarMembership ? [{ publicId: "sales-module", code: "ventas", name: "Ventas", membership: "member", scope: "all_areas", status: "active" }] : [],
-        roles: codes.some((code) => code.includes(".catalog_bank.")) ? [{ code: "owner", name: "Owner", status: "active" }] : [],
+        orgUnits: codes.includes("ventas.home.read") ? [{ publicId: "sales-module", code: "ventas", name: "Ventas", membership: "member", scope: "all_areas", status: "active" }] : calendarMembership ? [{ publicId: "sales-module", code: "mercadeo", name: "Mercadeo", membership: "member", scope: "all_areas", status: "active" }] : [],
+        roles: codes.includes("ventas.home.read") ? [{ code: "ventas", name: "Ventas", status: "active" }] : codes.some((code) => code.includes(".catalog_bank.")) ? [{ code: "owner", name: "Owner", status: "active" }] : [],
         permissions: codes.map((code) => ({ code, effect: "allow", scope: "all_areas", source: "role" })),
         session: { expiresAt: new Date(Date.now() + 60_000).toISOString(), expiresInSeconds: 60, permissionVersion: 1, publicId: "session", status: "active" },
         user: { displayName: "Actor", email: "actor@example.test", permissionVersion: 1, profileImageUrl: null, publicId: "actor", status: "active" },
@@ -103,12 +103,13 @@ function expectedCatalogCodes(route: (typeof routes)[number]): string[] {
     const definition = CATALOG_DEFINITIONS.find((item) => item.routeCode === (code === ":catalogCode" ? "files" : code));
     if (!definition) throw new Error("Unknown catalog route " + route.path);
     const action = route.method === "GET" ? "read" : route.method === "POST" ? "create" : route.path.endsWith("/status") ? "inactivate" : "update";
-    const actionCode = "ventas." + definition.moduleCode + "." + action;
-    return definition.routeCode === "banks" ? [...new Set(["ventas.catalog_bank.read", actionCode])] : [actionCode];
+    const actionCode = "mercadeo." + definition.moduleCode + "." + action;
+    return definition.routeCode === "banks" ? [...new Set(["mercadeo.catalog_bank.read", actionCode])] : [actionCode];
 }
 
 function expectedCodes(route: (typeof routes)[number]): string[] {
     const explicit: Record<string, string[]> = {
+        "GET /sales/home": ["ventas.home.read"],
         "GET /leads/profile": ["lead.profile.read"],
         "GET /marketing/home/summary": ["mercadeo.home.read"],
         "GET /marketing/leads/report": ["mercadeo.leads.read"],
@@ -123,30 +124,32 @@ function expectedCodes(route: (typeof routes)[number]): string[] {
         "POST /formalization/orders/addendum": ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.update"],
         "POST /formalization/orders/addendum/sent": ["formalizacion.orders.read", "formalizacion.orders.addendum.read"],
         "POST /formalization/orders/addendum/pending": ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.mark_pending"],
+        "POST /formalization/orders/addendum/pending/bulk-item": ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.mark_pending"],
+        "POST /formalization/orders/addendum/pending/preview": ["formalizacion.orders.read", "formalizacion.orders.addendum.read", "formalizacion.orders.addendum.mark_pending"],
         "GET /formalization/addendum/summary": ["formalizacion.home.addendum.read"],
         "GET /formalization/home/recent-activity": ["formalizacion.orders.read"],
-        "GET /calendar/calendars": ["ventas.calendar.read"],
-        "GET /calendar/events": ["ventas.calendar.read"],
-        "GET /calendar/events/:id/detail": ["ventas.calendar.read"],
-        "PATCH /calendar/outlook-events/:id": ["ventas.calendar.read", "ventas.calendar.update"],
-        "PATCH /calendar/events/:id/status": ["ventas.calendar.read", "ventas.calendar.update"],
+        "GET /calendar/calendars": ["mercadeo.calendar.read"],
+        "GET /calendar/events": ["mercadeo.calendar.read"],
+        "GET /calendar/events/:id/detail": ["mercadeo.calendar.read"],
+        "PATCH /calendar/outlook-events/:id": ["mercadeo.calendar.read", "mercadeo.calendar.update"],
+        "PATCH /calendar/events/:id/status": ["mercadeo.calendar.read", "mercadeo.calendar.update"],
         "GET /formalization/orders/finiquito": ["formalizacion.orders.read"],
         "GET /formalization/orders/finiquito/overview": ["formalizacion.orders.read"],
         "POST /formalization/orders/finiquito": ["formalizacion.orders.stage.update"],
         "GET /formalization/orders/:source/:id/purchase-funds": ["formalizacion.orders.stage.update"],
         "POST /formalization/orders/purchase-funds": ["formalizacion.orders.stage.update"],
-        "GET /calendar/lookup": ["ventas.calendar.read"],
-        "GET /calendar/rooms": ["ventas.calendar.read"],
-        "POST /calendar/availability": ["ventas.calendar.read"],
-        "POST /calendar/events": ["ventas.calendar.read", "ventas.calendar.create"],
-        "PATCH /calendar/events/:id": ["ventas.calendar.read", "ventas.calendar.update"],
+        "GET /calendar/lookup": ["mercadeo.calendar.read"],
+        "GET /calendar/rooms": ["mercadeo.calendar.read"],
+        "POST /calendar/availability": ["mercadeo.calendar.read"],
+        "POST /calendar/events": ["mercadeo.calendar.read", "mercadeo.calendar.create"],
+        "PATCH /calendar/events/:id": ["mercadeo.calendar.read", "mercadeo.calendar.update"],
     };
     const codes = explicit[`${route.method} ${route.path}`];
     if (codes) return codes;
     if (route.path.startsWith("/formalization/orders/:source/:id/")) return ["formalizacion.orders.read"];
     if (["/formalization/home/summary", "/formalization/home/overdue", "/formalization/home/project-distribution", "/formalization/home/follow-up", "/formalization/contracts/summary"].includes(route.path)) return ["formalizacion.home.stages.read"];
     if (route.path.startsWith("/catalogs/")) return expectedCatalogCodes(route);
-    if (route.path.startsWith("/unit-files")) return ["ventas.catalog_file.read"];
+    if (route.path.startsWith("/unit-files")) return ["mercadeo.catalog_file.read"];
     if (route.path.startsWith("/formalization/")) return ["formalizacion.home.approvals.read"];
     if (route.path.startsWith("/audit")) return ["role.assign"];
     return expectedIdentityCodes(route);
@@ -155,7 +158,7 @@ function expectedCodes(route: (typeof routes)[number]): string[] {
 function expectedNotesCodes(route: (typeof routes)[number]): string[] {
     const actions: Record<string, string> = { create: "create", edit: "edit_own", complete: "resolve_own", reopen: "resolve_own", archive: "archive_own" };
     const action = actions[route.name];
-    return action ? ["ventas.notes.read", `ventas.notes.${action}`] : ["ventas.notes.read"];
+    return action ? ["mercadeo.notes.read", `mercadeo.notes.${action}`] : ["mercadeo.notes.read"];
 }
 
 function expectedIdentityCodes(route: (typeof routes)[number]): string[] {
@@ -225,13 +228,15 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     it("requires a descriptor on every registered permission handler", () => {
-        expect(new Set(routes.map((route) => route.handler)).size).toBe(118);
+        expect(new Set(routes.map((route) => route.handler)).size).toBe(121);
         expect(routes.some((route) => route.path === "/formalization/orders/:source/:id/documents")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/home/summary")).toBe(true);
         expect(routes.some((route) => route.path === "/marketing/leads/report")).toBe(true);
         expect(routes.some((route) => route.path === "/audit/records/:recordId/timeline")).toBe(true);
         expect(routes.some((route) => route.path === "/formalization/orders/:source/:id/history")).toBe(true);
         for (const [method, path] of [
+            ["POST", "/formalization/orders/addendum/pending/bulk-item"],
+            ["POST", "/formalization/orders/addendum/pending/preview"],
             ["GET", "/formalization/orders/:source/:id/bank-assignment"],
             ["POST", "/formalization/orders/:source/:id/bank-assignment"],
             ["POST", "/formalization/orders/:source/:id/bank-assignment/unlink"],
@@ -267,10 +272,10 @@ describe("real module permission inventory and HTTP boundary (no environment or 
         if (route.name === "importOrder") return { tranid: "BC448" };
         if (route.name === "synchronize") return {};
         if (route.path.startsWith("/catalogs/banks/")) return banksPayload(route);
-        return route.path.startsWith("/formalization/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression", ...(route.path === "/formalization/orders/stage" ? { targetState: "bank_management" } : {}) } : { moduleCode: "ventas", status: "inactive", reason: "Permission regression", name: "Value" };
+        return route.path.startsWith("/formalization/") ? { source: "legacy", id: "1", expectedSequence: 0, operationId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", reason: "Permission regression", ...(route.path === "/formalization/orders/stage" ? { targetState: "bank_management" } : {}) } : { moduleCode: "mercadeo", status: "inactive", reason: "Permission regression", name: "Value" };
     }
     function banksPayload(route: (typeof routes)[number]) {
-        const context = { moduleCode: "ventas", reason: "Permission regression" };
+        const context = { moduleCode: "mercadeo", reason: "Permission regression" };
         if (route.path.endsWith("/status")) return { ...context, status: "inactive", expectedVersion: 1 };
         const contact = route.path.includes("/advisors") ? { email: "advisor@example.test", phone: "123", area: "Crédito" } : {};
         return { ...context, name: "Value", ...contact, ...(route.method === "PATCH" ? { expectedVersion: 1 } : {}) };
@@ -282,7 +287,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
             .replace(":advisorId", "01ARZ3NDEKTSV4RRFFQ69G5FAW")
             .replace(":catalogCode", "files")
             .replace(/:[A-Za-z]+/g, "target");
-        const query = new URLSearchParams({ moduleCode: "ventas" });
+        const query = new URLSearchParams({ moduleCode: "mercadeo" });
         if (["/unit-files", "/unit-files/options", "/unit-files/facets"].includes(url)) query.set("projectIds", "01ARZ3NDEKTSV4RRFFQ69G5FAV");
         if (["/unit-files/options", "/unit-files/facets"].includes(url)) query.set("kind", "code");
         if (url === "/audit") query.set("sectionCode", "catalogs");
@@ -308,7 +313,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
             profile.roles = [];
             profile.permissions = profile.permissions.map((permission) => ({ ...permission, source: "override" }));
             const first = await request(route);
-            expect(first.statusCode).toBe(expectedStatus(route));
+            expect(first.statusCode).toBe(route.path === "/sales/home" ? 403 : expectedStatus(route));
             profile.permissions.push(...codes.map((code) => ({ code, effect: "deny" as const, scope: null, source: "override" as const })));
             expect((await request(route)).statusCode).toBe(403);
         });
@@ -321,7 +326,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
             profile = profileWith([], route.path.startsWith("/calendar/"));
             expect((await request(route)).statusCode).toBe(403);
             expect(domainCalls.map((call) => call.mock.calls.length)).toEqual(before);
-            expect(current).toHaveBeenCalledTimes(2);
+            expect(current).toHaveBeenCalledTimes(route.path === "/sales/home" ? 3 : 2);
         });
     });
 
@@ -329,7 +334,7 @@ describe("real module permission inventory and HTTP boundary (no environment or 
         it.each(["missing", "inactive", "other-module"])("rejects %s membership despite exact grants", async (mode) => {
             profile = profileWith(expectedCodes(route), mode !== "missing");
             if (mode === "inactive") profile.orgUnits = profile.orgUnits.map((unit) => ({ ...unit, status: "inactive" }));
-            if (mode === "other-module") profile.orgUnits = profile.orgUnits.map((unit) => ({ ...unit, code: "mercadeo" }));
+            if (mode === "other-module") profile.orgUnits = profile.orgUnits.map((unit) => ({ ...unit, code: "formalizacion" }));
             expect((await request(route)).statusCode).toBe(403);
             expect(handlers.get(route.handler)).not.toHaveBeenCalled();
             for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
@@ -345,8 +350,8 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
     describe.each(routes.filter((route) => route.path.startsWith("/calendar/") && route.method !== "GET"))("calendar read prerequisite $method $path", (route) => {
         it.each(["missing", "denied"])("rejects write with %s read despite active module and write grant", async (mode) => {
-            profile = profileWith(mode === "missing" ? expectedCodes(route).filter((code) => code !== "ventas.calendar.read") : expectedCodes(route), true);
-            if (mode === "denied") profile.permissions.push({ code: "ventas.calendar.read", effect: "deny", scope: null, source: "override" });
+            profile = profileWith(mode === "missing" ? expectedCodes(route).filter((code) => code !== "mercadeo.calendar.read") : expectedCodes(route), true);
+            if (mode === "denied") profile.permissions.push({ code: "mercadeo.calendar.read", effect: "deny", scope: null, source: "override" });
             expect((await request(route)).statusCode).toBe(403);
             expect(handlers.get(route.handler)).not.toHaveBeenCalled();
             for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
@@ -363,11 +368,11 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     it("limits cross-module notes access to by-id, history and personal placement while retaining origin denies", async () => {
         const noteRoutes = routes.filter((route) => route.path.startsWith("/notes"));
         for (const route of noteRoutes) {
-            profile = profileWith(["mercadeo.notes.read", "mercadeo.notes.create", "mercadeo.notes.edit_own"]);
+            profile = profileWith(["formalizacion.notes.read", "formalizacion.notes.create", "formalizacion.notes.edit_own"]);
             const byId = route.method === "GET" && ["/notes/:id", "/notes/:id/history"].includes(route.path);
             const personalLayout = route.method === "PUT" && route.path === "/notes/:id/my-placement";
             expect((await request(route)).statusCode).toBe(byId || personalLayout ? 200 : 403);
-            profile.permissions.push({ code: "ventas.notes.read", effect: "deny", scope: null, source: "override" });
+            profile.permissions.push({ code: "formalizacion.notes.read", effect: "deny", scope: null, source: "override" });
             expect((await request(route)).statusCode).toBe(403);
         }
     });
@@ -396,15 +401,15 @@ describe("real module permission inventory and HTTP boundary (no environment or 
     });
 
     it.each([
-        ["/catalogs/projects/items?moduleCode=%20ventas%20", "ventas.catalog_project.read", 200],
-        ["/catalogs/projects/items?moduleCode=VENTAS", "ventas.catalog_project.read", 403],
-        ["/catalogs/projects/items?moduleCode=ventas&moduleCode=mercadeo", "ventas.catalog_project.read", 403],
-        ["/catalogs/projects/items", "ventas.catalog_project.read", 403],
-        ["/unit-files/projects?moduleCode=%20ventas%20", "ventas.catalog_file.read", 403],
-        ["/unit-files/projects?moduleCode=VENTAS", "ventas.catalog_file.read", 403],
-        ["/unit-files/projects?moduleCode=ventas", "ventas.catalog_file.read", 200],
-        ["/unit-files?moduleCode=ventas&projectIds=invalid", "ventas.catalog_file.read", 400],
-        ["/audit?moduleCode=ventas", "role.assign", 400],
+        ["/catalogs/projects/items?moduleCode=%20mercadeo%20", "mercadeo.catalog_project.read", 200],
+        ["/catalogs/projects/items?moduleCode=MERCADEO", "mercadeo.catalog_project.read", 403],
+        ["/catalogs/projects/items?moduleCode=mercadeo&moduleCode=formalizacion", "mercadeo.catalog_project.read", 403],
+        ["/catalogs/projects/items", "mercadeo.catalog_project.read", 403],
+        ["/unit-files/projects?moduleCode=%20mercadeo%20", "mercadeo.catalog_file.read", 403],
+        ["/unit-files/projects?moduleCode=MERCADEO", "mercadeo.catalog_file.read", 403],
+        ["/unit-files/projects?moduleCode=mercadeo", "mercadeo.catalog_file.read", 200],
+        ["/unit-files?moduleCode=mercadeo&projectIds=invalid", "mercadeo.catalog_file.read", 400],
+        ["/audit?moduleCode=mercadeo", "role.assign", 400],
     ] as const)("matches DTO context interpretation and validation for %s", async (url, code, status) => {
         profile = profileWith([code]);
         expect((await app.inject({ url, headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` } })).statusCode).toBe(status);
@@ -426,11 +431,15 @@ describe("real module permission inventory and HTTP boundary (no environment or 
         if (expected === 403) for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
     });
 
-    it("uses catalog write body context even when a different query context is authorized", async () => {
-        profile = profileWith(["ventas.catalog_project.update"]);
+    it.each([
+        { queryModule: "mercadeo", bodyModule: "formalizacion", expected: 403 },
+        { queryModule: "formalizacion", bodyModule: "mercadeo", expected: 200 },
+    ])("authorizes catalog writes by body $bodyModule instead of query $queryModule ($expected)", async ({ queryModule, bodyModule, expected }) => {
+        profile = profileWith(["mercadeo.catalog_project.update"]);
         const csrf = createSignedCsrfToken(secret, session);
         const headers = { cookie: `${SESSION_COOKIE_NAME}=${session}; ${CSRF_COOKIE_NAME}=${csrf}`, [CSRF_HEADER_NAME_LOWERCASE]: csrf };
-        expect((await app.inject({ method: "PATCH", url: "/catalogs/projects/items/target?moduleCode=ventas", payload: { moduleCode: "mercadeo", name: "Value", reason: "Regression" }, headers })).statusCode).toBe(403);
-        for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
+        const response = await app.inject({ method: "PATCH", url: `/catalogs/projects/items/target?moduleCode=${queryModule}`, payload: { moduleCode: bodyModule, name: "Value", reason: "Regression" }, headers });
+        expect(response.statusCode).toBe(expected);
+        if (expected === 403) for (const call of domainCalls) expect(call).not.toHaveBeenCalled();
     });
 });

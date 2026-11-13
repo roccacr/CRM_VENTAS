@@ -3,6 +3,7 @@ import { calendarRouteAccess } from "../../modules/crm/calendar/calendar-access.
 import { type CatalogPermissionAction, findCatalogDefinition, getCatalogPermissionCode, isCatalogContextModuleCode } from "../../modules/crm/catalogs/catalogs.constants.js";
 import type { IdentityProfile } from "../../modules/crm/identity/identity.types.js";
 import { canUseCollaboration, canUseNotes } from "../../modules/crm/notes/notes.permissions.js";
+import { canEnterSales, SALES_HOME_PERMISSION } from "../../modules/crm/sales/sales-access.js";
 import type { CookieRequest } from "./cookie-request.type.js";
 import type { PermissionRequirement } from "./require-permission.decorator.js";
 
@@ -144,12 +145,19 @@ function hasActiveRoleRequirement(profile: IdentityProfile, requirement: Extract
     return requirement.permissionCodes !== undefined && requirement.permissionCodes.length > 0 && hasAllPermissions(profile, requirement.permissionCodes);
 }
 
+/** Ventas solo admite Inicio; los lectores de secciones retiradas no se reabren con grants antiguos. */
+function deniesSalesRoute(profile: IdentityProfile, requirement: PermissionRequirement, request: CookieRequest): boolean {
+    if (requirement.kind === "all" && requirement.codes.includes(SALES_HOME_PERMISSION)) return !canEnterSales(profile);
+    return ["catalog", "unit-files"].includes(requirement.kind) && [field(request.query, "moduleCode"), field(request.body, "moduleCode")].some((moduleCode) => typeof moduleCode === "string" && moduleCode.trim() === "ventas");
+}
+
 /**
  * Punto de entrada del guard. Sin requisito, deniega. Formalizacion y calendario
  * salen por su politica; el resto entra al mapeo cerrado, cuyo default tambien deniega.
  */
 export function hasRoutePermission(profile: IdentityProfile, requirement: PermissionRequirement | undefined, request: CookieRequest): boolean {
     if (!requirement) return false;
+    if (deniesSalesRoute(profile, requirement, request)) return false;
     if (requirement.kind === "formalization-order-read") return canReadFormalizationOrder(profile);
     if (requirement.kind === "formalization-read") return canReadFormalizationStages(profile);
     if (requirement.kind === "calendar") return calendarRouteAccess(profile, requirement.action);

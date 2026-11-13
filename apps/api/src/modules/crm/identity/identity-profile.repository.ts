@@ -7,6 +7,7 @@ import { NOTE_ACTIONS } from "../notes/notes.permissions.js";
 import { DEFAULT_DIRECT_OVERRIDE_SCOPE, EffectivePermissionService } from "../permissions/effective-permission.service.js";
 import type { PermissionEffect, PermissionInput, PermissionOverrideInput } from "../permissions/permission.types.js";
 import { resolveHighestPermissionScope } from "../permissions/permission-scope.js";
+import { isCurrentSalesPermission, SALES_ROLE_CODES } from "../sales/sales-access.js";
 import type { IdentityAuthorizationProfile, IdentityAuthSummary, IdentityOrgUnit, IdentityProfile, IdentityRole } from "./identity.types.js";
 import { MICROSOFT_PROVIDER_CODE } from "./identity-microsoft.constants.js";
 import { type ModuleRoleAccess, normalizePermissionModule, resolveModuleRoleAccess } from "./identity-module-policy.js";
@@ -355,16 +356,17 @@ export class IdentityProfileRepository {
         if (access.roles.some((role) => role.code === OWNER_ROLE_CODE && role.status === ACTIVE_STATUS)) {
             const [rolePermissions, overrides, assigned] = await Promise.all([this.findAllActivePermissions(scope), this.findOverrides(userId), this.findRolePermissions(userId, scope)]);
             return {
-                overrides,
-                rolePermissions: [...rolePermissions, ...assigned.filter((permission) => permission.code === ADDENDUM_MARK_PENDING_PERMISSION)],
+                overrides: overrides.filter((permission) => permission.effect === "deny" || isCurrentSalesPermission(permission.code, permission.moduleCode)),
+                rolePermissions: [...rolePermissions, ...assigned.filter((permission) => permission.code === ADDENDUM_MARK_PENDING_PERMISSION)].filter((permission) => isCurrentSalesPermission(permission.code, permission.moduleCode)),
             };
         }
 
+        const salesAllowed = access.roles.some((role) => role.status === ACTIVE_STATUS && SALES_ROLE_CODES.some((code) => code === role.code)) && orgUnits.some((unit) => unit.code === "ventas" && unit.status === ACTIVE_STATUS);
         const [rolePermissions, overrides, personalNotes] = await Promise.all([this.findRolePermissions(userId, scope), this.findOverrides(userId), this.findPersonalNotesPermissions(orgUnits)]);
-
+        const salesFilter = <T extends { code: string; moduleCode?: string }>(inputs: T[]): T[] => inputs.filter((input) => isCurrentSalesPermission(input.code, input.moduleCode) && (salesAllowed || (input.moduleCode !== "ventas" && !input.code.startsWith("ventas."))));
         return {
-            overrides: [...this.restrictToModules(overrides, access.moduleCodes, orgUnits), ...overrides.filter((entry) => entry.effect === "deny" && CATALOG_CONTEXT_MODULES.some((module) => NOTE_ACTIONS.some((action) => entry.code === `${module}.notes.${action}`)) && !this.restrictToModules([entry], access.moduleCodes, orgUnits).length)],
-            rolePermissions: [...personalNotes, ...this.restrictToModules(this.restrictGrantingRoles(rolePermissions, access), access.moduleCodes, orgUnits)],
+            overrides: [...salesFilter(this.restrictToModules(overrides, access.moduleCodes, orgUnits)), ...overrides.filter((entry) => entry.effect === "deny" && CATALOG_CONTEXT_MODULES.some((module) => NOTE_ACTIONS.some((action) => entry.code === `${module}.notes.${action}`)) && !this.restrictToModules([entry], access.moduleCodes, orgUnits).length)],
+            rolePermissions: salesFilter([...personalNotes, ...this.restrictToModules(this.restrictGrantingRoles(rolePermissions, access), access.moduleCodes, orgUnits)]),
         };
     }
 
@@ -392,8 +394,9 @@ export class IdentityProfileRepository {
 
     /** El mismo recorte vale para HTTP, servicios y llamadores internos. */
     private restrictToModules<T extends { code: string; scope: string; moduleCode?: string }>(inputs: readonly T[], modules: readonly string[] | null, orgUnits: readonly IdentityOrgUnit[]): T[] {
-        if (modules === null) return [...inputs];
+        if (modules === null) return inputs.filter((input) => isCurrentSalesPermission(input.code, input.moduleCode));
         return inputs
+            .filter((input) => isCurrentSalesPermission(input.code, input.moduleCode))
             .filter((input) => input.code === LEAD_PROFILE_PERMISSION || (input.moduleCode !== undefined && modules.includes(normalizePermissionModule(input.moduleCode))))
             .map((input) => {
                 const membership = orgUnits.find((unit) => unit.code === normalizePermissionModule(input.moduleCode ?? ""));

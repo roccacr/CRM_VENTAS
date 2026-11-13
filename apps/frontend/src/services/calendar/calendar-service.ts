@@ -1,6 +1,6 @@
 import { apiRequest } from "../api/api-client";
 
-export const CALENDAR_MODULES = ["formalizacion", "mercadeo", "ventas", "contabilidad"] as const;
+export const CALENDAR_MODULES = ["formalizacion", "mercadeo", "ventas"] as const;
 export type CalendarModule = (typeof CALENDAR_MODULES)[number];
 export interface CalendarType {
     readonly id: string;

@@ -1,5 +1,5 @@
 /**
- * Versión: 2026.11.12.4 — Cierre desde Traspaso firmado sin exigir entrega previa; conserva Reserva Aplicada.
+ * Versión: 2026.11.13.1 — Diagnóstico por etapa de fallos del webhook; conserva autenticación y reglas vigentes.
  * CRM TINK LIB - Consolidacion de los 16 modulos originales.
  * API pública por módulos. salesOrders.get atiende la ficha, el snapshot y
  * las consultas findByTranId e importRelation. leads.get atiende importCustomer.
@@ -365,6 +365,8 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 if (error && error.crmTransportCode) {
                     return {
                         ...blocked("delivery_failed"),
+                        failureStage: error.crmFailureStage || "http_request",
+                        errorCode: error.crmTransportCode,
                         transportCode: error.crmTransportCode,
                         failureReason: error.crmTransportReason,
                     };
@@ -374,7 +376,14 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                     ["source_version_unavailable", "source_flags_unavailable", "snapshot_changed"].includes(
                         error.message,
                     );
-                return blocked(safe ? error.message : "delivery_failed");
+                return {
+                    ...blocked(safe ? error.message : "delivery_failed"),
+                    failureStage: error?.crmFailureStage || "configuration",
+                    errorCode: error?.crmErrorCode || "UNCLASSIFIED",
+                    failureReason: error?.crmFailureStage
+                        ? "exception_in_" + error.crmFailureStage
+                        : "configuration_exception",
+                };
             }
         }
 
@@ -390,21 +399,87 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
 
         /** Cada intento lee de nuevo y lleva un UUID nuevo. Las tres marcas de tiempo salen de la foto y entran al evento, no al snapshot. */
         function sendSnapshot(url, authorization, event, readSnapshot) {
-            const versionedEvent = { ...event, eventId: random.generateUUID(), observedAt: new Date().toISOString() };
-            const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt, ...snapshot } = readSnapshot(
-                event.netsuiteId,
+            const versionedEvent = {
+                ...event,
+                eventId: atStage("event_prepare", () => random.generateUUID()),
+                observedAt: new Date().toISOString(),
+            };
+            const { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt, ...snapshot } = atStage(
+                "snapshot_read",
+                () => readSnapshot(event.netsuiteId),
             );
             Object.assign(versionedEvent, { sourceModifiedAt, snapshotReadStartedAt, snapshotReadCompletedAt });
             if (snapshot.status !== 200) return blocked("snapshot_failed");
-            if (hasOversizedValue(snapshot)) return blocked("value_too_long");
-            const body = buildBody(versionedEvent, snapshot);
-            if (byteLength(body) > MAX_BODY_BYTES) return blocked("payload_too_large");
+            if (atStage("payload_build", () => hasOversizedValue(snapshot))) return blocked("value_too_long");
+            const body = atStage("payload_build", () => buildBody(versionedEvent, snapshot));
+            if (atStage("payload_build", () => byteLength(body)) > MAX_BODY_BYTES) return blocked("payload_too_large");
             return deliver(url, body, authorization, versionedEvent);
         }
 
         /** Resultado de un envio que no se completo. */
         function blocked(status) {
-            return { status, delivered: false };
+            return {
+                status,
+                delivered: false,
+                failureStage:
+                    status.startsWith("snapshot") ||
+                    status === "source_flags_unavailable" ||
+                    status === "source_version_unavailable"
+                        ? "snapshot_read"
+                        : status === "receiver_rejected" || status === "delivery_failed"
+                          ? "http_request"
+                          : status === "receipt_invalid"
+                            ? "receipt_validation"
+                            : status === "payload_too_large" || status === "value_too_long"
+                              ? "payload_build"
+                              : "configuration",
+                failureReason: status,
+            };
+        }
+
+        /** Conserva etapa y códigos conocidos, nunca mensajes crudos que puedan contener secretos o datos personales. */
+        function atStage(stage, action) {
+            try {
+                return action();
+            } catch (error) {
+                const wrapped = new Error(
+                    ["source_version_unavailable", "source_flags_unavailable", "snapshot_changed"].includes(
+                        error?.message,
+                    )
+                        ? error.message
+                        : "delivery_failed",
+                );
+                wrapped.crmFailureStage = stage;
+                const known = [
+                    "SSS_USAGE_LIMIT_EXCEEDED",
+                    "RCRD_DSNT_EXIST",
+                    "INSUFFICIENT_PERMISSION",
+                    "SSS_PERMISSION_VIOLATION",
+                    "SSS_INVALID_SRCH_COL",
+                    "SSS_INVALID_SRCH_FILTER",
+                    "SSS_MISSING_REQD_ARGUMENT",
+                    "SSS_INVALID_API_USAGE",
+                    "SSS_REQUEST_TIME_EXCEEDED",
+                    "SSS_CONNECTION_TIME_OUT",
+                    "SSS_CONNECTION_CLOSED",
+                    "SSS_INVALID_HOST_CERT",
+                    "SSS_UNKNOWN_HOST",
+                    "SSS_INVALID_URL",
+                    "SSS_REQUEST_LOOP_DETECTED",
+                ];
+                wrapped.crmErrorCode = known.includes(error?.name)
+                    ? error.name
+                    : known.includes(error?.code)
+                      ? error.code
+                      : error?.name === "SyntaxError"
+                        ? "INVALID_JSON_RESPONSE"
+                        : "UNCLASSIFIED";
+                if (error?.crmTransportCode) {
+                    wrapped.crmTransportCode = error.crmTransportCode;
+                    wrapped.crmTransportReason = error.crmTransportReason;
+                }
+                throw wrapped;
+            }
         }
 
         /** URL final = URL base administrada + endpoint del modulo; null si algo no es valido. */
@@ -437,15 +512,17 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
 
         /** Confirma persistencia solo si HTTP y recibo coinciden con el evento enviado. */
         function deliver(url, body, authorization, event) {
-            const response = postWithRetry({
-                url,
-                body,
-                headers: {
-                    Authorization: authorization,
-                    "Content-Type": "application/json",
-                    "ngrok-skip-browser-warning": "true",
-                },
-            });
+            const response = atStage("http_request", () =>
+                postWithRetry({
+                    url,
+                    body,
+                    headers: {
+                        Authorization: authorization,
+                        "Content-Type": "application/json",
+                        "ngrok-skip-browser-warning": "true",
+                    },
+                }),
+            );
             if (Number(response.code) === 409) return blocked("snapshot_conflict");
             if (Number(response.code) !== 200) {
                 const httpStatus = Number(response.code);
@@ -461,8 +538,13 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                     }[httpStatus] || (httpStatus >= 500 ? "receiver_unavailable" : "unexpected_http_status");
                 return { ...blocked("receiver_rejected"), httpStatus, failureReason };
             }
-            const receipt = JSON.parse(response.body);
-            if (!isMatchingReceipt(receipt, event)) return blocked("receipt_invalid");
+            const receipt = atStage("receipt_validation", () => JSON.parse(response.body));
+            if (!isMatchingReceipt(receipt, event))
+                return {
+                    ...blocked("receipt_invalid"),
+                    httpStatus: 200,
+                    failureReason: receiptFailureReason(receipt, event),
+                };
             return { status: receipt.importQueued === true ? "import_queued" : "received_local", delivered: true };
         }
 
@@ -498,15 +580,22 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
 
         /** Acredita COMMIT de la edición o de la solicitud de importación. En cola aún no equivale a orden creada. */
         function isMatchingReceipt(receipt, event) {
-            return (
-                Boolean(receipt) &&
-                receipt.schemaVersion === SCHEMA_VERSION &&
-                receipt.received === true &&
-                (receipt.persisted === true ||
-                    (receipt.persisted === false && receipt.result === "not_found" && receipt.importQueued === true)) &&
-                receipt.eventId === event.eventId &&
-                receipt.netsuiteId === event.netsuiteId
-            );
+            return receiptFailureReason(receipt, event) === null;
+        }
+
+        /** El primer incumplimiento identifica el contrato rechazado sin publicar el cuerpo de respuesta. */
+        function receiptFailureReason(receipt, event) {
+            if (!receipt) return "receipt_missing";
+            if (receipt.schemaVersion !== SCHEMA_VERSION) return "receipt_schema_mismatch";
+            if (receipt.received !== true) return "receipt_not_received";
+            if (!(
+                receipt.persisted === true ||
+                (receipt.persisted === false && receipt.result === "not_found" && receipt.importQueued === true)
+            ))
+                return "receipt_persistence_unconfirmed";
+            if (receipt.eventId !== event.eventId) return "receipt_event_id_mismatch";
+            if (receipt.netsuiteId !== event.netsuiteId) return "receipt_order_id_mismatch";
+            return null;
         }
 
         /** true si algun texto del snapshot, a cualquier profundidad, supera el largo que acepta el receptor. */
@@ -529,7 +618,7 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
         "use strict";
 
         // Version unica del conjunto de scripts. Actualizar al preparar cada entrega: la lee el empaquetador.
-        const SCRIPT_VERSION = "2026.11.12.2";
+        const SCRIPT_VERSION = "2026.11.13.1";
 
         /**
          * Un fallo del logger no debe interrumpir una consulta ni cambiar su respuesta.
@@ -591,6 +680,120 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
             return { recordType: record.type, netsuiteId, eventType: context.type };
         }
 
+        /** Mensajes operativos de vocabulario cerrado: una causa desconocida nunca se presenta como confirmada. */
+        function failureGuidance(result) {
+            const byReason = {
+                authentication_rejected: [
+                    "La API rechazó la autenticación (HTTP 401).",
+                    "Verificar que la credencial configurada coincida en NetSuite y API; no rotarla automáticamente.",
+                ],
+                access_rejected: [
+                    "La API denegó el acceso (HTTP 403).",
+                    "Revisar cuenta, ambiente y habilitación del receptor en la API.",
+                ],
+                invalid_payload: [
+                    "La API rechazó la estructura o valores del evento (HTTP 400).",
+                    "Revisar el error de validación del receptor para esta orden y hora.",
+                ],
+                receiver_unavailable: [
+                    "El receptor devolvió un error de servidor.",
+                    "Revisar salud y logs de API/proxy; consultar la orden antes de reenviar.",
+                ],
+                endpoint_not_found: [
+                    "El destino HTTP no encontró el endpoint.",
+                    "Verificar URL y ruta del receptor desplegado.",
+                ],
+                rate_limited: [
+                    "El receptor limitó la frecuencia de solicitudes.",
+                    "Esperar y reenviar con control de frecuencia.",
+                ],
+                timeout: [
+                    "NetSuite agotó el tiempo de espera del envío.",
+                    "Comprobar si la API recibió esta orden antes de reintentar: el resultado puede ser incierto.",
+                ],
+                dns_error: ["NetSuite no resolvió el dominio del receptor.", "Revisar el dominio y su resolución DNS."],
+                tls_error: [
+                    "NetSuite rechazó el certificado HTTPS.",
+                    "Revisar vigencia y cadena del certificado; no desactivar su validación.",
+                ],
+                connection_closed: [
+                    "La conexión HTTP se cerró sin confirmación.",
+                    "Revisar proxy/API y confirmar persistencia antes de reenviar.",
+                ],
+                receipt_persistence_unconfirmed: [
+                    "La API respondió, pero no confirmó persistencia ni importación en cola.",
+                    "Revisar result=not_found y el encolado automático para este tipo de evento.",
+                ],
+                receipt_schema_mismatch: [
+                    "La versión del recibo de API no coincide con la esperada.",
+                    "Comparar el contrato desplegado de API y librería NetSuite.",
+                ],
+                receipt_event_id_mismatch: [
+                    "El recibo corresponde a otro evento.",
+                    "Revisar correlación eventId en API/proxy; no asumir guardado.",
+                ],
+                receipt_order_id_mismatch: [
+                    "El recibo corresponde a otra orden.",
+                    "Revisar correlación netsuiteId en el receptor.",
+                ],
+                snapshot_conflict: [
+                    "La orden cambió durante la sincronización.",
+                    "Consultar una foto nueva de NetSuite antes de reenviar.",
+                ],
+            };
+            const byCode = {
+                SSS_USAGE_LIMIT_EXCEEDED: [
+                    "NetSuite agotó las unidades de ejecución del script.",
+                    "Revisar consumo de gobernanza en la etapa indicada.",
+                ],
+                RCRD_DSNT_EXIST: [
+                    "NetSuite no encontró el registro requerido.",
+                    "Verificar existencia, tipo e ID del registro usado en la etapa indicada.",
+                ],
+                INSUFFICIENT_PERMISSION: [
+                    "El rol de ejecución no tiene acceso al registro u operación.",
+                    "Revisar permisos del despliegue y del registro.",
+                ],
+                SSS_PERMISSION_VIOLATION: [
+                    "NetSuite denegó la operación por permisos.",
+                    "Revisar el rol de ejecución del despliegue.",
+                ],
+                INVALID_JSON_RESPONSE: [
+                    "El receptor respondió un cuerpo que no es JSON válido.",
+                    "Revisar proxy y endpoint: puede haberse recibido HTML en vez del recibo de API.",
+                ],
+            };
+            const byStage = {
+                snapshot_read: [
+                    "No se pudo completar la lectura de la orden; la causa exacta no fue informada con un código reconocido.",
+                    "Revisar logs de ejecución y permisos de lectura en NetSuite; usar el errorCode si está disponible.",
+                ],
+                http_request: [
+                    "Falló el envío HTTP sin una causa reconocida.",
+                    "Revisar conectividad y logs del receptor por orden y hora; confirmar resultado antes de reintentar.",
+                ],
+                receipt_validation: [
+                    "La respuesta del receptor no confirmó correctamente el evento.",
+                    "Revisar el contrato de respuesta y la bitácora de API; no asumir que no se guardó.",
+                ],
+                payload_build: [
+                    "No se pudo preparar el payload de sincronización.",
+                    "Revisar tipos, tamaño y campos del snapshot.",
+                ],
+                configuration: [
+                    "No se pudo completar la configuración del envío.",
+                    "Revisar ambiente, URL y configuración del despliegue sin publicar credenciales.",
+                ],
+            };
+            const guidance = byReason[result.failureReason] ||
+                byCode[result.errorCode] ||
+                byStage[result.failureStage] || [
+                    "Evento sin confirmación; causa exacta no disponible.",
+                    "Revisar la etapa y los logs del evento en NetSuite y API.",
+                ];
+            return { failureDescription: guidance[0], recommendedAction: guidance[1], outcome: "unconfirmed" };
+        }
+
         /** Solo metadatos cerrados: no loguear el record, datos personales, credenciales ni errores crudos. */
         function logOutcome(moduleCode, event, result) {
             const level = result.delivered || result.status === "module_pending" ? "debug" : "error";
@@ -599,6 +802,14 @@ define(["N/runtime", "N/https", "N/crypto/random", "N/log", "N/record", "N/searc
                 module: moduleCode,
                 status: result.status,
                 delivered: result.delivered === true,
+                ...(!result.delivered && result.status !== "module_pending"
+                    ? {
+                          failureStage: result.failureStage || "event_dispatch",
+                          failureReason: result.failureReason || result.status,
+                          errorCode: result.errorCode || result.transportCode || "NOT_PROVIDED",
+                          ...failureGuidance(result),
+                      }
+                    : {}),
                 ...(result.transportCode
                     ? { transportCode: result.transportCode, failureReason: result.failureReason }
                     : {}),

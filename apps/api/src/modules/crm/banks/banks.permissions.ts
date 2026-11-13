@@ -7,6 +7,7 @@ import type { IdentityProfile } from "../identity/identity.types.js";
  * Si no es owner, la unidad organizativa activa tiene que ser el módulo del contexto.
  */
 export function canUseBanks(profile: IdentityProfile, moduleCode: unknown, action: CatalogPermissionAction): boolean {
+    if (moduleCode === "ventas") return false;
     if (!isCatalogContextModuleCode(typeof moduleCode === "string" ? moduleCode : "") || profile.user.status !== "active") return false;
     if (!profile.roles.some((role) => role.code === "owner" && role.status === "active") && !profile.orgUnits.some((unit) => unit.code === moduleCode && unit.status === "active")) return false;
     return ["read", action].every((required) => {

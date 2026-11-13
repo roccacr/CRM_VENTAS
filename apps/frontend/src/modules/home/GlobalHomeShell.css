@@ -77,14 +77,22 @@
     background: var(--shell-surface);
 }
 
+/* Degradado de marca: el azul grisáceo de Habita, más intenso a la derecha y diluido hacia la izquierda, donde está el contenido principal. */
 .global-home-header,
 .global-home-mobile-bar {
-    background-image: linear-gradient(90deg, rgb(255 255 255 / 22%), rgb(255 255 255 / 72%) 56%, #fff 100%), url("/illustrations/habita-header-plan.svg");
-    background-position: left center;
-    background-repeat: no-repeat;
-    background-size:
-        100% 100%,
-        max(100%, 1200px) 100%;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 30%) 0%, rgb(73 97 128 / 15%) 32%, rgb(73 97 128 / 4%) 62%, rgb(255 255 255 / 0%) 82%);
+}
+
+/* Línea inferior con los tonos de las etapas de una orden: ámbar (requiere acción), azul grisáceo (en trámite) y verde (completado). */
+.global-home-header::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    content: "";
+    pointer-events: none;
 }
 
 .global-home-mobile-bar__icon-button,
@@ -2048,4 +2056,60 @@
     .global-home-mobile-drawer {
         width: min(100vw, 320px);
     }
+}
+
+/* ===== Menú desplegable: mismo concepto de marca (degradado, línea de etapas y acento de selección) ===== */
+.global-home-menu__dropdown {
+    gap: 1px;
+    border-color: #c3ccd9;
+    padding: 8px 6px 6px;
+    background:
+        linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%) top / 100% 3px no-repeat,
+        linear-gradient(270deg, rgb(73 97 128 / 12%) 0%, rgb(73 97 128 / 4%) 45%, rgb(255 255 255 / 0%) 80%),
+        var(--shell-surface);
+    box-shadow:
+        0 12px 28px rgb(15 23 42 / 16%),
+        0 2px 6px rgb(15 23 42 / 6%);
+}
+.global-home-menu__dropdown-item {
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition:
+        background-color 120ms ease,
+        box-shadow 120ms ease;
+}
+.global-home-menu__dropdown-item:hover {
+    background: var(--ent-tint, #f5f7fa);
+    box-shadow: inset 3px 0 0 #7f93ad;
+}
+.global-home-menu__dropdown-item--active {
+    background: var(--ent-tint, #f5f7fa);
+    box-shadow: inset 3px 0 0 #18222f;
+}
+.global-home-menu__dropdown-item--active:hover {
+    background: #eaedf2;
+}
+.global-home-menu__dropdown-item:focus-visible {
+    outline: 2px solid #18222f;
+    outline-offset: -2px;
+}
+.global-home-menu__dropdown-icon {
+    width: 26px;
+    height: 26px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    color: #496180;
+    font-size: 13px;
+}
+.global-home-menu__dropdown-item:hover .global-home-menu__dropdown-icon {
+    border-color: #7f93ad;
+    color: #18222f;
+}
+.global-home-menu__dropdown-item--active .global-home-menu__dropdown-icon {
+    border-color: #18222f;
+    background: #18222f;
+    color: #fff;
+}
+.global-home-menu__dropdown-label {
+    font-size: 12.5px;
 }

@@ -104,12 +104,12 @@ export class SalesOrderAddendumRepository {
     }
 
     /** Marca pendiente sin crear eventos ni consultar el calendario. */
-    async markManually(command: AddendumManualMark) {
+    async markManually(command: AddendumManualMark, renewPending = false) {
         const note = this.requiredReason(command.note);
-        return this.transition({ ...command, note, status: "pending" });
+        return this.transition({ ...command, note, status: "pending" }, renewPending);
     }
 
-    private async transition(command: AddendumChange | (AddendumManualMark & { status: "pending" })) {
+    private async transition(command: AddendumChange | (AddendumManualMark & { status: "pending" }), renewPending = false) {
         this.assertAudit();
         const operation = this.operation(command.status === "pending" ? "mark_pending" : "manual", command.actorPublicId, command.operationId);
         return this.database.db.transaction().execute(async (tx) => {
@@ -123,7 +123,8 @@ export class SalesOrderAddendumRepository {
                 return { ...this.result(order), replayed: true };
             }
             if (order.version !== command.expectedVersion) throw new ConflictException("El adéndum cambió; recarga la orden antes de continuar.");
-            this.assertTarget(order, command.status);
+            // Solo la acción masiva permite renovar el pendiente y su motivo; conserva versión, permisos y bitácora.
+            this.assertTarget(order, command.status, renewPending);
             const note = command.status === "pending" ? command.note : order.note;
             const reasons = { sent: "Adéndum registrado como enviado desde la orden.", pending: "Adéndum marcado pendiente manualmente desde la orden.", completed: "Adéndum completado desde la orden.", cancelled: "Adéndum cancelado desde la orden." };
             const after = await this.persist(tx, order, { status: command.status, note, actorPublicId: command.actorPublicId, operation, correlationId: command.operationId, reason: reasons[command.status] });
@@ -144,9 +145,9 @@ export class SalesOrderAddendumRepository {
         return reason;
     }
 
-    private assertTarget(order: AddendumOrder, status: AddendumStatus): void {
+    private assertTarget(order: AddendumOrder, status: AddendumStatus, renewPending: boolean): void {
         if (status === "pending") {
-            if (order.status === "pending") throw new ConflictException("La orden ya tiene un adéndum pendiente.");
+            if ([order.status === "pending", !renewPending].every(Boolean)) throw new ConflictException("La orden ya tiene un adéndum pendiente.");
             return;
         }
         if (status === "sent" && order.status !== "pending") throw new ConflictException("Solo se puede enviar un adéndum pendiente.");

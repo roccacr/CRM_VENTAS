@@ -40,10 +40,9 @@ const UnitFilesPage = createLazyRoute<ComponentProps<typeof UnitFilesPageCompone
 type CalendarRouteProps = { readonly effectivePermissions?: IdentityProfile["permissions"]; readonly onNavigate?: (path: string) => void };
 const FormalizationCalendarPage = createLazyRoute<CalendarRouteProps>(() => import("../modules/home/FormalizationCalendarPage").then((module) => ({ default: module.FormalizationCalendarPage })));
 const MarketingCalendarPage = createLazyRoute<CalendarRouteProps>(() => import("../modules/calendar/SharedCalendarPage").then((module) => ({ default: module.MarketingCalendarPage })));
-const SalesCalendarPage = createLazyRoute<CalendarRouteProps>(() => import("../modules/calendar/SharedCalendarPage").then((module) => ({ default: module.SalesCalendarPage })));
-const AccountingCalendarPage = createLazyRoute<CalendarRouteProps>(() => import("../modules/calendar/SharedCalendarPage").then((module) => ({ default: module.AccountingCalendarPage })));
 const FormalizationHomePage = createLazyRoute<ComponentProps<typeof FormalizationHomePageComponent>>(() => import("../modules/home/FormalizationHomePage").then((module) => ({ default: module.FormalizationHomePage })));
 const MarketingLeadCapturePage = createLazyRoute<{ readonly currentUser: IdentityUser }>(() => import("../modules/marketing/MarketingLeadCapturePage").then((module) => ({ default: module.MarketingLeadCapturePage })));
+const SalesHomePage = createLazyRoute<object>(() => import("../modules/sales/SalesHomePage").then((module) => ({ default: module.SalesHomePage })));
 const MarketingHomePage = createLazyRoute<ComponentProps<typeof MarketingHomePageComponent>>(() => import("../modules/home/MarketingHomePage").then((module) => ({ default: module.MarketingHomePage })));
 
 /**
@@ -70,10 +69,8 @@ export interface AppRoute {
 }
 
 const CATALOG_CONTEXT_ROUTES = [
-    { contextLabel: "Ventas", moduleCode: "ventas", pathPrefix: "/home/sales/catalogs", workspaceCode: "sales" },
     { contextLabel: "Mercadeo", moduleCode: "mercadeo", pathPrefix: "/home/marketing/catalogs", workspaceCode: "marketing" },
     { contextLabel: "Formalización", moduleCode: "formalizacion", pathPrefix: "/home/formalization/catalogs", workspaceCode: "formalization" },
-    { contextLabel: "Contabilidad", moduleCode: "contabilidad", pathPrefix: "/home/accounting/catalogs", workspaceCode: "accounting" },
 ] as const;
 
 const CATALOG_PAGES: Partial<Record<CatalogCode, typeof BrokersPage>> = {
@@ -104,18 +101,15 @@ const OPERATIONAL_CATALOG_ROUTES = CATALOG_CONTEXT_ROUTES.flatMap((context) =>
 const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
     ["/home/formalization/perfil", { menuItemCode: "lead-profile", permissionCode: "lead.profile.read", Page: LeadProfilePage, title: "Perfil del cliente", workspaceCode: "formalization" }],
     ["/perfil", { menuItemCode: "lead-profile", permissionCode: "lead.profile.read", Page: LeadProfilePage, title: "Perfil del cliente", workspaceCode: "formalization" }],
-    ["/home/sales", { menuItemCode: "sales-home", title: "Ventas", workspaceCode: "sales" }],
+    ["/home/sales", { menuItemCode: "sales-home", Page: SalesHomePage, title: "Inicio", workspaceCode: "sales" }],
     ["/home/marketing", { menuItemCode: "marketing-home", Page: MarketingHomePage, title: "Mercadeo", workspaceCode: "marketing" }],
     ["/home/marketing/leads", { menuItemCode: "marketing-leads", Page: MarketingLeadCapturePage, title: "Captación de leads", workspaceCode: "marketing" }],
     ["/home/formalization", { menuItemCode: "formalization-home", Page: FormalizationHomePage, title: "Formalización", workspaceCode: "formalization" }],
     ["/home/formalization/calendar", { menuItemCode: "formalization-calendar", Page: FormalizationCalendarPage, title: "Calendario", workspaceCode: "formalization" }],
     ["/home/marketing/calendar", { menuItemCode: "marketing-calendar", Page: MarketingCalendarPage, title: "Calendario", workspaceCode: "marketing" }],
-    ["/home/sales/calendar", { menuItemCode: "sales-calendar", Page: SalesCalendarPage, title: "Calendario", workspaceCode: "sales" }],
-    ["/home/accounting/calendar", { menuItemCode: "accounting-calendar", Page: AccountingCalendarPage, title: "Calendario", workspaceCode: "accounting" }],
     ["/home/formalization/orders", { menuItemCode: "formalization-management", Page: (props) => createElement(FormalizationHomePage, { ...props, initialView: "orders" }), title: "Gestión de formalizaciones", workspaceCode: "formalization" }],
     ["/home/formalization/files", { menuItemCode: "formalization-files", title: "Expedientes", workspaceCode: "formalization" }],
     ["/home/formalization/contracts", { menuItemCode: "formalization-contracts", title: "Contratos", workspaceCode: "formalization" }],
-    ["/home/accounting", { menuItemCode: "accounting-home", title: "Contabilidad", workspaceCode: "accounting" }],
     [ADMINISTRATION_HOME_PATH, { menuItemCode: "admin-home", Page: AdministrationHomePage, title: "Administración", workspaceCode: "administration" }],
     ["/home/administration/users", { menuItemCode: "users", Page: SystemUsersPage, title: "Usuarios", workspaceCode: "administration" }],
     ["/home/administration/roles-security", { menuItemCode: "roles-permissions", Page: RolesSecurityPage, title: "Roles y seguridad", workspaceCode: "administration" }],
@@ -128,7 +122,6 @@ const APP_ROUTES: ReadonlyMap<string, AppRoute> = new Map<string, AppRoute>([
 
 /** Ruta inicial de cada perfil operativo al cambiar de espacio de trabajo. */
 const WORKSPACE_HOME_PATH_BY_CODE: Readonly<Record<string, string>> = {
-    accounting: "/home/accounting",
     administration: ADMINISTRATION_HOME_PATH,
     formalization: "/home/formalization",
     marketing: "/home/marketing",

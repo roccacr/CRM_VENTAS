@@ -70,7 +70,6 @@ const CATALOG_SECTION_NAME = "Catálogos";
 const MARKETING_SECTION_CODES = new Set(["home", "leads", "appointments", "calendar"]);
 /** El API entrega estos nombres sin tilde; el código es estable y el texto visible se corrige aquí. */
 const MODULE_LABELS: Readonly<Record<string, string>> = {
-    contabilidad: "Contabilidad",
     formalizacion: "Formalización",
     mercadeo: "Mercadeo",
     ventas: "Ventas",

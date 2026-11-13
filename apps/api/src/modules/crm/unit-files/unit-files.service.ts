@@ -35,6 +35,7 @@ export class UnitFilesService {
      * Un Owner activo se salta solo la membresía de la unidad. No se salta el permiso.
      */
     private async authorize(session: string | undefined, moduleCode: string): Promise<void> {
+        if (moduleCode === "ventas") throw new ForbiddenException("Ventas conserva únicamente Inicio.");
         const profile = await this.identity.getCurrentUser(session);
         const owner = profile.roles.some((role) => role.code === "owner" && role.status === "active");
         const permission = `${moduleCode}.catalog_file.read`;

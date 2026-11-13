@@ -6,13 +6,12 @@ import type { IdentityProfile } from "../identity/identity.types.js";
 import { legacyNoteOrderIdSchema, type NoteContext, noteIdSchema } from "./notes.contract.js";
 import type { NoteModule } from "./notes.permissions.js";
 
-const workspaces: Record<NoteModule, string> = { ventas: "sales", mercadeo: "marketing", formalizacion: "formalization", contabilidad: "accounting", administration: "admin" };
+const workspaces: Record<NoteModule, string> = { ventas: "sales", mercadeo: "marketing", formalizacion: "formalization", administration: "admin" };
 const views: Record<string, { module: NoteModule; permission?: string }> = {
     "lead-profile": { module: "formalizacion", permission: "lead.profile.read" },
-    "sales-home": { module: "ventas", permission: "lead.read" },
+    "sales-home": { module: "ventas", permission: "ventas.home.read" },
     "marketing-home": { module: "mercadeo", permission: "mercadeo.home.read" },
     "marketing-leads": { module: "mercadeo", permission: "mercadeo.leads.read" },
-    "accounting-home": { module: "contabilidad", permission: "wallet.read" },
     "admin-home": { module: "administration" },
     ...Object.fromEntries(["home", "calendar", "management", "summary", "files", "contracts"].map((suffix) => [`formalization-${suffix}`, { module: "formalizacion" as const }])),
     users: { module: "administration", permission: "user.view_list" },

@@ -11,7 +11,6 @@ export const AUDIT_MODULES = [
     { code: "ventas", name: "Ventas", sections: [{ code: "estimates", name: "Estimaciones" }, { code: "leads", name: "Leads" }, { code: "opportunities", name: "Oportunidades" }, catalogs] },
     { code: "mercadeo", name: "Mercadeo", sections: [{ code: "campaigns", name: "Campañas" }, { code: "sources", name: "Fuentes" }, catalogs] },
     { code: "formalizacion", name: "Formalización", sections: [{ code: "contracts", name: "Contratos" }, { code: "files", name: "Expedientes" }, { code: "signatures", name: "Firmas" }, catalogs] },
-    { code: "contabilidad", name: "Contabilidad", sections: [{ code: "billing", name: "Cobros" }, catalogs] },
 ] as const;
 
 /** Alcance obligatorio y pagina acotada. No hay un listado sin modulo ni seccion. */

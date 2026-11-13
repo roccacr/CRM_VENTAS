@@ -1718,3 +1718,110 @@
     cursor: not-allowed;
     opacity: 0.6;
 }
+
+/* ===== Mis notas: mismo concepto de marca que el resto (degradado, línea de etapas, chip oscuro activo, controles de 32 px) ===== */
+.personal-notes-drawer .ant-drawer-header {
+    position: relative;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 14%) 0%, rgb(73 97 128 / 5%) 45%, rgb(255 255 255 / 0%) 85%);
+}
+.personal-notes-drawer .ant-drawer-header::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    content: "";
+    pointer-events: none;
+}
+.personal-notes-drawer .ant-drawer-body {
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 8%) 0%, rgb(73 97 128 / 2%) 55%, rgb(255 255 255 / 0%) 85%);
+}
+
+/* Bandejas: una tira tint y la activa como chip oscuro. */
+.personal-notes-panel .personal-notes-inboxes {
+    gap: 2px;
+    padding: 3px;
+    border-color: #d2dae5;
+    border-radius: 6px;
+    background: var(--ent-tint, #f5f7fa);
+}
+.personal-notes-panel .personal-notes-inboxes button {
+    min-height: 30px;
+    border-bottom: 0;
+    border-radius: 4px;
+    color: #496180;
+    font-size: 12.5px;
+}
+.personal-notes-panel .personal-notes-inboxes button[aria-current="page"] {
+    background: #18222f;
+    color: #fff;
+}
+.personal-notes-panel .personal-notes-inboxes button:not(:disabled):not([aria-current="page"]):hover {
+    background: #fff;
+}
+
+/* Buscar y filtrar: una tarjeta con barra de acento, etiquetas pequeñas y campos de 32 px. */
+.personal-notes-panel .personal-notes-controls {
+    padding: 12px 14px;
+    border: 1px solid #d2dae5;
+    border-left: 3px solid #7f93ad;
+    border-radius: 6px;
+    background: #fff;
+}
+.personal-notes-panel .personal-notes-controls label {
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.personal-notes-panel .personal-notes-controls input,
+.personal-notes-panel .personal-notes-controls select,
+.personal-notes-panel .personal-notes-controls .ant-input-affix-wrapper {
+    min-height: 32px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.personal-notes-panel .personal-notes-controls .personal-notes-primary {
+    min-height: 32px;
+    border-radius: 6px;
+    background: #18222f;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.personal-notes-panel .personal-notes-controls .personal-notes-primary:not(:disabled):hover {
+    background: #3c4f68;
+}
+
+/* Filtros plegables: barra tint con acento y el contador como pastilla. */
+.personal-notes-panel details > summary {
+    border-left: 3px solid #7f93ad;
+    border-radius: 6px;
+    background: var(--ent-tint, #f5f7fa);
+    color: #3c4f68;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* Sin notas: estado vacío compacto, del mismo estilo que el resto de la aplicación. */
+.personal-notes-panel .personal-notes-panel__empty {
+    padding: 18px 16px;
+    border: 1px dashed #c3ccd9;
+    border-radius: 6px;
+    background: var(--ent-tint, #f5f7fa);
+}
+
+/* Paginación: botones de 30 px y un divisor fino. */
+.personal-notes-panel .personal-notes-panel__pages {
+    border-top: 1px solid var(--ent-divider, #e4e9f2);
+}
+.personal-notes-panel .personal-notes-panel__pages button {
+    min-height: 30px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+}

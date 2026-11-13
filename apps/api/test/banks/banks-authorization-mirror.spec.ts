@@ -14,7 +14,7 @@ import { CATALOG_CONTEXT_MODULES } from "../../src/modules/crm/catalogs/catalogs
 import type { IdentityProfile } from "../../src/modules/crm/identity/identity.types.js";
 
 const profile = (moduleCode: string, role = "jefe_general"): IdentityProfile => ({ user: { status: "active" }, roles: [{ code: role, status: "active" }], orgUnits: [{ code: moduleCode, status: "active" }], permissions: ["read", "create", "update", "inactivate"].map((action) => ({ code: `${moduleCode}.catalog_bank.${action}`, effect: "allow" })) }) as IdentityProfile;
-describe.each(CATALOG_CONTEXT_MODULES)("Banks authorization %s", (moduleCode) => {
+describe.each(CATALOG_CONTEXT_MODULES.filter((moduleCode) => moduleCode !== "ventas"))("Banks authorization %s", (moduleCode) => {
     it("requires active privileged role, exact allow and membership", () => {
         expect(canUseBanks(profile(moduleCode), moduleCode, "create")).toBe(true);
         const denied = profile(moduleCode);
@@ -91,4 +91,8 @@ describe("Banks mirror gates and SQL", () => {
         expect(change.after).not.toHaveProperty("password");
         expect(buildAuditChangeSet({ entity: "user", recordId: "user", action: "update", before: null, after }).after).not.toHaveProperty("phone");
     });
+});
+
+it("rejects retired Sales bank access even for Owner with every grant", () => {
+    expect(canUseBanks(profile("ventas", "owner"), "ventas", "read")).toBe(false);
 });

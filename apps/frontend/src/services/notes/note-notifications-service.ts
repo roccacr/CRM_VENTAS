@@ -46,7 +46,7 @@ function parseNotification(value: unknown): NoteNotification {
         noteId: id(n.noteId),
         note: { title: optionalText(note.title, 300), excerpt: optionalText(note.excerpt, 400) ?? "" },
         replyExcerpt: optionalText(n.replyExcerpt, 400),
-        moduleCode: choice(n.moduleCode, ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"]),
+        moduleCode: choice(n.moduleCode, ["ventas", "mercadeo", "formalizacion", "administration"]),
         createdAt: timestamp(n.createdAt),
         readAt: n.readAt === null ? null : timestamp(n.readAt),
     };

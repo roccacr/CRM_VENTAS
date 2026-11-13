@@ -17,7 +17,6 @@ const HOMES: { moduleCode: NoteModule; code: string; label: string }[] = [
     { moduleCode: "ventas", code: "sales-home", label: "Ventas" },
     { moduleCode: "mercadeo", code: "marketing-home", label: "Mercadeo" },
     { moduleCode: "formalizacion", code: "formalization-home", label: "Formalización" },
-    { moduleCode: "contabilidad", code: "accounting-home", label: "Contabilidad" },
     { moduleCode: "administration", code: "admin-home", label: "Administración" },
 ];
 const localTime = (iso: string | null): string => {

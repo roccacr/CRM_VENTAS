@@ -49,13 +49,13 @@ type Target = { context: NoteContext; label: string } | null;
 const HOME_TARGET: NonNullable<Target> = { context: { kind: "view" }, label: "Inicio" };
 const PERSONAL_CONTEXT: NoteContext = { kind: "personal" };
 const PERSONAL_TARGET: NonNullable<Target> = { context: PERSONAL_CONTEXT, label: "Mis notas personales" };
-const NOTE_MODULES: readonly NoteModule[] = ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"];
+const NOTE_MODULES: readonly NoteModule[] = ["ventas", "mercadeo", "formalizacion", "administration"];
 function resolveModule(moduleCode: string | undefined, permissions: readonly Permission[]): NoteModule | undefined {
     if (moduleCode) return NOTE_MODULES.find((code) => code === moduleCode);
     return NOTE_MODULES.find((code) => allowed(permissions, code, "read"));
 }
 function routeOrderTarget(moduleCode: string | undefined, path: string, search: string): Target | undefined {
-    if (!moduleCode || !/^\/home\/(formalization|sales|marketing|accounting)(?:\/|$)/.test(path)) return undefined;
+    if (!moduleCode || !/^\/home\/(formalization|sales|marketing)(?:\/|$)/.test(path)) return undefined;
     const query = new URLSearchParams(search);
     if (!query.has("orderSource") && !query.has("orderId")) return undefined;
     const source = query.get("orderSource");

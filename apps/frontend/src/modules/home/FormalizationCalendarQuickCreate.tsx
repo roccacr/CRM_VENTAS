@@ -9,7 +9,7 @@ import { calendarToday } from "../calendar/calendar-time";
 import { CalendarEventDrawer } from "../calendar/CalendarEventDrawer";
 import { calendarEditAccess } from "../calendar/useCalendarEventForm";
 
-const calendarModules: Readonly<Record<string, CalendarModule | undefined>> = { formalization: "formalizacion", marketing: "mercadeo", sales: "ventas", accounting: "contabilidad" };
+const calendarModules: Readonly<Record<string, CalendarModule | undefined>> = { formalization: "formalizacion", marketing: "mercadeo", sales: "ventas" };
 
 /** La acción global abre un evento vacío: el contexto de la orden actual no se hereda del URL. */
 export function FormalizationCalendarQuickCreate({ workspaceCode, permissions }: { readonly workspaceCode: string; readonly permissions: readonly CalendarPermission[] }) {

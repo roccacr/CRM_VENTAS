@@ -23,6 +23,11 @@ const publicRole = ({ code, name, status }: IdentityRole): IdentityRole => ({ co
 /** El mapeo cuenta solo si la relación y el módulo están activos y el módulo no está borrado. */
 const activeMapping = (mapping: RoleModuleMapping): boolean => mapping.mappingStatus === "active" && mapping.moduleStatus === "active" && mapping.moduleDeleted === null;
 
+/** Una membresía residual de otro jefe no equivale a asignarle un rol de Ventas. */
+function denySalesInheritance(candidate: RoleModuleMapping, general: boolean, direct: readonly AssignedModuleRole[]): boolean {
+    return candidate.moduleCode === "ventas" && !general && !direct.some((role) => ["ventas", "jefe_ventas"].includes(role.code));
+}
+
 /**
  * Adds roles implied by the selected modules. The owner role is never inherited, and a role bound
  * to several modules is usable only when all are selected. General retains its direct role;
@@ -37,7 +42,7 @@ function inheritModuleRoles(direct: readonly AssignedModuleRole[], mappings: rea
     };
     const roles = direct.filter((role) => role.permissionInheritance === "selected_modules" || !roleMappings.has(role.code) || eligible(role.code));
     const candidates = mappings.filter((entry) => general || entry.code === entry.moduleCode);
-    for (const candidate of candidates) {
+    for (const candidate of candidates.filter((entry) => !denySalesInheritance(entry, general, direct))) {
         if (candidate.code === "owner" || !eligible(candidate.code) || roles.some((role) => role.code === candidate.code)) continue;
         roles.push(candidate);
     }

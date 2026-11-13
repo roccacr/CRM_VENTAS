@@ -287,6 +287,7 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
                 }}
             />
             <MarketingDataQuality value={dataQuality} />
+            <MarketingDivider title="Indicadores" />
             <div className="marketing-preview-banners">
                 {first && <MarketingBanner key={first.title} {...first} />}
                 <MarketingReservationBanner rows={view.rows} available={available} reservationsAvailable={reservationsAvailable} />
@@ -296,9 +297,21 @@ export function MarketingHomeDashboard({ currentUser, rows, today, periodControl
                 ))}
             </div>
             <MarketingAlerts alerts={showAppointments ? alertMarketingSample(view) : []} comparison={{ current: describeRange(view.period), previous: describeRange(view.comparison) }} />
+            <MarketingDivider title="Evolución" />
             <LeadsAreaChart title={copy.chart} buckets={buckets} currentLabel={describeRange(view.window)} comparisonLabel={describeChartComparison(view)} unit={copy.unit} />
+            <MarketingDivider title="Proyectos" />
             <MarketingProjects cards={projectCards} periodWord={copy.word} seller="" comparison={{ label: copy.against, current: describeRange(view.period), previous: describeRange(view.comparison) }} />
+            <MarketingDivider title="Vendedores" />
             <MarketingSellers groups={sellerGroups} appointmentsAvailable={showAppointments} comparisonLabel={describeRange(view.comparison)} />
+        </div>
+    );
+}
+
+/** Título-separador de sección: línea · TÍTULO · línea, el mismo de Formalización. */
+function MarketingDivider({ title }: { readonly title: string }) {
+    return (
+        <div className="marketing-home-divider" role="separator" aria-label={title}>
+            <span>{title}</span>
         </div>
     );
 }

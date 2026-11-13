@@ -2454,3 +2454,217 @@
     outline: 2px solid #1858a3;
     outline-offset: 3px;
 }
+
+/* ===== Calendario: mismo concepto de marca que Inicio, la orden y el login ===== */
+/* Fondo del contenido: degradado azul grisáceo, intenso a la derecha y diluido hacia la izquierda. */
+.global-home-stage:has(.shared-calendar) {
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 18%) 0%, rgb(73 97 128 / 8%) 34%, rgb(73 97 128 / 2%) 66%, rgb(255 255 255 / 0%) 84%);
+    background-attachment: local;
+}
+
+/* Cabecera: la línea de etapas (ámbar, azul grisáceo, verde) bajo el título. */
+.shared-calendar {
+    --calendar-accent: #7f93ad;
+}
+.shared-calendar > .formalization-page-header {
+    position: relative;
+    padding-bottom: 12px;
+}
+.shared-calendar > .formalization-page-header::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    content: "";
+    pointer-events: none;
+}
+
+/* Bloques: 6 px, borde fino y barra izquierda de acento; cabeceras de tarjeta en gris claro con el título como el resto de la aplicación. */
+.shared-calendar .calendar-summary__tile,
+.shared-calendar .calendar-card,
+.shared-calendar .formalization-calendar__surface {
+    border-radius: 6px;
+}
+.shared-calendar .calendar-summary__tile,
+.shared-calendar .calendar-card {
+    border-left: 3px solid var(--calendar-accent);
+}
+.shared-calendar .formalization-calendar__surface {
+    border-left: 3px solid var(--calendar-accent);
+}
+.shared-calendar .calendar-card__head {
+    height: auto;
+    padding: 9px 14px;
+    background: var(--ent-tint, #f5f7fa);
+    color: #3c4f68;
+    font-size: 13px;
+    font-weight: 700;
+}
+.shared-calendar .calendar-summary__tile span {
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+.shared-calendar .calendar-summary__tile[data-empty="true"] {
+    border-left-color: #c3ccd9;
+}
+
+/* Botones: una altura (32 px), borde fino; "Nuevo evento" es la acción principal. */
+.shared-calendar .formalization-page-header .ant-btn {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.shared-calendar .formalization-page-header .calendar-search {
+    height: 32px;
+    border-radius: 6px;
+}
+.shared-calendar .formalization-calendar__surface .cal-btn {
+    border-radius: 6px;
+    font-weight: 600;
+}
+.shared-calendar .formalization-calendar__surface .cal-btn:hover {
+    border-color: #18222f;
+    color: #18222f;
+}
+
+/* Detalle de un evento: cabecera con el degradado y la línea de etapas, igual que el detalle de la orden. */
+.shared-calendar-drawer .ant-drawer-header {
+    position: relative;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 14%) 0%, rgb(73 97 128 / 5%) 45%, rgb(255 255 255 / 0%) 85%);
+}
+.shared-calendar-drawer .ant-drawer-header::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    content: "";
+    pointer-events: none;
+}
+.shared-calendar-drawer .ant-drawer-footer {
+    border-top: 2px solid #7f93ad;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 9%) 0%, rgb(73 97 128 / 3%) 45%, rgb(255 255 255 / 0%) 80%);
+}
+
+/* ===== Crear y editar un evento: mismo lenguaje que el resto (acento, cabeceras tint, etiquetas pequeñas, controles de 32 px) ===== */
+/* Barra superior del formulario: guardar, origen y accesos. */
+.shared-calendar-form .event-form__toolbar {
+    padding: 6px 12px;
+    border-left: 3px solid #7f93ad;
+    border-radius: 6px;
+    background: var(--ent-tint, #f5f7fa);
+}
+.shared-calendar-form .event-form__toolbar .ant-btn {
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.shared-calendar-form .event-form__origin {
+    color: #6b7a90;
+    font-size: 12px;
+}
+
+/* La nota de campos obligatorios es una línea de apoyo, no una caja; los avisos de error siguen destacando. */
+.shared-calendar-form .event-form__note {
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    color: #6b7a90;
+    font-size: 12px;
+}
+.shared-calendar-form .event-form__note[role="alert"] {
+    color: #a61d24;
+    font-weight: 600;
+}
+
+/* Bloques del formulario: 6 px, barra izquierda de acento y cabeceras en gris claro. */
+.shared-calendar-form .event-card {
+    border-left: 3px solid #7f93ad;
+    border-radius: 6px;
+}
+.shared-calendar-form .event-card__head {
+    height: auto;
+    padding: 9px 14px;
+    background: var(--ent-tint, #f5f7fa);
+    color: #3c4f68;
+    font-size: 13px;
+    font-weight: 700;
+}
+.shared-calendar-form .event-card > details > summary.event-card__head em {
+    border: 1px solid var(--ent-divider, #dfe5ee);
+    background: #fff;
+    color: #3c4f68;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Etiquetas: pequeñas, en mayúsculas y grises; el asterisco de obligatorio queda en rojo. */
+.shared-calendar-form .event-caption {
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.shared-calendar-form .event-caption i {
+    color: #8393a8;
+}
+.shared-calendar-form .event-required {
+    color: #cf1322;
+}
+
+/* Campos: una altura (32 px), borde fino y foco visible en oscuro. */
+.shared-calendar-form input:not([type="checkbox"]):not([type="radio"]),
+.shared-calendar-form select {
+    min-height: 32px;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+.shared-calendar-form textarea {
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+.shared-calendar-form .ant-select .ant-select-selector {
+    min-height: 32px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+.shared-calendar-form input:not([type="checkbox"]):focus,
+.shared-calendar-form textarea:focus,
+.shared-calendar-form select:focus {
+    border-color: #18222f;
+    outline: 2px solid #18222f;
+    outline-offset: 1px;
+}
+
+/* Interruptores (día completo, Teams): fila tint con borde fino. */
+.shared-calendar-form .event-switch {
+    border-radius: 6px;
+}
+
+/* Panel del día a la derecha: tarjeta con acento, cabecera tint y el evento en el color de la marca. */
+.shared-calendar-editor__detail {
+    border-left: 3px solid #7f93ad;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.shared-calendar-editor__detail .calendar-day__head {
+    background: var(--ent-tint, #f5f7fa);
+}
+.shared-calendar-editor__detail .calendar-day__head h2,
+.shared-calendar-editor__detail .calendar-day__head h3 {
+    color: #3c4f68;
+    font-size: 13px;
+    font-weight: 700;
+}

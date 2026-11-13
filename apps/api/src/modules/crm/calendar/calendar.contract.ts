@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-export const CALENDAR_MODULES = ["formalizacion", "mercadeo", "ventas", "contabilidad"] as const;
+export const CALENDAR_MODULES = ["formalizacion", "mercadeo", "ventas"] as const;
 export type CalendarModuleCode = (typeof CALENDAR_MODULES)[number];
-export const CALENDAR_MODULE_LABELS: Readonly<Record<CalendarModuleCode, string>> = { formalizacion: "Formalización", mercadeo: "Mercadeo", ventas: "Ventas", contabilidad: "Contabilidad" };
-export const CALENDAR_COLORS: Readonly<Record<CalendarModuleCode, string>> = { formalizacion: "#b4325a", mercadeo: "#7c4a9e", ventas: "#147849", contabilidad: "#a86308" };
+export const CALENDAR_MODULE_LABELS: Readonly<Record<CalendarModuleCode, string>> = { formalizacion: "Formalización", mercadeo: "Mercadeo", ventas: "Ventas" };
+export const CALENDAR_COLORS: Readonly<Record<CalendarModuleCode, string>> = { formalizacion: "#b4325a", mercadeo: "#7c4a9e", ventas: "#147849" };
 const publicId = z.string().regex(/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
 const instant = z.iso.datetime().refine((value) => Number.isFinite(Date.parse(value)));
 const text = (length: number) => z.string().trim().max(length);

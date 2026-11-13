@@ -9,7 +9,7 @@ import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { FormHelp } from "../../components/forms/FormHelp";
 import { isFiniquitoOrder } from "../../services/formalization/finiquito-service";
-import { type FollowUp, type FollowUpItem, type FollowUpQueue, getFollowUp, getFormalizationOrderRecord } from "../../services/formalization/follow-up-service";
+import { type FollowUp, type FollowUpItem, type FollowUpQueue, getFollowUp, getFollowUpSelection, getFormalizationOrderRecord } from "../../services/formalization/follow-up-service";
 import { importNetsuiteOrder } from "../../services/formalization/netsuite-order-service";
 import { CatalogBanners } from "../administration/catalogs/CatalogSummary";
 import { type FollowUpFilterRequest, type FollowUpSelection, isFollowUpSelection, useFollowUpFilters } from "./formalization-filter-preferences";
@@ -17,10 +17,12 @@ import { buildOrderCards } from "./formalization-order-cards";
 import { type FormalizationExample, type PreviewQueue } from "./formalization-preview.model";
 import { followUpProjectOptions } from "./formalization-project-options";
 import { FORMALIZATION_FOLLOW_UP_HELP } from "./formalization-queue-help";
+import { stageToneOf } from "./formalization-stage-tone";
+import { FormalizationBulkAddendum } from "./FormalizationBulkAddendum";
 import { FormalizationOrderDrawer } from "./FormalizationOrderDrawer";
 import { FormalizationOrderRecord } from "./FormalizationOrderPreview";
 import { StageChip } from "./FormalizationStageChip";
-import { canReadOrderAddendum } from "./order-addendum-permissions";
+import { canMarkOrderAddendum, canReadOrderAddendum } from "./order-addendum-permissions";
 
 const labels: Record<FollowUpQueue, string> = {
     all: "Todas",
@@ -155,7 +157,7 @@ function useOpenOrder(items: readonly FollowUpItem[]) {
 }
 
 /** Carga, error o tabla: un solo lugar decide, para que la sección siga simple. */
-function FollowUpBody({ model, onOpen, showAddendum }: { readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: ((id: string) => void) | undefined; readonly showAddendum: boolean }) {
+function FollowUpBody({ model, onOpen, showAddendum, selection }: { readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: ((id: string) => void) | undefined; readonly showAddendum: boolean; readonly selection?: FollowUpSelectionModel | undefined }) {
     const { value, failed, setRetry } = model;
     if (failed)
         return (
@@ -170,7 +172,7 @@ function FollowUpBody({ model, onOpen, showAddendum }: { readonly model: ReturnT
                 </Button>
             </div>
         );
-    return value ? <FollowUpTable value={value} model={model} onOpen={onOpen} showAddendum={showAddendum} /> : <FollowUpSkeleton />;
+    return value ? <FollowUpTable value={value} model={model} onOpen={onOpen} showAddendum={showAddendum} selection={selection} /> : <FollowUpSkeleton />;
 }
 
 function FollowUpHeading({ id, tableOnly, total }: { readonly id: string; readonly tableOnly: boolean; readonly total: number | undefined }) {
@@ -236,7 +238,16 @@ function FollowUpWorkspace({ canReadOrder, model, stagePermissions = [], canUpda
     return (
         <>
             {tranid && <MissingOrderImport key={tranid} tranid={tranid} />}
-            <FollowUpBody model={model} onOpen={canReadOrder ? open.setOpenId : undefined} showAddendum={canReadOrderAddendum(stagePermissions)} />
+            <SelectableFollowUp
+                key={JSON.stringify([model.search, model.projectIds, model.selectedSelections, canMarkOrderAddendum(stagePermissions)])}
+                model={model}
+                onOpen={canReadOrder ? open.setOpenId : undefined}
+                showAddendum={canReadOrderAddendum(stagePermissions)}
+                canSelect={canReadOrder && canMarkOrderAddendum(stagePermissions)}
+                onSaved={() => {
+                    refreshFollowUp(model, onRefresh);
+                }}
+            />
             <FormalizationOrderDrawer
                 onNavigate={onNavigate}
                 onViewFull={() => {
@@ -452,7 +463,7 @@ function StageResponsibility({ item }: { readonly item: FollowUpItem }) {
 }
 
 const addendumBadges: Readonly<Partial<Record<string, ReactNode>>> = { pending: <Tag color="gold">Adéndum pendiente</Tag>, sent: <Tag color="blue">Adéndum enviado</Tag> };
-function FollowUpRow({ item, onOpen, showAddendum }: { readonly item: FollowUpItem; readonly onOpen: ((id: string) => void) | undefined; readonly showAddendum: boolean }) {
+function FollowUpRow({ item, onOpen, showAddendum, selection }: { readonly item: FollowUpItem; readonly onOpen: ((id: string) => void) | undefined; readonly showAddendum: boolean; readonly selection?: FollowUpSelectionModel | undefined }) {
     const id = `${item.source}:${item.id}`;
     const rowAccess = onOpen ? { className: "formalization-grid__row formalization-grid__row--openable", tabIndex: 0, label: `Abrir detalle de la orden ${item.number}` } : { className: "formalization-grid__row", tabIndex: undefined, label: undefined };
     return (
@@ -460,6 +471,7 @@ function FollowUpRow({ item, onOpen, showAddendum }: { readonly item: FollowUpIt
             className={rowAccess.className}
             data-finiquito={isFiniquitoOrder(item)}
             data-sale-lost={item.saleLost === true}
+            data-tone={stageToneOf(item.state.code)}
             tabIndex={rowAccess.tabIndex}
             aria-label={rowAccess.label}
             onClick={() => {
@@ -472,6 +484,7 @@ function FollowUpRow({ item, onOpen, showAddendum }: { readonly item: FollowUpIt
                 }
             }}
         >
+            <FollowUpSelectionCell item={item} selection={selection} />
             <td>
                 <strong className="formalization-grid__primary">{item.number}</strong>
                 <span className="formalization-grid__meta">{item.client ?? "Sin cliente"}</span>
@@ -494,15 +507,31 @@ function FollowUpRow({ item, onOpen, showAddendum }: { readonly item: FollowUpIt
         </tr>
     );
 }
-function FollowUpTable({ value, model, onOpen, showAddendum }: { readonly value: FollowUp; readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: ((id: string) => void) | undefined; readonly showAddendum: boolean }) {
+function FollowUpTable({ value, model, onOpen, showAddendum, selection }: { readonly value: FollowUp; readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: ((id: string) => void) | undefined; readonly showAddendum: boolean; readonly selection?: FollowUpSelectionModel | undefined }) {
     const { page, setPage, invalidate } = model;
     return (
         <>
             <div role="region" aria-label="Órdenes filtradas" className="formalization-grid-scroll" tabIndex={onOpen ? 0 : undefined}>
-                <table className="formalization-grid formalization-grid--orders">
+                <table className={`formalization-grid formalization-grid--orders${selection ? " formalization-grid--selectable" : ""}`}>
                     <caption className="formalization-sr">Operaciones pendientes de seguimiento</caption>
                     <thead>
                         <tr>
+                            {selection && (
+                                <th scope="col">
+                                    <input
+                                        type="checkbox"
+                                        aria-label="Seleccionar todas las órdenes filtradas"
+                                        checked={selection.all}
+                                        disabled={selection.loading || value.page.total === 0}
+                                        ref={(element) => {
+                                            if (element) element.indeterminate = !selection.all && selection.items.length > 0;
+                                        }}
+                                        onChange={() => {
+                                            void selection.toggleAll();
+                                        }}
+                                    />
+                                </th>
+                            )}
                             {columns.map((label) => (
                                 <th key={label} scope="col">
                                     {label}
@@ -512,11 +541,11 @@ function FollowUpTable({ value, model, onOpen, showAddendum }: { readonly value:
                     </thead>
                     <tbody>
                         {value.items.map((item) => (
-                            <FollowUpRow key={`${item.source}:${item.id}`} item={item} onOpen={onOpen} showAddendum={showAddendum} />
+                            <FollowUpRow key={`${item.source}:${item.id}`} item={item} onOpen={onOpen} showAddendum={showAddendum} selection={selection} />
                         ))}
                         {value.items.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="formalization-grid__empty">
+                                <td colSpan={selection ? 6 : 5} className="formalization-grid__empty">
                                     No hay órdenes para estos filtros.
                                 </td>
                             </tr>
@@ -562,4 +591,181 @@ function refreshFollowUp(model: ReturnType<typeof useFollowUp>, onRefresh: (() =
 function followUpQueueCount(value: FollowUp | null, queue: FollowUpQueue): string {
     if (queue === "addendum" && value?.counts.addendum === undefined) return "—";
     return String(value?.counts[queue] ?? 0);
+}
+
+interface FollowUpSelectionModel {
+    readonly items: readonly FollowUpItem[];
+    readonly all: boolean;
+    readonly loading: boolean;
+    readonly toggle: (item: FollowUpItem) => void;
+    readonly toggleAll: () => Promise<void>;
+}
+
+function FollowUpSelectionCell({ item, selection }: { readonly item: FollowUpItem; readonly selection: FollowUpSelectionModel | undefined }) {
+    if (!selection) return null;
+    return (
+        <td
+            onClick={(event) => {
+                event.stopPropagation();
+            }}
+            onKeyDown={(event) => {
+                event.stopPropagation();
+            }}
+        >
+            <input
+                type="checkbox"
+                aria-label={`Seleccionar orden ${item.number}`}
+                checked={selection.items.some((entry) => entry.source === item.source && entry.id === item.id)}
+                disabled={selection.loading}
+                onChange={() => {
+                    selection.toggle(item);
+                }}
+            />
+        </td>
+    );
+}
+
+function useFollowUpSelection(model: ReturnType<typeof useFollowUp>) {
+    const [items, setItems] = useState<readonly FollowUpItem[]>([]);
+    const [all, setAll] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [progress, setProgress] = useState({ loaded: 0, total: 0 });
+    const controller = useRef<AbortController | null>(null);
+    const generation = useRef(0);
+    const running = useRef(false);
+    useEffect(() => {
+        generation.current += 1;
+        return () => {
+            generation.current += 1;
+            controller.current?.abort();
+        };
+    }, []);
+    const clear = () => {
+        setItems([]);
+        setAll(false);
+    };
+    const toggle = (item: FollowUpItem) => {
+        setAll(false);
+        setItems((current) => (current.some((entry) => entry.source === item.source && entry.id === item.id) ? current.filter((entry) => entry.source !== item.source || entry.id !== item.id) : [...current, item]));
+    };
+    const toggleAll = async () => {
+        if (!model.value || running.current) return;
+        if (all) {
+            clear();
+            return;
+        }
+        const current = generation.current;
+        running.current = true;
+        setLoading(true);
+        setError(null);
+        setProgress({ loaded: 0, total: model.value.page.total });
+        const request = new AbortController();
+        controller.current = request;
+        const timeout = setTimeout(() => {
+            request.abort(new DOMException("La consulta tardó demasiado. Intenta de nuevo o reduce el filtro.", "TimeoutError"));
+        }, 30_000);
+        // La UI también se libera si una espera previa del cliente HTTP no alcanza a observar la señal.
+        const aborted = new Promise<never>((_resolve, reject) => {
+            request.signal.addEventListener(
+                "abort",
+                () => {
+                    const reason: unknown = request.signal.reason;
+                    reject(reason instanceof DOMException ? reason : new DOMException("Selección cancelada.", "AbortError"));
+                },
+                { once: true },
+            );
+        });
+        try {
+            const selection = getFollowUpSelection(model.value, request.signal, (loaded, total) => {
+                if (current === generation.current) setProgress({ loaded, total });
+            });
+            const selected = await Promise.race([selection, aborted]);
+            if (current !== generation.current) return;
+            setItems(selected);
+            setAll(true);
+        } catch (failure) {
+            request.abort();
+            if (current === generation.current) setError(selectionFailure(failure));
+        } finally {
+            clearTimeout(timeout);
+            controller.current = null;
+            running.current = false;
+            if (current === generation.current) setLoading(false);
+        }
+    };
+    const cancel = () => {
+        controller.current?.abort(new DOMException("Selección cancelada.", "AbortError"));
+    };
+    return { items, all, loading, error, progress, toggle, toggleAll, clear, cancel };
+}
+
+function selectionFailure(failure: unknown): string {
+    if (failure instanceof DOMException && failure.name === "TimeoutError") return failure.message;
+    if (failure instanceof DOMException && failure.name === "AbortError") return "Selección cancelada. Puedes volver a intentarlo.";
+    if (failure instanceof TypeError) return "Se perdió la conexión con el servidor. Espera a que esté disponible y vuelve a seleccionar las órdenes.";
+    return "No se pudieron seleccionar todas las órdenes. Actualiza el listado o reduce el filtro y vuelve a intentarlo.";
+}
+
+/** La selección abarca el filtro completo y sobrevive a la paginación; cambiar filtros o permisos la reinicia. */
+function SelectableFollowUp({ model, onOpen, showAddendum, canSelect, onSaved }: { readonly model: ReturnType<typeof useFollowUp>; readonly onOpen: ((id: string) => void) | undefined; readonly showAddendum: boolean; readonly canSelect: boolean; readonly onSaved: () => void }) {
+    const selection = useFollowUpSelection(model);
+    const [selected, setSelected] = useState<readonly FollowUpItem[] | null>(null);
+    return (
+        <>
+            {canSelect && (
+                <FollowUpSelectionToolbar
+                    selection={selection}
+                    available={model.value !== null}
+                    total={model.value?.page.total ?? 0}
+                    onMark={() => {
+                        setSelected(selection.items);
+                    }}
+                />
+            )}
+            <FollowUpBody model={model} onOpen={onOpen} showAddendum={showAddendum} selection={canSelect ? selection : undefined} />
+            {selected && (
+                <FormalizationBulkAddendum
+                    items={selected}
+                    onClose={() => {
+                        setSelected(null);
+                    }}
+                    onSaved={() => {
+                        selection.clear();
+                        onSaved();
+                    }}
+                />
+            )}
+        </>
+    );
+}
+
+function FollowUpSelectionToolbar({ selection, available, total, onMark }: { readonly selection: ReturnType<typeof useFollowUpSelection>; readonly available: boolean; readonly total: number; readonly onMark: () => void }) {
+    return (
+        <div className="formalization-toolbar formalization-selection-bar" data-active={selection.items.length > 0 ? "true" : undefined}>
+            <label>
+                <input
+                    type="checkbox"
+                    aria-label="Seleccionar todas las órdenes del filtro"
+                    checked={selection.all}
+                    disabled={selection.loading || total === 0}
+                    onChange={() => {
+                        void selection.toggleAll();
+                    }}
+                />{" "}
+                Seleccionar todas las órdenes del filtro
+            </label>
+            <Button className="formalization-selection-bar__action" disabled={[!selection.items.length, selection.loading, !available].some(Boolean)} loading={selection.loading} onClick={onMark}>
+                Marcar como adéndum pendiente
+            </Button>
+            <span role="status">{selection.loading ? `Seleccionando ${String(selection.progress.loaded)} de ${String(selection.progress.total)} órdenes…` : selection.items.length === 1 ? "1 orden seleccionada" : `${String(selection.items.length)} órdenes seleccionadas`}</span>
+            {selection.loading && <Button onClick={selection.cancel}>Cancelar selección</Button>}
+            {selection.items.length > 0 && (
+                <Button disabled={selection.loading} onClick={selection.clear}>
+                    Limpiar selección
+                </Button>
+            )}
+            {selection.error && <span role="alert">{selection.error}</span>}
+        </div>
+    );
 }

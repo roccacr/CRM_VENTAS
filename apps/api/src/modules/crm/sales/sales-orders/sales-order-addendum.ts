@@ -20,6 +20,7 @@ const identityInput = z.strictObject({ source: z.enum(["native", "legacy"]), id:
 const changeInput = identityInput.extend({ status: z.enum(["completed", "cancelled"]), expectedVersion: z.number().int().min(0).max(4294967294), operationId: z.uuid() });
 const sentInput = changeInput.omit({ status: true });
 const pendingInput = sentInput.extend({ note: z.string().trim().min(3).max(2000) });
+const selectionInput = z.strictObject({ orders: z.array(identityInput).min(1).max(100) });
 const futureInput = identityInput.extend({
     excludeEventId: z
         .string()
@@ -80,12 +81,41 @@ export class SalesOrderAddendumService {
 
     /** El permiso exacto viene del perfil vigente; Owner no sustituye una asignación de esta capacidad. */
     async markPending(session: string | undefined, input: unknown) {
+        return this.markPendingOrder(session, input, false);
+    }
+
+    /** La selección masiva renueva también un pendiente existente, sin omitir controles de integridad. */
+    async markPendingBulkItem(session: string | undefined, input: unknown) {
+        return this.markPendingOrder(session, input, true);
+    }
+
+    /** Consulta previa acotada: reutiliza la lectura vigente sin una petición HTTP por orden. */
+    async previewPendingSelection(session: string | undefined, input: unknown) {
+        const { profile, canUpdate, canMarkPending } = await this.authorize(session);
+        this.requireMarkerRead(profile);
+        if (!canMarkPending) throw new ForbiddenException("No tiene permiso para marcar un adéndum pendiente.");
+        const { orders } = parse(selectionInput, input);
+        const targets = orders.map((order) => parse(orderTimingIdentity, order));
+        const items = [];
+        for (const target of targets) {
+            try {
+                const order = await this.safely(() => this.repository.read(target));
+                items.push({ ...target, order: { ...this.repository.result(order), availableForPending: order.active, canUpdate, canMarkPending, canMarkSent: true } });
+            } catch {
+                items.push({ ...target, order: null });
+            }
+        }
+        return { items };
+    }
+
+    private async markPendingOrder(session: string | undefined, input: unknown, renewPending: boolean) {
         const { profile, canUpdate, canMarkPending } = await this.authorize(session);
         this.requireMarkerRead(profile);
         if (!canMarkPending) throw new ForbiddenException("No tiene permiso para marcar un adéndum pendiente.");
         const command = parse(pendingInput, input);
         const target = parse(orderTimingIdentity, command);
-        return this.safely(async () => ({ ...(await this.repository.markManually({ ...command, ...target, actorPublicId: profile.user.publicId, note: command.note })), canUpdate, canMarkPending, canMarkSent: true }));
+        const mark = { ...command, ...target, actorPublicId: profile.user.publicId, note: command.note };
+        return this.safely(async () => ({ ...(await (renewPending ? this.repository.markManually(mark, true) : this.repository.markManually(mark))), canUpdate, canMarkPending, canMarkSent: true }));
     }
 
     /**
@@ -196,6 +226,28 @@ export class SalesOrderAddendumController {
     @ApiOperation({ summary: "Mark the order addendum pending manually, without a calendar event" })
     markPending(@Req() request: CookieRequest, @Body() body: unknown) {
         return this.service.markPending(request.cookies[SESSION_COOKIE_NAME], body);
+    }
+
+    /** Una transacción por orden permite resultados parciales y reintentos idempotentes de la selección. */
+    @Post("pending/bulk-item")
+    @HttpCode(200)
+    @Header("Cache-Control", "no-store")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["formalizacion.orders.read", readPermission, markPermission] })
+    @ApiOperation({ summary: "Mark one selected order pending, including renewal of an existing pending marker" })
+    markPendingBulkItem(@Req() request: CookieRequest, @Body() body: unknown) {
+        return this.service.markPendingBulkItem(request.cookies[SESSION_COOKIE_NAME], body);
+    }
+
+    /** Solo lectura, protegida con los mismos grants y CSRF que la confirmación masiva. */
+    @Post("pending/preview")
+    @HttpCode(200)
+    @Header("Cache-Control", "no-store")
+    @RouteSecurity("permission")
+    @RequirePermission({ kind: "all", codes: ["formalizacion.orders.read", readPermission, markPermission] })
+    @ApiOperation({ summary: "Preview up to 100 selected addendum markers without changing orders" })
+    previewPendingSelection(@Req() request: CookieRequest, @Body() body: unknown) {
+        return this.service.previewPendingSelection(request.cookies[SESSION_COOKIE_NAME], body);
     }
 }
 

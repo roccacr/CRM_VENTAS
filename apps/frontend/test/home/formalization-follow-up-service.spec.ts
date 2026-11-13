@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { apiRequest } from "../../src/services/api/api-client";
-import { getFollowUp, getFormalizationOrderRecord } from "../../src/services/formalization/follow-up-service";
+import { getFollowUp, getFollowUpSelection, getFormalizationOrderRecord } from "../../src/services/formalization/follow-up-service";
 vi.mock("../../src/services/api/api-client", () => ({ apiRequest: vi.fn() }));
 const filters = { search: "", projectId: "", queue: "all" as const, page: 1, pageSize: 25 };
 const payload = () => ({
@@ -24,6 +24,40 @@ afterEach(() => {
 it("rejects malformed follow-up JSON rather than returning zero counts", async () => {
     vi.mocked(apiRequest).mockResolvedValue({ schemaVersion: 1 });
     await expect(getFollowUp(filters)).rejects.toThrow();
+});
+
+it("selects a fully loaded list immediately without reading it again", async () => {
+    vi.mocked(apiRequest).mockResolvedValue(payload());
+    const current = await getFollowUp(filters);
+    vi.mocked(apiRequest).mockClear();
+    expect(await getFollowUpSelection(current, new AbortController().signal, vi.fn())).toEqual(current.items);
+    expect(apiRequest).not.toHaveBeenCalled();
+});
+
+it("selects 449 filtered orders with progress and serial requests to respect the SQL time limit", async () => {
+    const data = payload();
+    vi.mocked(apiRequest).mockResolvedValue({ ...data, page: { ...data.page, total: 449, totalPages: 18 } });
+    const current = await getFollowUp({ ...filters, projectIds: ["project:1"] });
+    let active = 0;
+    let maximum = 0;
+    const seen: number[] = [];
+    vi.mocked(apiRequest).mockImplementation(async (path) => {
+        active += 1;
+        maximum = Math.max(maximum, active);
+        const page = Number(new URL(path, "https://example.test").searchParams.get("page"));
+        seen.push(page);
+        await Promise.resolve();
+        active -= 1;
+        const offset = (page - 1) * 100;
+        return { ...data, page: { number: page, size: 100, total: 449, totalPages: 5 }, items: Array.from({ length: Math.min(100, 449 - offset) }, (_, index) => ({ ...data.items[0], id: String(offset + index + 1) })) };
+    });
+    const progress = vi.fn();
+    const selected = await getFollowUpSelection(current, new AbortController().signal, progress);
+    expect(selected).toHaveLength(449);
+    expect(new Set(selected.map((entry) => entry.id)).size).toBe(449);
+    expect(seen).toEqual([1, 2, 3, 4, 5]);
+    expect(maximum).toBe(1);
+    expect(progress).toHaveBeenLastCalledWith(449, 449);
 });
 it("encodes opaque IDs and server filters without sorting native-first results locally", async () => {
     vi.stubEnv("DEV", false);

@@ -22,6 +22,9 @@ describe("Formalization Home security catalog", () => {
                               { code: "signature.manage", moduleCode: "formalizacion", actionCode: "manage", description: "Gestionar firmas" },
                               { code: "formalizacion.orders.stage.update", moduleCode: "formalizacion", actionCode: "stage_update", description: "Cambiar etapa" },
                               { code: "lead.read", moduleCode: "ventas", actionCode: "read", description: "Ver leads" },
+                              { code: "ventas.calendar.read", moduleCode: "ventas", actionCode: "read", description: "Calendario" },
+                              { code: "ventas.notes.read", moduleCode: "ventas", actionCode: "read", description: "Notas" },
+                              { code: "ventas.home.read", moduleCode: "ventas", actionCode: "read", description: "Permite ver Inicio de Ventas." },
                               ...["appointments", "calendar", "home", "leads"].map((section) => ({ code: `mercadeo.${section}.read`, moduleCode: "mercadeo", actionCode: "read", description: "Seccion de Mercadeo" })),
                               { code: "mercadeo.catalog_project.read", moduleCode: "mercadeo", actionCode: "read", description: "Ver proyectos" },
                           ]
@@ -50,7 +53,7 @@ describe("Formalization Home security catalog", () => {
                     .sort(),
             ).toEqual(["contract.review", "file.read", "formalizacion.catalog_project.read", "formalizacion.home.approvals.read", "formalizacion.orders.stage.update", "signature.manage"]);
             expect(views.find((view) => view.code === "home")).toMatchObject({ permissions: [expect.objectContaining({ name: "Banner pendiente de aprobaci\u00f3n de Formalizaci\u00f3n" })] });
-            expect(catalog.modules.find((module) => module.code === "ventas")?.views.map((view) => view.code)).toEqual(["lead"]);
+            expect(catalog.modules.find((module) => module.code === "ventas")?.views).toEqual([{ code: "home", name: "Inicio", permissions: [{ code: "ventas.home.read", name: "Ver Inicio", description: "Permite ver Inicio de Ventas.", sensitive: false }] }]);
             const marketingViews = catalog.modules.find((module) => module.code === "mercadeo")?.views ?? [];
             expect(marketingViews.map(({ code, name }) => ({ code, name }))).toEqual([
                 { code: "home", name: "Inicio" },

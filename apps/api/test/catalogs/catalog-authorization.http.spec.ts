@@ -60,7 +60,7 @@ const actions = [
 ];
 const secret = "catalog-http-cookie-secret";
 const session = "catalog-http-session";
-const cases = domains.flatMap((domain) => CATALOG_CONTEXT_MODULES.flatMap((context) => actions.map((action) => ({ domain, context, action, name: domain.code + "/" + context + "/" + action.name }))));
+const cases = domains.flatMap((domain) => CATALOG_CONTEXT_MODULES.filter((context) => context !== "ventas").flatMap((context) => actions.map((action) => ({ domain, context, action, name: domain.code + "/" + context + "/" + action.name }))));
 
 function createProfile(context: string, codes: string[] = []): IdentityProfile {
     return {
@@ -138,7 +138,7 @@ describe.each(["dedicated", "shared"] as const)("catalog exact HTTP authorizatio
             }
         }
         it.each(["none", "wrong-context", "read-only", "wrong-action", "deny", "allow-and-deny", "owner-label", "inactive-area"] as const)("rejects %s with zero writes", async (mode) => {
-            const otherContext = context === "ventas" ? "formalizacion" : "ventas";
+            const otherContext = "ventas";
             const codes = { none: [], "wrong-context": [otherContext + "." + definition.moduleCode + "." + action.grant], "read-only": [prefix + "read"], "wrong-action": [prefix + (action.grant === "inactivate" ? "update" : "inactivate")], deny: [], "allow-and-deny": [grant], "owner-label": [], "inactive-area": [grant] }[mode];
             profile = createProfile(context, codes);
             if (mode === "deny" || mode === "allow-and-deny") profile.permissions.push({ code: grant, effect: "deny", scope: null, source: "override" });

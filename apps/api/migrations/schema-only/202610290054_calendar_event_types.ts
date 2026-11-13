@@ -34,7 +34,7 @@ async function readTypes(tx: Kysely<unknown>): Promise<EventType[]> {
 /** Existing general configuration and inactive status are independently managed. */
 function planChanges(active: Module[], existing: EventType[]): Change[] {
     return active.flatMap((module) =>
-        CALENDAR_EVENT_TYPES.filter((type) => type.modulos.includes(module.code)).flatMap((definition): Change[] => {
+        CALENDAR_EVENT_TYPES.filter((type) => type.modulos.some((code) => code === module.code)).flatMap((definition): Change[] => {
             const matches = existing.filter((type) => type.moduleId === module.id && type.code === definition.codigo);
             if (matches.length > 1) throw new Error("Calendar event type identity conflict requires reconciliation");
             const before = matches[0] ?? null;

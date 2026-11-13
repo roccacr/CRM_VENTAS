@@ -7,11 +7,9 @@
  */
 import "./GlobalHomeShell.css";
 
-import AccountBookOutlined from "@ant-design/icons/AccountBookOutlined";
 import AppstoreOutlined from "@ant-design/icons/AppstoreOutlined";
 import AuditOutlined from "@ant-design/icons/AuditOutlined";
 import BankOutlined from "@ant-design/icons/BankOutlined";
-import CalculatorOutlined from "@ant-design/icons/CalculatorOutlined";
 import CalendarOutlined from "@ant-design/icons/CalendarOutlined";
 import CheckOutlined from "@ant-design/icons/CheckOutlined";
 import CloseOutlined from "@ant-design/icons/CloseOutlined";
@@ -20,7 +18,6 @@ import DatabaseOutlined from "@ant-design/icons/DatabaseOutlined";
 import DownOutlined from "@ant-design/icons/DownOutlined";
 import EnvironmentOutlined from "@ant-design/icons/EnvironmentOutlined";
 import FileProtectOutlined from "@ant-design/icons/FileProtectOutlined";
-import FileTextOutlined from "@ant-design/icons/FileTextOutlined";
 import FlagOutlined from "@ant-design/icons/FlagOutlined";
 import FolderOpenOutlined from "@ant-design/icons/FolderOpenOutlined";
 import FunnelPlotOutlined from "@ant-design/icons/FunnelPlotOutlined";
@@ -37,8 +34,6 @@ import SettingOutlined from "@ant-design/icons/SettingOutlined";
 import SolutionOutlined from "@ant-design/icons/SolutionOutlined";
 import TagsOutlined from "@ant-design/icons/TagsOutlined";
 import TeamOutlined from "@ant-design/icons/TeamOutlined";
-import UserAddOutlined from "@ant-design/icons/UserAddOutlined";
-import WalletOutlined from "@ant-design/icons/WalletOutlined";
 import Tooltip from "antd/es/tooltip";
 import type { FocusEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -82,17 +77,14 @@ const ADMINISTRATION_SECURITY_PERMISSION = "role.assign";
 const SALES_HOME_PATH = "/home/sales";
 const MARKETING_HOME_PATH = "/home/marketing";
 const FORMALIZATION_HOME_PATH = "/home/formalization";
-const ACCOUNTING_HOME_PATH = "/home/accounting";
 
 const WORKSPACE_MODULE_CODE_BY_WORKSPACE_CODE: Readonly<Record<string, string>> = {
-    accounting: "contabilidad",
     administration: "administration",
     formalization: "formalizacion",
     marketing: "mercadeo",
     sales: "ventas",
 };
 const CATALOG_CONTEXT_BY_WORKSPACE_CODE: Readonly<Record<string, string>> = {
-    accounting: "contabilidad",
     administration: "administration",
     formalization: "formalizacion",
     marketing: "mercadeo",
@@ -305,14 +297,7 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
         code: "sales",
         label: "Ventas",
         icon: <RiseOutlined />,
-        menuItems: [
-            { code: "sales-home", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "lead.read", routePath: SALES_HOME_PATH },
-            { code: "sales-leads", label: "Leads", icon: <UserAddOutlined />, requiredPermission: "lead.read", routePath: SALES_HOME_PATH },
-            { code: "sales-opportunities", label: "Oportunidades", icon: <FunnelPlotOutlined />, requiredPermission: "opportunity.read", routePath: SALES_HOME_PATH },
-            { code: "sales-estimates", label: "Estimaciones", icon: <CalculatorOutlined />, requiredPermission: "estimate.read", routePath: SALES_HOME_PATH },
-            { code: "sales-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "ventas.calendar.read", routePath: "/home/sales/calendar" },
-            { code: "sales-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("sales") },
-        ],
+        menuItems: [{ code: "sales-home", label: "Inicio", icon: <DashboardOutlined />, requiredPermission: "ventas.home.read", routePath: SALES_HOME_PATH }],
     },
     {
         code: "marketing",
@@ -336,18 +321,6 @@ export const ASSIGNED_WORKSPACES: readonly [WorkspaceProfile, ...WorkspaceProfil
             // Acceso de gestión oculto temporalmente: el seguimiento se concentra en Inicio. La ruta directa se conserva.
             { code: "formalization-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "formalizacion.calendar.read", routePath: `${FORMALIZATION_HOME_PATH}/calendar` },
             { code: "formalization-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("formalization") },
-        ],
-    },
-    {
-        code: "accounting",
-        label: "Contabilidad",
-        icon: <AccountBookOutlined />,
-        menuItems: [
-            { code: "accounting-home", label: "Resumen", icon: <DashboardOutlined />, requiredPermission: "wallet.read", routePath: ACCOUNTING_HOME_PATH },
-            { code: "accounting-wallet", label: "Cartera", icon: <WalletOutlined />, requiredPermission: "wallet.read", routePath: ACCOUNTING_HOME_PATH },
-            { code: "accounting-invoices", label: "Facturas", icon: <FileTextOutlined />, requiredPermission: "invoice.read", routePath: ACCOUNTING_HOME_PATH },
-            { code: "accounting-calendar", label: "Calendario", icon: <CalendarOutlined />, requiredPermission: "contabilidad.calendar.read", routePath: "/home/accounting/calendar" },
-            { code: "accounting-catalogs", label: "Catálogos", icon: <DatabaseOutlined />, children: buildCatalogMenuOptions("accounting") },
         ],
     },
 ];
@@ -524,6 +497,15 @@ const buildAllWorkspace = (allWorkspace: WorkspaceProfile, moduleWorkspaces: rea
     };
 };
 
+/** Estas áreas requieren membresía incluso cuando no hay ninguna otra asignada. */
+function hasSpecificWorkspaceAccess(code: string, modules: ReadonlySet<string>, roles: IdentityProfile["roles"]): boolean {
+    if (code === "sales") return hasSalesNavigationAccess(modules, roles);
+    return code !== "formalization" || modules.has("formalizacion");
+}
+
+/** Rol autorizado y módulo efectivo; el permiso de Inicio se filtra con el resto del menú. */
+const hasSalesNavigationAccess = (modules: ReadonlySet<string>, roles: IdentityProfile["roles"]): boolean => modules.has("ventas") && roles.some((role) => role.status === "active" && ["owner", "jefe_general", "jefe_ventas", "ventas"].includes(role.code));
+
 /**
  * Devuelve los perfiles que la UX puede mostrar.
  *
@@ -531,7 +513,7 @@ const buildAllWorkspace = (allWorkspace: WorkspaceProfile, moduleWorkspaces: rea
  * vacía todos los módulos, la lista sale vacía: no se rellena con el catálogo sin filtrar.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- Funcion pura cubierta por pruebas para el contrato de permisos efectivos.
-export const getVisibleNavigationWorkspaces = (permissions: readonly EffectiveNavigationPermission[], orgUnits: readonly NavigationOrgUnit[] = [], workspaces: readonly [WorkspaceProfile, ...WorkspaceProfile[]] = ASSIGNED_WORKSPACES): readonly WorkspaceProfile[] => {
+export const getVisibleNavigationWorkspaces = (permissions: readonly EffectiveNavigationPermission[], orgUnits: readonly NavigationOrgUnit[] = [], workspaces: readonly [WorkspaceProfile, ...WorkspaceProfile[]] = ASSIGNED_WORKSPACES, roles: IdentityProfile["roles"] = []): readonly WorkspaceProfile[] => {
     const allowedPermissions = getAllowedPermissionCodes(permissions);
     const activeOrgUnitCodes = new Set(orgUnits.filter((orgUnit) => orgUnit.status === "active").map((orgUnit) => orgUnit.code));
     const shouldFilterByOrgUnit = activeOrgUnitCodes.size > 0;
@@ -539,8 +521,7 @@ export const getVisibleNavigationWorkspaces = (permissions: readonly EffectiveNa
     const visibleModuleWorkspaces = moduleWorkspaces.flatMap((workspace) => {
         const moduleCode = WORKSPACE_MODULE_CODE_BY_WORKSPACE_CODE[workspace.code];
 
-        // Un Inicio sin permiso no muestra Formalización si no hay membresía activa del módulo.
-        if (workspace.code === "formalization" && !activeOrgUnitCodes.has("formalizacion")) return [];
+        if (!hasSpecificWorkspaceAccess(workspace.code, activeOrgUnitCodes, roles)) return [];
 
         if (shouldFilterByOrgUnit && moduleCode && !activeOrgUnitCodes.has(moduleCode)) {
             return [];
@@ -1465,7 +1446,7 @@ const getInitialWorkspaceProfile = (assignedWorkspaces: readonly WorkspaceProfil
  * el primero del catálogo sin ítems de menú para no mostrar accesos inexistentes.
  */
 export function GlobalHomeShell({ activeMenuItemCode, children, currentUser, effectivePermissions = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, initialWorkspaceCode, currentViewLabel, onLogout, onMenuItemSelect, onWorkspaceChange, orgUnits, roles }: GlobalHomeShellProps) {
-    const assignedWorkspaces = getVisibleNavigationWorkspaces(effectivePermissions, orgUnits);
+    const assignedWorkspaces = getVisibleNavigationWorkspaces(effectivePermissions, orgUnits, ASSIGNED_WORKSPACES, roles);
     const fallbackWorkspace = assignedWorkspaces[0] ?? { ...ASSIGNED_WORKSPACES[0], menuItems: [] };
     const initialWorkspace = getInitialWorkspaceProfile(assignedWorkspaces, fallbackWorkspace, initialWorkspaceCode);
     const [openMenuCode, setOpenMenuCode] = useState<string | null>(null);

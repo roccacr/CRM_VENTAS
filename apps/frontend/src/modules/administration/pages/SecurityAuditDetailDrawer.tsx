@@ -164,7 +164,7 @@ function AuditReferenceFacts({ detail }: { readonly detail: AuditDetail }) {
 /** Solo se enlazan rutas de sección que ya existen y tienen guarda. No es una URL de un registro concreto. */
 function auditSectionPath(detail: AuditDetail): string | null {
     if (!detail.contextKnown) return null;
-    const workspaces: Readonly<Record<string, string>> = { administration: "administration", ventas: "sales", mercadeo: "marketing", formalizacion: "formalization", contabilidad: "accounting" };
+    const workspaces: Readonly<Record<string, string>> = { administration: "administration", ventas: "sales", mercadeo: "marketing", formalizacion: "formalization" };
     const workspace = workspaces[String(detail.recordedModule)];
     if (!workspace) return null;
     if (detail.recordedSection === "catalogs") {

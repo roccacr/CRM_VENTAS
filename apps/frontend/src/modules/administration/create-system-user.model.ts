@@ -79,9 +79,9 @@ export const FALLBACK_CREATE_ROLE_OPTIONS: readonly CreateUserRoleOption[] = [
     { code: "jefe_general", locked: false, name: "Jefatura general", users: 0 },
     { code: "subjefe_area", locked: false, name: "Subjefe", users: 0 },
     { code: "ventas", locked: false, name: "Ventas", users: 0 },
+    { code: "jefe_ventas", locked: false, name: "Jefe de ventas", users: 0 },
     { code: "mercadeo", locked: false, name: "Mercadeo", users: 0 },
     { code: "formalizacion", locked: false, name: "Formalización", users: 0 },
-    { code: "contabilidad", locked: false, name: "Contabilidad", users: 0 },
 ];
 
 /** Áreas operativas de respaldo. No incluyen módulos de administración ni de estructura. */
@@ -89,7 +89,6 @@ export const FALLBACK_CREATE_MODULE_OPTIONS: readonly CreateUserModuleOption[] =
     { code: "ventas", name: "Ventas", views: [] },
     { code: "mercadeo", name: "Mercadeo", views: [] },
     { code: "formalizacion", name: "Formalización", views: [] },
-    { code: "contabilidad", name: "Contabilidad", views: [] },
 ];
 
 /** Formulario de alta vacío, con Microsoft y contraseña local marcados. */

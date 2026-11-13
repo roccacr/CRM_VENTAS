@@ -164,7 +164,6 @@ export function NotesInbox({ kind, status, query, refreshVersion, onOpenNote }: 
                             <option value="ventas">Ventas</option>
                             <option value="mercadeo">Mercadeo</option>
                             <option value="formalizacion">Formalización</option>
-                            <option value="contabilidad">Contabilidad</option>
                             <option value="administration">Administración</option>
                         </select>
                     </label>

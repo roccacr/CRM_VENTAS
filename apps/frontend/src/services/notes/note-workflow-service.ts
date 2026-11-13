@@ -92,7 +92,7 @@ function parseAvailableLocations(value: unknown): NoteLocation[] {
     const locations = (value as unknown[]).map((v) => {
         const r = record(v);
         const moduleCode = text(r.moduleCode);
-        if (!["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"].includes(moduleCode)) invalid();
+        if (!["ventas", "mercadeo", "formalizacion", "administration"].includes(moduleCode)) invalid();
         return { moduleCode: moduleCode as NoteModule, code: text(r.code, 80) };
     });
     if (new Set(locations.map((location) => `${location.moduleCode}:${location.code}`)).size !== locations.length) invalid();

@@ -131,25 +131,12 @@ it.each(["missing", "deny", "descriptor"])("does not expose Mercadeo quick creat
     expect(screen.queryByRole("button", { name: "Nuevo evento de Mercadeo" })).not.toBeInTheDocument();
 });
 
-it.each([
-    ["sales", "ventas", "Ventas"],
-    ["accounting", "contabilidad", "Contabilidad"],
-] as const)("opens the correct empty calendar from workspace %s", async (workspace, moduleCode, label) => {
-    const descriptor = { ...calendar, moduleCode, label, types: [{ id: "reunion", code: "reunion", label: "Reunión", color: "#000", formKey: `${moduleCode}.general.v1` }] };
-    vi.mocked(getCalendars).mockResolvedValue([calendar, descriptor]);
-    render(
-        shell({
-            initialWorkspaceCode: workspace,
-            orgUnits: [{ code: moduleCode, status: "active" }],
-            effectivePermissions: [
-                { code: `${moduleCode}.home.read`, effect: "allow" },
-                { code: `${moduleCode}.calendar.read`, effect: "allow" },
-            ],
-        }),
-    );
-    fireEvent.click(await screen.findByRole("button", { name: `Nuevo evento de ${label}` }));
-    expect(vi.mocked(CalendarEventDrawer).mock.calls.at(-1)?.[0]).toMatchObject({ event: null, currentModule: moduleCode, calendar: descriptor });
+it("does not expose quick create for the retired Accounting workspace", () => {
+    render(<FormalizationCalendarQuickCreate workspaceCode="accounting" permissions={[{ code: "contabilidad.calendar.read", effect: "allow" }]} />);
+    expect(screen.queryByRole("button", { name: "Nuevo evento de Contabilidad" })).not.toBeInTheDocument();
+    expect(getCalendars).not.toHaveBeenCalled();
 });
+
 it("restores Formalización after switching back from Mercadeo and closes the previous draft", async () => {
     vi.mocked(getCalendars).mockResolvedValue([calendar, marketingCalendar]);
     const props = {

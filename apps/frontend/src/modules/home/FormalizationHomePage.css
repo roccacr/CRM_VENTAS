@@ -871,6 +871,31 @@
     width: 22%;
 }
 
+.formalization-grid--selectable th:nth-child(1) {
+    width: 44px;
+}
+.formalization-grid--selectable th:nth-child(2) {
+    width: 18%;
+}
+.formalization-grid--selectable th:nth-child(3) {
+    width: 14%;
+}
+.formalization-grid--selectable th:nth-child(4) {
+    width: 24%;
+}
+.formalization-grid--selectable th:nth-child(5) {
+    width: 18%;
+}
+.formalization-grid--selectable th:nth-child(6) {
+    width: 21%;
+}
+.formalization-grid--selectable input[type="checkbox"],
+.formalization-toolbar input[type="checkbox"] {
+    min-width: 20px;
+    min-height: 20px;
+    cursor: pointer;
+}
+
 .formalization-grid__row {
     cursor: pointer;
 }
@@ -1591,6 +1616,177 @@
 .formalization-modal__context strong {
     color: var(--color-neutral-900);
     font-weight: 650;
+}
+
+/* La selección masiva comparte el tema del portal, con órdenes y motivo en superficies separadas. */
+.formalization-bulk-addendum .ant-modal-body {
+    gap: var(--space-4);
+}
+.formalization-bulk-addendum__intro {
+    display: grid;
+    gap: var(--space-2);
+}
+.formalization-bulk-addendum__count {
+    color: var(--color-neutral-900);
+    font-weight: 600;
+}
+.formalization-bulk-addendum__intro p {
+    color: var(--formalization-muted);
+}
+.formalization-bulk-addendum__orders {
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--formalization-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    scrollbar-width: thin;
+}
+.formalization-bulk-addendum__orders:focus-visible {
+    outline: 2px solid var(--formalization-focus);
+    outline-offset: 2px;
+}
+.formalization-bulk-addendum__table {
+    min-width: 520px;
+}
+.formalization-bulk-addendum__table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.formalization-bulk-addendum__table th:first-child {
+    width: 38%;
+}
+.formalization-bulk-addendum__table th:nth-child(2) {
+    width: 30%;
+}
+.formalization-bulk-addendum__primary {
+    display: block;
+    color: var(--color-neutral-900);
+    font-weight: 600;
+}
+.formalization-bulk-addendum__secondary {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--formalization-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.formalization-bulk-addendum__status {
+    display: inline-block;
+    padding: 2px var(--space-2);
+    border-radius: 4px;
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-700);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.formalization-bulk-addendum__status[data-state="marked"] {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+.formalization-bulk-addendum__status[data-state="uncertain"] {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+.formalization-bulk-addendum__status[data-state="blocked"],
+.formalization-bulk-addendum__status[data-state="failed"] {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+.formalization-bulk-addendum__notice {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--formalization-border);
+    border-left: 3px solid var(--color-warning);
+    border-radius: var(--radius);
+    background: var(--color-warning-light);
+}
+.formalization-bulk-addendum__notice ul {
+    margin: var(--space-2) 0;
+    padding-left: var(--space-4);
+}
+.formalization-bulk-addendum__notice li + li {
+    margin-top: var(--space-2);
+}
+.formalization-bulk-addendum__reason > label {
+    display: grid;
+    gap: var(--space-2);
+    color: var(--color-neutral-900);
+    font-weight: 600;
+}
+.formalization-bulk-addendum__reason > p {
+    color: var(--formalization-muted);
+    font-size: 12px;
+}
+.formalization-bulk-addendum__summary {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--formalization-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    .formalization-bulk-addendum {
+        top: 16px;
+        padding-bottom: 16px;
+    }
+    .formalization-bulk-addendum .ant-modal-container,
+    .formalization-bulk-addendum .ant-modal-content {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100dvh - 48px);
+    }
+    .formalization-bulk-addendum .ant-modal-header,
+    .formalization-bulk-addendum .ant-modal-footer {
+        flex-shrink: 0;
+    }
+    .formalization-bulk-addendum .ant-modal-body {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+    .formalization-bulk-addendum .ant-modal-body > * {
+        flex-shrink: 0;
+    }
+    .formalization-bulk-addendum__table {
+        display: block;
+        min-width: 0;
+    }
+    .formalization-bulk-addendum__table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+    .formalization-bulk-addendum__table tbody {
+        display: block;
+    }
+    .formalization-bulk-addendum__table tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: var(--space-3);
+        padding: var(--space-3);
+        border-bottom: 1px solid var(--formalization-border);
+    }
+    .formalization-bulk-addendum__table tr:last-child {
+        border-bottom: 0;
+    }
+    .formalization-bulk-addendum__table tbody td {
+        padding: 0;
+        border: 0;
+    }
+    .formalization-bulk-addendum__table td:last-child {
+        grid-column: 1 / -1;
+    }
+    .formalization-bulk-addendum__table td::before {
+        display: block;
+        margin-bottom: var(--space-1);
+        color: var(--formalization-muted);
+        font-size: 12px;
+        content: attr(data-label);
+    }
 }
 
 /* Formulario: secciones blancas con perímetro 200, etiquetas 13px/600 700 y controles 40px con borde 500. */
@@ -5810,4 +6006,678 @@ h1 [data-finiquito="true"] {
 .formalization-grid__row[data-sale-lost="true"] > td,
 .formalization-grid__row[data-sale-lost="true"] > td * {
     color: #820014;
+}
+
+/* ===== Barra de selección: una línea contextual con estado claro y la acción principal a la derecha ===== */
+.formalization-home .formalization-followup .formalization-selection-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    min-height: 44px;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--ent-divider, #e4e9f2);
+    background: #fff;
+}
+.formalization-home .formalization-followup .formalization-selection-bar[data-active="true"] {
+    background: var(--ent-tint, #f5f7fa);
+}
+
+/* Seleccionar todo: casilla y texto compactos. */
+.formalization-selection-bar > label {
+    display: inline-flex;
+    order: 1;
+    align-items: center;
+    gap: 8px;
+    color: #3c4f68;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.formalization-selection-bar input[type="checkbox"],
+.formalization-grid--selectable input[type="checkbox"] {
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    min-height: 16px;
+    margin: 0;
+    accent-color: #18222f;
+    cursor: pointer;
+}
+.formalization-selection-bar input[type="checkbox"]:disabled,
+.formalization-grid--selectable input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+}
+
+/* Estado: una pastilla; oscura cuando hay órdenes seleccionadas. */
+.formalization-selection-bar > [role="status"] {
+    order: 2;
+    padding: 2px 10px;
+    border: 1px solid var(--ent-divider, #dfe5ee);
+    border-radius: 999px;
+    background: var(--ent-tint, #f5f7fa);
+    color: #6b7a90;
+    font-size: 11.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.formalization-selection-bar[data-active="true"] > [role="status"] {
+    border-color: #18222f;
+    background: #18222f;
+    color: #fff;
+}
+
+/* Botones: misma altura; limpiar/cancelar secundarios, la acción principal a la derecha. */
+.formalization-selection-bar .ant-btn {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.formalization-selection-bar > .ant-btn:not(.formalization-selection-bar__action) {
+    order: 3;
+    border-color: #c3ccd9;
+    color: #3c4f68;
+}
+.formalization-selection-bar .formalization-selection-bar__action {
+    order: 4;
+    margin-left: auto;
+}
+.formalization-selection-bar .formalization-selection-bar__action:not(:disabled) {
+    border-color: #18222f;
+    background: #18222f;
+    color: #fff;
+}
+.formalization-selection-bar .formalization-selection-bar__action:not(:disabled):hover {
+    border-color: #3c4f68;
+    background: #3c4f68;
+    color: #fff;
+}
+.formalization-selection-bar > [role="alert"] {
+    order: 5;
+    flex-basis: 100%;
+    color: #a61d24;
+    font-size: 12px;
+}
+
+/* ===== Venta caída y finiquito: misma línea (blanco, divisores finos, rojo solo como acento) ===== */
+/* Tarjeta: con órdenes por gestionar toma un fondo rojizo muy suave, igual que las pendientes toman el ámbar. */
+.formalization-home .formalization-settlement-banner[data-attention="true"] {
+    border-color: #f1cbc8;
+    border-left-color: #cf1322;
+    background: #fff7f6;
+}
+.formalization-home .formalization-settlement-banner[data-attention="true"] .formalization-title-help {
+    border-bottom-color: #f4d9d7;
+}
+.formalization-home .formalization-settlement-banner .formalization-banner__value[data-empty="true"] {
+    color: #9aa6b8;
+}
+.formalization-home .formalization-settlement-banner .formalization-banner__value:not([data-empty="true"]) {
+    color: #cf1322;
+    font-weight: 700;
+}
+
+/* Filas de ventas caídas en la tabla: fila blanca con una barra roja a la izquierda en lugar de pintarla entera de rosa. */
+.formalization-home .formalization-followup .formalization-grid__row[data-finiquito="true"] > td {
+    background: transparent;
+    color: inherit;
+}
+.formalization-home .formalization-followup .formalization-grid__row[data-finiquito="true"] > td:first-child {
+    box-shadow: inset 3px 0 0 #cf1322;
+}
+.formalization-home .formalization-followup .formalization-grid__row[data-finiquito="true"]:hover > td {
+    background: var(--ent-tint, #f5f7fa);
+}
+
+/* Ventana de ventas caídas: tabla compacta con encabezado tint y acción secundaria. */
+.formalization-finiquito-table table {
+    border: 1px solid #d2dae5;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.formalization-finiquito-table th {
+    padding: 8px 14px;
+    border-bottom: 1px solid #c3ccd9;
+    background: var(--ent-tint, #f5f7fa);
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.formalization-finiquito-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--ent-divider, #e4e9f2);
+    color: #3c4f68;
+    font-size: 13px;
+}
+.formalization-finiquito-table tbody tr {
+    background: #fff;
+    color: inherit;
+}
+.formalization-finiquito-table tbody tr:hover {
+    background: var(--ent-tint, #f5f7fa);
+}
+.formalization-finiquito-table tbody tr > td:first-child {
+    box-shadow: inset 3px 0 0 #cf1322;
+}
+.formalization-finiquito-table td:first-child strong {
+    color: #18222f;
+}
+.formalization-finiquito-table .ant-btn {
+    height: 28px;
+    padding: 0 12px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    color: #3c4f68;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.formalization-finiquito-table .ant-btn:hover {
+    border-color: #18222f;
+    color: #18222f;
+}
+
+/* ===== Mismo concepto de marca que la barra superior y el login, en el inicio de Formalización ===== */
+/* Fondo del área de contenido: degradado azul grisáceo, intenso a la derecha y diluido hacia la izquierda. Solo en esta vista. */
+.global-home-stage:has(.formalization-home) {
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 18%) 0%, rgb(73 97 128 / 8%) 34%, rgb(73 97 128 / 2%) 66%, rgb(255 255 255 / 0%) 84%);
+    background-attachment: local;
+}
+
+/* Franja de bienvenida: degradado tenue en el mismo sentido y la línea de etapas siguiendo su contorno. */
+.formalization-home .formalization-welcome {
+    position: relative;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 9%) 0%, rgb(73 97 128 / 3%) 45%, rgb(255 255 255 / 0%) 80%);
+}
+.formalization-home .formalization-welcome::after {
+    position: absolute;
+    inset: -1px;
+    padding: 3px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    clip-path: inset(calc(100% - 10px) 0 0 0);
+    content: "";
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    -webkit-mask-composite: xor;
+}
+
+/* ===== Tabla de seguimiento: mismo concepto de marca (color por etapa, degradado y línea de etapas) ===== */
+/* Cada fila lleva en su borde izquierdo el color de su etapa, el mismo de las tarjetas de Inicio y de la pastilla. */
+.formalization-home .formalization-followup .formalization-grid__row[data-tone] > td:first-child {
+    box-shadow: inset 3px 0 0 transparent;
+}
+.formalization-home .formalization-followup .formalization-grid__row[data-tone="pending"] > td:first-child {
+    box-shadow: inset 3px 0 0 #d99a3d;
+}
+.formalization-home .formalization-followup .formalization-grid__row[data-tone="neutral"] > td:first-child {
+    box-shadow: inset 3px 0 0 #7f93ad;
+}
+.formalization-home .formalization-followup .formalization-grid__row[data-tone="success"] > td:first-child {
+    box-shadow: inset 3px 0 0 #3f9a6f;
+}
+.formalization-home .formalization-followup .formalization-grid__row[data-sale-lost="true"] > td:first-child {
+    box-shadow: inset 3px 0 0 #cf1322;
+}
+
+/* Cabecera de la tarjeta: degradado tenue de derecha a izquierda y, arriba, la línea de etapas siguiendo el contorno. */
+.formalization-home .formalization-followup.formalization-surface {
+    position: relative;
+}
+.formalization-home .formalization-followup .formalization-surface__header {
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 8%) 0%, rgb(73 97 128 / 2%) 50%, rgb(255 255 255 / 0%) 85%);
+}
+.formalization-home .formalization-followup.formalization-surface::after {
+    position: absolute;
+    inset: 0;
+    padding: 3px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    clip-path: inset(0 0 calc(100% - 10px) 0);
+    content: "";
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    -webkit-mask-composite: xor;
+}
+
+/* ===== Vista completa de la orden: mismo lenguaje que el detalle (acento de etapa, tarjetas, botones, cabecera) ===== */
+.formalization-home .formalization-order {
+    --order-accent: #a7b5ca;
+}
+.formalization-home .formalization-order[data-tone="pending"] {
+    --order-accent: #d99a3d;
+}
+.formalization-home .formalization-order[data-tone="neutral"] {
+    --order-accent: #7f93ad;
+}
+.formalization-home .formalization-order[data-tone="success"] {
+    --order-accent: #3f9a6f;
+}
+
+/* Cabecera de la página: degradado tenue y la línea con el color de la etapa bajo el título. */
+.formalization-home .formalization-order > .formalization-page-header {
+    position: relative;
+    padding-bottom: 12px;
+}
+.formalization-home .formalization-order > .formalization-page-header::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgb(73 97 128 / 0%) 0%, var(--order-accent) 100%);
+    content: "";
+    pointer-events: none;
+}
+
+/* Cada bloque de la orden: borde fino, 6 px y barra izquierda con el color de la etapa. */
+.formalization-home .formalization-order .formalization-card,
+.formalization-home .formalization-order .ant-card,
+.formalization-home .formalization-order .record-summary-card,
+.formalization-home .formalization-order .record-quick-actions,
+.formalization-home .formalization-order .record-chapter,
+.formalization-home .formalization-order .formalization-record-progress,
+.formalization-home .formalization-order .formalization-stage-editor,
+.formalization-home .formalization-order .formalization-process {
+    border-left: 3px solid var(--order-accent);
+    border-radius: 6px;
+}
+.formalization-home .formalization-order .formalization-finiquito.ant-card {
+    border-left-color: #a93e38;
+}
+
+/* Botones: una altura y borde fino; la acción de avanzar en oscuro. */
+.formalization-home .formalization-order .ant-btn:not(.formalization-back):not(.ant-btn-text):not(.ant-btn-link) {
+    height: 32px;
+    padding: 0 12px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    color: #3c4f68;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.formalization-home .formalization-order .ant-btn:not(:disabled):not(.formalization-back):not(.ant-btn-text):hover {
+    border-color: #18222f;
+    color: #18222f;
+}
+.formalization-home .formalization-order .formalization-advance-btn:not(:disabled) {
+    border-color: #18222f;
+    background: #18222f;
+    color: #fff;
+}
+.formalization-home .formalization-order .formalization-advance-btn:not(:disabled):hover {
+    border-color: #3c4f68;
+    background: #3c4f68;
+    color: #fff;
+}
+.formalization-home .formalization-order .record-rail__money,
+.formalization-home .formalization-order .record-rail__checks {
+    border-left: 3px solid var(--order-accent);
+    border-radius: 6px;
+}
+
+/* ===== Vista completa: el acento llega a todos los bloques y cada título queda unido a su dato ===== */
+/* Bloques que faltaban: detalles adicionales, tabla de líneas y los cuadros de cada grupo de datos. */
+.formalization-home .formalization-order .record-details,
+.formalization-home .formalization-order .record-items {
+    border-left: 3px solid var(--order-accent);
+    border-radius: 6px;
+}
+.formalization-home .formalization-order .record-group[aria-label] {
+    border-left: 2px solid color-mix(in srgb, var(--order-accent) 55%, #fff);
+}
+
+/* Filas «título · dato»: el título más cerca del dato y una línea punteada que lleva el ojo de uno al otro. */
+.formalization-order .record-group[aria-label] .record-field,
+.formalization-order .record-group[aria-label] .record-field[data-span],
+.formalization-order .record-details__panel .record-group[aria-label] .record-field,
+.formalization-order .record-details__panel .record-group[aria-label] .record-field[data-span] {
+    grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+    border-radius: 3px;
+}
+.formalization-order .record-group[aria-label] .record-field:hover {
+    background: var(--ent-tint, #f5f7fa);
+}
+.formalization-order .record-group[aria-label] .record-field dt {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+.formalization-order .record-group[aria-label] .record-field dt::after {
+    flex: 1 1 12px;
+    min-width: 12px;
+    border-bottom: 1px dotted #b9c4d4;
+    content: "";
+    transform: translateY(-3px);
+}
+
+/* Resumen de la orden (tercio): etiqueta de ancho acotado y la misma línea guía hacia el valor. */
+@media (min-width: 1101px) {
+    .formalization-order .record-overview .record-summary-card .record-highlights > div,
+    .formalization-order .record-overview .record-summary-card .record-highlights > div[data-wide="true"] {
+        grid-template-columns: minmax(0, clamp(110px, 30%, 200px)) minmax(0, 1fr);
+    }
+    .formalization-order .record-overview .record-summary-card .record-highlights > div:hover {
+        background: var(--ent-tint, #f5f7fa);
+    }
+    .formalization-order .record-overview .record-summary-card .record-highlights dt {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+    .formalization-order .record-overview .record-summary-card .record-highlights dt::after {
+        flex: 1 1 12px;
+        min-width: 12px;
+        border-bottom: 1px dotted #b9c4d4;
+        content: "";
+        transform: translateY(-3px);
+    }
+}
+
+/* Dinero y checks del costado: la misma línea guía entre concepto y cifra. */
+.formalization-order .record-rail__money dl > div {
+    align-items: baseline;
+}
+.formalization-order .record-rail__money dt {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: baseline;
+    gap: 8px;
+}
+.formalization-order .record-rail__money dt::after {
+    flex: 1 1 12px;
+    min-width: 12px;
+    border-bottom: 1px dotted #b9c4d4;
+    content: "";
+    transform: translateY(-3px);
+}
+.formalization-order .record-rail__money .is-total dt::after {
+    border-bottom-style: solid;
+}
+
+/* ===== Ventanas de Formalización (marcar adéndum y otras): mismo lenguaje que el resto ===== */
+/* Cabecera con el degradado de la marca y la línea de etapas; pie con degradado tenue. */
+.formalization-modal .ant-modal-header {
+    position: relative;
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 14%) 0%, rgb(73 97 128 / 5%) 45%, rgb(255 255 255 / 0%) 85%);
+}
+.formalization-modal .ant-modal-header::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(168 99 8 / 0%) 0%, rgb(168 99 8 / 70%) 42%, rgb(73 97 128 / 80%) 72%, rgb(20 120 73 / 90%) 100%);
+    content: "";
+    pointer-events: none;
+}
+.formalization-modal .ant-modal-title {
+    color: #18222f;
+    font-size: 15px;
+    font-weight: 700;
+}
+.formalization-modal .ant-modal-footer {
+    border-top: 1px solid var(--ent-divider, #e4e9f2);
+    background-image: linear-gradient(270deg, rgb(73 97 128 / 8%) 0%, rgb(73 97 128 / 2%) 50%, rgb(255 255 255 / 0%) 85%);
+}
+.formalization-modal .ant-modal-footer .ant-btn {
+    height: 32px;
+    padding: 0 14px;
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    color: #3c4f68;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.formalization-modal .ant-modal-footer .ant-btn-primary:not(:disabled) {
+    border-color: #18222f;
+    background: #18222f;
+    color: #fff;
+}
+.formalization-modal .ant-modal-footer .ant-btn-primary:not(:disabled):hover {
+    border-color: #3c4f68;
+    background: #3c4f68;
+    color: #fff;
+}
+.formalization-modal .ant-modal-footer .ant-btn:disabled {
+    border-color: #d2dae5;
+    background: #eef1f6;
+    color: #9aa6b8;
+}
+
+/* Marcar adéndum en bloque: cantidad como pastilla, tabla compacta y motivo en su propia tarjeta con acento. */
+.formalization-bulk-addendum__count {
+    display: inline-block;
+    justify-self: start;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #18222f;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.formalization-bulk-addendum__intro p {
+    margin: 0;
+    color: #6b7a90;
+    font-size: 12.5px;
+}
+.formalization-bulk-addendum__orders {
+    border-color: #d2dae5;
+    border-left: 3px solid #d99a3d;
+    border-radius: 6px;
+}
+.formalization-bulk-addendum__table th {
+    padding: 8px 14px;
+    border-bottom: 1px solid #c3ccd9;
+    background: var(--ent-tint, #f5f7fa);
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.formalization-bulk-addendum__table td {
+    padding: 8px 14px;
+}
+.formalization-bulk-addendum__primary {
+    font-size: 13px;
+    font-weight: 700;
+}
+.formalization-bulk-addendum__status {
+    border: 1px solid var(--ent-divider, #dfe5ee);
+    border-radius: 999px;
+    background: var(--ent-tint, #f5f7fa);
+    color: #3c4f68;
+}
+.formalization-bulk-addendum__reason {
+    padding: 12px 14px;
+    border: 1px solid #d2dae5;
+    border-left: 3px solid #7f93ad;
+    border-radius: 6px;
+    background: #fff;
+}
+.formalization-bulk-addendum__reason > label {
+    color: #6b7a90;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.formalization-bulk-addendum__reason textarea {
+    border-color: #c3ccd9;
+    border-radius: 6px;
+    color: #18222f;
+    font-size: 12.5px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.formalization-bulk-addendum__reason textarea:focus-visible {
+    border-color: #18222f;
+    outline: 2px solid #18222f;
+    outline-offset: 1px;
+}
+.formalization-bulk-addendum__notice {
+    border-radius: 6px;
+}
+
+/* ===== Filas «título · dato» como una ficha: columna fija de títulos en gris claro y los datos alineados contra ella ===== */
+/* Sin líneas punteadas: con títulos de distinto largo cada línea terminaba en un punto distinto y el bloque se veía irregular. */
+.formalization-order .record-group[aria-label] .record-field dt::after,
+.formalization-order .record-overview .record-summary-card .record-highlights dt::after {
+    content: none;
+}
+
+/* Resumen de la orden. */
+@media (min-width: 1101px) {
+    .formalization-order .record-overview .record-summary-card .record-highlights > div,
+    .formalization-order .record-overview .record-summary-card .record-highlights > div[data-wide="true"] {
+        grid-template-columns: 168px minmax(0, 1fr);
+        gap: 0;
+        align-items: stretch;
+        padding: 0;
+    }
+    .formalization-order .record-overview .record-summary-card .record-highlights dt {
+        display: flex;
+        align-items: flex-start;
+        padding: 9px 14px;
+        border-right: 1px solid var(--ent-divider, #e4e9f2);
+        background: var(--ent-tint, #f5f7fa);
+        color: #6b7a90;
+        font-size: 11.5px;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+    .formalization-order .record-overview .record-summary-card .record-highlights dd {
+        align-self: center;
+        padding: 9px 14px;
+        color: #18222f;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.45;
+    }
+    .formalization-order .record-overview .record-summary-card .record-highlights > div:hover {
+        background: transparent;
+    }
+}
+
+/* Grupos de datos de cada capítulo y de las pestañas: una ficha con la misma columna de títulos. */
+.formalization-order .record-group[aria-label] dl {
+    overflow: hidden;
+    border: 1px solid #d2dae5;
+    border-radius: 6px;
+    background: #fff;
+}
+.formalization-order .record-group[aria-label] .record-field,
+.formalization-order .record-group[aria-label] .record-field[data-span],
+.formalization-order .record-details__panel .record-group[aria-label] .record-field,
+.formalization-order .record-details__panel .record-group[aria-label] .record-field[data-span] {
+    grid-template-columns: clamp(124px, 38%, 190px) minmax(0, 1fr);
+    gap: 0;
+    align-items: stretch;
+    padding: 0;
+    border-radius: 0;
+}
+.formalization-order .record-group[aria-label] .record-field dt {
+    align-items: flex-start;
+    gap: 6px;
+    padding: 8px 12px;
+    border-right: 1px solid var(--ent-divider, #e4e9f2);
+    background: var(--ent-tint, #f5f7fa);
+    color: #6b7a90;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.formalization-order .record-group[aria-label] .record-field dd {
+    align-self: center;
+    padding: 8px 12px;
+    line-height: 1.45;
+}
+.formalization-order .record-group[aria-label] .record-field:hover {
+    background: transparent;
+}
+.formalization-order .record-group[aria-label] .record-field:hover dd {
+    background: #fbfcfe;
+}
+
+/* Datos que son enlaces: mismo peso y color que el resto; el subrayado fino indica que se pueden abrir. */
+.formalization-order .record-client-link {
+    color: #18222f;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: #7f93ad;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
+.formalization-order .record-client-link:hover {
+    text-decoration-color: #18222f;
+}
+
+/* ===== Acciones de la etapa (vista completa): una fila compacta de acciones y la etapa actual con el color de su etapa ===== */
+/* Etapa actual: la pastilla toma el color de la etapa de la orden, no un ámbar fijo. */
+.formalization-home .formalization-order .formalization-stage-editor__head > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border: 1px solid color-mix(in srgb, var(--order-accent) 55%, #fff);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--order-accent) 14%, #fff);
+    color: #18222f;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.formalization-home .formalization-order .formalization-stage-editor__head > span::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--order-accent);
+    content: "";
+}
+
+/* Las acciones en una sola fila: botones del mismo ancho y la nota («Volverá a…») a continuación. */
+.formalization-home .formalization-order .formalization-stage-editor .formalization-stage-editor__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin-top: 10px;
+}
+.formalization-home .formalization-order .formalization-stage-editor .formalization-stage-editor__advance {
+    display: contents;
+}
+.formalization-home .formalization-order .formalization-stage-editor .formalization-stage-editor__actions .ant-btn {
+    order: 1;
+    min-width: 168px;
+    justify-content: center;
+}
+.formalization-home .formalization-order .formalization-stage-editor .formalization-stage-editor__actions .formalization-stage-editor__advance > span {
+    order: 5;
+    flex: 0 1 auto;
+    margin: 0;
+    padding: 5px 12px;
+    border: 1px solid var(--ent-divider, #dfe5ee);
+    border-left: 3px solid color-mix(in srgb, var(--order-accent) 60%, #fff);
+    border-radius: 6px;
+    background: var(--ent-tint, #f5f7fa);
+    color: #6b7a90;
+    font-size: 12px;
+}
+.formalization-home .formalization-order .formalization-stage-editor .formalization-stage-editor__actions .formalization-stage-editor__advance > span strong {
+    color: #18222f;
+}
+.formalization-home .formalization-order .formalization-stage-editor > :last-child {
+    margin-bottom: 10px;
 }

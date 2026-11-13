@@ -66,7 +66,9 @@ it("retries an unavailable addendum count instead of showing a false zero", asyn
     installBrowserApiDoubles();
     vi.mocked(getPendingAddendumCount).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(4);
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[addendumBanner, ...addendumRead]} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Reintentar pendientes de adéndum" }));
+    await screen.findByLabelText("Órdenes pendientes de adéndum: No disponible");
+    expect(screen.queryByRole("button", { name: "Reintentar pendientes de adéndum" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Recargar banners" }));
     await screen.findByLabelText("Órdenes pendientes de adéndum: 4");
 });
 it("starts a fresh pending count when refreshed during an older request", async () => {
@@ -97,7 +99,9 @@ it("retries failed approvals before opening the empty queue", async () => {
     installBrowserApiDoubles();
     vi.mocked(getApprovalCount).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(2);
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Reintentar pendientes de aprobación" }));
+    await screen.findByLabelText("Órdenes pendientes de aprobación: No disponible");
+    expect(screen.getByRole("button", { name: "Ver pendientes de aprobación de Formalización" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Recargar banners" }));
     await screen.findByLabelText("Órdenes pendientes de aprobación: 2");
     expect(getApprovalCount).toHaveBeenCalledTimes(2);
 });
@@ -168,23 +172,22 @@ it("shows unavailable rather than zero on source failure", async () => {
     installBrowserApiDoubles();
     vi.mocked(getApprovalCount).mockRejectedValue(new Error("offline"));
     render(<FormalizationHomePage roles={[role]} effectivePermissions={[{ code: "formalizacion.home.approvals.read", effect: "allow" }]} />);
-    await waitFor(() => {
-        expect(screen.getByText("No disponible")).toBeInTheDocument();
-    });
+    expect(await screen.findByLabelText("Órdenes pendientes de aprobación: No disponible")).toHaveTextContent("—");
+    expect(screen.queryByText("No disponible")).toBeNull();
     expect(screen.queryByLabelText("Órdenes pendientes de aprobación: 0")).toBeNull();
 });
 
-it("keeps unauthorized follow-up disabled and an empty recent-activity surface", () => {
+it("keeps unauthorized follow-up disabled and omits the retired recent-activity section", () => {
     installBrowserApiDoubles();
     render(<FormalizationHomePage />);
     expect(screen.queryByRole("heading", { name: "Pendientes por proyecto" })).toBeNull();
     expect(screen.queryByText("Órdenes por proyecto y etapa")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Tiempos de gestión bancaria" })).toBeNull();
     expect(screen.queryByText("Duración por orden financiada")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Movimientos recientes" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Movimientos recientes" })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Filtrar por proyecto" })).toBeNull();
     expect(screen.queryAllByRole("button", { name: /^Ver movimiento de/ })).toHaveLength(0);
-    expect(screen.getByText("Los movimientos recientes aún no están disponibles.")).toBeInTheDocument();
+    expect(screen.queryByText("Los movimientos recientes aún no están disponibles.")).not.toBeInTheDocument();
 });
 
 it("keeps follow-up disabled without grants and enables it from the effective approval permission alone", () => {
@@ -347,7 +350,9 @@ it("shows independently verified banking counts and no invented zero after summa
     view.unmount();
     vi.mocked(getHomeSummary).mockRejectedValue(new Error("offline"));
     const failedView = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
-    await screen.findByRole("button", { name: "Reintentar conteos de contratos" });
+    await screen.findByLabelText("Por enviar: sin verificar");
+    expect(screen.queryByRole("button", { name: "Reintentar conteos de contratos" })).toBeNull();
+    expect(screen.queryByText("Sin verificar")).toBeNull();
     for (const value of failedView.container.querySelectorAll(".formalization-banner__value")) expect(value.textContent).toBe("\u2014");
     expect(screen.queryByLabelText(/^Valor:/)).toBeNull();
 });

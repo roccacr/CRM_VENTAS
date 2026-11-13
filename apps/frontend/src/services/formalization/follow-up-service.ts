@@ -177,13 +177,14 @@ function positive(value: unknown, maximum = Number.MAX_SAFE_INTEGER): number {
     return result;
 }
 /** Valida y reconstruye el contrato canónico. Deja fuera campos arbitrarios del proveedor o del contacto. */
-export async function getFollowUp(filters: FollowUpFilters): Promise<FollowUp> {
+export async function getFollowUp(filters: FollowUpFilters, signal?: AbortSignal): Promise<FollowUp> {
     positive(filters.page);
     positive(filters.pageSize, 100);
     const params = new URLSearchParams({ search: text(filters.search), projectId: text(filters.projectId), queue: queue(filters.queue), page: String(filters.page), pageSize: String(filters.pageSize) });
     appendMultipleFilters(params, filters);
     if (filters.recordId) params.set("recordId", filters.recordId);
-    const data = record(await apiRequest<unknown>(`/formalization/home/follow-up?${params.toString()}`));
+    const path = `/formalization/home/follow-up?${params.toString()}`;
+    const data = record(await (signal ? apiRequest<unknown>(path, { signal }) : apiRequest<unknown>(path)));
     const applied = record(data.filters);
     const page = record(data.page);
     const counts = record(data.counts);
@@ -205,6 +206,28 @@ export async function getFollowUp(filters: FollowUpFilters): Promise<FollowUp> {
     // El registro lleva solo el JSON canónico validado. No se copian credenciales ni campos crudos del proveedor o del contacto.
     if (import.meta.env.DEV) console.log("[Formalization API: home/follow-up]", JSON.stringify({ ...result, items: result.items.map(({ clientEmail: _clientEmail, ...entry }) => entry) }));
     return result;
+}
+
+/** Selección atómica del filtro: las consultas agregadas se leen en serie para respetar su límite SQL. */
+export async function getFollowUpSelection(current: FollowUp, signal: AbortSignal, onProgress: (loaded: number, total: number) => void): Promise<readonly FollowUpItem[]> {
+    signal.throwIfAborted();
+    if (current.items.length === current.page.total) return current.items;
+    const first = await getFollowUp({ ...current.filters, page: 1, pageSize: 100 }, signal);
+    signal.throwIfAborted();
+    const selected = new Map(first.items.map((entry) => [`${entry.source}:${entry.id}`, entry]));
+    onProgress(selected.size, first.page.total);
+    const append = (next: FollowUp) => {
+        signal.throwIfAborted();
+        if (next.page.total !== first.page.total) throw new Error("El listado cambió. Actualiza la tabla y vuelve a seleccionar.");
+        for (const entry of next.items) selected.set(`${entry.source}:${entry.id}`, entry);
+        onProgress(selected.size, first.page.total);
+    };
+    for (let page = 2; page <= first.page.totalPages; page += 1) {
+        signal.throwIfAborted();
+        append(await getFollowUp({ ...current.filters, page, pageSize: 100 }, signal));
+    }
+    if (selected.size !== first.page.total) throw new Error("El listado cambió. Actualiza la tabla y vuelve a seleccionar.");
+    return [...selected.values()];
 }
 
 /** Proyección exacta del registro, sin conteos de banner, catálogos de proyecto ni lecturas del proveedor. */

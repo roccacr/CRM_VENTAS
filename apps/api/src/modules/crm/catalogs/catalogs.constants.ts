@@ -2,7 +2,7 @@
  * Catálogos que el API reconoce y los permisos que los protegen.
  *
  * El código de permiso lleva el módulo desde el que se usa el catálogo:
- * `ventas.catalog_campaign.read` no autoriza el mismo catálogo en contabilidad.
+ * `ventas.catalog_campaign.read` no autoriza el mismo catálogo en otro módulo.
  * Los códigos sin módulo son el formato viejo y no se usan para autorizar.
  */
 export const CATALOG_STATUSES = ["active", "inactive"] as const;
@@ -26,7 +26,7 @@ export interface CatalogDefinition {
 }
 
 /** Módulos que pueden consumir un catálogo. El permiso se evalúa contra uno de estos códigos. */
-export const CATALOG_CONTEXT_MODULES = ["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"] as const;
+export const CATALOG_CONTEXT_MODULES = ["ventas", "mercadeo", "formalizacion", "administration"] as const;
 
 export type CatalogContextModuleCode = (typeof CATALOG_CONTEXT_MODULES)[number];
 

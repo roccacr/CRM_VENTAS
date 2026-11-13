@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { canReadCalendar } from "../../src/modules/calendar/calendar-config";
-import { DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, type EffectiveNavigationPermission, getVisibleNavigationWorkspaces, GlobalHomeShell, type GlobalMenuItem, type WorkspaceProfile } from "../../src/modules/home/GlobalHomeShell";
+import { ASSIGNED_WORKSPACES, DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS, type EffectiveNavigationPermission, getVisibleNavigationWorkspaces, GlobalHomeShell, type GlobalMenuItem, type WorkspaceProfile } from "../../src/modules/home/GlobalHomeShell";
 import { AUTH_LOGIN_PATH, getAppRoute } from "../../src/routes/app-routes";
 import { getDefaultAuthenticatedPath, getRedirectPath, resolveRouteState } from "../../src/routes/auth-state";
 import type { IdentityProfile } from "../../src/services/auth/identity-contracts";
@@ -57,10 +57,8 @@ it("does not treat global report population as permission to open a Marketing se
 describe("exact registered route access", () => {
     const contexts = [
         { module: "administration", workspace: "administration" },
-        { module: "ventas", workspace: "sales" },
         { module: "mercadeo", workspace: "marketing" },
         { module: "formalizacion", workspace: "formalization" },
-        { module: "contabilidad", workspace: "accounting" },
     ];
     it.each(contexts)("permits only visible catalog children in $workspace", ({ module, workspace }) => {
         const profile = routeProfile([allow(`${module}.catalog_project.read`)], module);
@@ -86,16 +84,12 @@ describe("exact registered route access", () => {
         expect(resolveRouteState(profile, "/home/administration/catalogs").status).toBe("forbidden");
         expect(resolveRouteState(routeProfile([allow("administration.catalog_project.read")], "administration"), "/home/administration/catalogs").status).toBe("authenticated");
     });
-    it.each([
-        { permission: "estimate.read", workspace: "sales" },
-        { permission: "opportunity.read", workspace: "sales" },
-        { permission: "invoice.read", workspace: "accounting" },
-    ])("preserves the shared $workspace home URL for $permission", ({ permission, workspace }) => {
-        const profile = routeProfile([allow(permission)]);
-        expect(resolveRouteState(profile, `/home/${workspace}`).status).toBe("authenticated");
-        expect(getDefaultAuthenticatedPath(profile, workspace)).toBe(`/home/${workspace}`);
-        expect(resolveRouteState(profile, `/home/${workspace}/catalogs/projects`).status).toBe("forbidden");
+    it("does not register Accounting or grant a default route from its old permissions", () => {
+        const profile = routeProfile([allow("invoice.read"), allow("wallet.read")], "contabilidad");
+        expect(getAppRoute("/home/accounting")).toBeUndefined();
+        expect(getDefaultAuthenticatedPath(profile, "accounting")).toBeNull();
     });
+
     it("does not allow formalization Inicio to mount business views", () => {
         const profile = routeProfile([allow("formalizacion.home.read")], "formalizacion");
         expect(resolveRouteState(profile, "/home/formalization").status).toBe("authenticated");
@@ -122,6 +116,7 @@ describe("navigation permissions", () => {
         const seedPermissionCodes = new Set([...Array.from(seedSql.matchAll(/\('([a-z][a-z0-9_.]*)',\s*'[a-z][a-z0-9_]*'/giu), (match) => match[1]), ...Array.from(catalogsMigrationSource.matchAll(/"([a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)"/giu), (match) => match[1]), ...Array.from(homeMigrationSource.matchAll(/"(formalizacion\.home\.read)"/gu), (match) => match[1]), ...CATALOG_CONTEXT_CODES.flatMap((contextCode) => CATALOG_MODULE_CODES.map((moduleCode) => `${contextCode}.${moduleCode}.read`))]);
         const visualPermissionCodes = DEMO_EFFECTIVE_NAVIGATION_PERMISSIONS.map((permission) => permission.code);
         for (const match of marketingMigrationSource.matchAll(/"(mercadeo\.(?:home|leads|appointments|calendar)\.read)"/gu)) seedPermissionCodes.add(match[1]);
+        seedPermissionCodes.add("ventas.home.read");
         const calendarMigration = readFileSync(resolve(process.cwd(), "../api/migrations/schema-only/202610280051_global_calendar.ts"), "utf8");
         expect(calendarMigration).toContain("`${module}.calendar.${action}`");
         const calendarModules = calendarMigration.match(/const modules = \[([^\]]+)\]/u)?.[1] ?? "";
@@ -173,12 +168,12 @@ describe("navigation permissions", () => {
     });
 
     it("muestra solo los modulos operativos con permisos accionables efectivos", () => {
-        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("lead.read"), ...["home", "leads", "calendar"].map((section) => allow(`mercadeo.${section}.read`))]);
+        const visibleWorkspaces = getVisibleNavigationWorkspaces([allow("ventas.home.read"), ...["home", "leads", "calendar"].map((section) => allow(`mercadeo.${section}.read`))], orgUnits("ventas", "mercadeo"), ASSIGNED_WORKSPACES, [{ code: "ventas", name: "Ventas", status: "active" }]);
         const salesWorkspace = getWorkspace(visibleWorkspaces, "sales");
         const marketingWorkspace = getWorkspace(visibleWorkspaces, "marketing");
 
         expect(visibleWorkspaces.map((workspace) => workspace.code)).toEqual(["all", "sales", "marketing"]);
-        expect(getMenuLabels(salesWorkspace.menuItems)).toEqual(["Resumen", "Leads"]);
+        expect(getMenuLabels(salesWorkspace.menuItems)).toEqual(["Inicio"]);
         expect(getMenuLabels(marketingWorkspace.menuItems)).toEqual(["Inicio", "Captación de leads", "Calendario"]);
         expect(marketingWorkspace.menuItems.find((item) => item.code === "marketing-leads")?.routePath).toBe("/home/marketing/leads");
         expect(marketingWorkspace.menuItems.find((item) => item.code === "marketing-calendar")?.routePath).toBe("/home/marketing/calendar");

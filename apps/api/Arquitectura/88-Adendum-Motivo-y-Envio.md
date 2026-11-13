@@ -1,5 +1,155 @@
 # 88 — Motivo y envío del adéndum
 
+## Selección masiva — implementación local del 13 de noviembre de 2026
+
+Pendientes de seguimiento permite seleccionar órdenes por identidad fuente/ID,
+conservarlas al paginar y seleccionar todas las páginas del filtro actual. Un
+cambio de filtros o de capacidad de marcación reinicia la selección. La barra
+ofrece también seleccionar todas para pantallas donde el encabezado está oculto.
+
+El modal comparte capa y campo de motivo con la acción individual. Presenta
+orden, cliente, proyecto, unidad, advertencias y resultado de cada orden. Se aplica
+un motivo común obligatorio de 3 a 2000 caracteres. Por decisión del usuario,
+una orden ya pendiente se puede renovar desde la selección, reemplazando su
+motivo y registrando antes/después en bitácora. El flujo individual sigue
+rechazando una nueva marca sobre un pendiente existente.
+
+- `POST /formalization/orders/addendum/pending/preview`: `{ orders: [{ source, id }] }`,
+  entre 1 y 100 identidades por petición. Devuelve `{ items: [{ source, id, order }] }`
+  en el mismo orden. `order` es el marcador con capacidades y `availableForPending`,
+  o `null` cuando no fue posible verificarlo. Solo lectura; no se muta ninguna orden.
+- `POST /formalization/orders/addendum/pending/bulk-item`: mismo contrato estricto
+  de motivo, versión y operación que `/pending`; permite renovar pendientes.
+  Una transacción por orden, reutilizando el repositorio y la bitácora existentes.
+- Ambas rutas exigen sesión, CSRF y los permisos efectivos `formalizacion.orders.read`,
+  `formalizacion.orders.addendum.read` y `formalizacion.orders.addendum.mark_pending`.
+  No se omiten denegaciones, identidad inequívoca, disponibilidad activa, control
+  de versión ni bitácora habilitada. Las órdenes que no pasan esos controles no se
+  escriben; su resultado se distingue de las advertencias de estado renovables.
+- Cada orden conserva su UUID y versión para reintentos inciertos. No se reenvían
+  éxitos confirmados. Si el replay confirma una operación cuya orden cambió después,
+  el modal lo informa sin afirmar que el estado actual sigue pendiente.
+
+Se añadieron casos de selección de todas las páginas, resultados parciales,
+renovación nativa/legacy, replay, CAS, rollback de auditoría, CSRF, denegación e
+inputs generados (semilla `20261113`). **No se ejecutaron pruebas por instrucción
+del usuario.** La implementación local no acredita despliegue ni aceptación visual
+o SQL real. La revisión adversarial de ejecución y las propiedades transaccionales
+en fixtures SQL aisladas exigidas antes de merge siguen pendientes; las pruebas
+agregadas con dobles no sustituyen esa evidencia.
+
+Seguimiento del mismo 13 de noviembre, con autorización posterior del usuario
+para ejecutar pruebas: se reprodujeron 2 fallos frontend en los casos de
+reintento y 1 fallo API en el inventario de rutas. El botón de reintento tenía un
+nombre accesible variable por el icono de carga de Ant Design durante su
+animación; se fijó `aria-label`, siguiendo el flujo individual. El inventario
+esperaba 118 handlers aunque las dos rutas nuevas elevan el total a 120; se
+actualizó el conteo y se exigió explícitamente la presencia de ambas rutas.
+
+Regresión focal posterior: frontend **101/101**, cuatro archivos; API **866/866**,
+cuatro archivos, incluidos 801 casos del inventario de permisos. Ambos comandos
+terminaron con exit 0. La instrucción de no ejecutar pruebas corresponde a la
+entrega inicial; estos resultados documentan la autorización y ejecución
+posteriores. Logs: `frontend-failed-suite.log`, `api-failed-suite.log` (fallos
+reproducidos), `frontend-regression.log` y `api-regression.log` (regresión final),
+en `C:/codex-data/tmp/bulk-addendum-20261113/`. No se ejecutó la suite integral ni
+se acredita aceptación visual o SQL real con estos resultados.
+
+Verificación estática final: API `pnpm typecheck` y `pnpm build`, frontend
+`pnpm build` (incluye `tsc --noEmit`), lint focal de todos los archivos TypeScript
+modificados y `git diff --check`: exit 0. El build frontend advierte paquetes de
+más de 500 kB; no se ajustaron sus límites. No se ejecutó `check-all.cmd` porque
+incluye pruebas. No hubo commits, publicación, migraciones ni cambios de datos.
+Logs completos: `C:/codex-data/tmp/bulk-addendum-20261113/`.
+
+Archivos de esta entrega, relativos a la raíz del repositorio:
+
+- `apps/frontend/src/modules/home/FormalizationFollowUpPreview.tsx`: selección,
+  paginación y acción masiva.
+- `apps/frontend/src/modules/home/FormalizationBulkAddendum.tsx` (nuevo): consulta
+  previa, advertencias, motivo común, resultados parciales y reintentos.
+- `apps/frontend/src/modules/home/FormalizationMarkAddendum.tsx`: modal y campo
+  de motivo compartidos, conservando el controlador individual.
+- `apps/frontend/src/modules/home/FormalizationHomePage.css`: columna de checks.
+- `apps/frontend/src/services/formalization/order-addendum-service.ts`: contratos
+  tipados de consulta previa y renovación por selección.
+- `apps/api/src/modules/crm/sales/sales-orders/sales-order-addendum.ts`: rutas,
+  autorización y reutilización del servicio individual.
+- `apps/api/src/modules/crm/sales/sales-orders/sales-order-addendum.repository.ts`:
+  renovación explícita conservando CAS, replay y transacción de bitácora.
+- `apps/frontend/test/home/formalization-bulk-addendum.spec.tsx` (nuevo).
+- `apps/frontend/test/home/formalization-follow-up.spec.tsx`.
+- `apps/frontend/test/home/order-addendum-service.spec.ts`.
+- `apps/api/test/calendar/sales-order-addendum.repository.spec.ts`.
+- `apps/api/test/security/sales-order-addendum.http.spec.ts`.
+- `apps/api/test/security/route-permission.http.spec.ts`.
+- Este documento (`apps/api/Arquitectura/88-Adendum-Motivo-y-Envio.md`).
+
+Los cambios concurrentes en `GlobalHomeShell.css` y
+`public/illustrations/habita-header-skyline.svg` quedan fuera de esta entrega.
+
+Comandos PowerShell para que el usuario ejecute las pruebas focales y comparta
+salida completa y código de salida de cada comando:
+
+```powershell
+Set-Location -LiteralPath 'C:\Users\RobertoCarlosZuñigaA\Documents\ROCCA ARCHIVOS\Desarrollo\PROYECTOS DESAROLLOS\CRM VERION NESTJS'
+pnpm --dir apps/frontend exec vitest run test/home/formalization-bulk-addendum.spec.tsx test/home/formalization-follow-up.spec.tsx test/home/formalization-mark-addendum.spec.tsx test/home/order-addendum-service.spec.ts
+Write-Output "Frontend exit=$LASTEXITCODE"
+pnpm --dir apps/api exec vitest run test/calendar/sales-order-addendum.repository.spec.ts test/calendar/sales-order-addendum.service.spec.ts test/security/sales-order-addendum.http.spec.ts test/security/route-permission.http.spec.ts
+Write-Output "API exit=$LASTEXITCODE"
+```
+
+Validación integral oficial posterior, desde la misma raíz: `.\check-all.cmd`.
+La aceptación visual debe comprobar selección individual y total con filtros,
+renovación de pendientes, una orden concurrentemente modificada, motivo común y
+una entrada de bitácora por escritura, además del flujo individual sin cambios.
+
+Refinamiento visual local del 13 de noviembre: el modal masivo adopta el alcance
+`formalization-modal` para heredar los tokens del portal. Tabla con filas separadas,
+jerarquía orden/cliente y proyecto/unidad, estados compactos y motivo en sección
+propia. En móvil las órdenes se apilan y el pie permanece visible mientras se
+desplaza el cuerpo. Verificación visual local con datos ficticios en escritorio
+1280×900 y móvil 390×844, incluidos avisos de pendientes existentes; sin conexiones
+ni escrituras de órdenes reales. Regresión de ambos modales: 19 pruebas aprobadas.
+
+Corrección de selección total local, 13 de noviembre: la implementación inicial
+recorría peticiones completas de seguimiento en serie sin tiempo límite. Una
+petición pendiente mantenía bloqueados los controles sin mostrar avance. Ahora
+se reutiliza el listado cuando ya contiene todas las órdenes; para varias páginas
+se leen lotes de 100 en serie. La barra muestra
+avance y permite cancelar. Un límite total de 30 segundos libera la interfaz y
+presenta un error, incluso si una espera del cliente HTTP no observa el aborto.
+La selección solo se publica cuando todas las páginas se validan: un error no
+convierte un resultado parcial en “todas”. Sin escrituras ni cambios de backend.
+La duración real de la consulta del usuario no se midió porque la ventana de
+diagnóstico local no comparte su sesión autenticada.
+
+Verificación de esta corrección: 101 pruebas aprobadas en seguimiento y su servicio,
+incluidos 449 registros, carga bloqueada, cancelación y timeout con petición que
+ignora el aborto. Lint focal y build frontend: exit 0. Logs `select-all-tests-final.log`,
+`select-all-lint-final.log` y `select-all-build-final.log` en la carpeta de evidencia.
+
+Diagnóstico real posterior del 13 de noviembre: la pestaña local mostró pérdidas
+de conexión durante reinicios del API por ediciones concurrentes. Con el API
+activo, la lectura de páginas 2 y 3 respondió HTTP 503. La reproducción SELECT
+de solo lectura identificó MySQL `ER_QUERY_TIMEOUT`, errno 3024. La concurrencia
+de dos consultas completas agravaba el fallo; aun en serie la paginación con
+`ORDER BY pageOrdinal LIMIT ... OFFSET ...` agotó el límite en una reproducción.
+Se conservó la carga serial y se acotó `paged` mediante `pageOrdinal > offset AND
+pageOrdinal <= offset + limit`, reutilizando el ordinal ya calculado. No se cambió
+el orden global, los filtros, permisos, límite de 100 filas ni `MAX_EXECUTION_TIME(5000)`.
+
+La variante corregida leyó 449 filas en cinco páginas (100/100/100/100/49) en una
+transacción de solo lectura por página, sin timeout: unos 21,5 segundos acumulados.
+Se comprobó también el rango de ordinales 1–449. Regresión: 70 pruebas API y 102
+frontend aprobadas; lint focal y builds de ambos proyectos aprobados. El frontend
+distingue ahora una pérdida de conexión del mensaje genérico de filtros. No hubo
+escrituras comerciales. La selección final desde la pantalla quedó sin confirmar
+porque la sesión regresó al login y Microsoft local no completó el acceso; no se
+presenta la reproducción SQL como aceptación completa de la UI.
+
+## Antecedente del flujo individual — 3 de noviembre de 2026
+
 Estado: implementado y esquema compartido aplicado con aprobación explícita, 2026-11-03. No se enviaron correos ni se cambiaron marcas de órdenes reales para pruebas.
 
 ## Reglas confirmadas

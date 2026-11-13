@@ -369,11 +369,3 @@ function invitationCalendar(event: CalendarEvent | null): CalendarDescriptor | n
 export function MarketingCalendarPage(props: Omit<Props, "moduleCode">) {
     return <SharedCalendarPage {...props} moduleCode="mercadeo" />;
 }
-/** Adaptador de Ventas. */
-export function SalesCalendarPage(props: Omit<Props, "moduleCode">) {
-    return <SharedCalendarPage {...props} moduleCode="ventas" />;
-}
-/** Adaptador de Contabilidad. */
-export function AccountingCalendarPage(props: Omit<Props, "moduleCode">) {
-    return <SharedCalendarPage {...props} moduleCode="contabilidad" />;
-}
