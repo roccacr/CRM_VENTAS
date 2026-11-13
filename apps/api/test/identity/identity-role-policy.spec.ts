@@ -11,7 +11,8 @@ import type { IdentityProfile } from "../../src/modules/crm/identity/identity.ty
 import { IdentityAccessManagementRepository } from "../../src/modules/crm/identity/identity-access-management.repository.js";
 import type { IdentitySessionRepository } from "../../src/modules/crm/identity/identity-session.repository.js";
 
-function fixture(input: { code?: string; mode?: "assigned" | "selected_modules"; permissionModule?: string; mappings?: { code: string; status: string; unitStatus: string; deletedAt: null }[] } = {}) {
+function fixture(input: { code?: string; mode?: "assigned" | "selected_modules"; permissionModule?: string; permissionCode?: string; mappings?: { code: string; status: string; unitStatus: string; deletedAt: null }[] } = {}) {
+    const permissionCode = input.permissionCode ?? "lead.read";
     const queries: string[] = [];
     const parameters: unknown[][] = [];
     let mappings = input.mappings ?? [{ code: "ventas", status: "active", unitStatus: "active", deletedAt: null }];
@@ -31,7 +32,7 @@ function fixture(input: { code?: string; mode?: "assigned" | "selected_modules";
                 sec_role: [{ id: 1, code: input.code ?? "jefe_general", name: "Jefe General", description: null, status: "active", permissionInheritance: input.mode ?? "selected_modules" }],
                 sec_role_module: mappings,
             };
-            const rows = rowsByTable[table] ?? [{ code: "lead.read", id: 1, moduleCode: input.permissionModule ?? "ventas" }];
+            const rows = rowsByTable[table] ?? [{ code: permissionCode, id: 1, moduleCode: input.permissionModule ?? "ventas" }];
             return Promise.resolve({ rows: rows as never[] });
         };
         return connection;
@@ -106,10 +107,10 @@ describe("role module policy", () => {
         }
     });
     it("exposes the same stored General base and editable state in the security catalog", async () => {
-        const f = fixture();
+        const f = fixture({ permissionCode: "ventas.home.read" });
         try {
             const result = await f.repository.readSecurityCatalog();
-            expect(result.rolePermissions.jefe_general).toEqual(["lead.read"]);
+            expect(result.rolePermissions.jefe_general).toEqual(["ventas.home.read"]);
             expect(result.roles[0]).toMatchObject({ code: "jefe_general", permissionInheritance: "selected_modules", moduleCodes: ["ventas"], moduleScoped: true, locked: false });
         } finally {
             await f.db.destroy();

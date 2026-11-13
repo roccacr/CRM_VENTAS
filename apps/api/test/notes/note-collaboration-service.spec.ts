@@ -203,7 +203,7 @@ it("owner with another module capability retains linked note read across inbox t
 it("keeps an invited order context visible across modules only when independent resource authorization succeeds", async () => {
     current.note.moduleCode = "formalizacion";
     current.context = { kind: "sales_order", source: "legacy", id: "208" };
-    identity.getCurrentUser.mockResolvedValue(makeProfile(invited, "contabilidad"));
+    identity.getCurrentUser.mockResolvedValue(makeProfile(invited, "mercadeo"));
     timing.authorizeForProfile.mockResolvedValue({ order: { source: "legacy", id: "legacy:208" } });
     expect((await service.thread("session", id, {})).note.context).toEqual(current.context);
     timing.authorizeForProfile.mockRejectedValue(new ForbiddenException());
@@ -223,7 +223,7 @@ it("rejects unregistered display locations before persistence", async () => {
 
 it("author can attach a note to an independently authorized Home", async () => {
     const profile = makeProfile(owner, "mercadeo");
-    identity.getCurrentUser.mockResolvedValue({ ...profile, permissions: [...profile.permissions, permission("ventas", "read"), { code: "lead.read", effect: "allow", scope: "self" }] });
+    identity.getCurrentUser.mockResolvedValue({ ...profile, permissions: [...profile.permissions, permission("ventas", "read"), { code: "ventas.home.read", effect: "allow", scope: "self" }] });
     await service.replaceLocations("session", id, { operationId: "operation_12345678", expectedCollaborationVersion: 2, locations: [{ moduleCode: "ventas", code: "sales-home" }] });
     expect(repository.command).toHaveBeenCalledWith(owner, id, expect.objectContaining({ kind: "locations" }), expect.any(Function));
 });

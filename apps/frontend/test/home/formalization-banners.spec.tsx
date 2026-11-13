@@ -351,8 +351,8 @@ it("shows independently verified banking counts and no invented zero after summa
     vi.mocked(getHomeSummary).mockRejectedValue(new Error("offline"));
     const failedView = render(<FormalizationHomePage roles={[role]} effectivePermissions={[stagePermission]} />);
     await screen.findByLabelText("Por enviar: sin verificar");
-    expect(screen.queryByRole("button", { name: "Reintentar conteos de contratos" })).toBeNull();
-    expect(screen.queryByText("Sin verificar")).toBeNull();
+    expect(screen.getByRole("button", { name: "Reintentar conteos de contratos" })).toBeEnabled();
+    expect(screen.getAllByRole("alert")).toHaveLength(6);
     for (const value of failedView.container.querySelectorAll(".formalization-banner__value")) expect(value.textContent).toBe("\u2014");
     expect(screen.queryByLabelText(/^Valor:/)).toBeNull();
 });

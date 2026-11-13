@@ -1,7 +1,8 @@
 import { type Kysely, sql } from "kysely";
 import { ulid } from "ulid";
 
-import { OPERATIONAL_MODULE_CODES } from "../../src/modules/crm/identity/identity-module-policy.js";
+// Contrato histórico de 030: no depender del catálogo runtime, que puede retirar módulos después.
+const OPERATIONAL_MODULE_CODES = ["ventas", "mercadeo", "formalizacion", "contabilidad"] as const;
 
 const migrationName = "202610230030_general_manager_template";
 const requiredTables = ["sec_role", "sec_role_module", "sec_org_unit", "sec_permission", "sec_role_permission", "sec_user", "sec_user_role", "sec_user_permission_override", "audit_security_event", "conf_schema_migration"];

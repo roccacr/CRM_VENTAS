@@ -402,15 +402,15 @@ it("opens all authorized inbox notes in every status and shows each inbox option
     expect(screen.queryByLabelText("Notas que quieres ver")).not.toBeInTheDocument();
 });
 
-it("recognizes the same source-qualified order from the accounting workspace", async () => {
-    window.history.replaceState({}, "", "/home/accounting/orders?orderSource=legacy&orderId=208");
+it("recognizes the same source-qualified order from the marketing workspace", async () => {
+    window.history.replaceState({}, "", "/home/marketing/orders?orderSource=legacy&orderId=208");
     render(
-        <PersonalNotesProvider moduleCode="contabilidad" permissions={[{ code: "contabilidad.notes.read", effect: "allow" }]} homeEnabled={false}>
+        <PersonalNotesProvider moduleCode="mercadeo" permissions={[{ code: "mercadeo.notes.read", effect: "allow" }]} homeEnabled={false}>
             <NotesButton />
         </PersonalNotesProvider>,
     );
     await waitFor(() => {
-        expect(getNotes).toHaveBeenLastCalledWith("contabilidad", { kind: "sales_order", source: "legacy", id: "208" }, "all", 1);
+        expect(getNotes).toHaveBeenLastCalledWith("mercadeo", { kind: "sales_order", source: "legacy", id: "208" }, "all", 1);
     });
     window.history.replaceState({}, "", "/");
 });

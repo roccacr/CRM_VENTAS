@@ -321,7 +321,7 @@ function StageMetric({ part, loading, failed, known, overdue, onOpen }: { readon
 }
 
 /** Tarjeta de una etapa: título, para qué sirve y sus cifras. */
-function StageBanner({ banner, loading, failed, known, overdue, onOpen }: { readonly banner: StageBannerData; readonly loading: boolean; readonly failed: boolean; readonly known: boolean; readonly overdue: { readonly byFilter: Record<string, number | undefined>; readonly minutes: number | undefined }; readonly onOpen: (filter: FollowUpSelection) => void }) {
+function StageBanner({ banner, loading, failed, known, overdue, onOpen, retry }: { readonly retry: () => void; readonly banner: StageBannerData; readonly loading: boolean; readonly failed: boolean; readonly known: boolean; readonly overdue: { readonly byFilter: Record<string, number | undefined>; readonly minutes: number | undefined }; readonly onOpen: (filter: FollowUpSelection) => void }) {
     const attention = banner.code === "contracts" && banner.parts.some((part) => (part.value ?? 0) > 0);
     return (
         <article data-attention={attention ? "true" : undefined} className={`formalization-banner formalization-banner--${banner.tone}`} aria-labelledby={`formalization-${banner.code}`} aria-busy={loading}>
@@ -336,6 +336,14 @@ function StageBanner({ banner, loading, failed, known, overdue, onOpen }: { read
                         <StageMetric key={part.label} part={part} loading={loading} failed={failed} known={known} overdue={{ count: overdue.byFilter[part.filter], minutes: overdue.minutes }} onOpen={onOpen} />
                     ))}
                 </div>
+                {failed && <span role="alert">Sin verificar</span>}
+                {failed && (
+                    <Tooltip title={banner.code === "contracts" ? "No se pudieron verificar los conteos de contratos. Reintentar consulta." : `No se pudieron verificar los conteos de ${banner.label}. Reintentar consulta.`}>
+                        <button type="button" aria-label={banner.code === "contracts" ? "Reintentar conteos de contratos" : `Reintentar ${banner.label}`} onClick={retry}>
+                            <ReloadOutlined aria-hidden="true" />
+                        </button>
+                    </Tooltip>
+                )}
             </div>
             <BannerCorner kind={banner.code} />
         </article>
@@ -354,7 +362,7 @@ function groupTitleFor(banner: StageBannerData, index: number, visible: readonly
 
 /** Un solo dueño autorizado alimenta cada banner de etapa. Los montajes no comparten datos. */
 function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { readonly allowedQueues: readonly string[]; readonly onOpen: (filter: FollowUpSelection) => void; readonly enabled: boolean; readonly refreshVersion: number }) {
-    const { value: summary, failed } = useHomeSummary(enabled, refreshVersion);
+    const { value: summary, failed, retry } = useHomeSummary(enabled, refreshVersion);
     const { value: overdueSummary } = useBannerSummary(getOverdueSummary, [enabled, SHOW_OVERDUE_BADGES].every(Boolean), refreshVersion);
     const overdue = { byFilter: overdueByFilterOf(overdueSummary), minutes: overdueSummary?.thresholdMinutes };
     const loading = !summary && !failed;
@@ -364,7 +372,7 @@ function StageBanners({ onOpen, enabled, refreshVersion, allowedQueues }: { read
             {visible.map((banner, index) => (
                 <Fragment key={banner.code}>
                     <HomeDivider title={groupTitleFor(banner, index, visible) ?? ""} show={groupTitleFor(banner, index, visible) !== undefined} />
-                    <StageBanner banner={banner} loading={loading} failed={failed} known={Boolean(summary)} overdue={overdue} onOpen={onOpen} />
+                    <StageBanner retry={retry} banner={banner} loading={loading} failed={failed} known={Boolean(summary)} overdue={overdue} onOpen={onOpen} />
                 </Fragment>
             ))}
         </>

@@ -21,7 +21,7 @@ interface TypeDefinition {
 }
 const definitions = JSON.parse(readFileSync(resolve(process.cwd(), "../api/src/modules/crm/calendar/calendar-event-types.json"), "utf8")) as TypeDefinition[];
 // Synthetic public IDs exist only in the substituted HTTP catalog; no database fixtures or migrations.
-const calendars: CalendarDescriptor[] = CALENDAR_MODULES.map((moduleCode, moduleIndex) => ({
+const calendars: CalendarDescriptor[] = CALENDAR_MODULES.filter((moduleCode) => moduleCode !== "ventas").map((moduleCode, moduleIndex) => ({
     moduleCode,
     label: CALENDAR_CONTEXT[moduleCode].label,
     color: "#000000",
@@ -46,7 +46,7 @@ it("uses the actual global JSON's current labels, colors and module memberships"
         { codigo: "formalizacion_bancaria", tipo: "Formalización bancaria", color: "#0369A1" },
         { codigo: "adendum", tipo: "Adéndum", color: "#7C3AED" },
     ]);
-    for (const type of definitions) expect(type.modulos).toEqual(type.codigo === "cita" ? ["mercadeo", "ventas", "contabilidad"] : ["formalizacion_bancaria", "adendum"].includes(type.codigo) ? ["formalizacion"] : [...CALENDAR_MODULES]);
+    for (const type of definitions) expect(type.modulos).toEqual(type.codigo === "cita" ? ["mercadeo", "ventas"] : ["formalizacion_bancaria", "adendum"].includes(type.codigo) ? ["formalizacion"] : [...CALENDAR_MODULES]);
 });
 
 it.each(calendars)("selects and persists the server's reunion public ID in $moduleCode", async (calendar) => {

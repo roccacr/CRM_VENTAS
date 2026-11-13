@@ -1231,7 +1231,7 @@ describe("App", () => {
         await user.click(screen.getByRole("button", { name: "Todos" }));
 
         const administrationButton = screen.getByRole("button", { name: "Administración" });
-        const salesButton = screen.getByRole("button", { name: "Ventas" });
+        const salesButton = screen.getByRole("button", { name: "Mercadeo" });
         const administrationGroup = administrationButton.closest(".global-home-menu__group");
         const salesGroup = salesButton.closest(".global-home-menu__group");
 
@@ -1244,13 +1244,13 @@ describe("App", () => {
         expect(screen.getByRole("menu", { name: "Opciones de Administración" })).toBeInTheDocument();
         fireEvent.pointerLeave(administrationGroup);
         fireEvent.pointerEnter(salesGroup);
-        expect(screen.getByRole("menu", { name: "Opciones de Ventas" })).toBeInTheDocument();
+        expect(screen.getByRole("menu", { name: "Opciones de Mercadeo" })).toBeInTheDocument();
 
         act(() => {
             vi.advanceTimersByTime(450);
         });
 
-        expect(screen.getByRole("menu", { name: "Opciones de Ventas" })).toBeInTheDocument();
+        expect(screen.getByRole("menu", { name: "Opciones de Mercadeo" })).toBeInTheDocument();
         expect(screen.queryByRole("menu", { name: "Opciones de Administración" })).not.toBeInTheDocument();
     });
 

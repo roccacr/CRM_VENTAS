@@ -9,9 +9,9 @@ const id = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const profile = {
     user: { publicId: id },
     roles: [],
-    orgUnits: [{ code: "ventas", status: "active" }],
+    orgUnits: [{ code: "mercadeo", status: "active" }],
     permissions: [
-        { code: "ventas.calendar.read", effect: "allow", scope: "self" },
+        { code: "mercadeo.calendar.read", effect: "allow", scope: "self" },
         { code: "formalizacion.calendar.read", effect: "deny", scope: "self" },
     ],
 } as unknown as IdentityProfile;

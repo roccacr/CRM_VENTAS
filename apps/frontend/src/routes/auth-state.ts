@@ -36,6 +36,8 @@ const toProfileState = (profile: IdentityProfile, canEnter: boolean): AuthState 
  * Login no pertenece a ningún perfil, así que no se bloquea aquí.
  */
 const hasAccessToRoute = (profile: IdentityProfile, path: string): boolean => {
+    // Las secciones retiradas nunca heredan el acceso genérico de una URL desconocida.
+    if (!getAppRoute(path) && /^\/home\/(?:sales|accounting)(?:\/|\?|$)/.test(path)) return false;
     const route = getAppRoute(path);
     if (route?.permissionCode === "lead.profile.read") return canReadLeadProfile(profile.permissions);
     return hasWorkspaceRouteAccess(profile, path);

@@ -24,14 +24,17 @@ it("keeps the Formalization wrapper and real calendar views without sample data"
 it.each([
     ["formalization", "formalization"],
     ["marketing", "marketing"],
-    ["sales", "sales"],
-    ["accounting", "accounting"],
 ])("registers the %s calendar route", (path, workspace) => {
     expect(getAppRoute(`/home/${path}/calendar`)).toMatchObject({ workspaceCode: workspace, menuItemCode: `${workspace}-calendar` });
 });
 it("resolves origin-calendar navigation with its date and event query", () => {
-    const path = "/home/sales/calendar?date=2026-10-28&event=event-1";
+    const path = "/home/marketing/calendar?date=2026-10-28&event=event-1";
     expect(isKnownPath(path)).toBe(true);
-    expect(getAppRoute(path)).toBe(getAppRoute("/home/sales/calendar"));
+    expect(getAppRoute(path)).toBe(getAppRoute("/home/marketing/calendar"));
     expect(getAppRoute("/home/not-a-module/calendar?date=2026-10-28")).toBeUndefined();
+});
+
+it.each(["sales", "accounting"])("does not register the retired %s calendar route", (module) => {
+    expect(getAppRoute(`/home/${module}/calendar`)).toBeUndefined();
+    expect(isKnownPath(`/home/${module}/calendar`)).toBe(false);
 });

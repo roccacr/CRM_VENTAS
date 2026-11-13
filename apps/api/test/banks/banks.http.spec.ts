@@ -17,7 +17,7 @@ import type { IdentityProfile } from "../../src/modules/crm/identity/identity.ty
 const bankId = "01K8SJ7KXKWWPMAWEA8NXGWW83",
     advisorId = "01K8SJ7KXKWWPMAWEA8NXGWW84";
 const root = "/catalogs/banks/items";
-const base = { moduleCode: "ventas", name: "Banco", reason: "Motivo requerido" };
+const base = { moduleCode: "formalizacion", name: "Banco", reason: "Motivo requerido" };
 const contact = { ...base, name: "Ejecutivo", email: " TEST@EXAMPLE.COM ", phone: "123", area: "Crédito" };
 describe("Banks HTTP contracts and authorization", () => {
     let app: NestFastifyApplication;
@@ -36,23 +36,23 @@ describe("Banks HTTP contracts and authorization", () => {
     });
     beforeEach(() => {
         vi.clearAllMocks();
-        profile = { roles: [{ code: "owner", status: "active" }], user: { status: "active", publicId: "actor-session" }, orgUnits: [], permissions: ["read", "create", "update", "inactivate"].map((action) => ({ code: `ventas.catalog_bank.${action}`, effect: "allow" })) } as unknown as IdentityProfile;
+        profile = { roles: [{ code: "owner", status: "active" }], user: { status: "active", publicId: "actor-session" }, orgUnits: [], permissions: ["read", "create", "update", "inactivate"].map((action) => ({ code: `formalizacion.catalog_bank.${action}`, effect: "allow" })) } as unknown as IdentityProfile;
     });
     afterAll(async () => app.close());
     it("returns direct bank/detail/mutation objects and paginated lists", async () => {
-        expect((await app.inject({ method: "GET", url: `${root}?moduleCode=ventas` })).json()).toEqual({ items: [bank], total: 1 });
-        expect((await app.inject({ method: "GET", url: `${root}/${bankId}?moduleCode=ventas` })).json()).toEqual(bank);
+        expect((await app.inject({ method: "GET", url: `${root}?moduleCode=formalizacion` })).json()).toEqual({ items: [bank], total: 1 });
+        expect((await app.inject({ method: "GET", url: `${root}/${bankId}?moduleCode=formalizacion` })).json()).toEqual(bank);
         expect((await app.inject({ method: "POST", url: root, payload: base })).json()).toEqual(bank);
         expect((await app.inject({ method: "PATCH", url: `${root}/${bankId}`, payload: { ...base, expectedVersion: 1 } })).statusCode).toBe(200);
-        expect((await app.inject({ method: "PATCH", url: `${root}/${bankId}/status`, payload: { moduleCode: "ventas", status: "inactive", reason: base.reason, expectedVersion: 1 } })).statusCode).toBe(200);
-        expect((await app.inject({ method: "GET", url: `${root}/${bankId}/advisors?moduleCode=ventas` })).json()).toEqual({ items: [advisor], total: 1 });
+        expect((await app.inject({ method: "PATCH", url: `${root}/${bankId}/status`, payload: { moduleCode: "formalizacion", status: "inactive", reason: base.reason, expectedVersion: 1 } })).statusCode).toBe(200);
+        expect((await app.inject({ method: "GET", url: `${root}/${bankId}/advisors?moduleCode=formalizacion` })).json()).toEqual({ items: [advisor], total: 1 });
         expect((await app.inject({ method: "POST", url: `${root}/${bankId}/advisors`, payload: contact })).json()).toEqual(advisor);
         expect((await app.inject({ method: "PATCH", url: `${root}/${bankId}/advisors/${advisorId}`, payload: { ...contact, expectedVersion: 1 } })).json()).toEqual(advisor);
-        expect((await app.inject({ method: "PATCH", url: `${root}/${bankId}/advisors/${advisorId}/status`, payload: { moduleCode: "ventas", status: "active", reason: base.reason, expectedVersion: 1 } })).statusCode).toBe(200);
+        expect((await app.inject({ method: "PATCH", url: `${root}/${bankId}/advisors/${advisorId}/status`, payload: { moduleCode: "formalizacion", status: "active", reason: base.reason, expectedVersion: 1 } })).statusCode).toBe(200);
         expect(persistence.mutateAdvisor).toHaveBeenCalledWith({ bankId, advisorId }, { kind: "update", name: "Ejecutivo", email: "test@example.com", phone: "123", area: "Crédito", expectedVersion: 1 }, expect.objectContaining({ actorPublicId: "actor-session" }));
     });
     it("validates DTOs with esbuild and rejects numeric identities, extra fields and missing versions", async () => {
-        expect((await app.inject({ method: "GET", url: `${root}/123?moduleCode=ventas` })).statusCode).toBe(400);
+        expect((await app.inject({ method: "GET", url: `${root}/123?moduleCode=formalizacion` })).statusCode).toBe(400);
         expect((await app.inject({ method: "PATCH", url: `${root}/${bankId}`, payload: base })).statusCode).toBe(400);
         expect((await app.inject({ method: "POST", url: root, payload: { ...base, actorPublicId: "spoofed" } })).statusCode).toBe(400);
         expect((await app.inject({ method: "PATCH", url: `${root}/${bankId}/advisors/${advisorId}`, payload: { ...contact, expectedVersion: 1, bankPublicId: advisorId } })).statusCode).toBe(400);

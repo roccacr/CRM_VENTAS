@@ -60,6 +60,7 @@ it("retries only uncertain commands unchanged and reports a subsequent state cha
     await enterReason();
     await waitFor(() => {
         expect(screen.getByRole("button", { name: "Reintentar sin confirmar" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Reintentar sin confirmar" })).not.toHaveClass("ant-btn-loading");
     });
     const original = vi.mocked(markSelectedOrderAddendumPending).mock.calls[1]?.[0];
     expect(screen.getByLabelText("Motivo")).toBeDisabled();
@@ -87,6 +88,7 @@ it("keeps a lost response uncertain if a later permission rejection prevents ver
     await enterReason();
     await waitFor(() => {
         expect(screen.getByRole("button", { name: "Reintentar sin confirmar" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Reintentar sin confirmar" })).not.toHaveClass("ant-btn-loading");
     });
     fireEvent.click(screen.getByRole("button", { name: "Reintentar sin confirmar" }));
     await screen.findByText(/La marcación anterior sigue sin confirmar/);

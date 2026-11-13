@@ -13,7 +13,7 @@ describe("global event type configuration", () => {
                 .map((type) => type.codigo)
                 .sort(),
         ).toEqual(["adendum", "formalizacion_bancaria", "reunion", "seguimiento", "tarea"]);
-        for (const module of ["ventas", "mercadeo", "contabilidad"]) {
+        for (const module of ["ventas", "mercadeo"]) {
             expect(CALENDAR_EVENT_TYPES.filter((type) => type.modulos.some((allowed) => allowed === module)).map((type) => type.codigo)).toEqual(["tarea", "reunion", "cita", "seguimiento"]);
         }
     });
@@ -30,4 +30,8 @@ describe("global event type configuration", () => {
     it.each([[{ ...definition, color: "#5656523" }], [{ ...definition, modulos: ["Formalización"] }], [{ ...definition, modulos: ["formalizacion", "formalizacion"] }], [{ ...definition, modulos: [] }], [{ ...definition, tipo: " " }], [definition, definition]].map((entries) => ({ entries })))("rejects invalid or ambiguous definitions %j", ({ entries }) => {
         expect(calendarEventTypesSchema.safeParse(entries).success).toBe(false);
     });
+});
+
+it("excluye los tipos del contexto Contabilidad retirado", () => {
+    expect(CALENDAR_EVENT_TYPES.every((type) => !type.modulos.some((module: string) => module === "contabilidad"))).toBe(true);
 });

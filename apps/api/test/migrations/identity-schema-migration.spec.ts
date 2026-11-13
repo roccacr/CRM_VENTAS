@@ -184,7 +184,7 @@ describe("identity schema migration parser", () => {
         expect(catalogPermissionCodes).toContain("administration.catalog_project.read");
         expect(catalogPermissionCodes).toContain("mercadeo.catalog_project.read");
         expect(catalogPermissionCodes).toContain("formalizacion.catalog_project.read");
-        expect(catalogPermissionCodes.filter((code) => code.includes(".catalog_bank."))).toEqual(["ventas", "mercadeo", "formalizacion", "contabilidad", "administration"].flatMap((context) => CATALOG_PERMISSION_ACTIONS.map((action) => `${context}.catalog_bank.${action}`)));
+        expect(catalogPermissionCodes.filter((code) => code.includes(".catalog_bank."))).toEqual(["ventas", "mercadeo", "formalizacion", "administration"].flatMap((context) => CATALOG_PERMISSION_ACTIONS.map((action) => `${context}.catalog_bank.${action}`)));
         expect(catalogPermissionCodes.filter((code) => !code.includes(".catalog_bank.")).slice(0, 24)).toEqual([
             "ventas.catalog_project.read",
             "ventas.catalog_project.create",
@@ -198,10 +198,6 @@ describe("identity schema migration parser", () => {
             "formalizacion.catalog_project.create",
             "formalizacion.catalog_project.update",
             "formalizacion.catalog_project.inactivate",
-            "contabilidad.catalog_project.read",
-            "contabilidad.catalog_project.create",
-            "contabilidad.catalog_project.update",
-            "contabilidad.catalog_project.inactivate",
             "administration.catalog_project.read",
             "administration.catalog_project.create",
             "administration.catalog_project.update",
@@ -210,6 +206,10 @@ describe("identity schema migration parser", () => {
             "ventas.catalog_campaign.create",
             "ventas.catalog_campaign.update",
             "ventas.catalog_campaign.inactivate",
+            "mercadeo.catalog_campaign.read",
+            "mercadeo.catalog_campaign.create",
+            "mercadeo.catalog_campaign.update",
+            "mercadeo.catalog_campaign.inactivate",
         ]);
     });
 

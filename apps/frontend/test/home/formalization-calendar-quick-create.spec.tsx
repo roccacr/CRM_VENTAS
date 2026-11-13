@@ -75,20 +75,12 @@ it.each([
     });
     expect(screen.queryByRole("button", { name: "Nuevo evento de Formalización" })).not.toBeInTheDocument();
 });
-it("is scoped to Formalización and does not query its calendar from another workspace", () => {
-    render(
-        shell({
-            initialWorkspaceCode: "sales",
-            effectivePermissions: [...permissions, { code: "lead.read", effect: "allow" }],
-            orgUnits: [
-                { code: "formalizacion", status: "active" },
-                { code: "ventas", status: "active" },
-            ],
-        }),
-    );
+it("no consulta calendario desde Ventas aunque conserve grants históricos", () => {
+    render(<FormalizationCalendarQuickCreate workspaceCode="sales" permissions={[...permissions, { code: "ventas.calendar.read", effect: "allow" }]} />);
     expect(screen.queryByRole("button", { name: "Nuevo evento de Formalización" })).not.toBeInTheDocument();
     expect(getCalendars).not.toHaveBeenCalled();
 });
+
 it("closes the draft and revalidates creation when calendar permissions change", async () => {
     const view = render(shell());
     fireEvent.click(await screen.findByRole("button", { name: "Nuevo evento de Formalización" }));

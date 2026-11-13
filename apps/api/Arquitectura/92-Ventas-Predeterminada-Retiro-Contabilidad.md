@@ -66,3 +66,53 @@ Write-Output "API=$apiExit Frontend=$frontendExit"
 ```
 
 Compartir salida completa y códigos. Las comprobaciones de persistencia con fixtures deben permanecer en una base desechable, nunca en las bases compartidas. Una reversión requeriría otra migración auditada que restaure solo los estados del snapshot tras comprobar cambios posteriores; no eliminar el ledger ni la auditoría para reejecutar.
+
+
+## Conciliación de CI posterior al commit 508cc43 — 2026-11-13
+
+El propietario autorizó ejecutar pruebas y publicar la corrección por push.
+La ejecución 43477363421 bloqueó correctamente el despliegue por 115 pruebas
+fallidas (80 API, 35 frontend). Formato, lint, TypeScript y auditorías de
+dependencias pasaron en esa ejecución.
+
+Se conservan Ventas solo Inicio y el retiro de Contabilidad. Las fixtures de
+calendario y accesos usan módulos vigentes y mantienen casos negativos de deny,
+permisos ausentes, alcance, límites y vínculos. Los recibos NetSuite verifican
+ahora de forma exacta los metadatos de diagnóstico añadidos: no se desactiva
+validación de payload, confirmación durable ni resguardo de datos sensibles.
+
+Corrección de compatibilidad histórica: la migración 030 fija los cuatro códigos
+de módulos de su contrato original, en lugar de importar el catálogo runtime que
+ahora tiene tres. No cambia el SQL histórico ni ejecuta la migración; evita que
+un retiro posterior altere sus precondiciones y la semántica de replay.
+
+La evidencia final del chequeo completo y del push se registra al cerrar esta
+conciliación. Ningún resultado focalizado acredita por sí solo despliegue.
+
+
+Revisión independiente de la conciliación: sin bloqueos tras restaurar los
+controles de rutas retiradas y las pruebas de deny en un calendario activo. Se
+preparó una propiedad de autorización sobre la entrada real `resolveRouteState`,
+150 casos con seed `20261113`, variando roles, grants y parámetros de URL; exige
+rechazo y ausencia de mutación del perfil para secciones retiradas.
+
+Concurrencia local: `pnpm test` usa `--maxWorkers=2` en API y frontend, igual que
+el comando de cobertura existente. El primer intento sin límite terminó con dos
+timeouts de arranque de workers y 7375 pruebas aprobadas; no se consideró verde.
+La limitación no cambia archivos seleccionados, aislamiento, aserciones ni
+condiciones de aprobación; el chequeo global se repite íntegro.
+
+
+Regresiones funcionales de frontend reparadas en esta conciliación:
+- Las URLs retiradas de Ventas/Contabilidad se deniegan antes del fallback de URL desconocida, aunque el perfil traiga grants históricos.
+- El detalle de auditoría no genera enlaces hacia catálogos retirados de Ventas/Contabilidad.
+- Los banners de etapas vuelven a mostrar estado de error y una acción de reintento conectada al hook de lectura existente.
+- Las pruebas de reintento de Adéndum esperan que termine la carga visual de AntD antes del siguiente clic, conservando las aserciones sobre comandos inciertos, versiones e idempotencia.
+
+
+### Evidencia local de cierre
+
+- API: formato, ESLint, TypeScript, build y suite completa aprobados: 266 archivos, 7398 tests. Quedan 301 tests SQL omitidos en 39 archivos por requerir infraestructura aislada; no se habilitaron sobre la BD compartida.
+- Frontend: formato, ESLint y TypeScript globales aprobados. Suite completa: 2226 aprobados y una expectativa antigua en `formalization-banners.spec.tsx`, ejecutada antes de su corrección. El archivo corregido se repitió íntegro: 34/34 aprobados, sin cambio adicional de código productivo; los demás 145 archivos quedaron aprobados.
+- Regresiones focalizadas adicionales: 152 API en nueve archivos y 187 NetSuite en tres archivos; 218 frontend en doce archivos, todos aprobados.
+- Log completo del chequeo: `%TEMP%/habita-check-all-ci-repair-final.log`; reevaluación del último archivo: `%TEMP%/habita-banner-followup-final.log`. El chequeo global que capturó la expectativa vieja no se presenta como salida 0. La siguiente ejecución de Actions deberá comprobar el árbol final completo, con cobertura y builds.

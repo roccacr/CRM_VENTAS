@@ -349,7 +349,7 @@ describe("EnviarEvento.sendRecordEvent", () => {
     it("blocks outside the sandbox before reading the snapshot or touching the network", () => {
         const { send, https } = setup({ runtime: runtimeMock({ accountId: "X" }) });
         const read = vi.fn();
-        expect(send(EVENT, read)).toEqual({ status: "environment_blocked", delivered: false });
+        expect(send(EVENT, read)).toEqual({ status: "environment_blocked", delivered: false, failureStage: "configuration", failureReason: "environment_blocked" });
         expect(read).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();
         expect(https.createSecureString).not.toHaveBeenCalled();
@@ -357,7 +357,7 @@ describe("EnviarEvento.sendRecordEvent", () => {
     it.each(["http://abc.example.test/integrations/netsuite/local", "https://user@abc.example.test/integrations/netsuite/local", "https://abc.example.test/../local", "https://abc.example.test/local#fragment", "https://abc.example.test/local?x=1", ""])("blocks the destination %s", (parameter) => {
         const { send, https } = setup({ runtime: runtimeMock({ parameter }) });
         const read = vi.fn();
-        expect(send(EVENT, read)).toEqual({ status: "destination_blocked", delivered: false });
+        expect(send(EVENT, read)).toEqual({ status: "destination_blocked", delivered: false, failureStage: "configuration", failureReason: "destination_blocked" });
         expect(read).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();
     });
@@ -429,7 +429,7 @@ describe("EnviarEvento.sendRecordEvent", () => {
     it.each([undefined, null, 5, "", "orders", "order-events/../x", "order-events?x=1", "Order-events", "../order-events", "order_events", "http://evil.com", {}])("blocks the invalid module endpoint %j without reading or posting", (endpoint) => {
         const { send, https } = setup();
         const read = vi.fn();
-        expect(send(EVENT, read, endpoint)).toEqual({ status: "destination_blocked", delivered: false });
+        expect(send(EVENT, read, endpoint)).toEqual({ status: "destination_blocked", delivered: false, failureStage: "configuration", failureReason: "destination_blocked" });
         expect(read).not.toHaveBeenCalled();
         expect(https.post).not.toHaveBeenCalled();
     });
@@ -452,7 +452,7 @@ describe("EnviarEvento.sendRecordEvent", () => {
     it("blocks, without posting or truncating, any text above the receiver's per-value limit", () => {
         const { send, https } = setup();
         const result = (data) => send(EVENT, () => ({ status: 200, data }));
-        expect(result("a".repeat(16001))).toEqual({ status: "value_too_long", delivered: false });
+        expect(result("a".repeat(16001))).toEqual({ status: "value_too_long", delivered: false, failureStage: "payload_build", failureReason: "value_too_long" });
         expect(result({ fields: { memo: "a".repeat(16001) } }).status).toBe("value_too_long");
         expect(result({ lines: [{ description: "a".repeat(16001) }] }).status).toBe("value_too_long");
         expect(https.post).not.toHaveBeenCalled();
@@ -474,7 +474,8 @@ describe("EnviarEvento.sendRecordEvent", () => {
         ["other id", receipt({ netsuiteId: "999" })],
         ["id as number", receipt({ netsuiteId: 214 })],
     ])("never treats %s as delivered", (_name, body) => {
-        expect(setup({ post: () => ({ code: 200, body }) }).send(EVENT, snapshot)).toEqual({ status: "receipt_invalid", delivered: false });
+        const reasons = { "null body": "receipt_missing", number: "receipt_schema_mismatch", array: "receipt_schema_mismatch", "wrong schema": "receipt_schema_mismatch", "not received": "receipt_not_received", "not persisted": "receipt_persistence_unconfirmed", "queue without absent result": "receipt_persistence_unconfirmed", "absent without durable queue": "receipt_persistence_unconfirmed", "other id": "receipt_order_id_mismatch", "id as number": "receipt_order_id_mismatch" };
+        expect(setup({ post: () => ({ code: 200, body }) }).send(EVENT, snapshot)).toEqual({ status: "receipt_invalid", delivered: false, failureStage: "receipt_validation", failureReason: reasons[_name], httpStatus: 200 });
     });
     it("acknowledges a durable import request without claiming that the order was persisted", () => {
         const body = receipt({ persisted: false, result: "not_found", importQueued: true });
@@ -484,11 +485,13 @@ describe("EnviarEvento.sendRecordEvent", () => {
         ["HTML body", () => ({ code: 200, body: "<html>ngrok</html>" })],
         ["network error", throwing(new Error("SECRET"))],
     ])("fails closed on %s without throwing", (name, post) => {
-        expect(setup({ post }).send(EVENT, snapshot)).toEqual({ status: "delivery_failed", delivered: false, ...(name === "network error" ? { transportCode: "UNCLASSIFIED", failureReason: "transport_error" } : {}) });
+        const result = setup({ post }).send(EVENT, snapshot);
+        expect(result).toEqual({ status: "delivery_failed", delivered: false, failureStage: name === "network error" ? "http_request" : "receipt_validation", errorCode: name === "network error" ? "UNCLASSIFIED" : "INVALID_JSON_RESPONSE", ...(name === "network error" ? { transportCode: "UNCLASSIFIED", failureReason: "transport_error" } : { failureReason: "exception_in_receipt_validation" }) });
+        expect(JSON.stringify(result)).not.toContain("SECRET");
     });
     it("fails closed when the snapshot reader throws, without sending a request", () => {
         const { send, https } = setup();
-        expect(statusOf(send(EVENT, throwing(nsError("RCRD_DSNT_EXIST"))))).toBe("delivery_failed");
+        expect(send(EVENT, throwing(nsError("RCRD_DSNT_EXIST")))).toEqual({ status: "delivery_failed", delivered: false, failureStage: "snapshot_read", errorCode: "RCRD_DSNT_EXIST", failureReason: "exception_in_snapshot_read" });
         expect(https.post).not.toHaveBeenCalled();
     });
 });

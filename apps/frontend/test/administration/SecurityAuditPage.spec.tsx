@@ -67,10 +67,8 @@ it.each([
     ["administration", "users", null, "/home/administration/users"],
     ["administration", "roles", null, "/home/administration/roles-security"],
     ["administration", "catalogs", "projects", "/home/administration/catalogs/projects"],
-    ["ventas", "catalogs", "files", "/home/sales/catalogs/files"],
     ["mercadeo", "catalogs", "campaigns", "/home/marketing/catalogs/campaigns"],
     ["formalizacion", "catalogs", "classes", "/home/formalization/catalogs/classes"],
-    ["contabilidad", "catalogs", "locations", "/home/accounting/catalogs/locations"],
 ])("links only to the verified recorded section %s/%s", async (recordedModule, recordedSection, catalogCode, path) => {
     vi.mocked(getAuditDetail).mockResolvedValue({ ...item, recordedModule, recordedSection, catalogCode, contextKnown: true, changeSet: null });
     render(<SecurityAuditDetailDrawer publicId="event" onClose={vi.fn()} />);
@@ -196,4 +194,11 @@ it("ignores a pending response after the section changes", async () => {
     });
     expect(screen.queryByText("Proyecto editado")).not.toBeInTheDocument();
     expect(screen.getByText("Selecciona un módulo y una sección.")).toBeInTheDocument();
+});
+
+it.each(["contabilidad", "ventas"])("no ofrece navegación hacia una sección retirada de %s", async (recordedModule) => {
+    vi.mocked(getAuditDetail).mockResolvedValue({ ...item, recordedModule, recordedSection: "catalogs", catalogCode: "locations", contextKnown: true, changeSet: null });
+    render(<SecurityAuditDetailDrawer publicId="event" onClose={vi.fn()} />);
+    await screen.findByText("Este evento histórico no tiene comparación registrada.");
+    expect(screen.queryByRole("link", { name: "Abrir sección" })).toBeNull();
 });

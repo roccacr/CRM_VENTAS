@@ -8,14 +8,14 @@ import { ApiClientError, apiRequest } from "../../src/services/api/api-client";
 import { installBrowserApiDoubles } from "../support/browser";
 
 vi.mock("../../src/services/api/api-client", async (original) => ({ ...(await original<object>()), apiRequest: vi.fn() }));
-const descriptors = ["formalizacion", "mercadeo", "ventas", "contabilidad"].map((moduleCode) => ({ moduleCode, label: ({ formalizacion: "Formalización", mercadeo: "Mercadeo", ventas: "Ventas", contabilidad: "Contabilidad" } as Record<string, string>)[moduleCode], color: "#2563eb", canCreate: true, canUpdate: true, types: [{ id: `type-${moduleCode}`, code: "general", label: "General", color: "#2563eb", formKey: `${moduleCode}.general.v1` }] }));
+const descriptors = ["formalizacion", "ventas", "mercadeo"].map((moduleCode) => ({ moduleCode, label: ({ formalizacion: "Formalización", ventas: "Ventas", mercadeo: "Mercadeo", contabilidad: "Contabilidad" } as Record<string, string>)[moduleCode], color: "#2563eb", canCreate: true, canUpdate: true, types: [{ id: `type-${moduleCode}`, code: "general", label: "General", color: "#2563eb", formKey: `${moduleCode}.general.v1` }] }));
 const permissions = [
     { code: "formalizacion.calendar.read", effect: "allow" },
-    { code: "ventas.calendar.read", effect: "allow" },
     { code: "mercadeo.calendar.read", effect: "allow" },
-    { code: "mercadeo.calendar.read", effect: "deny" },
+    { code: "ventas.calendar.read", effect: "allow" },
+    { code: "ventas.calendar.read", effect: "deny" },
 ];
-const event = { id: "event-1", source: "native", originModule: "ventas", typeId: "type-ventas", typeCode: "general", title: "Visita comercial", description: null, location: null, start: "2026-10-28T15:00:00Z", end: "2026-10-28T16:00:00Z", allDay: false, status: "scheduled", version: 3, canEdit: true, formKey: "ventas.general.v1", details: { reference: "Cliente interno" } };
+const event = { id: "event-1", source: "native", originModule: "mercadeo", typeId: "type-mercadeo", typeCode: "general", title: "Visita comercial", description: null, location: null, start: "2026-10-28T15:00:00Z", end: "2026-10-28T16:00:00Z", allDay: false, status: "scheduled", version: 3, canEdit: true, formKey: "mercadeo.general.v1", details: { reference: "Cliente interno" } };
 it("renders independent module and type colors on the real calendar event element", async () => {
     const calendars = descriptors.map((calendar) => ({ ...calendar, color: "#b4325a", types: calendar.types.map((type) => ({ ...type, color: "#475569" })) }));
     const colored = { ...event, title: "Evento dos colores", originModule: "formalizacion", typeId: "type-formalizacion" };
@@ -72,8 +72,8 @@ it("keeps the preloader visible until the delayed calendar feed finishes", async
 it("renders real calendar views and defaults to the current authorized module only", async () => {
     render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);
     expect(await screen.findByRole("checkbox", { name: "Formalización" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Ventas" })).not.toBeChecked();
-    expect(screen.queryByRole("checkbox", { name: "Mercadeo" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "Mercadeo" })).not.toBeChecked();
+    expect(screen.queryByRole("checkbox", { name: "Ventas" })).toBeNull();
     expect(screen.queryByRole("checkbox", { name: "Contabilidad" })).toBeNull();
     for (const view of ["Mes", "Semana", "Día", "Agenda"]) expect(screen.getByText(view, { selector: "button" })).toBeInTheDocument();
     await waitFor(() => {
@@ -83,37 +83,37 @@ it("renders real calendar views and defaults to the current authorized module on
     expect(await screen.findByText("No hay eventos para mostrar")).toBeInTheDocument();
 });
 it("has no Owner bypass and makes no requests without the current module read grant", () => {
-    render(<SharedCalendarPage moduleCode="mercadeo" effectivePermissions={permissions} />);
+    render(<SharedCalendarPage moduleCode="mercadeo" effectivePermissions={[...permissions, { code: "mercadeo.calendar.read", effect: "deny" }]} />);
     expect(screen.getByRole("alert")).toHaveTextContent("No tienes permiso");
     expect(apiRequest).not.toHaveBeenCalled();
 });
 it("opens foreign events read-only using their origin form and offers origin navigation", async () => {
     const navigate = vi.fn();
-    vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: path.includes("ventas") ? [{ ...event, canEdit: false }] : [] }));
+    vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: path.includes("mercadeo") ? [{ ...event, canEdit: false }] : [] }));
     render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} onNavigate={navigate} />);
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Ventas" }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Mercadeo" }));
     fireEvent.click(await screen.findByText("Visita comercial"));
-    expect(screen.getByRole("dialog")).toHaveTextContent("Evento de Ventas");
-    expect(screen.getByLabelText("Referencia comercial")).toBeDisabled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Evento de Mercadeo");
+    expect(screen.getByLabelText("Referencia de campaña")).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Guardar evento" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Ir a Ventas" }));
-    expect(navigate).toHaveBeenCalledWith(expect.stringContaining("/home/sales/calendar?"));
+    fireEvent.click(screen.getByRole("button", { name: "Ir a Mercadeo" }));
+    expect(navigate).toHaveBeenCalledWith(expect.stringContaining("/home/marketing/calendar?"));
 });
 it("does not let a stale overlay response restore deselected events", async () => {
     let resolve: (value: unknown) => void = () => {};
     vi.mocked(apiRequest).mockImplementation((path) => {
         if (path === "/calendar/calendars") return Promise.resolve({ schemaVersion: 1, calendars: descriptors });
-        if (path.includes("ventas"))
+        if (path.includes("mercadeo"))
             return new Promise((done) => {
                 resolve = done;
             });
         return Promise.resolve({ schemaVersion: 1, events: [] });
     });
     render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);
-    const overlay = await screen.findByRole("checkbox", { name: "Ventas" });
+    const overlay = await screen.findByRole("checkbox", { name: "Mercadeo" });
     fireEvent.click(overlay);
     await waitFor(() => {
-        expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("ventas"));
+        expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("mercadeo"));
     });
     fireEvent.click(overlay);
     await act(async () => {
@@ -155,7 +155,7 @@ it("edits a native event only in its origin, preserving version and retry operat
         }
         return Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [event] });
     });
-    render(<SharedCalendarPage moduleCode="ventas" effectivePermissions={permissions} />);
+    render(<SharedCalendarPage moduleCode="mercadeo" effectivePermissions={permissions} />);
     fireEvent.click(await screen.findByText("Visita comercial"));
     fireEvent.change(screen.getByLabelText("Nombre del evento"), { target: { value: "Visita confirmada" } });
     fireEvent.click(await screen.findByRole("button", { name: "Guardar evento" }));
@@ -168,7 +168,7 @@ it("edits a native event only in its origin, preserving version and retry operat
     });
     const writes = vi.mocked(apiRequest).mock.calls.filter(([, options]) => options?.method === "PATCH");
     expect(writes).toHaveLength(2);
-    expect(writes[0]?.[1]?.body).toMatchObject({ moduleCode: "ventas", expectedVersion: 3, title: "Visita confirmada" });
+    expect(writes[0]?.[1]?.body).toMatchObject({ moduleCode: "mercadeo", expectedVersion: 3, title: "Visita confirmada" });
     expect(writes[1]?.[1]?.body).toEqual(writes[0]?.[1]?.body);
 });
 it("blocks stale versions and requires a fresh calendar instead of overwriting", async () => {
@@ -176,16 +176,16 @@ it("blocks stale versions and requires a fresh calendar instead of overwriting",
         if (options?.method === "PATCH") return Promise.reject(new ApiClientError("conflict", 409, null));
         return Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [event] });
     });
-    render(<SharedCalendarPage moduleCode="ventas" effectivePermissions={permissions} />);
+    render(<SharedCalendarPage moduleCode="mercadeo" effectivePermissions={permissions} />);
     fireEvent.click(await screen.findByText("Visita comercial"));
     fireEvent.click(await screen.findByRole("button", { name: "Guardar evento" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Recarga el calendario");
     expect(await screen.findByRole("button", { name: "Guardar evento" })).toBeDisabled();
 });
 it.each(["legacy", "unknown-form", "not-editable"])("keeps %s events read-only even in their origin", async (restriction) => {
-    const restricted = { ...event, source: restriction === "legacy" ? "legacy" : "native", canEdit: restriction !== "not-editable", formKey: restriction === "unknown-form" ? "ventas.unknown.v2" : event.formKey };
+    const restricted = { ...event, source: restriction === "legacy" ? "legacy" : "native", canEdit: restriction !== "not-editable", formKey: restriction === "unknown-form" ? "mercadeo.unknown.v2" : event.formKey };
     vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [restricted] }));
-    render(<SharedCalendarPage moduleCode="ventas" effectivePermissions={permissions} />);
+    render(<SharedCalendarPage moduleCode="mercadeo" effectivePermissions={permissions} />);
     fireEvent.click(await screen.findByText("Visita comercial"));
     expect(screen.getByLabelText("Nombre del evento")).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Guardar evento" })).toBeNull();
@@ -232,15 +232,15 @@ it("reselects the current calendar when creating after it was unchecked", async 
 });
 it("removes a revoked overlay immediately and never requests the denied module again", async () => {
     const view = render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={permissions} />);
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Ventas" }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Mercadeo" }));
     await waitFor(() => {
-        expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("ventas"));
+        expect(apiRequest).toHaveBeenCalledWith(expect.stringContaining("mercadeo"));
     });
     vi.mocked(apiRequest).mockClear();
-    view.rerender(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={[...permissions, { code: "ventas.calendar.read", effect: "deny" }]} />);
-    expect(screen.queryByRole("checkbox", { name: "Ventas" })).toBeNull();
+    view.rerender(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={[...permissions, { code: "mercadeo.calendar.read", effect: "deny" }]} />);
+    expect(screen.queryByRole("checkbox", { name: "Mercadeo" })).toBeNull();
     await screen.findByRole("checkbox", { name: "Formalización" });
-    expect(vi.mocked(apiRequest).mock.calls.some(([path]) => path.includes("ventas"))).toBe(false);
+    expect(vi.mocked(apiRequest).mock.calls.some(([path]) => path.includes("mercadeo"))).toBe(false);
 });
 it("clears an old catalog error as soon as a refresh starts", async () => {
     vi.mocked(apiRequest).mockRejectedValueOnce(new TypeError("network"));
@@ -257,7 +257,7 @@ it("preserves seconds and milliseconds when editing only an event title", async 
         if (options?.method === "PATCH") return Promise.resolve({ schemaVersion: 1, event: { ...precise, version: 4 } });
         return Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors } : { schemaVersion: 1, events: [precise] });
     });
-    render(<SharedCalendarPage moduleCode="ventas" effectivePermissions={permissions} />);
+    render(<SharedCalendarPage moduleCode="mercadeo" effectivePermissions={permissions} />);
     fireEvent.click(await screen.findByText("Visita comercial"));
     expect(screen.getByLabelText("Inicio")).toHaveValue("2026-10-28T09:30:12.123");
     expect(screen.getByLabelText("Fin")).toHaveValue("2026-10-28T10:45:44.789");
@@ -275,7 +275,7 @@ it("opens an API-authorized invitation without origin membership as read-only", 
     vi.mocked(apiRequest).mockImplementation((path) => Promise.resolve(path === "/calendar/calendars" ? { schemaVersion: 1, calendars: descriptors.filter((entry) => entry.moduleCode === "formalizacion") } : { schemaVersion: 1, events: [{ ...event, canEdit: false, location: "Sala", details: { teamsRequested: true } }] }));
     render(<SharedCalendarPage moduleCode="formalizacion" effectivePermissions={[{ code: "formalizacion.calendar.read", effect: "allow" }]} />);
     fireEvent.click(await screen.findByText("Visita comercial"));
-    expect(screen.getByRole("dialog")).toHaveTextContent("Evento de Ventas");
+    expect(screen.getByRole("dialog")).toHaveTextContent("Evento de Mercadeo");
     expect(screen.getByLabelText("Lugar")).toHaveValue("Sala");
     expect(screen.getByLabelText("Inicio")).toBeDisabled();
     expect(screen.getByRole("dialog")).toHaveTextContent("Teams: Solicitado");
